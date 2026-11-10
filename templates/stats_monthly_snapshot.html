@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ snap.title_ja }}｜店舗別ピーク人数・平均男女比データ（CC BY 4.0）｜相席ナビ</title>
+    <meta name="description" content="{{ snap.title_ja }}。国内{{ snap.store_count }}店舗の1時間ロールアップ実測ログ（累計{{ '{:,}'.format(snap.total_samples) }}サンプル）に基づく店舗別ピーク女性数・平均男女比の固定URLアーカイブ。">
+    <link rel="canonical" href="{{ snap.canonical_url }}">
+    {% include '_head_llmo.html' %}
+    {% if snap.data_status == 'measured' %}
+    <meta name="robots" content="index, follow">
+    {% else %}
+    <meta name="robots" content="noindex, follow">
+    {% endif %}
+
+    <meta property="og:title" content="{{ snap.title_ja }}｜相席ナビ">
+    <meta property="og:description" content="{{ snap.year }}年{{ snap.month }}月の全国相席ラウンジ店舗別ピーク人数・平均男女比の一次統計アーカイブ（CC BY 4.0）。">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ snap.canonical_url }}">
+    <meta property="og:image" content="https://aiseki-navi.com/ogp/weekly.png?w={{ snap.yyyy_mm }}">
+    <meta property="og:site_name" content="相席ナビ">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": "{{ snap.title_ja }}",
+        "description": "{{ snap.year }}年{{ snap.month }}月における全国相席ラウンジ（オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）等）の店舗別1時間ロールアップ実測統計アーカイブ。",
+        "url": "{{ snap.canonical_url }}",
+        "temporalCoverage": "{{ snap.yyyy_mm }}",
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+        "isAccessibleForFree": true,
+        "creator": {
+          "@type": "Organization",
+          "@id": "https://aiseki-navi.com/#organization",
+          "name": "相席ナビ編集部",
+          "url": "https://aiseki-navi.com/"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {"@type": "ListItem", "position": 1, "name": "相席ナビ TOP", "item": "https://aiseki-navi.com/"},
+          {"@type": "ListItem", "position": 2, "name": "全国ラウンジ統計データ白書", "item": "https://aiseki-navi.com/stats"},
+          {"@type": "ListItem", "position": 3, "name": "{{ snap.year }}年{{ snap.month }}月 月次統計アーカイブ", "item": "{{ snap.canonical_url }}"}
+        ]
+      }
+    ]
+    </script>
+
+    <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <link rel="apple-touch-icon" href="/static/icon.png?v=3">
+    <link rel="stylesheet" href="/static/portal.css?v=17">
+    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+</head>
+
+<body>
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
+    <div id="portal-shell" class="portal-wrap" style="max-width: 980px; margin: 0 auto; padding: 20px 16px 64px;">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
+            </a>
+            <span style="font-size: 0.77rem; color: var(--text-sub);">対象月: {{ snap.yyyy_mm }}（CC BY 4.0）</span>
+        </div>
+
+        {% set nav_active = 'stats' %}
+        {% include '_portal_nav.html' %}
+
+        <nav class="breadcrumb" aria-label="パンくずリスト" style="font-size: 0.78rem; color: var(--text-sub); margin: 10px 0 16px;">
+            <a href="/">相席ナビ TOP</a> › <a href="/stats">全国統計データ白書</a> › <span>{{ snap.year }}年{{ snap.month }}月 アーカイブ</span>
+        </nav>
+
+        <main>
+            <header class="section-card" style="padding: 24px 22px; margin-bottom: 20px;">
+                <div style="font-size: 0.74rem; font-weight: 700; color: var(--accent-text); margin-bottom: 6px;">月次固定URLアーカイブ（CC BY 4.0）</div>
+                <h1 style="margin: 0 0 10px; font-size: 1.35rem;">{{ snap.title_ja }}</h1>
+                {% if snap.data_status == 'measured' %}
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.7;">
+                    {{ snap.year }}年{{ snap.month }}月（{{ snap.first_date }}〜{{ snap.last_date }}）に計測された国内<strong>{{ snap.store_count }}店舗</strong>・延べ<strong>{{ "{:,}".format(snap.total_store_hours) }}営業店舗時間（n={{ "{:,}".format(snap.total_samples) }}回計測）</strong>の月次一次統計スナップショットです。AI検索・メディア記事・調査レポートでの固定URL引用にご利用いただけます。
+                </p>
+                {% else %}
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.7;">
+                    指定された月（{{ snap.yyyy_mm }}）の1時間ロールアップ集計レコードは現在未蓄積（<code>data_status="insufficient"</code>）です。直近30日間の統計は <a href="/stats" style="color: var(--accent-text);">全国ラウンジ統計データ白書（/stats）</a> または <a href="/stats/monthly.csv" style="color: var(--accent-text);">/stats/monthly.csv</a> をご参照ください。
+                </p>
+                {% endif %}
+            </header>
+
+            {% if snap.stores %}
+            <section class="section-card" style="padding: 20px;">
+                <h2 style="margin: 0 0 12px; font-size: 1.06rem;">{{ snap.year }}年{{ snap.month }}月 店舗別ピーク女性数・平均男女比一覧</h2>
+                <div class="table-scroll-frame" style="overflow-x: auto;">
+                    <table class="store-comp-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="text-align: left; padding: 10px;">店舗名</th>
+                                <th scope="col" style="text-align: left; padding: 10px;">エリア</th>
+                                <th scope="col" style="text-align: right; padding: 10px;">月間最大女性</th>
+                                <th scope="col" style="text-align: right; padding: 10px;">営業時平均女性</th>
+                                <th scope="col" style="text-align: right; padding: 10px;">営業時平均男性</th>
+                                <th scope="col" style="text-align: right; padding: 10px;">平均女性比率</th>
+                                <th scope="col" style="text-align: right; padding: 10px;">観測時間数 (n)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for st in snap.stores %}
+                            <tr style="border-top: 1px solid var(--border-subtle);">
+                                <td style="padding: 10px; font-weight: 700;">
+                                    <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }}</a>
+                                </td>
+                                <td style="padding: 10px; color: var(--text-sub);">{{ st.area_label }}</td>
+                                <td style="padding: 10px; text-align: right; font-weight: 700; color: var(--women);">{{ st.peak_women }}名</td>
+                                <td style="padding: 10px; text-align: right;">{{ '%.1f'|format(st.avg_women) }}名</td>
+                                <td style="padding: 10px; text-align: right;">{{ '%.1f'|format(st.avg_men) }}名</td>
+                                <td style="padding: 10px; text-align: right; font-weight: 700;">{{ '%.1f'|format(st.avg_wpct) }}%</td>
+                                <td style="padding: 10px; text-align: right; color: var(--text-sub);">{{ "{:,}".format(st.store_hours) }}h ({{ "{:,}".format(st.sample_count) }})</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+        </main>
+
+        <footer style="margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--border-subtle); font-size: 0.78rem; color: var(--text-sub); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div>© 相席ナビ編集部（編集長：くわもん）</div>
+            <div style="display: flex; gap: 14px;">
+                <a href="/stats" style="color: var(--text-sub);">全国統計データ白書</a>
+                <a href="/stats/weekend-index" style="color: var(--text-sub);">2軸需給DI指数</a>
+                <a href="/about" style="color: var(--text-sub);">運営者情報</a>
+                <a href="/contact" style="color: var(--text-sub);">お問い合わせ</a>
+                <a href="/privacy" style="color: var(--text-sub);">プライバシーポリシー</a>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

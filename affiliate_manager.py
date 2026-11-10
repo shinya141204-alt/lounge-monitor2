@@ -492,6 +492,17 @@ def build_store_smart_cta(
         "secondary_label": "女性向け待ちゼロ店＆席替えガイド ›",
     }
 
+    if mode == "men_glut":
+        if best_female_alt:
+            primary_internal_href = f"/store/{best_female_alt['slug']}"
+            primary_internal_label = f"近隣の女性優位店へ移動：{best_female_alt['seo_name']}（女{best_female_alt['women']} : 男{best_female_alt['men']}） ›"
+        else:
+            primary_internal_href = f"/concierge?area={area_slug}" if area_slug else "/concierge"
+            primary_internal_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+    else:
+        primary_internal_href = sublink_href
+        primary_internal_label = sublink_label
+
     return {
         "mode": mode,
         "slot_id": slot_id,
@@ -506,6 +517,8 @@ def build_store_smart_cta(
         "active_pixels": active_pixels,
         "sublink_href": sublink_href,
         "sublink_label": sublink_label,
+        "primary_internal_href": primary_internal_href,
+        "primary_internal_label": primary_internal_label,
         "women_sublink_href": "/for-women",
         "women_sublink_label": "女性ペア向け・待ちゼロ店＆無料デート特設 ›",
         "women_variant": women_variant,

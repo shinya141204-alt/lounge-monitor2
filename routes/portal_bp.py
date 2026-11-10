@@ -916,6 +916,40 @@ def stats_monthly_csv():
     return resp
 
 
+@portal_bp.route('/stats/weekend-index')
+def stats_weekend_index_page():
+    """Canonical HTML whitepaper for the 2-Axis Weekend Supply-Demand DI Index (CC BY 4.0, zero /link/)."""
+    import cross_site_bridge
+    raw_days = request.args.get('days', 28, type=int) or 28
+    cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
+    di_report = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
+    with core.data_lock:
+        last_updated = core.latest_data.get('last_updated') or '--:--'
+    return render_template(
+        'stats_weekend_index.html',
+        di_report=di_report,
+        last_updated=last_updated,
+        is_staff=bool(session.get('is_staff')),
+    )
+
+
+@portal_bp.route('/stats/monthly/<yyyy_mm>')
+def stats_monthly_snapshot_page(yyyy_mm: str):
+    """Frozen monthly statistical archive page for AI search grounding & academic/media citation."""
+    import cross_site_bridge
+    snap = cross_site_bridge.build_monthly_frozen_snapshot(yyyy_mm)
+    if snap is None:
+        abort(404)
+    with core.data_lock:
+        last_updated = core.latest_data.get('last_updated') or '--:--'
+    return render_template(
+        'stats_monthly_snapshot.html',
+        snap=snap,
+        last_updated=last_updated,
+        is_staff=bool(session.get('is_staff')),
+    )
+
+
 @portal_bp.route('/stats/year-end-2026')
 def stats_year_end_2026():
     """2026 Year-End (Bounenkai, Bonus Window, Christmas & Dome Post-Show) primary statistical whitepaper."""

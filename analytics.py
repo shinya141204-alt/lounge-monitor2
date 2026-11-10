@@ -40,6 +40,9 @@ ALLOWED_EVENTS = {
     'watch_intent',          # 条件ウォッチ登録（store:condition 形式）
     'sns_inflow',            # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
     'hashigo_intent',        # 3秒ハシゴ診断先行需要インテント（area:audience:party_size 形式）
+    'co_view',               # 同一セッション内の店舗共閲覧（storeA|storeB 形式・PIIなし）
+    'sister_bridge_impression',  # 姉妹サイト（マチナビ）回遊ブリッジ表示（area:trigger:audience 形式）
+    'sister_bridge_click',       # 姉妹サイト（マチナビ）回遊ブリッジクリック（area:trigger:audience 形式）
 }
 
 # distinct (date, event, label) キー上限。超過時は新規ラベルを '__overflow__' に丸めてメモリ膨張を防ぐ
@@ -276,6 +279,73 @@ def normalize_hashigo_intent_label(raw_label: str) -> str:
     return f"{norm_area}:{norm_aud}:{norm_ps}"
 
 
+def normalize_co_view_label(raw_label: str) -> str:
+    """
+    同一セッション内の店舗共閲覧ラベル（<storeA>|<storeB>）を検証・正規化する。
+    両店舗とも store_master の内部キーへ解決でき、かつ同一店舗でない場合のみ有効とする。
+    """
+    s = sanitize_generic_track_label(raw_label)
+    if not s or '|' not in s:
+        return ''
+    part_a, part_b = [p.strip() for p in s.split('|', 1)]
+    if not part_a or not part_b:
+        return ''
+    try:
+        import store_master
+        master = store_master.load() or {}
+
+        def _resolve(name_in: str) -> str:
+            if name_in in master:
+                return name_in
+            cand = store_master.to_internal_store_name(name_in)
+            if cand and cand in master:
+                return cand
+            by_slug = store_master.store_by_slug(name_in)
+            if by_slug and by_slug in master:
+                return by_slug
+            return ''
+
+        canon_a = _resolve(part_a)
+        canon_b = _resolve(part_b)
+    except Exception:
+        return ''
+    if not canon_a or not canon_b or canon_a == canon_b:
+        return ''
+    return f"{canon_a}|{canon_b}"
+
+
+_VALID_SISTER_TRIGGERS = frozenset({
+    'men_glut',
+    'closed',
+    'balanced',
+    'women_lead',
+    'price_compare',
+    'store_detail',
+    'concierge',
+    'stats',
+    'other',
+})
+_VALID_SISTER_AUDIENCES = frozenset({'men', 'women', 'all'})
+
+
+def normalize_sister_bridge_label(raw_label: str) -> str:
+    """
+    姉妹サイト回遊ブリッジラベル（<area>:<trigger>:<audience>）を厳格に正規化する。
+    自由入力文字列を拒否し、エリア・トリガー種別・対象属性の3要素に丸める。
+    """
+    import re
+    s = sanitize_generic_track_label(raw_label)
+    if not s:
+        return ''
+    parts = [p.strip().lower() for p in s.split(':')]
+    raw_area = re.sub(r'[^a-z0-9_]', '', parts[0] if parts else '')[:24] or 'all'
+    raw_trig = re.sub(r'[^a-z0-9_]', '', parts[1] if len(parts) > 1 else '')[:24]
+    raw_aud = re.sub(r'[^a-z0-9_]', '', parts[2] if len(parts) > 2 else '')[:12]
+    trig = raw_trig if raw_trig in _VALID_SISTER_TRIGGERS else 'other'
+    aud = raw_aud if raw_aud in _VALID_SISTER_AUDIENCES else 'all'
+    return f"{raw_area}:{trig}:{aud}"
+
+
 _STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote', 'vote_wait', 'watch_intent')
 _STORE_SUFFIX_EVENTS = ('vote', 'vote_wait', 'watch_intent')
 
@@ -422,6 +492,12 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
             except Exception:
                 canon_area = 'other'
         return f"intent:{canon_area}"
+    if ev == 'co_view':
+        return 'co_view'
+    if ev == 'sister_bridge_impression':
+        return 'sister_bridge_imp'
+    if ev == 'sister_bridge_click':
+        return 'sister_bridge_clk'
     return ''
 
 
@@ -435,6 +511,16 @@ def track(event, label='', _now_jst=None):
         label = norm_lbl
     elif event == 'cushion_click':
         norm_lbl = normalize_cushion_click_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    elif event == 'co_view':
+        norm_lbl = normalize_co_view_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    elif event in ('sister_bridge_impression', 'sister_bridge_click'):
+        norm_lbl = normalize_sister_bridge_label(label)
         if not norm_lbl:
             return False
         label = norm_lbl
@@ -705,7 +791,7 @@ _PAGE_TITLES = {
     '/areas': '📍 全国エリア一覧ディレクトリ',
     '/grooming': '✨ 相席ラウンジ前の身だしなみ・清潔感特集',
     '/stats': '📊 全国ラウンジ統計・混雑データレポート',
-    '/price-comparison': '💴 店舗別料金・開催中イベント比較',
+    '/price-comparison': '店舗別料金・開催中イベント比較',
     '/oriental-lounge': '🥂 オリエンタルラウンジ全店リアルタイム一覧',
     '/ag': '⚡ ag（アグ）全店リアルタイム一覧',
     '/jis': '💎 JIS（ジス）全店リアルタイム一覧',

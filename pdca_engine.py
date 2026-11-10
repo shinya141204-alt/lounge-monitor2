@@ -198,9 +198,9 @@ OFFER_CATEGORIES = [
         "short_label": "女性向け特典 (women_*)",
         "audience": "women",
         "epc_yen": 105,
-        "primary_link": "/link/women_dating_bachelor",
+        "primary_link": "/link/women_second_venue",
         "default_priority": 1,
-        "winning_pitch": "Threads・Instagramの『女子組・待ちゼロ速報』から /for-women へ誘導し、完全無料デート＆美肌クリニック枠をセット提示すると伸びます。",
+        "winning_pitch": "Threads・Instagramの『女子組・待ちゼロ速報』から /for-women へ誘導し、0次会・女子会一休レストラン予約や美肌クリニック枠をセット提示すると伸びます。",
     },
     {
         "category_key": "supplement",

@@ -469,6 +469,19 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
          'wpct': round(x['avg_w'] / (x['avg_w'] + x['avg_m']) * 100) if (x['avg_w'] + x['avg_m']) > 0 else None}
         for x in st['hourly']
     ]
+    avg_pw = st.get('avg_peak_w')
+    avg_pm = st.get('avg_peak_m')
+    core_wp = st.get('wpct_core')
+    if core_wp is None and avg_pw is not None and avg_pm is not None and (avg_pw + avg_pm) > 0:
+        core_wp = round(avg_pw / (avg_pw + avg_pm) * 100)
+    summary_citation = None
+    if avg_pw is not None and avg_pm is not None and int(st.get('n_rows') or 0) >= 30:
+        wp_part = f"、21〜22時台の平均女性比率{core_wp}%" if core_wp is not None else ""
+        summary_citation = (
+            f"直近{st['n_days']}営業日の実測ピーク平均は女性{avg_pw}名・男性{avg_pm}名"
+            f"{wp_part}（観測n={st['n_rows']:,}、{st['period_end']}更新）"
+        )
+
     return {
         'sections': sections,
         'weekday_rows': weekday_rows,
@@ -479,4 +492,8 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
         'n_days': st['n_days'],
         'period_start': st['period_start'],
         'period_end': st['period_end'],
+        'avg_peak_w': avg_pw,
+        'avg_peak_m': avg_pm,
+        'wpct_core': core_wp,
+        'summary_citation': summary_citation,
     }

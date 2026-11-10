@@ -19,7 +19,8 @@ google_credentials.json
 *.db-shm
 *.log
 *.log.*
-data/
+data/*
+!data/area_crosswalk.v1.json
 tests/
 scripts/legacy/
 benchmark_*_result.json

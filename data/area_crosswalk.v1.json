@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.0",
+  "crosswalk_version": "2026-11-10.v1",
+  "publisher": "相席ナビ編集部（相席ナビ × マチナビ 姉妹サイト共通エリア定義）",
+  "areas": [
+    {
+      "area_id": "shinjuku",
+      "label": "新宿・歌舞伎町・西新宿",
+      "short_label": "新宿",
+      "region": "kanto",
+      "machinavi_area_id": "shinjuku",
+      "machinavi_path": "/area/shinjuku/",
+      "aiseki_area_slug": "shinjuku",
+      "aiseki_path": "/area/shinjuku",
+      "aiseki_concierge_area": "shinjuku",
+      "aiseki_stores": [
+        "OLG 新宿",
+        "JIS SHINJUKU",
+        "JIS NISHISHINJUKU",
+        "ASOBIBAR 新宿"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "shibuya",
+      "label": "渋谷・道玄坂・宇田川町",
+      "short_label": "渋谷",
+      "region": "kanto",
+      "machinavi_area_id": "shibuya",
+      "machinavi_path": "/area/shibuya/",
+      "aiseki_area_slug": "shibuya",
+      "aiseki_path": "/area/shibuya",
+      "aiseki_concierge_area": "shibuya",
+      "aiseki_stores": [
+        "OLG 渋谷本店",
+        "OLG ag渋谷",
+        "ASOBIBAR 渋谷"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "ebisu",
+      "label": "恵比寿",
+      "short_label": "恵比寿",
+      "region": "kanto",
+      "machinavi_area_id": "ebisu",
+      "machinavi_path": "/area/ebisu/",
+      "aiseki_area_slug": "shibuya",
+      "aiseki_path": "/area/shibuya",
+      "aiseki_concierge_area": "shibuya",
+      "aiseki_stores": [
+        "OLG 恵比寿",
+        "ASOBIBAR 恵比寿"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "ginza",
+      "label": "銀座・有楽町・コリドー街周辺",
+      "short_label": "銀座・有楽町",
+      "region": "kanto",
+      "machinavi_area_id": "ginza",
+      "machinavi_path": "/area/ginza/",
+      "aiseki_area_slug": "shibuya",
+      "aiseki_path": "/concierge?area=shinjuku",
+      "aiseki_concierge_area": "shinjuku",
+      "aiseki_stores": [
+        "OLG 恵比寿",
+        "OLG 新宿",
+        "OLG 上野"
+      ],
+      "walkin_coverage": "nearby_corridor",
+      "coverage_note": "銀座・有楽町・コリドー街周辺からの山手線直通ラウンジ（恵比寿・新宿・上野）を参照"
+    },
+    {
+      "area_id": "yokohama",
+      "label": "横浜・西口",
+      "short_label": "横浜",
+      "region": "kanto",
+      "machinavi_area_id": "yokohama",
+      "machinavi_path": "/area/yokohama/",
+      "aiseki_area_slug": "kanto",
+      "aiseki_path": "/area/kanto",
+      "aiseki_concierge_area": "yokohama_omiya",
+      "aiseki_stores": [
+        "OLG 横浜"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "umeda",
+      "label": "大阪梅田・茶屋町",
+      "short_label": "大阪梅田",
+      "region": "kansai",
+      "machinavi_area_id": "umeda",
+      "machinavi_path": "/area/umeda/",
+      "aiseki_area_slug": "osaka",
+      "aiseki_path": "/area/osaka",
+      "aiseki_concierge_area": "umeda",
+      "aiseki_stores": [
+        "OLG 大阪駅前",
+        "OLG ag梅田",
+        "JIS UMEDA",
+        "JIS CHAYAMACHI",
+        "YATAKOI UMEDA",
+        "ASOBIBAR 梅田",
+        "ASOBIBAR 茶屋町",
+        "OLG 天満"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "namba",
+      "label": "難波・心斎橋",
+      "short_label": "難波・心斎橋",
+      "region": "kansai",
+      "machinavi_area_id": "namba",
+      "machinavi_path": "/area/namba/",
+      "aiseki_area_slug": "osaka",
+      "aiseki_path": "/area/osaka",
+      "aiseki_concierge_area": "namba",
+      "aiseki_stores": [
+        "OLG 難波",
+        "OLG 心斎橋",
+        "JIS NAMBA",
+        "ASOBIBAR 心斎橋"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "nagoya_sakae",
+      "label": "名古屋栄・錦・住吉",
+      "short_label": "名古屋栄",
+      "region": "tokai",
+      "machinavi_area_id": "nagoya_sakae",
+      "machinavi_path": "/area/nagoya_sakae/",
+      "aiseki_area_slug": "nagoya",
+      "aiseki_path": "/area/nagoya",
+      "aiseki_concierge_area": "nagoya",
+      "aiseki_stores": [
+        "OLG 名古屋 栄",
+        "OLG 名古屋 錦",
+        "OLG ag名古屋",
+        "ASOBIBAR 名古屋 栄",
+        "ASOBIBAR 名古屋 住吉"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "fukuoka_tenjin",
+      "label": "福岡天神・大名",
+      "short_label": "福岡天神",
+      "region": "kyushu",
+      "machinavi_area_id": "fukuoka_tenjin",
+      "machinavi_path": "/area/fukuoka_tenjin/",
+      "aiseki_area_slug": "fukuoka",
+      "aiseki_path": "/area/fukuoka",
+      "aiseki_concierge_area": "fukuoka",
+      "aiseki_stores": [
+        "OLG 福岡",
+        "JIS FUKUOKA",
+        "ASOBIBAR 福岡 天神"
+      ],
+      "walkin_coverage": "direct"
+    },
+    {
+      "area_id": "sapporo",
+      "label": "札幌・すすきの",
+      "short_label": "札幌",
+      "region": "hokkaido_tohoku",
+      "machinavi_area_id": null,
+      "machinavi_path": "/areas/",
+      "aiseki_area_slug": "north",
+      "aiseki_path": "/area/north",
+      "aiseki_concierge_area": "sapporo_sendai",
+      "aiseki_stores": [
+        "JIS SAPPORO"
+      ],
+      "walkin_coverage": "direct",
+      "coverage_note": "マチナビ側の札幌エリア公開残席観測は未対象のため、予約制側指標は insufficient として表示"
+    }
+  ]
+}

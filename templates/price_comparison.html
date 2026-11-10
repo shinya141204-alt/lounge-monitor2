@@ -17,8 +17,8 @@
     <title>{{ active_cluster_ns.item.tab_label }}の相席ラウンジ料金・男性割引イベント比較｜近隣店コスパ検証 | 相席ナビ</title>
     <meta name="description" content="{{ active_cluster_ns.item.title }}（{{ active_cluster_ns.item.desc }}）単独待機料金・4時間帯別の相席10分単価・1名入店可否・開催中イベント・現在のリアルタイム男女人数を横並び比較。">
     {% else %}
-    <title>相席ラウンジ料金・男性割引イベント比較｜新宿・渋谷・梅田・栄・天神の近隣店コスパ検証 | 相席ナビ</title>
-    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）・地域ラウンジ国内全{{ data.all_domestic_stores|length }}店舗の男性料金（単独待機料金・時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、今のリアルタイム男女人数をエリア別に比較。">
+    <title>相席ラウンジ料金・男性割引イベント比較｜全4ブランド待機単価・1名入店コスパ試算 | 相席ナビ</title>
+    <meta name="description" content="オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）・地域ラウンジ国内全{{ data.all_domestic_stores|length }}店舗の男性料金（単独待機料金・4時間帯別の相席10分単価・60分総額目安・1名入店可否）と、現在開催中の男性割引・女性集客イベント、いまの人数・男女比をエリア別に比較。">
     {% endif %}
     <meta name="keywords" content="相席ラウンジ 料金 比較,オリエンタルラウンジ 料金,オリエンタルラウンジ 待機料金,JIS 料金,ag 料金,相席ラウンジ 男性 割引,相席ラウンジ イベント,新宿 相席 料金,梅田 相席 料金">
     <meta name="robots" content="index, follow">
@@ -673,6 +673,17 @@
                 </p>
             </div>
             {% endfor %}
+
+            <div class="price-comp-bridge-bar" data-nosnippet style="margin-top: 16px; padding: 14px 16px; border-radius: 10px; background: var(--card-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="flex: 1 1 280px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent-text); margin-bottom: 2px;">料金比較の次の一手｜現在の女性比率×待機コストで最適店を自動選出</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main);">10分単価が安くても男性過多の店舗では待機料金がかさみます。いま女性優位で実質負担が抑えられる穴場店を3秒で診断できます。</div>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <a href="/concierge" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'cushion_click',label:'/concierge @ /price-comparison'}),keepalive:true});}catch(e){}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 8px; background: var(--accent-soft); border: 1px solid rgba(200, 164, 110, 0.55); color: var(--accent-text); font-size: 0.79rem; font-weight: 700; text-decoration: none; white-space: nowrap;">3秒穴場＆徒歩ハシゴ診断 ›</a>
+                    <a href="https://machinavi-data.com/?from=aiseki#diagnose" target="_blank" rel="noopener" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'sister_bridge_click',label:'all:price_compare:all'}),keepalive:true});}catch(e){}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-strong); color: var(--text-main); font-size: 0.79rem; font-weight: 600; text-decoration: none; white-space: nowrap;">予約制街コン・婚活と実質コスパを比較（マチナビ） ›</a>
+                </div>
+            </div>
         </section>
 
         {% include '_surface_smart_cta.html' %}

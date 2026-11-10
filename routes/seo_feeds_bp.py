@@ -4,7 +4,7 @@ import datetime
 import json
 import os
 
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request
 
 from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 from routes._bridge import core
@@ -814,6 +814,60 @@ def api_llms_facts_json():
     return resp
 
 
+@seo_feeds_bp.route('/api/exchange/area-night.v1.json')
+def api_exchange_area_night_v1():
+    """Public cross-site area night exchange feed for Machinavi & AI grounding (CC BY 4.0, zero /link/)."""
+    import cross_site_bridge
+    core.restore_latest_data_if_empty()
+    core.trigger_background_fetch_if_needed()
+    with core.data_lock:
+        raw_live = list(core.latest_data.get('full_data') or [])
+        last_up = core.latest_data.get('last_updated') or '--:--'
+    payload = cross_site_bridge.build_area_night_exchange_payload(
+        raw_stores=raw_live,
+        last_updated=last_up,
+    )
+    has_active = int(payload.get('active_store_count') or 0) > 0
+    resp = jsonify(payload)
+    resp.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=120' if has_active else 'no-store, max-age=0'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Link'] = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+    return resp
+
+
+@seo_feeds_bp.route('/stats/weekend-index.json')
+def stats_weekend_index_json():
+    """CC BY 4.0 2-Axis Weekend Supply-Demand DI Index JSON (Prepaid Machikon vs Walk-in Aiseki)."""
+    import cross_site_bridge
+    raw_days = request.args.get('days', 28, type=int) or 28
+    cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
+    payload = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
+    measured_cnt = int((payload.get('summary') or {}).get('measured_walkin_areas') or 0)
+    resp = jsonify(payload)
+    resp.headers['Cache-Control'] = 'public, max-age=300' if measured_cnt > 0 else 'no-cache, max-age=0'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Link'] = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+    return resp
+
+
+@seo_feeds_bp.route('/stats/weekend-index.csv')
+def stats_weekend_index_csv():
+    """CC BY 4.0 2-Axis Weekend Supply-Demand DI Index CSV."""
+    import cross_site_bridge
+    raw_days = request.args.get('days', 28, type=int) or 28
+    cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
+    csv_body = cross_site_bridge.build_weekend_supply_demand_csv(days=raw_days)
+    resp = Response(csv_body, mimetype='text/csv; charset=utf-8')
+    resp.headers['Cache-Control'] = 'public, max-age=300'
+    resp.headers['Content-Disposition'] = 'inline; filename="aiseki_navi_weekend_supply_demand_di.csv"'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Link'] = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+    return resp
+
+
 @seo_feeds_bp.route('/ads.txt')
 def ads_txt():
     content = "google.com, pub-3043764334238627, DIRECT, f08c47fec0942fa0\n"
@@ -980,6 +1034,12 @@ def sitemap_xml():
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/stats/weekend-index</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
   </url>
   <url>
     <loc>https://aiseki-navi.com/embed/heatmap</loc>

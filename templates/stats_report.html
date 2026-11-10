@@ -28,13 +28,26 @@
         "url": "https://aiseki-navi.com/stats",
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "isAccessibleForFree": true,
+        "temporalCoverage": "2026-08/..",
         "measurementTechnique": "1分間隔の公式公開来店人数スナップショット自動計測、JIS公式POS待機組数連携、気象庁アメダス・6大ドーム公式日程突合、60分後ホールドアウト予測検証（過去90日間生ログ＋1時間粒度ロールアップ永久蓄積）",
+        "variableMeasured": [
+          "店舗別・時間帯別の在店女性人数および男性人数",
+          "店舗別の営業時平均女性比率（%）およびピーク時刻",
+          "60分後AI男女比予測に対するホールドアウト実測絶対誤差（MAE）",
+          "都市エリア別の予約制イベント×当日相席ラウンジ2軸需給DI指数"
+        ],
         "distribution": [
           {
             "@type": "DataDownload",
             "name": "全国相席ラウンジ 店舗別30日間一次統計CSV (CC BY 4.0)",
             "encodingFormat": "text/csv",
             "contentUrl": "https://aiseki-navi.com/stats/monthly.csv"
+          },
+          {
+            "@type": "DataDownload",
+            "name": "全国主要都市 予約制×当日相席 2軸需給DI指数CSV (CC BY 4.0)",
+            "encodingFormat": "text/csv",
+            "contentUrl": "https://aiseki-navi.com/stats/weekend-index.csv"
           },
           {
             "@type": "DataDownload",
@@ -51,9 +64,10 @@
         ],
         "creator": {
           "@type": "Organization",
+          "@id": "https://aiseki-navi.com/#organization",
           "name": "相席ナビ編集部",
           "url": "https://aiseki-navi.com/",
-          "founder": { "@type": "Person", "name": "くわもん", "jobTitle": "相席ナビ編集長" }
+          "founder": { "@type": "Person", "@id": "https://aiseki-navi.com/#editor-kuwamon", "name": "くわもん", "jobTitle": "相席ナビ編集長" }
         },
         "keywords": ["相席ラウンジ 統計", "オリエンタルラウンジ 男女比", "JIS 人数 データ", "ag アグ 混雑", "相席ラウンジ 曜日別", "相席ラウンジ オープンデータ CSV"]
       },

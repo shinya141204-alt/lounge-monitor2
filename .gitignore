@@ -19,7 +19,8 @@ google_credentials.json
 *.db-wal
 *.db-shm
 *.log
-data/
+data/*
+!data/area_crosswalk.v1.json
 .agents/reports/
 .agents/teamwork/
 .agents/skills/*/logs/

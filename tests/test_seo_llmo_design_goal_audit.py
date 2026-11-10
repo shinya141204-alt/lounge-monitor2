@@ -141,6 +141,8 @@ def _discover_public_routes(client):
             "/ads.txt",
             "/sw.js",
             "/stats/monthly.csv",
+            "/stats/weekend-index.json",
+            "/stats/weekend-index.csv",
             "/ladies",
             "/guide/compare",
             "/guide/strategy",

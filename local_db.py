@@ -186,6 +186,11 @@ def reset_caches_for_tests():
     with _watch_intents_lock:
         _memory_watch_intents.clear()
     try:
+        import cross_site_bridge
+        cross_site_bridge.clear_caches()
+    except Exception:
+        pass
+    try:
         turbo_store.clear_rate_limit("crowd_vote_ip")
         turbo_store.clear_rate_limit("crowd_vote_voter")
         turbo_store.clear_rate_limit("watch_intent_ip")
@@ -592,6 +597,39 @@ def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_web_push_store_exp ON web_push_subscriptions(store_name, expires_at);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_web_push_endpoint ON web_push_subscriptions(endpoint);")
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS area_night_daily_rollups (
+            business_date TEXT NOT NULL,
+            area_id TEXT NOT NULL,
+            store_hours INTEGER NOT NULL DEFAULT 0,
+            sample_count INTEGER NOT NULL DEFAULT 0,
+            avg_women {real_t} NOT NULL DEFAULT 0.0,
+            avg_men {real_t} NOT NULL DEFAULT 0.0,
+            avg_wpct {real_t} NOT NULL DEFAULT 0.0,
+            women_lead_store_hours INTEGER NOT NULL DEFAULT 0,
+            men_glut_store_hours INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (business_date, area_id)
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_area_night_rollup_area ON area_night_daily_rollups(area_id, business_date);")
+    cur.execute(f"""
+        CREATE TABLE IF NOT EXISTS partner_area_evening_daily (
+            observed_date_jst TEXT NOT NULL,
+            area_id TEXT NOT NULL,
+            sample_count INTEGER NOT NULL DEFAULT 0,
+            women_lead_count INTEGER NOT NULL DEFAULT 0,
+            balanced_count INTEGER NOT NULL DEFAULT 0,
+            men_nearly_full_count INTEGER NOT NULL DEFAULT 0,
+            closed_count INTEGER NOT NULL DEFAULT 0,
+            prepaid_di_pt {real_t},
+            data_status TEXT NOT NULL DEFAULT 'insufficient',
+            source_url TEXT,
+            fetched_at TEXT NOT NULL,
+            PRIMARY KEY (observed_date_jst, area_id)
+        );
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_partner_evening_area ON partner_area_evening_daily(area_id, observed_date_jst);")
 
 
 def _ensure_moat_rollup_schema() -> bool:

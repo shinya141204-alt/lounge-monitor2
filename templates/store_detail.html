@@ -4,12 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% if 'ソウル' in store.name %}
-    <title>{{ store.seo_name }}の現在人数・営業時間・客層・男女比｜韓国ソウルの入店条件｜相席ナビ</title>
+    {% if store.slug == 'oriental-lounge-seoul-gangnam' %}
+    <title>{{ store.seo_name }}（韓国ソウル江南）現在人数・男女比｜客層・日本の店舗との違い｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（韓国・江南）のいまの人数・男女比を毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。日本のオリエンタルラウンジとの料金・システムの違い、パスポート等の身分証ルール、ソウル弘大店との比較も解説。{% else %}{{ store.seo_name }}（韓国・江南）のいまの人数・男女比を毎分更新。日本のオリエンタルラウンジとの料金・システムの違い、パスポート等の顔写真付き身分証ルール、江南・弘大2店舗の客層比較を実測データで解説します。{% endif %}">
+    {% elif 'ソウル' in store.name %}
+    <title>{{ store.seo_name }} 現在人数・男女比｜営業時間・客層・韓国ソウルの入店条件｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業時間・定休日・客層（年齢層）・パスポート等の入店条件やソウル2拠点の比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新。営業時間・定休日・客層（年齢層）・パスポート等の顔写真付き身分証ルールや、江南・弘大2店舗の使い分けも実測データで解説。{% endif %}">
+    {% elif store.slug == 'oriental-lounge-oita' %}
+    <title>{{ store.seo_name }}の評判＆現在人数・男女比｜料金・客層・1人入店・待ち時間｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。実測ログから見た曜日・時間帯別の混み方レビュー、料金システム、男性1人入店の可否、フード・ドリンクの特徴まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新。過去実測データから見た曜日・時間帯別の集客傾向レビュー、時間帯別料金・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
+    {% elif store.slug == 'oriental-lounge-fukuoka' %}
+    <title>{{ store.seo_name }} 現在人数・男女比｜JIS（ジス）比較・料金・客層｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神とのリアルタイム人数・料金・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
+    {% elif store.slug == 'asobibar-shinjuku' %}
+    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・新宿店比較｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。カラーバンド制スタンディングバーの料金システム、男性1人入店のしやすさ、新宿エリア他店舗との比較も掲載。{% else %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を毎分更新。10分課金なしのカラーバンド制料金システム、男性1人（ソロ）入店のしやすさ、オリエンタルラウンジ新宿・JIS（ジス）新宿との使い分けを解説します。{% endif %}">
     {% else %}
-    <title>{{ store.seo_name }}の現在人数・料金・客層・男女比｜1人入店・待ち時間も検証｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。時間帯別の料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）の現在人数・男女比を毎分更新。時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・曜日別の待ち時間傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・待ち時間検証｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。時間帯別の料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・曜日別の待ち時間傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
     {% endif %}
     <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
@@ -989,6 +1001,9 @@
                 現在の<strong style="color: var(--text-main);">{{ store.seo_name }}</strong>は営業時間外（公式営業時間：{{ store.hours_label }}）です。{% if store_analytics and store_analytics.max_7d_women > 0 %}直近7日間の営業ピークでは<strong style="color: var(--text-main);">女性最大{{ store_analytics.max_7d_women }}名</strong>が来店しており、入りやすい狙い目は<strong style="color: var(--text-main);">{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}（平均女性比{{ store_analytics.best_slot_pct }}%）{% endif %}</strong>です。{% endif %}営業開始後は毎分自動でリアルタイム男女人数を更新します。
                 {% endif %}
             </p>
+            {% if store_insight and store_insight.summary_citation %}
+            <p id="hero-rollup-citation" style="margin: 6px 0 0; font-size: 0.78rem; color: var(--text-sub); line-height: 1.55;">{{ store_insight.summary_citation }}。</p>
+            {% endif %}
 
             {% set we = store.wait_estimate %}
             {% set fc = store.forecast_60m %}
@@ -1400,6 +1415,101 @@
                     }
                 }
                 card.setAttribute('data-context-mode', 'women_mode');
+            } catch (e) {}
+        })();
+        </script>
+        {% endif %}
+
+        {% if 'ソウル' not in store.name %}
+        {% set _mn_area_map = {'shinjuku': 'shinjuku', 'shibuya': 'shibuya', 'kanto': 'yokohama', 'osaka': 'umeda', 'nagoya': 'nagoya_sakae', 'fukuoka': 'fukuoka_tenjin'} %}
+        {% set _mn_area_id = 'ebisu' if '恵比寿' in store.name else ('namba' if ('難波' in store.name or '心斎橋' in store.name or 'NAMBA' in store.name) else _mn_area_map.get(area_slug or '', '')) %}
+        <aside id="sister-machinavi-bridge"
+               data-nosnippet
+               data-mn-area="{{ _mn_area_id }}"
+               data-store-slug="{{ store.slug }}"
+               data-trigger-mode="{{ store_smart_cta.mode if store_smart_cta else 'store_detail' }}"
+               style="display:none; margin: 0 0 18px; padding: 14px 16px; border-radius: 10px; background: var(--card-elevated, rgba(255,255,255,0.03)); border: 1px solid var(--border-subtle);"
+               aria-label="姉妹サイト・マチナビ（街コン・婚活パーティー残席＆コスパ比較）への案内">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div style="flex:1 1 260px;">
+                    <div style="font-size:0.71rem; font-weight:700; color:var(--accent-text); margin-bottom:2px;">姉妹サイト「マチナビ」｜事前予約制・1対1着席の選択肢</div>
+                    <div id="sister-machinavi-title" style="font-size:0.86rem; font-weight:700; color:var(--text-main);">
+                        {% if store_smart_cta and store_smart_cta.mode == 'men_glut' %}
+                        男性先行・待機発生中｜次回は男女比規定ありの街コン・個室婚活と実質コスパを比較
+                        {% elif not store.is_open_now %}
+                        営業時間外｜昼〜夕開催の街コン・婚活パーティーの公開残席と1対話あたり実質コストを確認
+                        {% else %}
+                        飛び込み相席と予約制イベントの「1対話あたり実質期待コスト」を3秒比較
+                        {% endif %}
+                    </div>
+                </div>
+                <a id="sister-machinavi-link"
+                   href="https://machinavi-data.com/{% if _mn_area_id %}area/{{ _mn_area_id }}/{% endif %}?s=an_store_{{ store.slug }}"
+                   target="_blank"
+                   rel="noopener"
+                   style="display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:7px; font-size:0.78rem; font-weight:700; color:var(--text-main); background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); text-decoration:none; white-space:nowrap;">
+                    マチナビで残席・コスパを見る ›
+                </a>
+            </div>
+        </aside>
+        <script>
+        (function initCoViewAndSisterBridge() {
+            try {
+                var curSlug = {{ store.slug | tojson }};
+                var prevSlug = sessionStorage.getItem('an_last_store_slug') || '';
+                if (prevSlug && prevSlug !== curSlug) {
+                    var pairKey = 'an_coview_' + prevSlug + '_' + curSlug;
+                    if (!sessionStorage.getItem(pairKey)) {
+                        sessionStorage.setItem(pairKey, '1');
+                        fetch('/api/track', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ event: 'co_view', label: prevSlug + '|' + curSlug }),
+                            keepalive: true
+                        }).catch(function () {});
+                    }
+                }
+                sessionStorage.setItem('an_last_store_slug', curSlug);
+            } catch (e) {}
+
+            try {
+                var bridge = document.getElementById('sister-machinavi-bridge');
+                if (!bridge) return;
+                var ref = String(document.referrer || '').toLowerCase();
+                var qs = String(window.location.search || '').toLowerCase();
+                if (ref.indexOf('machinavi-data.com') !== -1 || qs.indexOf('s=mn_') !== -1 || qs.indexOf('from=machinavi') !== -1) {
+                    return;
+                }
+                var trig = bridge.getAttribute('data-trigger-mode') || 'store_detail';
+                var mnArea = bridge.getAttribute('data-mn-area') || 'all';
+                if (trig === 'men_glut' || trig === 'off_or_low') {
+                    bridge.style.display = 'block';
+                    var aud = 'men';
+                    try {
+                        if (localStorage.getItem('aiseki_audience_mode') === 'women') aud = 'women';
+                    } catch (e) {}
+                    var lbl = mnArea + ':' + (trig === 'men_glut' ? 'men_glut' : 'closed') + ':' + aud;
+                    if (!sessionStorage.getItem('an_sbr_imp_' + lbl)) {
+                        sessionStorage.setItem('an_sbr_imp_' + lbl, '1');
+                        fetch('/api/track', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ event: 'sister_bridge_impression', label: lbl }),
+                            keepalive: true
+                        }).catch(function () {});
+                    }
+                    var lk = document.getElementById('sister-machinavi-link');
+                    if (lk) {
+                        lk.addEventListener('click', function () {
+                            fetch('/api/track', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ event: 'sister_bridge_click', label: lbl }),
+                                keepalive: true
+                            }).catch(function () {});
+                        });
+                    }
+                }
             } catch (e) {}
         })();
         </script>
