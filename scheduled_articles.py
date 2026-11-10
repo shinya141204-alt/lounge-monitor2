@@ -186,6 +186,30 @@ SCHEDULED_ARTICLES = [
             "#相席ラウンジ #相席ナビ"
         ),
     },
+    {
+        "slug": "line-exchange-reality",
+        "path": "/guide/line-exchange-reality",
+        "template": "guide_line_exchange_reality.html",
+        "publish_at": "2026-11-11 19:00:00",
+        "publish_at_ja": "2026年11月11日(水) 19:00",
+        "lastmod": "2026-11-11",
+        "eyecatch_jpg": "/static/eyecatch-line-exchange-reality.jpg",
+        "eyecatch_webp": "/static/eyecatch-line-exchange-reality.webp",
+        "badge": "LINE交換・実測検証",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-pink", "10.6万件ログ実測"),
+        "tag_secondary": ("tag-cyan", "連絡先交換プロトコル"),
+        "title": "相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜1晩で3組と話す女性の記憶容量と初デートに繋がる連絡の境界線",
+        "short_title": "相席ラウンジのLINE交換と翌日既読スルーの境界線",
+        "desc": "「席ではあんなに盛り上がってLINE交換したのに、翌日お礼を送ったら既読スルー…」。1晩で平均3組（計6名）と話す女性の記憶忘却曲線と、グループLINEの罠、そして初デートに繋がる退店30分の連絡プロトコルを実測検証。",
+        "x_title": "相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線",
+        "x_main_text": (
+            "席では笑顔でLINE交換したのに、翌日お礼を送ったら既読スルーされる理由。\n\n"
+            "男性は1組しか話していなくても、女性は1晩で平均3組（計6名）と会話しています。\n\n"
+            "お酒も入った翌朝の記憶容量と、退店30分以内に差がつく連絡プロトコルをまとめました。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
 ]
 
 

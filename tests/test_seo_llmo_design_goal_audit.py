@@ -125,6 +125,7 @@ def _discover_public_routes(client):
         for u in root.findall("sm:url", ns)
     ]
 
+    upcoming_paths = {it["path"] for it in scheduled_articles.get_upcoming_articles() if it.get("path")}
     expected_public = set(sitemap_paths) | {"/grooming"}
     for rule in app_module.app.url_map.iter_rules():
         r = rule.rule
@@ -143,7 +144,7 @@ def _discover_public_routes(client):
             "/ladies",
             "/guide/compare",
             "/guide/strategy",
-        ):
+        ) or r in upcoming_paths:
             continue
         expected_public.add(r)
 

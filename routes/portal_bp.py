@@ -1595,6 +1595,12 @@ def guide_sunday_lounge_strategy():
     return _render_scheduled_guide('sunday-lounge-strategy')
 
 
+@portal_bp.route('/guide/line-exchange-reality')
+def guide_line_exchange_reality():
+    """Scheduled editorial data study on post-lounge LINE ghosting mechanics and contact protocols."""
+    return _render_scheduled_guide('line-exchange-reality')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
