@@ -1918,16 +1918,23 @@
                 measured_stores=0,
                 reverse_wait_count=0,
                 women_wait_count=0,
+                sum_guests=0,
+                sum_groups=0,
                 sum_party_size=0.0,
                 party_size_count=0,
+                sum_vip_share=0,
+                sum_vip_groups=0,
                 sum_vip_rate=0.0,
                 vip_rate_count=0,
+                sum_norm_share=0,
+                sum_norm_groups=0,
                 sum_norm_rate=0.0,
                 norm_rate_count=0
             ) %}
             {% for s in jis_list %}
                 {% set pt = s.pos_telemetry if (s.pos_telemetry and s.pos_telemetry.get('telemetry_type') == 'jis_pos') else none %}
-                {% if pt %}
+                {% set st_total = s.total if s.total is number else ((s.women or 0) + (s.men or 0)) %}
+                {% if pt and st_total > 0 %}
                     {% set ns.measured_stores = ns.measured_stores + 1 %}
                     {% if pt.get('is_reverse_waiting') %}
                         {% set ns.reverse_wait_count = ns.reverse_wait_count + 1 %}
@@ -1935,58 +1942,102 @@
                     {% if pt.get('is_women_waiting') %}
                         {% set ns.women_wait_count = ns.women_wait_count + 1 %}
                     {% endif %}
-                    {% if pt.get('avg_party_size_total') %}
+                    {% set st_guests = (pt.get('men_total_guests') or 0) + (pt.get('women_total_guests') or 0) %}
+                    {% set st_groups = (pt.get('men_total_groups') or 0) + (pt.get('women_total_groups') or 0) %}
+                    {% if st_groups > 0 and st_guests >= st_groups %}
+                        {% set ns.sum_guests = ns.sum_guests + st_guests %}
+                        {% set ns.sum_groups = ns.sum_groups + st_groups %}
+                    {% endif %}
+                    {% if pt.get('avg_party_size_total') is number and pt.get('avg_party_size_total') >= 1.0 %}
                         {% set ns.sum_party_size = ns.sum_party_size + pt.get('avg_party_size_total') %}
                         {% set ns.party_size_count = ns.party_size_count + 1 %}
                     {% endif %}
-                    {% if pt.get('vip_match_rate') is not none %}
+                    {% if (pt.get('vip_mens_group_num') or 0) > 0 and (pt.get('vip_mens_share_num') or 0) <= (pt.get('vip_mens_group_num') or 0) %}
+                        {% set ns.sum_vip_groups = ns.sum_vip_groups + (pt.get('vip_mens_group_num') or 0) %}
+                        {% set ns.sum_vip_share = ns.sum_vip_share + (pt.get('vip_mens_share_num') or 0) %}
+                    {% endif %}
+                    {% if pt.get('vip_match_rate') is number and 0.0 <= pt.get('vip_match_rate') <= 100.0 %}
                         {% set ns.sum_vip_rate = ns.sum_vip_rate + pt.get('vip_match_rate') %}
                         {% set ns.vip_rate_count = ns.vip_rate_count + 1 %}
                     {% endif %}
-                    {% if pt.get('normal_match_rate') is not none %}
+                    {% if (pt.get('normal_mens_group_num') or 0) > 0 and (pt.get('normal_mens_share_num') or 0) <= (pt.get('normal_mens_group_num') or 0) %}
+                        {% set ns.sum_norm_groups = ns.sum_norm_groups + (pt.get('normal_mens_group_num') or 0) %}
+                        {% set ns.sum_norm_share = ns.sum_norm_share + (pt.get('normal_mens_share_num') or 0) %}
+                    {% endif %}
+                    {% if pt.get('normal_match_rate') is number and 0.0 <= pt.get('normal_match_rate') <= 100.0 %}
                         {% set ns.sum_norm_rate = ns.sum_norm_rate + pt.get('normal_match_rate') %}
                         {% set ns.norm_rate_count = ns.norm_rate_count + 1 %}
                     {% endif %}
                 {% endif %}
             {% endfor %}
 
-            {% set avg_jis_party = (ns.sum_party_size / ns.party_size_count)|round(2) if ns.party_size_count > 0 else 1.88 %}
-            {% set avg_jis_vip = (ns.sum_vip_rate / ns.vip_rate_count)|round(1) if ns.vip_rate_count > 0 else 78.4 %}
-            {% set avg_jis_norm = (ns.sum_norm_rate / ns.norm_rate_count)|round(1) if ns.norm_rate_count > 0 else 58.2 %}
-            {% set avg_jis_diff = (avg_jis_vip - avg_jis_norm)|round(1) %}
+            {% set avg_jis_party = ((ns.sum_guests / ns.sum_groups)|round(2) if ns.sum_groups > 0 else ((ns.sum_party_size / ns.party_size_count)|round(2) if ns.party_size_count > 0 else none)) %}
+            {% set avg_jis_vip = (((ns.sum_vip_share / ns.sum_vip_groups) * 100.0)|round(1) if ns.sum_vip_groups > 0 else ((ns.sum_vip_rate / ns.vip_rate_count)|round(1) if ns.vip_rate_count > 0 else none)) %}
+            {% set avg_jis_norm = (((ns.sum_norm_share / ns.sum_norm_groups) * 100.0)|round(1) if ns.sum_norm_groups > 0 else ((ns.sum_norm_rate / ns.norm_rate_count)|round(1) if ns.norm_rate_count > 0 else none)) %}
+            {% set avg_jis_diff = ((avg_jis_vip - avg_jis_norm)|round(1) if (avg_jis_vip is number and avg_jis_norm is number) else none) %}
 
             <!-- JISサマリーKPIカード（3カラム） -->
-            <div class="jis-stats-kpi-grid">
+            <div class="jis-stats-kpi-grid" style="font-variant-numeric: tabular-nums;">
                 <div class="jis-stats-kpi-card">
-                    <div class="jis-kpi-label">全10店舗 平均組人数</div>
+                    <div class="jis-kpi-label">全10店舗 平均組人数（稼働 {{ ns.measured_stores }}/{{ ns.total_stores }}店）</div>
+                    {% if avg_jis_party is number %}
                     <div class="jis-kpi-val">{{ '%.2f'|format(avg_jis_party) }}<span class="jis-kpi-unit">名/組</span></div>
                     <div class="jis-kpi-sub">
                         傾向: {% if avg_jis_party <= 1.45 %}ソロ多め{% elif avg_jis_party <= 2.15 %}ペア中心（2名組主流）{% else %}グループ多め{% endif %}
-                        <span class="jis-kpi-note">※公式POS実測組数より算出</span>
+                        <span class="jis-kpi-note">※公式公開データの実測組数より算出</span>
                     </div>
+                    {% else %}
+                    <div class="jis-kpi-val">--<span class="jis-kpi-unit">名/組</span></div>
+                    <div class="jis-kpi-sub">
+                        営業時間外・実測ログ待機中
+                        <span class="jis-kpi-note">※営業開始後に実測値のみ表示</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="jis-stats-kpi-card">
-                    <div class="jis-kpi-label">VIP席 相席成立効率差</div>
-                    <div class="jis-kpi-val highlight">+{{ '%.1f'|format(avg_jis_diff) }}<span class="jis-kpi-unit">pt</span></div>
+                    <div class="jis-kpi-label">VIP席 相席成立効率差（vs 一般席）</div>
+                    {% if avg_jis_diff is number %}
+                    <div class="jis-kpi-val highlight">{{ '%+.1f'|format(avg_jis_diff) }}<span class="jis-kpi-unit">pt</span></div>
                     <div class="jis-kpi-sub">
-                        VIP席平均 {{ '%.1f'|format(avg_jis_vip) }}% ｜ 一般席 {{ '%.1f'|format(avg_jis_norm) }}%
-                        <span class="jis-kpi-note">※優先案内によるマッチング優位性</span>
+                        VIP席 {{ '%.1f'|format(avg_jis_vip) }}% ｜ 一般席 {{ '%.1f'|format(avg_jis_norm) }}%
+                        <span class="jis-kpi-note">※現在稼働中の組数加重実測値</span>
                     </div>
+                    {% elif avg_jis_norm is number %}
+                    <div class="jis-kpi-val">--<span class="jis-kpi-unit">pt</span></div>
+                    <div class="jis-kpi-sub">
+                        VIP席 稼働なし ｜ 一般席 {{ '%.1f'|format(avg_jis_norm) }}%
+                        <span class="jis-kpi-note">※VIP組の発生時に差分を実測算出</span>
+                    </div>
+                    {% else %}
+                    <div class="jis-kpi-val">--<span class="jis-kpi-unit">pt</span></div>
+                    <div class="jis-kpi-sub">
+                        営業時間外・実測ログ待機中
+                        <span class="jis-kpi-note">※推測値・固定値は表示しません</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="jis-stats-kpi-card">
                     <div class="jis-kpi-label">女性待ち逆転ステータス</div>
+                    {% if ns.measured_stores > 0 %}
                     <div class="jis-kpi-val{% if ns.reverse_wait_count > 0 %} alert{% endif %}">
                         {{ ns.reverse_wait_count }}<span class="jis-kpi-unit">店舗で逆転中</span>
                     </div>
                     <div class="jis-kpi-sub">
-                        女性席待ち発生: {{ ns.women_wait_count }}/{{ ns.total_stores }}店舗
-                        <span class="jis-kpi-note">{% if ns.reverse_wait_count > 0 %}男性即相席のチャンス店あり{% else %}通常相席循環中{% endif %}</span>
+                        女性席待ち発生: {{ ns.women_wait_count }}/{{ ns.measured_stores }}稼働店舗
+                        <span class="jis-kpi-note">{% if ns.reverse_wait_count > 0 %}男性が案内されやすい店舗あり{% else %}現在 女性超過待ち逆転なし{% endif %}</span>
                     </div>
+                    {% else %}
+                    <div class="jis-kpi-val">--<span class="jis-kpi-unit">店舗</span></div>
+                    <div class="jis-kpi-sub">
+                        現在 稼働中店舗なし（0/{{ ns.total_stores }}店）
+                        <span class="jis-kpi-note">※18時以降の営業開始後に自動更新</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
             <!-- JIS全10店舗リアルタイム詳細テーブル -->
-            <div class="jis-stats-table-wrap">
+            <div class="jis-stats-table-wrap" style="font-variant-numeric: tabular-nums;">
                 <table class="jis-stats-table">
                     <thead>
                         <tr>
@@ -2000,50 +2051,56 @@
                     <tbody>
                         {% for s in jis_list %}
                         {% set pt = s.pos_telemetry if (s.pos_telemetry and s.pos_telemetry.get('telemetry_type') == 'jis_pos') else none %}
-                        <tr>
+                        {% set st_total = s.total if s.total is number else ((s.women or 0) + (s.men or 0)) %}
+                        {% set has_live_guests = (st_total > 0) %}
+                        <tr data-store-name="{{ s.name }}">
                             <td class="jis-td-store">
-                                <a href="/store/{{ s.slug }}" class="jis-store-link">{{ s.seo_name or s.name }}</a>
+                                {% if s.slug %}<a href="/store/{{ s.slug }}" class="jis-store-link">{{ s.seo_name or s.name }}</a>{% else %}<span class="jis-store-link">{{ s.seo_name or s.name }}</span>{% endif %}
                                 {% if s.area_label %}<span class="jis-td-area">{{ s.area_label }}</span>{% endif %}
                             </td>
                             <td class="jis-td-people">
-                                {% if s.total and s.total > 0 %}
+                                {% if has_live_guests %}
                                 <span style="color: var(--women); font-weight:700;">{{ s.women }}</span> : <span style="color: var(--men); font-weight:700;">{{ s.men }}</span>
-                                <div class="jis-td-total">計{{ s.total }}名</div>
+                                <div class="jis-td-total">計{{ st_total }}名</div>
                                 {% else %}
                                 <span style="color: var(--text-sub);">空席 / 準備中</span>
                                 {% endif %}
                             </td>
                             <td class="jis-td-party">
-                                {% if pt and pt.get('avg_party_size_total') %}
+                                {% if has_live_guests and pt and pt.get('avg_party_size_total') is number %}
                                 <strong style="color: var(--text-main);">{{ '%.2f'|format(pt.get('avg_party_size_total')) }}名</strong>
-                                <span class="jis-td-badge">{{ pt.get('party_style') or 'ペア中心' }}</span>
-                                <div class="jis-td-sub">男{{ '%.1f'|format(pt.get('avg_party_size_men') or 0) }}名 / 女{{ '%.1f'|format(pt.get('avg_party_size_women') or 0) }}名</div>
+                                {% if pt.get('party_style') %}<span class="jis-td-badge">{{ pt.get('party_style') }}</span>{% endif %}
+                                <div class="jis-td-sub">男{% if pt.get('avg_party_size_men') is number %}{{ '%.1f'|format(pt.get('avg_party_size_men')) }}名{% else %}--{% endif %} / 女{% if pt.get('avg_party_size_women') is number %}{{ '%.1f'|format(pt.get('avg_party_size_women')) }}名{% else %}--{% endif %}</div>
                                 {% else %}
                                 <span style="color: var(--text-sub);">--</span>
                                 {% endif %}
                             </td>
                             <td class="jis-td-match">
-                                {% if pt and pt.get('vip_match_rate') is not none and pt.get('normal_match_rate') is not none %}
+                                {% if has_live_guests and pt and pt.get('vip_match_rate') is number and pt.get('normal_match_rate') is number %}
                                 <div>
                                     <span class="jis-rate-vip">VIP {{ '%.1f'|format(pt.get('vip_match_rate')) }}%</span>
                                     <span class="jis-rate-sep">/</span>
                                     <span class="jis-rate-norm">一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</span>
                                 </div>
+                                {% if pt.get('match_rate_diff') is number %}
                                 <div class="jis-td-sub">
-                                    効率差: <strong style="color: var(--accent-text);">{% if pt.get('match_rate_diff') and pt.get('match_rate_diff') > 0 %}+{{ '%.1f'|format(pt.get('match_rate_diff')) }}pt{% else %}{{ '%.1f'|format(pt.get('match_rate_diff') or 0) }}pt{% endif %}</strong>
+                                    成立差: <strong style="color: var(--accent-text);">{{ '%+.1f'|format(pt.get('match_rate_diff')) }}pt</strong>
                                 </div>
-                                {% elif pt and pt.get('normal_match_rate') is not none %}
+                                {% endif %}
+                                {% elif has_live_guests and pt and pt.get('normal_match_rate') is number %}
                                 <div>一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</div>
                                 {% else %}
                                 <span style="color: var(--text-sub);">--</span>
                                 {% endif %}
                             </td>
                             <td class="jis-td-wait">
-                                {% if pt and pt.get('is_reverse_waiting') %}
-                                <span class="jis-wait-pill reverse">⚡ 逆転（女性{{ pt.get('women_waiting_groups') or 0 }}組待ち）</span>
-                                {% elif pt and pt.get('is_women_waiting') %}
+                                {% if not has_live_guests or not pt %}
+                                <span style="color: var(--text-sub);">--</span>
+                                {% elif pt.get('is_reverse_waiting') %}
+                                <span class="jis-wait-pill reverse">逆転（女性{{ pt.get('women_waiting_groups') or 0 }}組待ち）</span>
+                                {% elif pt.get('is_women_waiting') %}
                                 <span class="jis-wait-pill waiting">女性{{ pt.get('women_waiting_groups') or 0 }}組待ち</span>
-                                {% elif pt and (pt.get('men_waiting_groups') or 0) > 0 %}
+                                {% elif (pt.get('men_waiting_groups') or 0) > 0 %}
                                 <span class="jis-wait-pill normal">男性{{ pt.get('men_waiting_groups') }}組待ち</span>
                                 {% else %}
                                 <span class="jis-wait-pill direct">即案内中（待ち0）</span>

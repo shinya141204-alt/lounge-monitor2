@@ -1,5 +1,6 @@
 import sqlite3
 import datetime
+import math
 import os
 import sys
 import time
@@ -405,15 +406,16 @@ def _migrate_external_context_columns(conn, cur):
                 pass
 
 
-def _migrate_jis_metrics_columns(conn, cur):
-    """Idempotently add JIS detailed telemetry columns to `store_hourly_rollups`."""
+def _migrate_jis_metrics_columns(conn, cur) -> bool:
+    """Idempotently add JIS detailed telemetry columns to `store_hourly_rollups` and verify readiness."""
+    probe_sql = (
+        "SELECT avg_women_waiting_groups, max_women_waiting_groups, women_waiting_detected, "
+        "avg_party_size, avg_normal_match_rate, avg_vip_match_rate, avg_match_rate_diff "
+        "FROM store_hourly_rollups LIMIT 0"
+    )
     try:
-        cur.execute(
-            "SELECT avg_women_waiting_groups, max_women_waiting_groups, women_waiting_detected, "
-            "avg_party_size, avg_normal_match_rate, avg_vip_match_rate, avg_match_rate_diff "
-            "FROM store_hourly_rollups LIMIT 0"
-        )
-        return
+        cur.execute(probe_sql)
+        return True
     except Exception:
         try:
             conn.rollback()
@@ -421,32 +423,56 @@ def _migrate_jis_metrics_columns(conn, cur):
             pass
 
     real_t = "DOUBLE PRECISION" if _is_pg() else "REAL"
-    cols = [
-        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_women_waiting_groups {real_t}",
-        "ALTER TABLE store_hourly_rollups ADD COLUMN max_women_waiting_groups INTEGER",
-        "ALTER TABLE store_hourly_rollups ADD COLUMN women_waiting_detected INTEGER NOT NULL DEFAULT 0",
-        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_party_size {real_t}",
-        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_normal_match_rate {real_t}",
-        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_vip_match_rate {real_t}",
-        f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_match_rate_diff {real_t}",
-    ]
-    for col_ddl in cols:
+    if _is_pg():
         try:
-            if _is_pg():
-                try:
-                    cur.execute("SET LOCAL lock_timeout = '2s'")
-                except Exception:
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        pass
-            cur.execute(col_ddl)
+            cur.execute("SET LOCAL lock_timeout = '3s'")
+            cur.execute(
+                f"ALTER TABLE store_hourly_rollups "
+                f"ADD COLUMN IF NOT EXISTS avg_women_waiting_groups {real_t}, "
+                f"ADD COLUMN IF NOT EXISTS max_women_waiting_groups INTEGER, "
+                f"ADD COLUMN IF NOT EXISTS women_waiting_detected INTEGER NOT NULL DEFAULT 0, "
+                f"ADD COLUMN IF NOT EXISTS avg_party_size {real_t}, "
+                f"ADD COLUMN IF NOT EXISTS avg_normal_match_rate {real_t}, "
+                f"ADD COLUMN IF NOT EXISTS avg_vip_match_rate {real_t}, "
+                f"ADD COLUMN IF NOT EXISTS avg_match_rate_diff {real_t}"
+            )
             conn.commit()
-        except Exception:
+        except Exception as pg_err:
+            print(f"[local_db] _migrate_jis_metrics_columns PG warning: {pg_err}", file=sys.stderr)
             try:
                 conn.rollback()
             except Exception:
                 pass
+    else:
+        cols = [
+            f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_women_waiting_groups {real_t}",
+            "ALTER TABLE store_hourly_rollups ADD COLUMN max_women_waiting_groups INTEGER",
+            "ALTER TABLE store_hourly_rollups ADD COLUMN women_waiting_detected INTEGER NOT NULL DEFAULT 0",
+            f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_party_size {real_t}",
+            f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_normal_match_rate {real_t}",
+            f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_vip_match_rate {real_t}",
+            f"ALTER TABLE store_hourly_rollups ADD COLUMN avg_match_rate_diff {real_t}",
+        ]
+        for col_ddl in cols:
+            try:
+                cur.execute(col_ddl)
+                conn.commit()
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
+    try:
+        cur.execute(probe_sql)
+        return True
+    except Exception as verify_err:
+        print(f"[local_db] _migrate_jis_metrics_columns probe failed: {verify_err}", file=sys.stderr)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return False
 
 
 def _create_moat_rollup_tables_on_cursor(cur, is_pg: bool):
@@ -2113,11 +2139,16 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
             pos_dict = None
             if raw_json:
                 try:
-                    pos_dict = json.loads(raw_json)
+                    loaded_json = json.loads(raw_json)
+                    if isinstance(loaded_json, dict):
+                        pos_dict = loaded_json
                 except Exception:
                     pos_dict = None
 
-            wwg_i = int(wwg if wwg is not None else ((pos_dict.get('women_waiting_groups', 0) if pos_dict else 0) or 0))
+            try:
+                wwg_i = max(0, int(wwg if wwg is not None else ((pos_dict.get('women_waiting_groups', 0) if pos_dict else 0) or 0)))
+            except Exception:
+                wwg_i = 0
             p["sum_wwg"] += wwg_i
             if wwg_i > p["max_wwg"]:
                 p["max_wwg"] = wwg_i
@@ -2126,52 +2157,79 @@ def rollup_store_hourly_stats(target_dates=None, days_back: int = 3) -> dict:
             if wwg_i > 0:
                 is_ww = True
             if pos_dict:
-                if pos_dict.get('is_women_waiting') or pos_dict.get('is_reverse_waiting'):
-                    is_ww = True
-                if int(pos_dict.get('women_waiting_guests', 0) or 0) > 0:
-                    is_ww = True
+                try:
+                    if pos_dict.get('is_women_waiting') or pos_dict.get('is_reverse_waiting'):
+                        is_ww = True
+                    if int(pos_dict.get('women_waiting_guests', 0) or 0) > 0:
+                        is_ww = True
+                except Exception:
+                    pass
             if is_ww:
                 p["ww_detected"] = 1
 
             if pos_dict:
-                ps = pos_dict.get('avg_party_size_total')
-                if ps is None:
-                    ps = pos_dict.get('avg_party_size')
-                if ps is None:
-                    tc = int(pos_dict.get('men_total_guests', 0) or 0) + int(pos_dict.get('women_total_guests', 0) or 0)
-                    tg = int(pos_dict.get('men_total_groups', 0) or 0) + int(pos_dict.get('women_total_groups', 0) or 0)
-                    if tg > 0:
-                        ps = tc / float(tg)
-                if ps is not None:
-                    p["sum_party_size"] += float(ps)
-                    p["n_party_size"] += 1
+                try:
+                    ps = pos_dict.get('avg_party_size_total')
+                    if ps is None:
+                        ps = pos_dict.get('avg_party_size')
+                    if ps is None:
+                        tc = int(pos_dict.get('men_total_guests', 0) or 0) + int(pos_dict.get('women_total_guests', 0) or 0)
+                        tg = int(pos_dict.get('men_total_groups', 0) or 0) + int(pos_dict.get('women_total_groups', 0) or 0)
+                        if tg > 0 and tc >= tg:
+                            ps = tc / float(tg)
+                    if ps is not None:
+                        ps_f = float(ps)
+                        if math.isfinite(ps_f) and 1.0 <= ps_f <= 20.0:
+                            p["sum_party_size"] += ps_f
+                            p["n_party_size"] += 1
+                except Exception:
+                    pass
 
-                nmr = pos_dict.get('normal_match_rate')
-                if nmr is None:
-                    n_grp = int(pos_dict.get('normal_mens_group_num', 0) or 0)
-                    n_sh = int(pos_dict.get('normal_mens_share_num', 0) or 0)
-                    if n_grp > 0:
-                        nmr = (n_sh / float(n_grp)) * 100.0
-                if nmr is not None:
-                    p["sum_norm_rate"] += float(nmr)
-                    p["n_norm_rate"] += 1
+                nmr_val = None
+                try:
+                    nmr = pos_dict.get('normal_match_rate')
+                    if nmr is None:
+                        n_grp = int(pos_dict.get('normal_mens_group_num', 0) or 0)
+                        n_sh = int(pos_dict.get('normal_mens_share_num', 0) or 0)
+                        if n_grp > 0 and 0 <= n_sh <= n_grp:
+                            nmr = (n_sh / float(n_grp)) * 100.0
+                    if nmr is not None:
+                        nmr_f = float(nmr)
+                        if math.isfinite(nmr_f) and 0.0 <= nmr_f <= 100.0:
+                            nmr_val = nmr_f
+                            p["sum_norm_rate"] += nmr_f
+                            p["n_norm_rate"] += 1
+                except Exception:
+                    nmr_val = None
 
-                vmr = pos_dict.get('vip_match_rate')
-                if vmr is None:
-                    v_grp = int(pos_dict.get('vip_mens_group_num', 0) or 0)
-                    v_sh = int(pos_dict.get('vip_mens_share_num', 0) or 0)
-                    if v_grp > 0:
-                        vmr = (v_sh / float(v_grp)) * 100.0
-                if vmr is not None:
-                    p["sum_vip_rate"] += float(vmr)
-                    p["n_vip_rate"] += 1
+                vmr_val = None
+                try:
+                    vmr = pos_dict.get('vip_match_rate')
+                    if vmr is None:
+                        v_grp = int(pos_dict.get('vip_mens_group_num', 0) or 0)
+                        v_sh = int(pos_dict.get('vip_mens_share_num', 0) or 0)
+                        if v_grp > 0 and 0 <= v_sh <= v_grp:
+                            vmr = (v_sh / float(v_grp)) * 100.0
+                    if vmr is not None:
+                        vmr_f = float(vmr)
+                        if math.isfinite(vmr_f) and 0.0 <= vmr_f <= 100.0:
+                            vmr_val = vmr_f
+                            p["sum_vip_rate"] += vmr_f
+                            p["n_vip_rate"] += 1
+                except Exception:
+                    vmr_val = None
 
-                mrd = pos_dict.get('match_rate_diff')
-                if mrd is None and vmr is not None and nmr is not None:
-                    mrd = vmr - nmr
-                if mrd is not None:
-                    p["sum_diff_rate"] += float(mrd)
-                    p["n_diff_rate"] += 1
+                try:
+                    mrd = pos_dict.get('match_rate_diff')
+                    if mrd is None and vmr_val is not None and nmr_val is not None:
+                        mrd = vmr_val - nmr_val
+                    if mrd is not None:
+                        mrd_f = float(mrd)
+                        if math.isfinite(mrd_f) and -100.0 <= mrd_f <= 100.0:
+                            p["sum_diff_rate"] += mrd_f
+                            p["n_diff_rate"] += 1
+                except Exception:
+                    pass
 
         ext_agg = defaultdict(lambda: [0, 0.0, 0.0, 0, 0, set(), 0, 0])  # (ds, hr, ck) -> [n, max_prec, sum_temp, rainy, transit, arenas_set, temp_n, prec_n]
         for ts_s, ck, prec, tc, rainy, ar_json, tr_dis in ext_rows:

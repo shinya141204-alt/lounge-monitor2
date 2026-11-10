@@ -769,7 +769,31 @@ def stats_whitepaper():
         with core.data_lock:
             raw_live = list(core.latest_data.get('full_data') or [])
             last_updated = core.latest_data.get('last_updated') or '--:--'
-        live_stores = ops_governance.filter_visible_stores(raw_live)
+        import store_master
+        master = store_master.load() or {}
+        live_stores = []
+        for s_raw in ops_governance.filter_visible_stores(raw_live):
+            s_copy = dict(s_raw)
+            sname = s_copy.get('name') or ''
+            try:
+                w_cnt = max(0, int(float(s_copy.get('women', 0) or 0)))
+            except Exception:
+                w_cnt = 0
+            try:
+                m_cnt = max(0, int(float(s_copy.get('men', 0) or 0)))
+            except Exception:
+                m_cnt = 0
+            if s_copy.get('total') is None:
+                s_copy['total'] = w_cnt + m_cnt
+            if sname:
+                if not s_copy.get('slug'):
+                    s_copy['slug'] = store_master.slug_of(sname)
+                if not s_copy.get('seo_name'):
+                    s_copy['seo_name'] = store_master.seo_name(sname)
+                if not s_copy.get('area_label'):
+                    info = master.get(sname) or {}
+                    s_copy['area_label'] = info.get('area_label') or s_copy.get('area') or ''
+            live_stores.append(s_copy)
         import affiliate_manager
         surface_smart_cta = affiliate_manager.build_surface_smart_cta(
             live_stores,

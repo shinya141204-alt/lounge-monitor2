@@ -148,7 +148,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=42" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261109_2" as="script">
+    <link rel="preload" href="/static/app.js?v=20261110_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -900,13 +900,14 @@
                                     {% set ssr_w_badge = ((s.wait_estimate.wait_badge_men | clean_badge) if (s.wait_estimate and ssr_has_guest) else '') %}
                                     {% set ssr_f_badge = ((s.forecast_60m.badge_men | clean_badge) if s.forecast_60m else '') %}
                                     {% set ssr_f_caution = (s.forecast_60m and (s.forecast_60m.alert_code in ['crowd_rush_warn', 'last_train_cliff', 'male_glut_lock'] or (s.forecast_60m.pred_delta_pt or 0) <= -5)) %}
-                                    {% set ssr_tm = s.turnover_momentum if (s.turnover_momentum and s.turnover_momentum.score is not none and s.turnover_momentum.label and s.turnover_momentum.label != '判定対象外') else none %}
+                                    {% set ssr_tm = s.turnover_momentum if (s.turnover_momentum and s.turnover_momentum.score is number and s.turnover_momentum.label and s.turnover_momentum.label != '判定対象外') else none %}
                                     {% set ssr_wb = s.weather_brief if s.weather_brief else none %}
-                                    <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge or ssr_tm or (ssr_wb and ssr_wb.is_cold_surge)) %} hidden{% endif %}">
+                                    {% set ssr_wb_cold = (ssr_wb and ssr_wb.is_cold_surge and ssr_wb.temp_diff_c is number) %}
+                                    <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge or ssr_tm or ssr_wb_cold) %} hidden{% endif %}">
                                         {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_w_badge }}</span>{% endif %}
                                         {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{% if ssr_f_caution %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 3.5 4.5 7 7 5 11 9"/></svg>{% else %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 8.5 4.2 5.3 6.8 7 11 2.8"/></svg>{% endif %}{{ ssr_f_badge }}</span>{% endif %}
-                                        {% if ssr_tm %}<span class="moat-pill tone-{{ ssr_tm.tone or 'neutral' }}" title="{{ ssr_tm.desc or ('席回転スピード: ' ~ ssr_tm.score ~ '点') }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_tm.label }}</span>{% endif %}
-                                        {% if ssr_wb and ssr_wb.is_cold_surge %}<span class="moat-pill tone-rain" title="前日比{{ '%.1f'|format(ssr_wb.temp_diff_c) }}℃急冷（屋内需要サージ警戒）"><span class="moat-dot" aria-hidden="true"></span>急冷サージ</span>{% endif %}
+                                        {% if ssr_tm %}<span class="moat-pill tone-{{ ssr_tm.tone or 'neutral' }}" title="{{ ssr_tm.desc or ssr_tm.reason or ('席回転スピード: ' ~ ssr_tm.score ~ '点') }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_tm.label | clean_badge }}</span>{% endif %}
+                                        {% if ssr_wb_cold %}<span class="moat-pill tone-rain" title="前日比{{ '%.1f'|format(ssr_wb.temp_diff_c) }}℃急冷（屋内需要サージ警戒）"><span class="moat-dot" aria-hidden="true"></span>急冷サージ</span>{% endif %}
                                     </div>
                                 </div>
                                 <div class="card-actions">
@@ -2892,7 +2893,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261109_2" defer></script>
+    <script src="/static/app.js?v=20261110_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2908,7 +2909,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=108', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=109', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

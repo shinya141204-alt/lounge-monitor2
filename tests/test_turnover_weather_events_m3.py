@@ -248,18 +248,19 @@ class TestCityEventsStaticMaster(unittest.TestCase):
         self.assertEqual(len(events), 0)
 
     def test_arena_events_for_date_merges_static_master(self):
-        """2026-11-10 の事前定義イベントが get_arena_events_for_date で返却されること"""
-        events = arena_calendar.get_arena_events_for_date(datetime.date(2026, 11, 10))
+        """2026-11-19（第57回明治神宮野球大会）の事前定義イベントが get_arena_events_for_date で返却されること"""
+        events = arena_calendar.get_arena_events_for_date(datetime.date(2026, 11, 19))
         self.assertIsInstance(events, dict)
         self.assertIn("meiji_jingu_stadium", events)
         jingu_ev = events["meiji_jingu_stadium"][0]
         self.assertEqual(jingu_ev.get("venue_name"), "明治神宮野球場")
+        self.assertTrue(str(jingu_ev.get("source_url") or "").startswith("https://"))
 
     def test_detect_city_event_surge_alias(self):
         """detect_city_event_surge が正しく動作し、辞書を返すこと"""
         res = moat_intelligence.detect_city_event_surge(
             [{"name": "OLG 新宿", "city_key": "tokyo"}],
-            now_jst=datetime.datetime(2026, 11, 10, 21, 30),
+            now_jst=datetime.datetime(2026, 11, 19, 19, 30),
         )
         self.assertIsInstance(res, dict)
 
@@ -284,11 +285,11 @@ class TestUIAndCachebusterIntegration(unittest.TestCase):
         self.assertIn("イベントサージ", html)
 
     def test_cache_version_108_sync(self):
-        """static/sw.js の CACHE_NAME が aiseki-navi-v108 であること"""
+        """static/sw.js の CACHE_NAME が aiseki-navi-v109 であること"""
         sw_path = os.path.join(os.path.dirname(__file__), "..", "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as f:
             sw_txt = f.read()
-        self.assertIn("const CACHE_NAME = 'aiseki-navi-v108';", sw_txt)
+        self.assertIn("const CACHE_NAME = 'aiseki-navi-v109';", sw_txt)
 
 
 if __name__ == "__main__":

@@ -189,7 +189,7 @@ class TestChallengerHubPriorityExhaustivePermutations(unittest.TestCase):
         実在の関西ハブ（kyocera_dome_osaka, hanshin_koshien_stadium, osaka_jo_hall, yodogawa_fireworks）における
         重複所属店舗（ASOBIBAR 梅田, JIS 難波 等）の優先度マージ実証
         """
-        now_dt = datetime.datetime(2026, 8, 8, 20, 30, tzinfo=self.jst)  # なにわ淀川花火大会（8/8）当日終演帯
+        now_dt = datetime.datetime(2026, 10, 17, 20, 30, tzinfo=self.jst)  # 第38回なにわ淀川花火大会（10/17公式確定日）終演帯
         live_stores = [
             {"name": "ASOBIBAR 梅田", "women": 45, "men": 40, "women_diff": 12, "usual_w_diff": 15.0, "is_open_now": True},
             {"name": "JIS 難波", "women": 50, "men": 45, "women_diff": 5, "usual_w_diff": 6.0, "is_open_now": True},

@@ -781,17 +781,18 @@ STATIC_CITY_EVENTS = [
         "venue_id": "meiji_jingu_stadium",
         "venue_name": "明治神宮野球場",
         "city_key": "tokyo",
-        "pattern_type": "baseball_night",
-        "start_time": "18:00",
-        "est_end_hour": 21,
+        "pattern_type": "stadium_match",
+        "start_time": "16:00",
+        "est_end_hour": 19,
+        "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-04-10", "event_title": "プロ野球公式戦 ヤクルト vs 巨人（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-05-15", "event_title": "プロ野球公式戦 ヤクルト vs 阪神（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-06-12", "event_title": "プロ野球公式戦 ヤクルト vs DeNA（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-07-17", "event_title": "プロ野球公式戦 ヤクルト vs 中日（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-08-21", "event_title": "プロ野球公式戦 ヤクルト vs 広島（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-09-18", "event_title": "プロ野球公式戦 ヤクルト vs 巨人（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-11-10", "event_title": "明治神宮野球大会（ナイター決勝）", "est_end_hour": 21},
+            {"event_date": "2026-11-19", "event_title": "第57回明治神宮野球大会（第1日）", "est_end_hour": 19, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-20", "event_title": "第57回明治神宮野球大会（第2日）", "est_end_hour": 19, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-21", "event_title": "第57回明治神宮野球大会（第3日）", "est_end_hour": 19, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-22", "event_title": "第57回明治神宮野球大会（準決勝・準々決勝）", "est_end_hour": 18, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-23", "event_title": "第57回明治神宮野球大会（大学の部 準決勝）", "est_end_hour": 16, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-24", "event_title": "第57回明治神宮野球大会（決勝戦）", "est_end_hour": 16, "source_url": "https://www.student-baseball.or.jp/game/jingu/2026/2026jingu.html", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
     {
@@ -801,14 +802,10 @@ STATIC_CITY_EVENTS = [
         "pattern_type": "baseball_night",
         "start_time": "18:00",
         "est_end_hour": 21,
+        "source_url": "https://hanshintigers.jp/game/schedule/2026/04.html",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-04-14", "event_title": "プロ野球公式戦 阪神 vs 巨人（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-05-08", "event_title": "プロ野球公式戦 阪神 vs 広島（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-06-19", "event_title": "プロ野球公式戦 阪神 vs DeNA（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-07-10", "event_title": "プロ野球公式戦 阪神 vs ヤクルト（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-08-28", "event_title": "プロ野球公式戦 阪神 vs 巨人（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-09-11", "event_title": "プロ野球公式戦 阪神 vs 中日（ナイター）", "est_end_hour": 21},
-            {"event_date": "2026-11-10", "event_title": "プロ野球 秋季特別試合（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-04-07", "event_title": "プロ野球公式戦 阪神 vs DeNA（甲子園開幕戦ナイター）", "est_end_hour": 21, "source_url": "https://hanshintigers.jp/game/schedule/2026/04.html", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
     {
@@ -818,12 +815,13 @@ STATIC_CITY_EVENTS = [
         "pattern_type": "stadium_match",
         "start_time": "19:00",
         "est_end_hour": 21,
+        "source_url": "https://www.nissan-stadium.jp/calendar/",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-05-23", "event_title": "Jリーグ公式戦 横浜F・マリノス vs 川崎フロンターレ", "est_end_hour": 21},
-            {"event_date": "2026-06-06", "event_title": "サッカー国際親善マッチ 日本代表 vs 海外強豪", "est_end_hour": 21},
-            {"event_date": "2026-07-18", "event_title": "日産スタジアム 5万人サマースタジアムライブ", "est_end_hour": 21},
-            {"event_date": "2026-10-10", "event_title": "Jリーグ公式戦 横浜F・マリノス vs 浦和レッズ", "est_end_hour": 21},
-            {"event_date": "2026-11-10", "event_title": "サッカー国際強化マッチ（ナイター）", "est_end_hour": 21},
+            {"event_date": "2026-11-11", "event_title": "2026/27 JリーグYBCルヴァンカップ プライムラウンド 準々決勝 第1戦（横浜F・マリノス vs 鹿島アントラーズ）", "est_end_hour": 21, "source_url": "https://www.nissan-stadium.jp/sp/calendar/detail.php?id6ae3d9a17dbef", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-21", "event_title": "SixTONES LIVE TOUR 2026「MILESixTONES」", "est_end_hour": 20, "source_url": "https://www.nissan-stadium.jp/calendar/", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-22", "event_title": "SixTONES LIVE TOUR 2026「MILESixTONES」", "est_end_hour": 20, "source_url": "https://www.nissan-stadium.jp/calendar/", "verified_at": "2026-11-10T09:55:00+09:00"},
+            {"event_date": "2026-11-29", "event_title": "明治安田J1リーグ 横浜F・マリノス vs FC東京", "est_end_hour": 16, "source_url": "https://www.nissan-stadium.jp/calendar/", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
     {
@@ -831,14 +829,12 @@ STATIC_CITY_EVENTS = [
         "venue_name": "国立競技場",
         "city_key": "tokyo",
         "pattern_type": "stadium_match",
-        "start_time": "19:00",
-        "est_end_hour": 21,
+        "start_time": "15:00",
+        "est_end_hour": 18,
+        "source_url": "https://www.jleague.jp/match/search/leaguecup/",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-05-02", "event_title": "Jリーグ 国立決戦スペシャルマッチ", "est_end_hour": 21},
-            {"event_date": "2026-06-11", "event_title": "FIFAワールドカップ アジア最終予選 日本代表戦", "est_end_hour": 21},
-            {"event_date": "2026-08-15", "event_title": "国立スタジアム サマーナイトフェス", "est_end_hour": 21},
-            {"event_date": "2026-10-24", "event_title": "ルヴァンカップ 決勝戦（ナイトゲーム）", "est_end_hour": 21},
-            {"event_date": "2026-11-10", "event_title": "サッカー日本代表 国際親善試合（ナイター）", "est_end_hour": 21},
+            {"event_date": "2027-05-08", "event_title": "2026/27 JリーグYBCルヴァンカップ 決勝", "est_end_hour": 18, "source_url": "https://www.jleague.jp/match/search/leaguecup/", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
     {
@@ -846,11 +842,12 @@ STATIC_CITY_EVENTS = [
         "venue_name": "なにわ淀川花火大会",
         "city_key": "osaka",
         "pattern_type": "fireworks",
-        "start_time": "19:30",
-        "est_end_hour": 21,
+        "start_time": "19:00",
+        "est_end_hour": 20,
+        "source_url": "https://www.yodohanabi.com/gaiyou.html",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-08-08", "event_title": "第38回 なにわ淀川花火大会", "est_end_hour": 21},
-            {"event_date": "2027-08-07", "event_title": "第39回 なにわ淀川花火大会", "est_end_hour": 21},
+            {"event_date": "2026-10-17", "event_title": "第38回 なにわ淀川花火大会", "est_end_hour": 20, "source_url": "https://www.yodohanabi.com/gaiyou.html", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
     {
@@ -860,9 +857,10 @@ STATIC_CITY_EVENTS = [
         "pattern_type": "fireworks",
         "start_time": "19:00",
         "est_end_hour": 21,
+        "source_url": "https://www.sumidagawa-hanabi.com/about/",
+        "verified_at": "2026-11-10T09:55:00+09:00",
         "events": [
-            {"event_date": "2026-07-25", "event_title": "第49回 隅田川花火大会", "est_end_hour": 21},
-            {"event_date": "2027-07-31", "event_title": "第50回 隅田川花火大会", "est_end_hour": 21},
+            {"event_date": "2026-07-25", "event_title": "第49回 隅田川花火大会", "est_end_hour": 21, "source_url": "https://www.sumidagawa-hanabi.com/about/", "verified_at": "2026-11-10T09:55:00+09:00"},
         ],
     },
 ]
@@ -887,14 +885,27 @@ def get_arena_events_for_date(target_date=None, allow_blocking: bool = False) ->
             if vid:
                 by_venue.setdefault(vid, []).append(ev)
 
-    # 静的都市イベントマスタ（神宮・甲子園・日産・国立・花火大会等）を外部通信ゼロでマージ
+    # 静的都市イベントマスタ（公式個別日程URL＋確認日時付きの確定日程のみ）を外部通信ゼロでマージ
     for v_info in STATIC_CITY_EVENTS:
         vid = v_info.get("venue_id")
         vname = v_info.get("venue_name")
         ck = v_info.get("city_key")
         def_end = v_info.get("est_end_hour", 21)
+        def_src = str(v_info.get("source_url") or "").strip()
+        def_ver = str(v_info.get("verified_at") or "").strip()
         for ev in v_info.get("events", []):
             if ev.get("event_date") == ds:
+                src_url = str(ev.get("source_url") or def_src).strip()
+                ver_at = str(ev.get("verified_at") or def_ver).strip()
+                parsed_src = urlparse(src_url) if src_url else None
+                if (
+                    not parsed_src
+                    or parsed_src.scheme not in ("http", "https")
+                    or not parsed_src.netloc
+                    or parsed_src.path in ("", "/")
+                    or not ver_at
+                ):
+                    continue
                 item = {
                     "venue_id": vid,
                     "venue_name": vname,
@@ -902,6 +913,8 @@ def get_arena_events_for_date(target_date=None, allow_blocking: bool = False) ->
                     "event_date": ds,
                     "event_title": ev.get("event_title", ""),
                     "est_end_hour": ev.get("est_end_hour", def_end),
+                    "source_url": src_url,
+                    "verified_at": ver_at,
                     "is_static_master": True,
                 }
                 by_venue.setdefault(vid, []).append(item)

@@ -2146,6 +2146,8 @@ def track_event():
     ev_name = re.sub(r'[^A-Za-z0-9_.:-]', '', str(payload.get('event', '')).strip())[:30]
     if ev_name not in _BEACON_ALLOWED_EVENTS:
         return ('', 204)
+    if ev_name == 'hashigo_intent' and not turbo_store.check_sliding_rate_limit('hashigo_intent_ip', client_ip, limit=10, window_sec=600):
+        return ('', 204)
     import analytics
     analytics.track(ev_name, str(payload.get('label', '')).strip()[:96])
     return ('', 204)

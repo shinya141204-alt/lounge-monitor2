@@ -263,7 +263,7 @@ def normalize_hashigo_intent_label(raw_label: str) -> str:
         norm_area = 'other'
 
     raw_aud = parts[1].strip().lower() if len(parts) > 1 else 'men'
-    norm_aud = 'women' if raw_aud == 'women' else 'men'
+    norm_aud = 'women' if raw_aud in ('women', 'female', 'f', 'w') else 'men'
 
     raw_ps = parts[2].strip().lower() if len(parts) > 2 else 'pair'
     if raw_ps in ('solo', 'pair', 'group'):
@@ -410,8 +410,18 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
     if ev == 'watch_intent':
         return 'watch_intent'
     if ev == 'hashigo_intent':
-        area_part = norm_label.split(':', 1)[0].strip() if ':' in norm_label else 'other'
-        return f"intent:{area_part}" if area_part else 'intent:other'
+        area_part = norm_label.split(':', 1)[0].strip().lower() if ':' in norm_label else 'other'
+        canon_area = 'other'
+        if area_part:
+            try:
+                import concierge_matcher
+                if area_part in concierge_matcher.CONCIERGE_AREAS:
+                    canon_area = area_part
+                elif area_part in getattr(concierge_matcher, "_AREA_ALIASES", {}):
+                    canon_area = concierge_matcher._AREA_ALIASES[area_part]
+            except Exception:
+                canon_area = 'other'
+        return f"intent:{canon_area}"
     return ''
 
 
@@ -432,7 +442,18 @@ def track(event, label='', _now_jst=None):
         norm_lbl = normalize_hashigo_intent_label(label)
         if not norm_lbl:
             return False
-        label = norm_lbl
+        parts_chk = norm_lbl.split(':', 2)
+        if len(parts_chk) == 3:
+            a_cand = parts_chk[0]
+            try:
+                import concierge_matcher
+                if a_cand not in concierge_matcher.CONCIERGE_AREAS:
+                    a_cand = getattr(concierge_matcher, "_AREA_ALIASES", {}).get(a_cand, 'other')
+            except Exception:
+                a_cand = 'other'
+            label = f"{a_cand}:{parts_chk[1]}:{parts_chk[2]}"
+        else:
+            label = norm_lbl
     elif event in _STORE_TRACK_EVENTS:
         label = normalize_store_event_label(event, label)
     else:
@@ -1816,25 +1837,13 @@ def get_lead_demand_heat(area: str = None, hours: int = 2, _now_jst: datetime.da
     by_party_size = {"solo": 0, "pair": 0, "group": 0}
 
     with _lock:
-        # 1) 高速インメモリリングバッファからの走査
+        # 高速インメモリリングバッファからの厳密な時間窓（cutoff_ts 以降のみ）走査
         for (ts, r_area, r_aud, r_ps) in _recent_hashigo_intents:
             if ts >= cutoff_ts:
                 if norm_area is None or r_area == norm_area:
                     total_intents += 1
                     by_audience[r_aud] = by_audience.get(r_aud, 0) + 1
                     by_party_size[r_ps] = by_party_size.get(r_ps, 0) + 1
-
-        # 2) バッファが空またはテスト等で _pending / _flushed に直接格納された場合のフォールバック走査
-        if total_intents == 0:
-            for (d_str, ev, lbl), count in list(_pending.items()) + list(_flushed.items()):
-                if ev == 'hashigo_intent' and lbl and lbl != _OVERFLOW_LABEL and ':' in lbl:
-                    parts = lbl.split(':', 2)
-                    if len(parts) == 3:
-                        p_area, p_aud, p_ps = parts
-                        if norm_area is None or p_area == norm_area:
-                            total_intents += count
-                            by_audience[p_aud] = by_audience.get(p_aud, 0) + count
-                            by_party_size[p_ps] = by_party_size.get(p_ps, 0) + count
 
     if total_intents == 0:
         return {
@@ -1907,6 +1916,7 @@ def reset_for_tests():
         turbo_store.clear_rate_limit('aff_clk_ip')
         turbo_store.clear_rate_limit('api_track')
         turbo_store.clear_rate_limit('api_track_ip')
+        turbo_store.clear_rate_limit('hashigo_intent_ip')
         turbo_store.clear_rate_limit('push_sub_ip')
         turbo_store.clear_rate_limit('push_unsub_ip')
     except Exception:

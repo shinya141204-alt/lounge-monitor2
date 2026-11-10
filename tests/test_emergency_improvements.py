@@ -250,20 +250,20 @@ class TestEmergencyImprovements(unittest.TestCase):
     # 8. キャッシュバスティング同期テスト
     # ------------------------------------------------------------------
     def test_cache_busting_sync_app_js_v2_and_sw_v86(self):
-        """app.js?v=20261109_2 と sw.js?v=108, CACHE_NAME aiseki-navi-v108 が同期していること"""
+        """app.js?v=20261110_1 と sw.js?v=109, CACHE_NAME aiseki-navi-v109 が同期していること"""
         home_resp = self.client.get('/')
         self.assertEqual(home_resp.status_code, 200)
         home_html = home_resp.data.decode('utf-8')
         home_resp.close()
-        self.assertIn('/static/app.js?v=20261109_2', home_html)
-        self.assertIn('/sw.js?v=108', home_html)
+        self.assertIn('/static/app.js?v=20261110_1', home_html)
+        self.assertIn('/sw.js?v=109', home_html)
 
         sw_resp = self.client.get('/sw.js')
         self.assertEqual(sw_resp.status_code, 200)
         sw_txt = sw_resp.data.decode('utf-8')
         sw_resp.close()
-        self.assertIn("CACHE_NAME = 'aiseki-navi-v108'", sw_txt)
-        self.assertIn("'/static/app.js?v=20261109_2'", sw_txt)
+        self.assertIn("CACHE_NAME = 'aiseki-navi-v109'", sw_txt)
+        self.assertIn("'/static/app.js?v=20261110_1'", sw_txt)
 
     def test_store_hours_opening_hours_specification(self):
         """store_hours.get_store_opening_hours_specification の生成仕様テスト"""

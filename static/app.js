@@ -2163,9 +2163,11 @@
                 const cleanWBadge = stripBadgeEmojiPrefix(wBadge);
                 const cleanFBadge = stripBadgeEmojiPrefix(fBadge);
                 const tm = store.turnover_momentum || null;
-                const tmLabel = (tm && tm.score !== null && tm.label && tm.label !== '判定対象外') ? stripBadgeEmojiPrefix(tm.label) : '';
+                const tmHasScore = Boolean(tm && tm.score !== null && tm.score !== undefined && Number.isFinite(Number(tm.score)));
+                const tmLabel = (tmHasScore && tm.label && tm.label !== '判定対象外') ? stripBadgeEmojiPrefix(tm.label) : '';
                 const wb = store.weather_brief || null;
-                if (cleanWBadge || cleanFBadge || tmLabel || (wb && wb.is_cold_surge)) {
+                const wbColdValid = Boolean(wb && wb.is_cold_surge && wb.temp_diff_c !== null && wb.temp_diff_c !== undefined && Number.isFinite(Number(wb.temp_diff_c)));
+                if (cleanWBadge || cleanFBadge || tmLabel || wbColdValid) {
                     const pills = [];
                     if (cleanWBadge) {
                         const rawWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
@@ -2182,11 +2184,11 @@
                     }
                     if (tmLabel) {
                         const tmTone = escapeHtml(tm.tone || 'neutral');
-                        const tmTitle = escapeHtml(tm.desc || tm.reason || `席回転スピード: ${tm.score}点`);
+                        const tmTitle = escapeHtml(tm.desc || tm.reason || `席回転スピード: ${Number(tm.score)}点`);
                         pills.push(`<span class="moat-pill tone-${tmTone}" title="${tmTitle}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(tmLabel)}</span>`);
                     }
-                    if (wb && wb.is_cold_surge) {
-                        const dC = Number(wb.temp_diff_c || 0).toFixed(1);
+                    if (wbColdValid) {
+                        const dC = Number(wb.temp_diff_c).toFixed(1);
                         pills.push(`<span class="moat-pill tone-rain" title="前日比${dC}℃急冷（屋内需要サージ警戒）"><span class="moat-dot" aria-hidden="true"></span>急冷サージ</span>`);
                     }
                     moatRowEl.innerHTML = pills.join('');

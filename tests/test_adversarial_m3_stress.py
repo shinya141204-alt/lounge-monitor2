@@ -312,8 +312,8 @@ class TestAdversarialCityEvents(unittest.TestCase):
             raise ConnectionRefusedError("ADVERSARIAL ATTACK: Network communication is strictly prohibited!")
 
         with patch.object(socket.socket, "connect", side_effect=forbidden_connect):
-            # 1. arena_calendar.get_arena_events_for_date
-            evs = arena_calendar.get_arena_events_for_date(datetime.date(2026, 11, 10))
+            # 1. arena_calendar.get_arena_events_for_date（公式確定日程 2026-11-19 第57回明治神宮野球大会）
+            evs = arena_calendar.get_arena_events_for_date(datetime.date(2026, 11, 19))
             self.assertIsInstance(evs, dict)
             self.assertIn("meiji_jingu_stadium", evs)
 
@@ -416,7 +416,7 @@ class TestAdversarialTemplateRendering(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
             html = res.get_data(as_text=True)
             self.assertIn("急冷サージ", html)
-            self.assertIn("⚡️高回転", html)
+            self.assertIn("高回転", html)
 
 
 if __name__ == "__main__":

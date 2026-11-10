@@ -985,13 +985,36 @@
             vibe: {{ res.vibe | tojson }}
         };
         var IS_PUBLIC_VIEW = {{ 'true' if (not is_staff and not session.get('is_staff')) else 'false' }};
+        var IS_STAFF_TEST = /(?:^|[?&])staff_test=1(?:&|$)/.test((window.location && window.location.search) || '');
+        var HAS_INITIAL_QUERY = /(?:^|[?&])(?:area|audience|party_size|timing|vibe)=/.test((window.location && window.location.search) || '');
         var activeController = null;
         var stageEl = document.getElementById('concierge-stage');
         var lastSentIntent = '';
 
+        function _wasIntentSentRecently(intentLabel) {
+            try {
+                var raw = sessionStorage.getItem('aiseki_sent_intents_v1');
+                var map = raw ? JSON.parse(raw) : {};
+                var ts = map && map[intentLabel] ? Number(map[intentLabel]) : 0;
+                return Boolean(ts && (Date.now() - ts) < 600000);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function _markIntentSent(intentLabel) {
+            try {
+                var raw = sessionStorage.getItem('aiseki_sent_intents_v1');
+                var map = raw ? JSON.parse(raw) : {};
+                if (!map || typeof map !== 'object') map = {};
+                map[intentLabel] = Date.now();
+                sessionStorage.setItem('aiseki_sent_intents_v1', JSON.stringify(map));
+            } catch (e) {}
+        }
+
         function trackHashigoIntent() {
             try {
-                if (!IS_PUBLIC_VIEW) return;
+                if (!IS_PUBLIC_VIEW || IS_STAFF_TEST) return;
                 if (window.IS_STAFF) return;
                 if (navigator.webdriver) return;
                 if (window.location && window.location.search && window.location.search.indexOf('staff_test=1') !== -1) return;
@@ -1002,20 +1025,31 @@
                 var currentPartySize = (state.party_size === 'solo' || state.party_size === 'group') ? state.party_size : 'pair';
                 var intentLabel = currentArea + ':' + currentAudience + ':' + currentPartySize;
 
-                if (lastSentIntent === intentLabel) return;
-                lastSentIntent = intentLabel;
+                if (lastSentIntent === intentLabel || _wasIntentSentRecently(intentLabel)) return;
 
                 var payloadStr = JSON.stringify({
                     event: 'hashigo_intent',
                     label: intentLabel
                 });
 
+                var sentOk = false;
                 if (navigator.sendBeacon) {
-                    var blob = new Blob([payloadStr], { type: 'application/json' });
-                    if (navigator.sendBeacon('/api/track', blob)) return;
+                    try {
+                        var blob = new Blob([payloadStr], { type: 'application/json' });
+                        sentOk = Boolean(navigator.sendBeacon('/api/track', blob));
+                    } catch (beaconErr) {
+                        sentOk = false;
+                    }
+                }
+                if (sentOk) {
+                    lastSentIntent = intentLabel;
+                    _markIntentSent(intentLabel);
+                    return;
                 }
 
                 if (window.fetch) {
+                    lastSentIntent = intentLabel;
+                    _markIntentSent(intentLabel);
                     window.fetch('/api/track', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1251,6 +1285,9 @@
             params.set('timing', state.timing);
             params.set('party_size', state.party_size);
             params.set('vibe', state.vibe);
+            if (IS_STAFF_TEST) {
+                params.set('staff_test', '1');
+            }
             return params.toString();
         }
 
@@ -1305,8 +1342,10 @@
                 }
             });
         }
-        // 初期ロード時の先行需要インテント送信
-        trackHashigoIntent();
+        // 明示クエリパラメータ付き着地時のみ初期インテント送信（デフォルト shinjuku:men:pair の無条件加算を防止）
+        if (HAS_INITIAL_QUERY) {
+            trackHashigoIntent();
+        }
     })();
     </script>
 </body>

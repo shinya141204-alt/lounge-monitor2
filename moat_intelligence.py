@@ -381,7 +381,7 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
         f"?latitude={lats}&longitude={lngs}"
         "&current=temperature_2m,precipitation,weather_code,wind_speed_10m"
         "&hourly=temperature_2m"
-        "&past_days=1"
+        "&past_days=2&forecast_days=1"
         "&timezone=Asia%2FTokyo"
     )
     resp = requests.get(url, timeout=timeout_sec)
@@ -391,7 +391,8 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
     items = payload if isinstance(payload, list) else [payload]
     parsed = {}
     now_jst = datetime.datetime.now(JST)
-    yesterday_str = (now_jst - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    # 営業日基準（0〜4時台は前夜を今夜扱いするため2日前夜と比較）
+    prev_night_base = (now_jst - datetime.timedelta(days=2 if now_jst.hour < 5 else 1)).strftime("%Y-%m-%d")
 
     for idx, city_key in enumerate(_WEATHER_CITY_ORDER):
         if idx >= len(items):
@@ -413,37 +414,40 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
 
         label_ja, is_rainy = _weather_code_label(wcode, precip_mm if precip_mm is not None else 0.0)
 
-        # 前日夜（20時〜23時平均または前日同時刻）の気温算出
+        # 前日同時刻（24時間前）を第一優先とし、欠損時のみ前営業日夜（20〜23時平均）にフォールバック
         hourly = c_item.get("hourly") if isinstance(c_item.get("hourly"), dict) else {}
         h_times = hourly.get("time") if isinstance(hourly.get("time"), (list, tuple)) else []
         h_temps = hourly.get("temperature_2m") if isinstance(hourly.get("temperature_2m"), (list, tuple)) else []
         temp_prev_c = None
-        prev_night_temps = []
-        target_night_hours = {
-            f"{yesterday_str}T20:00", f"{yesterday_str}T21:00",
-            f"{yesterday_str}T22:00", f"{yesterday_str}T23:00"
-        }
+        ref_dt = now_jst
+        if cur.get("time"):
+            try:
+                ref_dt = datetime.datetime.fromisoformat(str(cur["time"]))
+            except Exception:
+                ref_dt = now_jst
+        prev_same_hour_iso = (ref_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:00")
+        used_24h_same_hour = False
         for t_str, t_val in zip(h_times, h_temps):
-            if t_str in target_night_hours and t_val is not None:
+            if isinstance(t_str, str) and t_str.startswith(prev_same_hour_iso) and t_val is not None:
                 v = _safe_float(t_val, 1)
                 if v is not None:
-                    prev_night_temps.append(v)
+                    temp_prev_c = v
+                    used_24h_same_hour = True
+                    break
 
-        if prev_night_temps:
-            temp_prev_c = round(sum(prev_night_temps) / len(prev_night_temps), 1)
-        elif cur.get("time"):
-            # 前日同時刻（24時間前）フォールバック
-            try:
-                cur_dt = datetime.datetime.fromisoformat(str(cur["time"]))
-                prev_target_iso = (cur_dt - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:00")
-                for t_str, t_val in zip(h_times, h_temps):
-                    if isinstance(t_str, str) and t_str.startswith(prev_target_iso) and t_val is not None:
-                        v = _safe_float(t_val, 1)
-                        if v is not None:
-                            temp_prev_c = v
-                            break
-            except Exception:
-                pass
+        if temp_prev_c is None:
+            prev_night_temps = []
+            target_night_hours = {
+                f"{prev_night_base}T20:00", f"{prev_night_base}T21:00",
+                f"{prev_night_base}T22:00", f"{prev_night_base}T23:00"
+            }
+            for t_str, t_val in zip(h_times, h_temps):
+                if t_str in target_night_hours and t_val is not None:
+                    v = _safe_float(t_val, 1)
+                    if v is not None:
+                        prev_night_temps.append(v)
+            if prev_night_temps:
+                temp_prev_c = round(sum(prev_night_temps) / len(prev_night_temps), 1)
 
         # 前日比寒暖差（Δ℃）および急冷サージ判定（安全フォールバック保証）
         temp_diff_c = None
@@ -455,17 +459,18 @@ def _fetch_open_meteo_all_cities(timeout_sec: float = 3.5) -> dict:
             diff = _safe_float(temp_c - temp_prev_c, 1)
             if diff is not None:
                 temp_diff_c = diff
-                is_cold_surge = bool(temp_diff_c <= -3.0)
+                allow_surge = bool(used_24h_same_hour or not (isinstance(cur.get("time"), str) and ref_dt.hour < 6))
+                is_cold_surge = bool(allow_surge and temp_diff_c <= -3.0)
                 if is_cold_surge:
                     temp_diff_label = "急冷"
                     temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃ 急冷"
-                elif temp_diff_c <= -2.0:
+                elif allow_surge and temp_diff_c <= -2.0:
                     temp_diff_label = "寒暖差大"
                     temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃"
-                elif temp_diff_c >= 3.0:
+                elif allow_surge and temp_diff_c >= 3.0:
                     temp_diff_label = "温暖"
                     temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃ 温暖"
-                elif temp_diff_c >= 2.0:
+                elif allow_surge and temp_diff_c >= 2.0:
                     temp_diff_label = "寒暖差大"
                     temp_surge_badge = f"前日比 {temp_diff_c:+.1f}℃"
                 else:
@@ -632,6 +637,7 @@ MAJOR_ARENA_HUBS = [
         "venue_id": "meiji_jingu_stadium",
         "venue_name": "明治神宮野球場",
         "city_key": "tokyo",
+        "requires_schedule": True,
         "stores": [
             "OLG 渋谷本店", "OLG ag渋谷", "ASOBIBAR 渋谷",
             "OLG 新宿", "JIS SHINJUKU", "ASOBIBAR 新宿",
@@ -643,6 +649,7 @@ MAJOR_ARENA_HUBS = [
         "venue_id": "hanshin_koshien_stadium",
         "venue_name": "阪神甲子園球場",
         "city_key": "osaka",
+        "requires_schedule": True,
         "stores": [
             "OLG 大阪駅前", "JIS UMEDA", "JIS CHAYAMACHI", "OLG ag梅田",
             "ASOBIBAR 梅田", "ASOBIBAR 茶屋町",
@@ -655,6 +662,7 @@ MAJOR_ARENA_HUBS = [
         "venue_id": "nissan_stadium",
         "venue_name": "日産スタジアム（横浜国際総合競技場）",
         "city_key": "yokohama",
+        "requires_schedule": True,
         "stores": ["OLG 横浜"],
     },
     # 国立競技場（Jリーグ国立・サッカー日本代表戦）
@@ -662,6 +670,7 @@ MAJOR_ARENA_HUBS = [
         "venue_id": "japan_national_stadium",
         "venue_name": "国立競技場",
         "city_key": "tokyo",
+        "requires_schedule": True,
         "stores": [
             "OLG 新宿", "JIS SHINJUKU", "ASOBIBAR 新宿",
             "OLG 渋谷本店", "OLG ag渋谷", "ASOBIBAR 渋谷",
@@ -935,7 +944,7 @@ def capture_external_context_snapshot(live_stores: list = None, allow_blocking: 
             "city_key": ck,
             "city_label": str(w.get("city_label") or ck),
             "temp_c": _safe_float(w.get("temp_c"), ndigits=1, default=None),
-            "precip_mm": _safe_float(w.get("precip_mm"), ndigits=1, default=0.0),
+            "precip_mm": _safe_float(w.get("precip_mm"), ndigits=2, default=None),
             "weather_code": _safe_int(w.get("weather_code"), default=None),
             "wind_kmh": _safe_float(w.get("wind_kmh"), ndigits=1, default=None),
             "condition_ja": str(w.get("condition_ja") or "晴れ"),

@@ -442,6 +442,23 @@
         body.theme-light .moat-detail-card {
             background: rgba(28, 27, 24, 0.025);
         }
+        .moat-event-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 7px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: rgba(220, 38, 38, 0.16);
+            color: #fca5a5;
+            border: 1px solid rgba(248, 113, 113, 0.42);
+            flex-shrink: 0;
+        }
+        body.theme-light .moat-event-badge {
+            background: #fef2f2;
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
         .moat-detail-eyebrow {
             display: flex;
             align-items: center;
@@ -981,7 +998,7 @@
                 <div class="moat-detail-head">
                     <span><span class="status-dot-live" aria-hidden="true"></span>60分後AI推移予測 ＆ リアル待ち時間解析</span>
                     {% if wb and wb.city %}
-                    <span class="moat-detail-weather" id="hero-moat-weather">{{ wb.city }} {{ wb.condition }}{% if wb.temp_c is not none %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}{% if wb.temp_diff_c is not none %}（前日比 {{ '%+.1f'|format(wb.temp_diff_c) }}℃{% if wb.is_cold_surge %}・急冷サージ警戒{% endif %}）{% endif %}</span>
+                    <span class="moat-detail-weather" id="hero-moat-weather">{{ wb.city }} {{ wb.condition }}{% if wb.temp_c is number %} {{ '%.1f'|format(wb.temp_c) }}℃{% endif %}{% if wb.temp_diff_c is number %}（前日比 {{ '%+.1f'|format(wb.temp_diff_c) }}℃{% if wb.is_cold_surge %}・急冷サージ警戒{% endif %}）{% endif %}</span>
                     {% else %}
                     <span class="moat-detail-weather" id="hero-moat-weather" style="display:none;"></span>
                     {% endif %}
@@ -990,11 +1007,11 @@
                     <div class="moat-detail-card">
                         <div class="moat-detail-eyebrow">
                             <span>60分後のAI男女比予測</span>
-                            {% if fc and fc.pred_60m_wpct is not none %}
+                            {% if fc and fc.pred_60m_wpct is number %}
                             <span class="moat-detail-chip">{% if (fc.pred_delta_pt or 0) > 0 %}+{{ fc.pred_delta_pt }}pt{% else %}{{ fc.pred_delta_pt or 0 }}pt{% endif %}</span>
                             {% endif %}
                         </div>
-                        {% if fc and fc.pred_60m_wpct is not none %}
+                        {% if fc and fc.pred_60m_wpct is number %}
                         <div class="moat-detail-main">予測女性比 {{ fc.pred_60m_wpct }}% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約{{ fc.pred_60m_women }} : 男 約{{ fc.pred_60m_men }}｜逆転リスク {{ fc.flip_risk_pct }}%）</span></div>
                         {% if fc.reason_short %}<p class="moat-detail-sub">{{ fc.reason_short }}{% if fc.alert_code in ['crowd_rush_warn', 'jackpot_hold', 'male_glut_lock'] %} <a href="/guide/crowd-rush-paradox" style="color:var(--accent-text); text-decoration:underline;">22時殺到パラドックス解説 ›</a>{% endif %}</p>{% endif %}
                         {% if fc.accuracy and (fc.accuracy.resolved_count or 0) >= 3 %}
@@ -1012,15 +1029,15 @@
                         {% if heat and (heat.total_intents or 0) >= 5 and heat.lead_signal in ['female_surge', 'male_surge', 'active'] %}
                         <div class="moat-intent-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">
                             <span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(200, 164, 110, 0.15); color:var(--accent-text); border:1px solid rgba(200, 164, 110, 0.3); flex-shrink:0;">
-                                ⚡ 先行需要
+                                先行需要
                             </span>
                             <span style="color:var(--text-sub); line-height:1.45;">
                                 {% if heat.lead_signal == 'female_surge' %}
-                                3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>（予測女性比に +{{ heat.lead_bias_pt }}pt 反映）
+                                3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>{% if heat.lead_bias_pt is number and heat.lead_bias_pt != 0 %}（予測女性比に {{ '%+.1f'|format(heat.lead_bias_pt) }}pt 反映）{% endif %}
                                 {% elif heat.lead_signal == 'male_surge' %}
                                 3秒ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）
                                 {% else %}
-                                3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>+{{ heat.total_intents }}件</strong>）
+                                3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>{{ heat.total_intents }}件</strong>）
                                 {% endif %}
                             </span>
                         </div>
@@ -1028,13 +1045,13 @@
 
                         {# --- 周辺大型イベント・終演サージ通知 (Feature 11) --- #}
                         {% set asig = store.arena_signal %}
-                        {% if asig and (asig.is_surge_now or asig.phase in ['verified_surge', 'post_window']) %}
+                        {% if asig and asig.venue_name and (asig.is_surge_now or asig.phase in ['verified_surge', 'post_window']) %}
                         <div class="moat-event-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">
-                            <span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(239, 68, 68, 0.12); color:#f87171; border:1px solid rgba(239, 68, 68, 0.28); flex-shrink:0;">
+                            <span class="moat-event-badge">
                                 イベントサージ
                             </span>
                             <span style="color:var(--text-sub); line-height:1.45;">
-                                周辺の大型会場（<strong>{{ asig.venue_name }}</strong>）で{{ asig.event_title or '大型イベント' }}が終演時間帯です。2次会流入による<strong>急激な混雑・男余りサージ</strong>に警戒してください。
+                                周辺の大型会場（<strong>{{ asig.venue_name }}</strong>）で{{ asig.event_title or '大型イベント' }}の終演・流入警戒時間帯です。2次会流入による<strong>急激な混雑変化</strong>にご注意ください。
                             </span>
                         </div>
                         {% endif %}
@@ -1046,7 +1063,7 @@
                     <div class="moat-detail-card">
                         <div class="moat-detail-eyebrow">
                             <span>リアル待ち時間・稼働解析</span>
-                            <span class="moat-detail-chip">{% if we and we.is_standing_free %}自由回遊スタンディング{% elif we and we.is_measured %}JIS公式POS実測{% else %}JIS実測学習AI推論{% endif %}</span>
+                            <span class="moat-detail-chip">{% if we and we.is_standing_free %}自由回遊スタンディング{% elif we and we.is_measured %}JIS公式公開実測{% else %}JIS実測学習AI推論{% endif %}</span>
                         </div>
                         <div class="moat-detail-main">{{ (we.wait_badge_men | clean_badge) if we else '稼働データ集計中' }}</div>
                         {% if we and we.pos_summary_short %}<p class="moat-detail-sub">{{ we.pos_summary_short }}</p>{% endif %}
@@ -1059,8 +1076,8 @@
                             <span>席回転スピード解析</span>
                             <span class="moat-detail-chip">時系列ボラティリティ実測</span>
                         </div>
-                        {% if tm and tm.score is not none %}
-                        <div class="moat-detail-main">回転指数 {{ tm.score }} / 100 <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（{{ tm.label }}）</span></div>
+                        {% if tm and tm.score is number and tm.label and tm.label != '判定対象外' %}
+                        <div class="moat-detail-main">回転指数 {{ tm.score }} / 100 <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（{{ tm.label | clean_badge }}）</span></div>
                         <p class="moat-detail-sub">{{ tm.desc or tm.reason or '直近の客数増減ボラティリティと待ち消化速度から席の流動性をリアルタイム測定' }}</p>
                         {% elif not store.is_open_now %}
                         <div class="moat-detail-main">営業時間外</div>
@@ -1161,10 +1178,11 @@
                 {% endif %}
 
                 {# --- 梅田茶屋町ビル 2フロア回遊シフト パネル (Feature 13) --- #}
-                {% set is_chayamachi = (store.slug in ['yatakoi-umeda', 'asobibar-chayamachi']) or ('茶屋町' in (store.name or '') and ('ASOBIBAR' in (store.name or '') or 'ヤタコイ' in (store.name or '') or 'YATAKOI' in (store.name or ''))) %}
+                {% set is_chayamachi = store.slug in ['yatakoi-umeda', 'asobibar-chayamachi'] %}
                 {% set ch_shift = store.chayamachi_shift %}
+                {% set ch_phase = (ch_shift.get('phase') or '') if ch_shift else '' %}
                 {% set ch_pos = store.pos_telemetry if (store.pos_telemetry and store.pos_telemetry.get('telemetry_type') in ['yatakoi_pos', 'asobibar_pos']) else none %}
-                {% if is_chayamachi and (ch_shift or ch_pos or store.slug in ['yatakoi-umeda', 'asobibar-chayamachi']) %}
+                {% if is_chayamachi %}
                 <div class="chayamachi-shift-panel" id="chayamachi-shift-panel">
                     <div class="chayamachi-shift-head">
                         <span class="chayamachi-shift-title">
@@ -1183,31 +1201,31 @@
                                 {{ ch_shift.phase_label_ja }}
                                 {% elif ch_shift and ch_shift.phase_label %}
                                 {{ ch_shift.phase_label }}
-                                {% elif ch_shift and 'yatakoi' in ch_shift.get('phase', '') %}
+                                {% elif 'yatakoi' in ch_phase %}
                                 ヤタコイ優位（1軒目・着席相席フェーズ）
-                                {% elif ch_shift and 'asobibar' in ch_shift.get('phase', '') %}
-                                深夜帯：ASOBIBAR（スタンディング）へ回遊シフト
+                                {% elif 'asobibar' in ch_phase %}
+                                深夜帯：ASOBIBAR（アソビバー）へ回遊シフト
                                 {% else %}
-                                同ビル2フロア回遊（3F 相席 ⇄ 2F バー）
+                                同ビル2フロア回遊（3F ヤタコイ ⇄ 2F ASOBIBAR（アソビバー））
                                 {% endif %}
                             </div>
                             <div class="chayamachi-phase-desc">
-                                {{ (ch_shift.recommendation if ch_shift and ch_shift.recommendation else (ch_shift.advice if ch_shift and ch_shift.advice else '前半（20〜23時）は3Fヤタコイで着席相席、深夜帯は2F ASOBIBARでのスタンディング交流へ人の流れが推移します。')) }}
+                                {{ (ch_shift.recommendation if ch_shift and ch_shift.recommendation else (ch_shift.advice if ch_shift and ch_shift.advice else '同ビル3Fのヤタコイ（着席相席）と2FのASOBIBAR（アソビバー・スタンディング）のリアルタイム在店状況です。')) }}
                             </div>
                         </div>
                     </div>
 
                     <div class="chayamachi-floors-grid">
                         {# 3F ヤタコイ（相席フロア） #}
-                        <div class="chayamachi-floor-card{% if ch_shift and 'yatakoi' in ch_shift.get('phase', '') %} is-active-phase{% endif %}">
+                        <div class="chayamachi-floor-card{% if 'yatakoi' in ch_phase %} is-active-phase{% endif %}">
                             <div class="chayamachi-card-eyebrow">
                                 <span>3F ヤタコイ</span>
                                 <span class="chayamachi-card-chip">着席相席</span>
                             </div>
                             <div class="chayamachi-card-main">
-                                {% if ch_pos and ch_pos.get('yatakoi_men') is not none and ch_pos.get('yatakoi_women') is not none %}
+                                {% if ch_pos and ch_pos.get('yatakoi_men') is number and ch_pos.get('yatakoi_women') is number %}
                                 <span class="chayamachi-num">{{ (ch_pos.get('yatakoi_men', 0) + ch_pos.get('yatakoi_women', 0)) }}</span><span class="chayamachi-card-unit">名</span>
-                                {% elif ch_shift and ch_shift.get('yatakoi_cust') is not none %}
+                                {% elif ch_shift and ch_shift.get('yatakoi_cust') is number %}
                                 <span class="chayamachi-num">{{ ch_shift.get('yatakoi_cust') }}</span><span class="chayamachi-card-unit">名</span>
                                 {% elif store.slug == 'yatakoi-umeda' %}
                                 <span class="chayamachi-num">{{ store.total }}</span><span class="chayamachi-card-unit">名</span>
@@ -1216,29 +1234,29 @@
                                 {% endif %}
                             </div>
                             <div class="chayamachi-card-sub">
-                                {% if ch_pos and ch_pos.get('yatakoi_men') is not none and ch_pos.get('yatakoi_women') is not none %}
+                                {% if ch_pos and ch_pos.get('yatakoi_men') is number and ch_pos.get('yatakoi_women') is number %}
                                 女性 {{ ch_pos.get('yatakoi_women', 0) }}名 / 男性 {{ ch_pos.get('yatakoi_men', 0) }}名
                                 {% elif store.slug == 'yatakoi-umeda' %}
                                 女性 {{ store.women }}名 / 男性 {{ store.men }}名
                                 {% else %}
-                                着席相席フロア（定員約70席）
+                                着席相席フロア
                                 {% endif %}
-                                {% if ch_shift and ch_shift.get('yatakoi_occ_pct') is not none %}
+                                {% if ch_shift and ch_shift.get('yatakoi_occ_pct') is number %}
                                 <br>フロア占有率: <span class="chayamachi-num">{{ ch_shift.get('yatakoi_occ_pct') }}</span>%
                                 {% endif %}
                             </div>
                         </div>
 
                         {# 2F ASOBIBAR（スタンディングバーフロア） #}
-                        <div class="chayamachi-floor-card{% if ch_shift and ('asobibar' in ch_shift.get('phase', '') or 'transition' in ch_shift.get('phase', '')) %} is-active-phase{% endif %}">
+                        <div class="chayamachi-floor-card{% if 'asobibar' in ch_phase or 'transition' in ch_phase %} is-active-phase{% endif %}">
                             <div class="chayamachi-card-eyebrow">
-                                <span>2F ASOBIBAR</span>
+                                <span>2F ASOBIBAR（アソビバー）</span>
                                 <span class="chayamachi-card-chip">スタンディング</span>
                             </div>
                             <div class="chayamachi-card-main">
-                                {% if ch_pos and ch_pos.get('asobibar_men') is not none and ch_pos.get('asobibar_women') is not none %}
+                                {% if ch_pos and ch_pos.get('asobibar_men') is number and ch_pos.get('asobibar_women') is number %}
                                 <span class="chayamachi-num">{{ (ch_pos.get('asobibar_men', 0) + ch_pos.get('asobibar_women', 0)) }}</span><span class="chayamachi-card-unit">名</span>
-                                {% elif ch_shift and ch_shift.get('asobibar_cust') is not none %}
+                                {% elif ch_shift and ch_shift.get('asobibar_cust') is number %}
                                 <span class="chayamachi-num">{{ ch_shift.get('asobibar_cust') }}</span><span class="chayamachi-card-unit">名</span>
                                 {% elif store.slug == 'asobibar-chayamachi' %}
                                 <span class="chayamachi-num">{{ store.total }}</span><span class="chayamachi-card-unit">名</span>
@@ -1247,28 +1265,29 @@
                                 {% endif %}
                             </div>
                             <div class="chayamachi-card-sub">
-                                {% if ch_pos and ch_pos.get('asobibar_men') is not none and ch_pos.get('asobibar_women') is not none %}
+                                {% if ch_pos and ch_pos.get('asobibar_men') is number and ch_pos.get('asobibar_women') is number %}
                                 女性 {{ ch_pos.get('asobibar_women', 0) }}名 / 男性 {{ ch_pos.get('asobibar_men', 0) }}名
                                 {% elif store.slug == 'asobibar-chayamachi' %}
                                 女性 {{ store.women }}名 / 男性 {{ store.men }}名
                                 {% else %}
                                 自由回遊・スタンディングバー
                                 {% endif %}
-                                {% if ch_shift and ch_shift.get('asobibar_occ_pct') is not none %}
+                                {% if ch_shift and ch_shift.get('asobibar_occ_pct') is number %}
                                 <br>フロア占有率: <span class="chayamachi-num">{{ ch_shift.get('asobibar_occ_pct') }}</span>%
                                 {% endif %}
                             </div>
                         </div>
                     </div>
 
-                    {% if ch_shift and ch_shift.get('yatakoi_ratio_pct') is not none and ch_shift.get('asobibar_ratio_pct') is not none %}
+                    {% if ch_shift and (ch_shift.get('total_cust') or 0) > 0 and ch_shift.get('yatakoi_ratio_pct') is number and ch_shift.get('asobibar_ratio_pct') is number %}
+                    {% set y_bar_pct = [0, [100, ch_shift.yatakoi_ratio_pct]|min]|max %}
                     <div class="chayamachi-ratio-bar-wrap">
                         <div class="chayamachi-ratio-labels">
                             <span>ヤタコイ {{ ch_shift.yatakoi_ratio_pct }}%</span>
-                            <span>ASOBIBAR {{ ch_shift.asobibar_ratio_pct }}%</span>
+                            <span>ASOBIBAR（アソビバー） {{ ch_shift.asobibar_ratio_pct }}%</span>
                         </div>
-                        <div class="chayamachi-ratio-track" role="progressbar" aria-valuenow="{{ ch_shift.yatakoi_ratio_pct }}" aria-valuemin="0" aria-valuemax="100">
-                            <div class="chayamachi-ratio-fill" style="width: {{ ch_shift.yatakoi_ratio_pct }}%;"></div>
+                        <div class="chayamachi-ratio-track" role="progressbar" aria-label="茶屋町2フロア在店構成比" aria-valuenow="{{ y_bar_pct }}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="chayamachi-ratio-fill" style="width: {{ y_bar_pct }}%;"></div>
                         </div>
                     </div>
                     {% endif %}
@@ -2431,18 +2450,42 @@
                                                 : '';
                                             accLine = '<p class="moat-detail-sub" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border-subtle);">当店予測実績（直近' + Number(acc.resolved_count) + '回検証）：平均ズレ <strong style="color:var(--accent-text);">±' + Number(acc.mae_wpct).toFixed(1) + 'pt</strong> ｜ ±10pt的中 <strong style="color:var(--accent-text);">' + Number(acc.within_10pt_pct).toFixed(0) + '%</strong>' + latPart + ' <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline; margin-left:4px;">答え合わせ一覧 ›</a></p>';
                                         }
+                                        let intentLine = '';
+                                        const heat = live.lead_demand_heat || (fc && fc.lead_intent_heat) || null;
+                                        if (heat && Number(heat.total_intents || 0) >= 5 && ['female_surge', 'male_surge', 'active'].includes(heat.lead_signal)) {
+                                            let intentMsg = '';
+                                            if (heat.lead_signal === 'female_surge') {
+                                                const bp = Number(heat.lead_bias_pt || 0);
+                                                const bpTxt = (Number.isFinite(bp) && bp !== 0) ? ('（予測女性比に ' + (bp > 0 ? '+' : '') + bp.toFixed(1) + 'pt 反映）') : '';
+                                                intentMsg = '3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>' + esc(bpTxt);
+                                            } else if (heat.lead_signal === 'male_surge') {
+                                                intentMsg = '3秒ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）';
+                                            } else {
+                                                intentMsg = '3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>' + Number(heat.total_intents) + '件</strong>）';
+                                            }
+                                            intentLine = '<div class="moat-intent-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">' +
+                                                '<span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(200, 164, 110, 0.15); color:var(--accent-text); border:1px solid rgba(200, 164, 110, 0.3); flex-shrink:0;">先行需要</span>' +
+                                                '<span style="color:var(--text-sub); line-height:1.45;">' + intentMsg + '</span></div>';
+                                        }
+                                        let eventLine = '';
+                                        const asig = live.arena_signal || null;
+                                        if (asig && asig.venue_name && (asig.is_surge_now || ['verified_surge', 'post_window'].includes(asig.phase))) {
+                                            eventLine = '<div class="moat-event-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">' +
+                                                '<span class="moat-event-badge">イベントサージ</span>' +
+                                                '<span style="color:var(--text-sub); line-height:1.45;">周辺の大型会場（<strong>' + esc(asig.venue_name) + '</strong>）で' + esc(asig.event_title || '大型イベント') + 'の終演・流入警戒時間帯です。2次会流入による<strong>急激な混雑変化</strong>にご注意ください。</span></div>';
+                                        }
                                         fcHtml = '<div class="moat-detail-card">' +
                                             '<div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span><span class="moat-detail-chip">' + esc(dpTxt) + '</span></div>' +
                                             '<div class="moat-detail-main">予測女性比 ' + Number(fc.pred_60m_wpct) + '% <span style="font-size:0.76rem; font-weight:500; color:var(--text-sub);">（女 約' + Number(fc.pred_60m_women || 0) + ' : 男 約' + Number(fc.pred_60m_men || 0) + '｜逆転リスク ' + Number(fc.flip_risk_pct || 0) + '%）</span></div>' +
                                             (fc.reason_short ? '<p class="moat-detail-sub">' + esc(fc.reason_short) + pLink + '</p>' : '') +
-                                            accLine +
+                                            accLine + intentLine + eventLine +
                                             '</div>';
                                     } else {
                                         fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">男女合計が6名以上になると表示します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p></div>';
                                     }
                                     let srcTxt = 'JIS実測学習AI推論';
                                     if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';
-                                    else if (we && we.is_measured) srcTxt = 'JIS公式POS実測';
+                                    else if (we && we.is_measured) srcTxt = 'JIS公式公開実測';
                                     const rawWeBadge = String(we ? (we.wait_badge_men || '') : '稼働データ集計中').replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+/gu, '').replace(/^推定:\s*/, '');
                                     const weHtml = '<div class="moat-detail-card">' +
                                         '<div class="moat-detail-eyebrow"><span>リアル待ち時間・稼働解析</span><span class="moat-detail-chip">' + esc(srcTxt) + '</span></div>' +
@@ -2450,10 +2493,11 @@
                                         (we && we.pos_summary_short ? '<p class="moat-detail-sub">' + esc(we.pos_summary_short) + '</p>' : '') +
                                         '</div>';
                                     let tmHtml = '';
-                                    const tm = live.turnover_momentum || (window.STORE_DETAILS && window.STORE_DETAILS.turnover_momentum) || null;
-                                    if (tm && tm.score !== null && tm.label && tm.label !== '判定対象外') {
+                                    const tm = live.turnover_momentum || ((live.is_open_now !== false && window.STORE_DETAILS) ? window.STORE_DETAILS.turnover_momentum : null) || null;
+                                    const tmValid = Boolean(tm && tm.score !== null && tm.score !== undefined && Number.isFinite(Number(tm.score)) && tm.label && tm.label !== '判定対象外');
+                                    if (tmValid) {
                                         const tmScore = Number(tm.score);
-                                        const tmLabel = esc(tm.label);
+                                        const tmLabel = esc(String(tm.label).replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\uFE0E\uFE0F\s]+/gu, ''));
                                         const tmDesc = esc(tm.desc || tm.reason || '直近の客数増減ボラティリティと待ち消化速度から席の流動性をリアルタイム測定');
                                         tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum">' +
                                             '<div class="moat-detail-eyebrow"><span>席回転スピード解析</span><span class="moat-detail-chip">時系列ボラティリティ実測</span></div>' +
@@ -2463,7 +2507,8 @@
                                     } else if (live.is_open_now === false) {
                                         tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum"><div class="moat-detail-eyebrow"><span>席回転スピード解析</span></div><div class="moat-detail-main">営業時間外</div><p class="moat-detail-sub">営業開始後に時系列データを集計します。</p></div>';
                                     } else {
-                                        tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum"><div class="moat-detail-eyebrow"><span>席回転スピード解析</span></div><div class="moat-detail-main">現在少人数（6名以上で自動算出）</div><p class="moat-detail-sub">男女合計が6名以上になると表示します。</p></div>';
+                                        const fallbackReason = esc((tm && tm.reason) ? tm.reason : '男女合計が6名以上になると表示します。');
+                                        tmHtml = '<div class="moat-detail-card" id="card-turnover-momentum"><div class="moat-detail-eyebrow"><span>席回転スピード解析</span></div><div class="moat-detail-main">現在少人数（6名以上で自動算出）</div><p class="moat-detail-sub">' + fallbackReason + '</p></div>';
                                     }
                                     mGrid.innerHTML = fcHtml + weHtml + tmHtml;
                                 }
@@ -3211,7 +3256,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=108', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=109', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

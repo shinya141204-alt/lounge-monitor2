@@ -388,11 +388,74 @@ class TestJisUiRendering(unittest.TestCase):
             self.assertIn("VIP席 相席成立効率差", html)
             self.assertIn("女性待ち逆転ステータス", html)
             self.assertIn("JIS SHINJUKU", html)
+            self.assertIn('/store/jis-shinjuku', html)
             self.assertIn("逆転（女性2組待ち）", html)
         finally:
             with app_module.data_lock:
                 app_module.latest_data["full_data"] = old_full
                 app_module.latest_data["last_updated"] = old_time
+
+    def test_stats_report_closed_jis_zero_dummy_and_valid_slugs(self):
+        """営業時間外（0名）のJIS店舗では推測値（1.88 / 78.4 / 58.2）や偽の『即案内中』を一切表示せず、店舗リンクslugも正常生成されること"""
+        import app as app_module
+
+        closed_jis = [
+            {
+                "name": "JIS SHINJUKU",
+                "women": 0,
+                "men": 0,
+                "source": "jis",
+                "pos_telemetry": {
+                    "telemetry_type": "jis_pos",
+                    "avg_party_size_total": None,
+                    "normal_match_rate": None,
+                    "vip_match_rate": None,
+                    "is_women_waiting": False,
+                    "is_reverse_waiting": False,
+                    "women_waiting_groups": 0,
+                },
+            }
+        ]
+        with app_module.data_lock:
+            old_full = app_module.latest_data.get("full_data")
+            old_time = app_module.latest_data.get("last_updated")
+            app_module.latest_data["full_data"] = closed_jis
+            app_module.latest_data["last_updated"] = "09:15"
+
+        try:
+            resp = self.client.get("/stats?staff_test=1")
+            self.assertEqual(resp.status_code, 200)
+            html = resp.data.decode("utf-8")
+            self.assertIn('/store/jis-shinjuku', html)
+            self.assertNotIn('href="/store/"', html)
+            self.assertNotIn("1.88", html)
+            self.assertNotIn("78.4", html)
+            self.assertNotIn("58.2", html)
+            self.assertNotIn("即案内中（待ち0）", html)
+            self.assertIn("営業時間外・実測ログ待機中", html)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data["full_data"] = old_full
+                app_module.latest_data["last_updated"] = old_time
+
+    def test_fable_audit_guards_static_events_and_intent_whitelist(self):
+        """STATIC_CITY_EVENTSの全日程が公式URLを持ち、analyticsのhashigo_intentが未知エリアで爆発しないこと"""
+        import arena_calendar
+        import analytics
+
+        for venue in arena_calendar.STATIC_CITY_EVENTS:
+            def_src = str(venue.get("source_url") or "")
+            def_ver = str(venue.get("verified_at") or "")
+            for ev in venue.get("events", []):
+                src = str(ev.get("source_url") or def_src)
+                ver = str(ev.get("verified_at") or def_ver)
+                self.assertTrue(src.startswith(("http://", "https://")), f"Missing source_url on {ev}")
+                self.assertNotIn(src.rstrip("/"), ("https://www.student-baseball.or.jp", "https://hanshintigers.jp", "https://www.nissan-stadium.jp", "https://www.jleague.jp", "https://www.yodohanabi.com", "https://www.sumidagawa-hanabi.com"))
+                self.assertTrue(bool(ver), f"Missing verified_at on {ev}")
+                self.assertNotEqual(ev.get("event_date"), "2026-11-10")
+
+        bucket = analytics.classify_hourly_bucket("hashigo_intent", "attacker_random_area_999:men:pair")
+        self.assertEqual(bucket, "intent:other")
 
 
 if __name__ == "__main__":
