@@ -575,6 +575,11 @@
             </aside>
             {% endif %}
 
+            {% if area_iso_maps is defined and area_iso_maps.get('sapporo') %}
+            {% set iso_map = area_iso_maps.get('sapporo') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">JIS（ジス）札幌・ag（アグ）仙台の現在人数と60分後予測をチェック</div>
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">向かう前に現在の男女バランスと推定待ち時間を確認して、1店舗集中エリアの空振りをゼロに。</p>

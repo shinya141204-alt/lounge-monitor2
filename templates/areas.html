@@ -767,6 +767,9 @@
                 </a>
             </div>
 
+            {% set iso_map = selected_area.info.iso_map %}
+            {% include '_iso_underground_map.html' %}
+
             <!-- Deep Tactical Guide Sections -->
             <h2 class="section-subhead">{{ selected_area.info.short_name }}の実戦ハシゴ・終電崖・ソロ参戦データ</h2>
             <div class="tactical-deep-grid">

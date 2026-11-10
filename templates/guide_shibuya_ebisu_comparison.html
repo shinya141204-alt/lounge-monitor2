@@ -552,6 +552,11 @@
             </aside>
             {% endif %}
 
+            {% if area_iso_maps is defined and area_iso_maps.get('shibuya') %}
+            {% set iso_map = area_iso_maps.get('shibuya') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">渋谷・恵比寿5店舗の「いま現在の男女人数」をリアルタイム確認</div>
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">ハチ公口や恵比寿駅西口を出る前に、現在の女性人数・男女比・60分後予測をひと目で比較できます。</p>

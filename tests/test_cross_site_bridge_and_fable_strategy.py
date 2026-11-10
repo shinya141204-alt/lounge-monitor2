@@ -259,10 +259,23 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
         )
         self.assertIn("【オリエンタルラウンジ新宿】", note_store_b)
 
-        # (c) Empty stores do not fabricate 58%/60% Scene 1 bar
+        # (c) Empty stores do not fabricate 58%/60% Scene 1 bar or 3D isometric tower
         empty_ctx = reel_generator.build_reel_context([], reel_type="live_top5")
         empty_comp = reel_generator._ReelSceneRenderer(empty_ctx)
         self.assertIsNone(empty_comp.scene1_bar_spec)
+        self.assertIsNone(empty_comp.scene1_iso_tower_spec)
+        self.assertIsNotNone(comp.scene1_iso_tower_spec)
+        self.assertIn("tower_a", comp.scene1_iso_tower_spec)
+        self.assertIn("tower_b", comp.scene1_iso_tower_spec)
+
+        # (f) 3-Layer Isometric Underground Cross-Section Map rendered on Area Pages, Area Guides, and Store Pages
+        for path in ("/area/shinjuku", "/area/umeda", "/guide/shinjuku", "/guide/osaka-kita-vs-minami", "/store/oriental-lounge-shinjuku"):
+            resp_iso = self.client.get(f"{path}?staff_test=1")
+            self.assertEqual(resp_iso.status_code, 200, f"Failed on {path}")
+            iso_html = resp_iso.get_data(as_text=True)
+            self.assertIn("3-LAYER ISOMETRIC ROUTE MAP", iso_html, f"Missing 3D iso map on {path}")
+            self.assertIn("__setIsoMapLayer", iso_html, f"Missing layer switcher on {path}")
+            self.assertIsNone(re.search(r"オリエンタル(?!ラウンジ)", iso_html), f"Bare brand name on {path}")
 
         # (d) Stale campaign prefix (`x22_...`) + daytime 15m bucket (`_20261111_1500`) resolves to daytime/20:00
         self.assertEqual(

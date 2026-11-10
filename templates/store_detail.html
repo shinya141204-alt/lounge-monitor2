@@ -1988,6 +1988,10 @@
         <section class="section-card">
             <h2>{{ area_info.short_name }}エリアの客層・狙い目・2軒目スポット</h2>
             <p style="margin: 0; font-size: 0.85rem; color: var(--text-sub);">{{ area_info.short_name }}エリア全体の客層の特徴、混みやすい曜日・時間帯、2軒目に向く周辺スポットは<a href="/area/{{ area_slug }}" style="color: var(--accent-text);">エリアガイド</a>にまとめています。{% if store_insight %}{{ store.seo_name }}だけの記録にもとづく傾向は、上の「記録データから見る傾向」をご覧ください。{% endif %}</p>
+            {% if area_info.iso_map %}
+            {% set iso_map = area_info.iso_map %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
         </section>
         {% endif %}
 

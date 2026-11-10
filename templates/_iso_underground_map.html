@@ -1,0 +1,285 @@
+{% if iso_map %}
+<style>
+    :root {
+        --iso-well-bg: #111217;
+        --iso-card-bg: #16171d;
+        --iso-sub-bg: #1c1e26;
+        --iso-plane-b1: #181a24;
+        --iso-plane-1f: #151720;
+        --iso-plane-2f: #1e1c26;
+        --iso-box-bg: #232533;
+        --iso-store-bg: #281c23;
+        --iso-cafe-bg: #1b2430;
+        --iso-text-main: #ebe8e3;
+        --iso-text-sub: #a39e95;
+        --iso-gold: #c8a46e;
+        --iso-gold-text: #dfc496;
+        --iso-rose: #d8a1aa;
+        --iso-blue: #93b1c9;
+        --iso-dash-hi: #fff3d1;
+        --iso-border: rgba(255, 255, 255, 0.09);
+        --iso-gold-border: rgba(200, 164, 110, 0.42);
+    }
+    html.theme-light,
+    body.theme-light,
+    html[data-theme="light"] {
+        --iso-well-bg: #f1efe9;
+        --iso-card-bg: #faf9f6;
+        --iso-sub-bg: #efece4;
+        --iso-plane-b1: #e7e2d6;
+        --iso-plane-1f: #e2e7ee;
+        --iso-plane-2f: #efe2e5;
+        --iso-box-bg: #ffffff;
+        --iso-store-bg: #f9eef0;
+        --iso-cafe-bg: #edf3f8;
+        --iso-text-main: #1f1e1b;
+        --iso-text-sub: #57524a;
+        --iso-gold: #7a5820;
+        --iso-gold-text: #684916;
+        --iso-rose: #8f3647;
+        --iso-blue: #2e5575;
+        --iso-dash-hi: #7a5820;
+        --iso-border: rgba(28, 27, 24, 0.12);
+        --iso-gold-border: rgba(122, 88, 32, 0.38);
+    }
+    .iso-3d-section {
+        background: var(--iso-card-bg);
+        border: 1px solid var(--iso-gold-border);
+        border-radius: 14px;
+        padding: 18px;
+        margin: 22px 0;
+    }
+    .iso-3d-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .iso-3d-kicker {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        color: var(--iso-gold-text);
+        margin-bottom: 2px;
+    }
+    .iso-3d-title {
+        margin: 0;
+        font-size: 1.02rem;
+        font-weight: 800;
+        color: var(--iso-text-main);
+        line-height: 1.4;
+    }
+    .iso-3d-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .iso-layer-btn {
+        appearance: none;
+        border: 1px solid var(--iso-border);
+        background: var(--iso-sub-bg);
+        color: var(--iso-text-main);
+        font-size: 0.76rem;
+        font-weight: 700;
+        padding: 6px 11px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+    .iso-layer-btn:hover {
+        border-color: var(--iso-gold-border);
+    }
+    .iso-layer-btn.is-active {
+        background: var(--iso-gold);
+        color: #ffffff;
+        border-color: var(--iso-gold);
+    }
+    html:not(.theme-light):not([data-theme="light"]) body:not(.theme-light) .iso-layer-btn.is-active {
+        color: #111216;
+    }
+    .iso-3d-body {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 14px;
+        align-items: stretch;
+    }
+    .iso-svg-well {
+        background: var(--iso-well-bg);
+        border: 1px solid var(--iso-border);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 290px;
+    }
+    .iso-svg-canvas {
+        width: 100%;
+        height: auto;
+        max-height: 320px;
+        display: block;
+    }
+    .iso-layer-group {
+        transition: opacity 0.24s ease;
+    }
+    @keyframes isoDashFlow {
+        to { stroke-dashoffset: -48; }
+    }
+    .iso-anim-dash {
+        stroke-dasharray: 7 5;
+        animation: isoDashFlow 1.8s linear infinite;
+    }
+    .iso-cards-col {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        justify-content: space-between;
+    }
+    .iso-step-card {
+        background: var(--iso-sub-bg);
+        border: 1px solid var(--iso-border);
+        border-radius: 10px;
+        padding: 11px 13px;
+        transition: opacity 0.22s ease, border-color 0.22s ease;
+    }
+    .iso-step-card--b1 { border-left: 3px solid var(--iso-gold); }
+    .iso-step-card--1f { border-left: 3px solid var(--iso-blue); }
+    .iso-step-card--2f { border-left: 3px solid var(--iso-rose); }
+    .iso-step-hdr {
+        font-size: 0.8rem;
+        font-weight: 800;
+        margin: 0 0 4px;
+        color: var(--iso-text-main);
+    }
+    .iso-step-desc {
+        font-size: 0.77rem;
+        color: var(--iso-text-sub);
+        margin: 0;
+        line-height: 1.55;
+    }
+    @media (max-width: 768px) {
+        .iso-3d-body {
+            grid-template-columns: 1fr;
+        }
+        .iso-3d-section {
+            padding: 14px 12px;
+        }
+    }
+</style>
+
+<section class="iso-3d-section" aria-label="{{ iso_map.hub_title }}">
+    <div class="iso-3d-top">
+        <div>
+            <div class="iso-3d-kicker">3-LAYER ISOMETRIC ROUTE MAP ｜ 雨の日・地下直結＆2軒目ハシゴ立体断面</div>
+            <h3 class="iso-3d-title">{{ iso_map.hub_title }}</h3>
+        </div>
+        <div class="iso-3d-controls" role="group" aria-label="立体断面図の階層切替">
+            <button type="button" class="iso-layer-btn is-active" onclick="window.__setIsoMapLayer(this, 'all')">全3層表示</button>
+            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, 'b1')">B1F 地下直結（雨・雪回避）</button>
+            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, '1f')">1F 地上ハシゴ</button>
+            <button type="button" class="iso-layer-btn" onclick="window.__setIsoMapLayer(this, '2f')">2F-3F ラウンジ＆2軒目</button>
+        </div>
+    </div>
+
+    <div class="iso-3d-body">
+        <div class="iso-svg-well">
+            <svg viewBox="0 0 560 320" class="iso-svg-canvas" role="img" aria-label="{{ iso_map.hub_title }}">
+                <title>{{ iso_map.hub_title }}（地下1F直結ルート・地上1F・2〜3Fラウンジ＆2軒目カフェ）</title>
+                <!-- Rain indicator lines above 1F street level -->
+                <g class="iso-layer-group" data-iso-layer="1f" stroke="var(--iso-blue)" stroke-opacity="0.32" stroke-width="1.2">
+                    <line x1="78" y1="12" x2="68" y2="46" />
+                    <line x1="152" y1="10" x2="142" y2="44" />
+                    <line x1="230" y1="14" x2="220" y2="48" />
+                    <line x1="315" y1="10" x2="305" y2="44" />
+                    <line x1="395" y1="12" x2="385" y2="46" />
+                    <line x1="470" y1="10" x2="460" y2="44" />
+                </g>
+
+                <!-- LAYER L=-1: B1F UNDERGROUND DIRECT PASSAGE -->
+                <g class="iso-layer-group" data-iso-layer="b1">
+                    <polygon points="56,248 280,182 504,248 280,312" fill="var(--iso-plane-b1)" stroke="var(--iso-gold)" stroke-opacity="0.65" stroke-width="1.6"/>
+                    <text x="74" y="255" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.b1_title }}</text>
+                    <!-- Station Gate Isometric Block -->
+                    <polygon points="92,242 146,225 196,242 142,259" fill="var(--iso-box-bg)" stroke="var(--iso-blue)" stroke-width="1.4"/>
+                    <text x="104" y="246" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.station_label }}</text>
+                    <!-- Dry Underground Conduit -->
+                    <path d="M 172 242 L 292 212 L 368 236" fill="none" stroke="var(--iso-gold)" stroke-width="3.6" stroke-linecap="round"/>
+                    <path d="M 172 242 L 292 212 L 368 236" fill="none" stroke="var(--iso-dash-hi)" stroke-width="2" class="iso-anim-dash"/>
+                    <!-- Direct Elevator / Escalator Shaft up to Lounge -->
+                    <line x1="292" y1="212" x2="292" y2="84" stroke="var(--iso-gold)" stroke-width="2.2" stroke-dasharray="4 3"/>
+                    <circle cx="292" cy="212" r="5" fill="var(--iso-gold)"/>
+                    <text x="202" y="203" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.b1_exit }}</text>
+                </g>
+
+                <!-- LAYER L=0: 1F STREET LEVEL HOPPING -->
+                <g class="iso-layer-group" data-iso-layer="1f">
+                    <polygon points="56,166 280,100 504,166 280,232" fill="var(--iso-plane-1f)" fill-opacity="0.86" stroke="var(--iso-blue)" stroke-opacity="0.52" stroke-width="1.3"/>
+                    <text x="74" y="172" fill="var(--iso-blue)" font-size="12" font-weight="700">{{ iso_map.f1_title }}</text>
+                    <path d="M 148 160 L 248 136 L 416 160" fill="none" stroke="var(--iso-blue)" stroke-width="2.4" stroke-dasharray="5 5"/>
+                    <text x="168" y="131" fill="var(--iso-text-main)" font-size="12" font-weight="600">{{ iso_map.f1_route }}</text>
+                </g>
+
+                <!-- LAYER L=+1: 2F-3F LOUNGES & 2ND VENUE NIGHT CAFE -->
+                <g class="iso-layer-group" data-iso-layer="2f">
+                    <polygon points="56,84 280,18 504,84 280,150" fill="var(--iso-plane-2f)" fill-opacity="0.90" stroke="var(--iso-rose)" stroke-opacity="0.65" stroke-width="1.6"/>
+                    <text x="74" y="90" fill="var(--iso-rose)" font-size="12" font-weight="700">{{ iso_map.f2_title }}</text>
+                    <!-- 1st Venue Lounge Card -->
+                    <g transform="translate(178, 38)">
+                        <rect x="0" y="0" width="174" height="44" rx="7" fill="var(--iso-store-bg)" stroke="var(--iso-rose)" stroke-width="1.5"/>
+                        <text x="8" y="18" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.store_a_name | truncate(20, True, '…') }}</text>
+                        <text x="8" y="35" fill="var(--iso-rose)" font-size="12" font-weight="700">{{ iso_map.store_a_sub | truncate(21, True, '…') }}</text>
+                    </g>
+                    <!-- 2nd Venue Night Cafe Card -->
+                    <g transform="translate(368, 52)">
+                        <rect x="0" y="0" width="156" height="44" rx="7" fill="var(--iso-cafe-bg)" stroke="var(--iso-gold)" stroke-width="1.5"/>
+                        <text x="8" y="18" fill="var(--iso-text-main)" font-size="12" font-weight="700">{{ iso_map.cafe_name | truncate(17, True, '…') }}</text>
+                        <text x="8" y="35" fill="var(--iso-gold-text)" font-size="12" font-weight="700">{{ iso_map.cafe_sub | truncate(18, True, '…') }}</text>
+                    </g>
+                    <!-- 2nd Venue Hopping Arrow -->
+                    <path d="M 352 62 Q 360 56 368 68" fill="none" stroke="var(--iso-gold)" stroke-width="2.2" class="iso-anim-dash"/>
+                </g>
+            </svg>
+        </div>
+
+        <div class="iso-cards-col">
+            <div class="iso-step-card iso-step-card--b1" data-iso-card="b1">
+                <p class="iso-step-hdr" style="color: var(--iso-gold-text);">① B1F 地下直結・悪天候ルート</p>
+                <p class="iso-step-desc">{{ iso_map.b1_desc }}</p>
+            </div>
+            <div class="iso-step-card iso-step-card--1f" data-iso-card="1f">
+                <p class="iso-step-hdr" style="color: var(--iso-blue);">② 1F 地上ハシゴ・男女比スイッチ</p>
+                <p class="iso-step-desc">{{ iso_map.f1_desc }}</p>
+            </div>
+            <div class="iso-step-card iso-step-card--2f" data-iso-card="2f">
+                <p class="iso-step-hdr" style="color: var(--iso-rose);">③ 2F-3F ラウンジ＆2軒目夜カフェ誘導</p>
+                <p class="iso-step-desc">{{ iso_map.f2_desc }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+if (!window.__setIsoMapLayer) {
+    window.__setIsoMapLayer = function(btn, mode) {
+        var sec = btn.closest('.iso-3d-section');
+        if (!sec) return;
+        var btns = sec.querySelectorAll('.iso-layer-btn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('is-active', btns[i] === btn);
+        }
+        var groups = sec.querySelectorAll('.iso-layer-group');
+        for (var j = 0; j < groups.length; j++) {
+            var gl = groups[j].getAttribute('data-iso-layer');
+            groups[j].style.opacity = (mode === 'all' || mode === gl) ? '1' : '0.16';
+        }
+        var cards = sec.querySelectorAll('.iso-step-card');
+        for (var k = 0; k < cards.length; k++) {
+            var cl = cards[k].getAttribute('data-iso-card');
+            cards[k].style.opacity = (mode === 'all' || mode === cl) ? '1' : '0.42';
+        }
+    };
+}
+</script>
+{% endif %}

@@ -539,6 +539,11 @@
             </aside>
             {% endif %}
 
+            {% if area_iso_maps is defined and area_iso_maps.get('hiroshima') %}
+            {% set iso_map = area_iso_maps.get('hiroshima') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">広島・岡山・松山6店舗の現在人数と割引条件をまとめて確認</div>
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">新天地3店舗・岡山2店舗・松山1店舗のリアルタイム男女比と、4時間帯別の料金比較を公開中。</p>

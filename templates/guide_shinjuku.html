@@ -575,6 +575,11 @@
                 新宿4店はどこも席の距離が40〜50cmと近い。エレベーターに乗る前の90秒で口元と額のテカリだけ整えておくと、最初の10分の印象がまるで違う。座ってからの10分の過ごし方は<a href="/guide/first-10-minutes" style="color:#38bdf8;">乾杯後10分の会話と距離感の記事</a>に譲る。
             </p>
 
+            {% if area_iso_maps is defined and area_iso_maps.get('shinjuku') %}
+            {% set iso_map = area_iso_maps.get('shinjuku') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <aside class="method-note" aria-label="集計方法">
                 <h3>この記事の数字について</h3>
                 <p>

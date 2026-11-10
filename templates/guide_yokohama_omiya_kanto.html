@@ -562,6 +562,11 @@
             </aside>
             {% endif %}
 
+            {% if area_iso_maps is defined and area_iso_maps.get('yokohama') %}
+            {% set iso_map = area_iso_maps.get('yokohama') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">横浜・大宮・宇都宮・高崎5店舗の「いま現在の男女人数」を確認</div>
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">都心行きの電車に乗る前に、地元ターミナル店舗の現在人数・男女比・60分後予測をリアルタイムで比較できます。</p>

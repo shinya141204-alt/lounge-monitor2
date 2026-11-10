@@ -1652,6 +1652,7 @@ class _ReelSceneRenderer:
         # No live measurements (off-hours / all-zero) -> render an honest notice frame, never fabricated headcounts
         self.is_insufficient = (ctx.get("data_status") == "insufficient")
         self.scene1_bar_spec = None
+        self.scene1_iso_tower_spec = None
 
         self.chrome_base = self._build_chrome_sprite()
         if self.is_insufficient:
@@ -1862,9 +1863,9 @@ class _ReelSceneRenderer:
         draw.text((lx, sub_y1), s1_fit, font=f_s1, fill=(214, 222, 235, 245))
         draw.text((lx, sub_y1 + 32), s2_fit, font=f_s2, fill=(214, 222, 235, 245))
 
-        # Concrete #1 Store / Hub / Gap Spotlight glass card (prevents generic nationwide-only cover fatigue)
-        cy1 = 568 if self.is_tiktok else 634
-        cy2 = 772 if self.is_tiktok else 846
+        # Concrete #1 Store / Hub / Gap Spotlight glass card + Fable 5.2 True Isometric 3D Tower Duel
+        cy1 = 562 if self.is_tiktok else 626
+        cy2 = 816 if self.is_tiktok else 886
         draw.rounded_rectangle(
             (lx, cy1, rx_end, cy2),
             radius=24,
@@ -1939,17 +1940,20 @@ class _ReelSceneRenderer:
                 ratio_note = f"1位店 女性比{top1.get('wpct')}%  ｜  全国合計：女性{self.ctx['total_women']}名 / 男性{self.ctx['total_men']}名"
                 s1_left_ratio = _norm_ratio(top1.get("wpct"))
 
-        hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
-        draw.text((lx + 24, cy1 + 18), hl_fit, font=f_hl, fill=acc2)
+        self.scene1_iso_tower_spec = self._build_scene1_iso_tower_spec(rx_end, cy1, cy2)
+        text_avail_w = (sw - 236) if self.scene1_iso_tower_spec else (sw - 48)
 
-        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 36 if self.is_tiktok else 38, 22)
-        draw.text((lx + 24, cy1 + 58), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
+        hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, text_avail_w, 19, 13)
+        draw.text((lx + 22, cy1 + 18), hl_fit, font=f_hl, fill=acc2)
 
-        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 13)
-        draw.text((lx + 24, cy1 + 122), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
+        sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, text_avail_w, 34 if self.is_tiktok else 36, 19)
+        draw.text((lx + 22, cy1 + 56), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
+
+        rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, text_avail_w, 17, 12)
+        draw.text((lx + 22, cy1 + 116), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
         if s1_left_ratio is not None:
-            s1_bx, s1_by, s1_bw, s1_bh = lx + 24, cy1 + 162, sw - 48, 18
+            s1_bx, s1_by, s1_bw, s1_bh = lx + 22, cy1 + 156, text_avail_w, 18
             draw.rounded_rectangle((s1_bx, s1_by, s1_bx + s1_bw, s1_by + s1_bh), radius=9, fill=(32, 40, 62, 235))
             self.scene1_bar_spec = (
                 s1_bx,
@@ -1961,8 +1965,35 @@ class _ReelSceneRenderer:
                 self.theme["bar_left"],
                 self.theme["bar_right"],
             )
+            leg_txt = "上段ローズ＝女性 / 下段ブルー＝男性（右3Dタワー比較）" if self.scene1_iso_tower_spec else "ローズ＝女性比率 / ブルー＝男性比率"
+            lg_fit, f_lg, _ = ogp_generator.fit_text_and_font(draw, leg_txt, text_avail_w, 13, 11)
+            draw.text((lx + 22, cy1 + 188), lg_fit, font=f_lg, fill=(148, 163, 184, 225))
         else:
             self.scene1_bar_spec = None
+
+        if self.scene1_iso_tower_spec:
+            wx1, wy1, wx2, wy2 = self.scene1_iso_tower_spec["well_rect"]
+            draw.rounded_rectangle(
+                (wx1, wy1, wx2, wy2),
+                radius=18,
+                fill=(10, 12, 20, 246),
+                outline=(200, 164, 110, 145),
+                width=2,
+            )
+            # Isometric floor grid lines inside the 3D well
+            gcx = (wx1 + wx2) // 2
+            gcy = wy2 - 36
+            for step in (-26, 0, 26):
+                draw.line(
+                    [(gcx - 66 + step, gcy - 14), (gcx + 16 + step, gcy + 26)],
+                    fill=(200, 164, 110, 38),
+                    width=1,
+                )
+                draw.line(
+                    [(gcx - 16 + step, gcy + 26), (gcx + 66 + step, gcy - 14)],
+                    fill=(200, 164, 110, 38),
+                    width=1,
+                )
 
         # Bottom teaser pill (inside safe zone)
         ty_pill = 832 if self.is_tiktok else 906
@@ -1973,6 +2004,234 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((nx, ty_pill, nx + nw, ty_pill + 50), radius=25, fill=(24, 28, 46, 234), outline=acc, width=2)
         draw.text((nx + 18, ty_pill + 14), nt_fit, font=f_nt, fill=acc)
         return sp
+
+    def _build_scene1_iso_tower_spec(self, rx_end: int, cy1: int, cy2: int) -> dict | None:
+        """Build verified 3D isometric dual-tower specification for Scene 1 (returns None when stores are empty)."""
+        if int(self.ctx.get("active_store_count") or 0) <= 0:
+            return None
+
+        tower_a = None
+        tower_b = None
+        badge_lbl = "3D人数比較"
+
+        if self.rt == "tiktok_gap_shock":
+            gp0 = (self.ctx.get("gap_pairs") or [None])[0]
+            if gp0 and gp0.get("heaven_store") and gp0.get("crowded_store"):
+                hi = gp0["heaven_store"]
+                lo = gp0["crowded_store"]
+                tower_a = {
+                    "w": int(hi.get("women") or 0),
+                    "m": int(hi.get("men") or 0),
+                    "pct_lbl": f"女{hi.get('wpct')}%",
+                    "tag": "狙い目",
+                }
+                tower_b = {
+                    "w": int(lo.get("women") or 0),
+                    "m": int(lo.get("men") or 0),
+                    "pct_lbl": f"女{lo.get('wpct')}%",
+                    "tag": "混雑店",
+                }
+                badge_lbl = f"差+{gp0.get('gap_pt', 0)}pt"
+        elif self.rt == "area_battle":
+            zones = [z for z in (self.ctx.get("area_battles") or []) if int(z.get("total") or 0) > 0]
+            if len(zones) >= 2:
+                z0, z1 = zones[0], zones[1]
+                tower_a = {
+                    "w": int(z0.get("women") or 0),
+                    "m": int(z0.get("men") or 0),
+                    "pct_lbl": f"女{z0.get('wpct')}%",
+                    "tag": str(z0.get("label") or "1位")[:3],
+                }
+                tower_b = {
+                    "w": int(z1.get("women") or 0),
+                    "m": int(z1.get("men") or 0),
+                    "pct_lbl": f"女{z1.get('wpct')}%",
+                    "tag": str(z1.get("label") or "2位")[:3],
+                }
+                badge_lbl = "3D都市対決"
+        elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
+            l_list = self.ctx.get("ladies_top5") or []
+            if len(l_list) >= 2:
+                l0, l1 = l_list[0], l_list[1]
+                tower_a = {
+                    "w": int(l0.get("women") or 0),
+                    "m": int(l0.get("men") or 0),
+                    "pct_lbl": f"男{l0.get('mpct')}%",
+                    "tag": "待ち0圏",
+                }
+                tower_b = {
+                    "w": int(l1.get("women") or 0),
+                    "m": int(l1.get("men") or 0),
+                    "pct_lbl": f"男{l1.get('mpct')}%",
+                    "tag": "2位店",
+                }
+                badge_lbl = "3D男女比"
+
+        if not (tower_a and tower_b):
+            v_list = (
+                (self.ctx.get("midnight_top4") if self.rt == "tiktok_midnight_cliff" else None)
+                or self.ctx.get("top5_volume")
+                or []
+            )
+            if len(v_list) >= 2:
+                s0, s1 = v_list[0], v_list[1]
+                tower_a = {
+                    "w": int(s0.get("women") or 0),
+                    "m": int(s0.get("men") or 0),
+                    "pct_lbl": f"女{s0.get('wpct')}%",
+                    "tag": "1位店",
+                }
+                tower_b = {
+                    "w": int(s1.get("women") or 0),
+                    "m": int(s1.get("men") or 0),
+                    "pct_lbl": f"女{s1.get('wpct')}%",
+                    "tag": "2位店",
+                }
+            elif len(v_list) == 1:
+                s0 = v_list[0]
+                act_cnt = max(1, int(self.ctx.get("active_store_count") or 1))
+                tower_a = {
+                    "w": int(s0.get("women") or 0),
+                    "m": int(s0.get("men") or 0),
+                    "pct_lbl": f"女{s0.get('wpct')}%",
+                    "tag": "1位店",
+                }
+                tower_b = {
+                    "w": max(1, int(self.ctx.get("total_women") or 0) // act_cnt),
+                    "m": max(1, int(self.ctx.get("total_men") or 0) // act_cnt),
+                    "pct_lbl": f"平均{self.ctx.get('overall_wpct') or 50}%",
+                    "tag": "全国平均",
+                }
+
+        if not (tower_a and tower_b):
+            return None
+
+        tot_a = max(1, tower_a["w"] + tower_a["m"])
+        tot_b = max(1, tower_b["w"] + tower_b["m"])
+        max_tot = max(tot_a, tot_b, 12)
+        max_px = 104.0
+
+        for tw, tot in ((tower_a, tot_a), (tower_b, tot_b)):
+            total_h = max(26.0, min(max_px, (tot / max_tot) * max_px))
+            w_ratio = max(0.0, min(1.0, tw["w"] / tot))
+            tw["h_w"] = round(total_h * w_ratio, 2)
+            tw["h_m"] = round(total_h * (1.0 - w_ratio), 2)
+
+        wx1 = rx_end - 204
+        wy1 = cy1 + 14
+        wx2 = rx_end - 14
+        wy2 = cy2 - 14
+        return {
+            "well_rect": (wx1, wy1, wx2, wy2),
+            "tower_a": tower_a,
+            "tower_b": tower_b,
+            "badge_lbl": badge_lbl,
+        }
+
+    def _draw_isometric_3d_tower_duel(self, draw: ImageDraw.ImageDraw, spec: dict, ease: float) -> None:
+        """
+        Render Fable 5.2 True 30-degree Isometric Dual-Tower comparison in-place onto `draw`.
+        Uses 3 discrete luminance planes (top 100%, left 78%, right 60%) for Dusty Rose (women) & Slate Blue (men).
+        """
+        wx1, wy1, wx2, wy2 = spec["well_rect"]
+        ease_clamped = max(0.08, min(1.0, float(ease)))
+        rx = 22
+        ry = 12
+
+        # Palette: Dusty Rose (#d8a1aa) & Slate Blue (#93b1c9) with 3-plane isometric shading
+        col_w_top = (216, 161, 170, 255)
+        col_w_left = (176, 124, 133, 255)
+        col_w_right = (140, 94, 102, 255)
+
+        col_m_top = (147, 177, 201, 255)
+        col_m_left = (114, 142, 166, 255)
+        col_m_right = (86, 111, 133, 255)
+
+        def _draw_iso_prism(bx: int, by: int, z0: float, z1: float, c_top, c_left, c_right):
+            if z1 - z0 < 1.0:
+                return
+            y0 = by - z0
+            y1 = by - z1
+            # Left face
+            draw.polygon(
+                [(bx - rx, y0), (bx, y0 + ry), (bx, y1 + ry), (bx - rx, y1)],
+                fill=c_left,
+            )
+            # Right face
+            draw.polygon(
+                [(bx, y0 + ry), (bx + rx, y0), (bx + rx, y1), (bx, y1 + ry)],
+                fill=c_right,
+            )
+            # Top face
+            draw.polygon(
+                [(bx, y1 - ry), (bx + rx, y1), (bx, y1 + ry), (bx - rx, y1)],
+                fill=c_top,
+            )
+            # Subtle architectural floor ticks every 16px
+            z_tick = z0 + 15.0
+            while z_tick < z1 - 3.0:
+                yt = by - z_tick
+                draw.line([(bx - rx + 1, yt), (bx, yt + ry)], fill=(15, 18, 28, 120), width=1)
+                draw.line([(bx, yt + ry), (bx + rx - 1, yt)], fill=(15, 18, 28, 140), width=1)
+                z_tick += 15.0
+
+        f_tag = _get_reel_font(12)
+        f_pct = _get_reel_font(13)
+
+        # Draw back-right tower (tower_b) then front-left tower (tower_a)
+        towers_pos = [
+            (spec["tower_b"], wx1 + 136, wy2 - 34, (148, 163, 184, 245)),
+            (spec["tower_a"], wx1 + 56, wy2 - 28, (243, 213, 160, 255)),
+        ]
+        for tw, bx, by, lbl_col in towers_pos:
+            hm = tw["h_m"] * ease_clamped
+            hw = tw["h_w"] * ease_clamped
+            total_z = hm + hw
+            # Base shadow diamond
+            draw.polygon(
+                [(bx, by - ry + 2), (bx + rx + 3, by + 2), (bx, by + ry + 4), (bx - rx - 3, by + 2)],
+                fill=(4, 6, 12, 190),
+            )
+            _draw_iso_prism(bx, by, 0.0, hm, col_m_top, col_m_left, col_m_right)
+            _draw_iso_prism(bx, by, hm, total_z, col_w_top, col_w_left, col_w_right)
+            # Highlight top diamond rim
+            y_top = by - total_z
+            draw.polygon(
+                [(bx, y_top - ry), (bx + rx, y_top), (bx, y_top + ry), (bx - rx, y_top)],
+                outline=(255, 255, 255, 150),
+            )
+            # Floating % badge above tower
+            pct_s = tw["pct_lbl"]
+            pw = int(draw.textlength(pct_s, font=f_pct)) + 12
+            px = bx - pw // 2
+            py = int(max(wy1 + 28, y_top - ry - 24))
+            draw.rounded_rectangle(
+                (px, py, px + pw, py + 20),
+                radius=6,
+                fill=(18, 22, 36, 236),
+                outline=(lbl_col[0], lbl_col[1], lbl_col[2], 180),
+                width=1,
+            )
+            draw.text((px + 6, py + 2), pct_s, font=f_pct, fill=lbl_col)
+            # Base tag below tower
+            tag_s = tw["tag"]
+            tw_w = int(draw.textlength(tag_s, font=f_tag))
+            draw.text((bx - tw_w // 2, by + ry + 4), tag_s, font=f_tag, fill=(214, 222, 235, 235))
+
+        # Top well header badge (e.g., "差+53pt" or "3D比較")
+        b_txt = spec.get("badge_lbl") or "3D比較"
+        bw = int(draw.textlength(b_txt, font=f_tag)) + 16
+        bx_pill = wx2 - bw - 8
+        by_pill = wy1 + 7
+        draw.rounded_rectangle(
+            (bx_pill, by_pill, bx_pill + bw, by_pill + 20),
+            radius=10,
+            fill=(44, 34, 22, 240),
+            outline=(200, 164, 110, 210),
+            width=1,
+        )
+        draw.text((bx_pill + 8, by_pill + 2), b_txt, font=f_tag, fill=(243, 213, 160, 255))
+
 
     def _build_scene2_header_sprite(self) -> Image.Image:
         W = self.W
@@ -2468,24 +2727,29 @@ class _ReelSceneRenderer:
         if s1_alpha > 0.01:
             dy = int(20 * (1.0 - _ease_out_cubic(min(1.0, t / 0.28))))
             s1_bar = getattr(self, "scene1_bar_spec", None)
-            if s1_bar:
+            s1_iso = getattr(self, "scene1_iso_tower_spec", None)
+            if s1_bar or s1_iso:
                 sp1_base = self.scene1_sprite.copy()
                 s1_draw = ImageDraw.Draw(sp1_base, "RGBA")
-                s1_bx, s1_by, s1_bw, s1_bh, s1_rad, s1_lratio, s1_lcol, s1_rcol = s1_bar
-                s1_bease = _ease_out_cubic(min(1.0, max(0.08, (t - 0.06) / 0.88)))
-                cur_bw = max(s1_rad * 2, int(s1_bw * s1_bease))
-                left_bw = max(s1_rad * 2, min(cur_bw, int(cur_bw * s1_lratio)))
-                if cur_bw > s1_rad * 2:
+                if s1_bar:
+                    s1_bx, s1_by, s1_bw, s1_bh, s1_rad, s1_lratio, s1_lcol, s1_rcol = s1_bar
+                    s1_bease = _ease_out_cubic(min(1.0, max(0.08, (t - 0.06) / 0.88)))
+                    cur_bw = max(s1_rad * 2, int(s1_bw * s1_bease))
+                    left_bw = max(s1_rad * 2, min(cur_bw, int(cur_bw * s1_lratio)))
+                    if cur_bw > s1_rad * 2:
+                        s1_draw.rounded_rectangle(
+                            (s1_bx, s1_by, s1_bx + cur_bw, s1_by + s1_bh),
+                            radius=s1_rad,
+                            fill=(*s1_rcol, 235),
+                        )
                     s1_draw.rounded_rectangle(
-                        (s1_bx, s1_by, s1_bx + cur_bw, s1_by + s1_bh),
+                        (s1_bx, s1_by, s1_bx + left_bw, s1_by + s1_bh),
                         radius=s1_rad,
-                        fill=(*s1_rcol, 235),
+                        fill=(*s1_lcol, 255),
                     )
-                s1_draw.rounded_rectangle(
-                    (s1_bx, s1_by, s1_bx + left_bw, s1_by + s1_bh),
-                    radius=s1_rad,
-                    fill=(*s1_lcol, 255),
-                )
+                if s1_iso:
+                    iso_ease = _ease_out_cubic(min(1.0, max(0.10, (t - 0.04) / 0.82)))
+                    self._draw_isometric_3d_tower_duel(s1_draw, s1_iso, iso_ease)
                 sp1 = _apply_opacity(sp1_base, s1_alpha)
                 canvas.alpha_composite(sp1, dest=(0, dy))
                 if sp1 is not sp1_base:

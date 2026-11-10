@@ -559,6 +559,11 @@
             </aside>
             {% endif %}
 
+            {% if area_iso_maps is defined and area_iso_maps.get('nagoya') %}
+            {% set iso_map = area_iso_maps.get('nagoya') %}
+            {% include '_iso_underground_map.html' %}
+            {% endif %}
+
             <div class="cta-box">
                 <div class="cta-box-title" style="font-size:1.05rem;font-weight:800;">名古屋（栄・錦・住吉）5店舗の「いま現在の男女人数」を確認</div>
                 <p class="cta-box-desc" style="font-size:0.86rem;margin:8px 0 4px;">サカエチカの階段を上る前に、錦・栄・住吉5店舗の現在人数・男女比・60分後予測をリアルタイムで比較できます。</p>

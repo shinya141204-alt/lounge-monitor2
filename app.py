@@ -171,6 +171,7 @@ def _clear_login_failures(ip_addr: str) -> None:
 @app.context_processor
 def inject_auth_flags():
     """Automatically inject staff/master session flags (and unread inquiry badge for master) into every template."""
+    import portal_guides
     is_m = bool(session.get('is_master'))
     unread = {'unread_total': 0, 'unread_priority': 0}
     if is_m:
@@ -184,6 +185,7 @@ def inject_auth_flags():
         'is_master': is_m,
         'ops_unread_total': unread.get('unread_total', 0),
         'ops_unread_priority': unread.get('unread_priority', 0),
+        'area_iso_maps': portal_guides.AREA_3D_CROSS_SECTIONS,
     }
 
 
