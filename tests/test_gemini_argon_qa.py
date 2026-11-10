@@ -38,53 +38,56 @@ class TestGemini4ArgonPipeline(unittest.TestCase):
     def setUp(self):
         self.sample_prompt = '相席ナビのリアルタイム集計を分析し、JSON {"headline": "..."} で出力せよ。'
 
-    def test_default_gemini_models_starts_with_argon(self):
-        """Verify DEFAULT_GEMINI_MODELS prioritizes gemini-4-argon."""
+    def test_default_gemini_models_starts_with_carbon(self):
+        """Verify DEFAULT_GEMINI_MODELS prioritizes gemini-4-carbon with gemini-4-argon fallback."""
+        self.assertIn("gemini-4-carbon", sns_editorial.DEFAULT_GEMINI_MODELS)
         self.assertIn("gemini-4-argon", sns_editorial.DEFAULT_GEMINI_MODELS)
-        self.assertEqual(sns_editorial.DEFAULT_GEMINI_MODELS[0], "gemini-4-argon")
+        self.assertEqual(sns_editorial.DEFAULT_GEMINI_MODELS[0], "gemini-4-carbon")
+        self.assertEqual(sns_editorial.DEFAULT_GEMINI_MODELS[1], "gemini-4-argon")
 
-    def test_build_endpoint_request_argon_thinking_levels(self):
-        """Verify thinkingLevel (LOW, MEDIUM, HIGH) and output tokens expansion for Argon."""
-        # High thinking level (>=2048 budget)
-        url, headers, params, payload = sns_editorial._build_endpoint_request(
-            "ai_studio",
-            "gemini-4-argon",
-            "fake_key",
-            self.sample_prompt,
-            max_output_tokens=3000,
-            thinking_budget=2048,
-        )
-        self.assertIn("gemini-4-argon:generateContent", url)
-        self.assertEqual(headers["x-goog-api-key"], "fake_key")
-        gen_cfg = payload["generationConfig"]
-        self.assertEqual(gen_cfg.get("thinkingConfig"), {"thinkingLevel": "HIGH"})
-        self.assertGreaterEqual(gen_cfg.get("maxOutputTokens", 0), 4096)
+    def test_build_endpoint_request_carbon_and_argon_thinking_levels(self):
+        """Verify thinkingLevel (LOW, MEDIUM, HIGH) and output tokens expansion for Carbon and Argon."""
+        for m_name in ("gemini-4-carbon", "gemini-4-argon"):
+            # High thinking level (>=2048 budget)
+            url, headers, params, payload = sns_editorial._build_endpoint_request(
+                "ai_studio",
+                m_name,
+                "fake_key",
+                self.sample_prompt,
+                max_output_tokens=3000,
+                thinking_budget=2048,
+            )
+            self.assertIn(f"{m_name}:generateContent", url)
+            self.assertEqual(headers["x-goog-api-key"], "fake_key")
+            gen_cfg = payload["generationConfig"]
+            self.assertEqual(gen_cfg.get("thinkingConfig"), {"thinkingLevel": "HIGH"})
+            self.assertGreaterEqual(gen_cfg.get("maxOutputTokens", 0), 4096)
 
-        # Medium thinking level (1024 <= budget < 2048)
-        _, _, _, payload_med = sns_editorial._build_endpoint_request(
-            "ai_studio",
-            "gemini-4-argon",
-            "fake_key",
-            self.sample_prompt,
-            max_output_tokens=2000,
-            thinking_budget=1024,
-        )
-        self.assertEqual(payload_med["generationConfig"].get("thinkingConfig"), {"thinkingLevel": "MEDIUM"})
+            # Medium thinking level (1024 <= budget < 2048)
+            _, _, _, payload_med = sns_editorial._build_endpoint_request(
+                "ai_studio",
+                m_name,
+                "fake_key",
+                self.sample_prompt,
+                max_output_tokens=2000,
+                thinking_budget=1024,
+            )
+            self.assertEqual(payload_med["generationConfig"].get("thinkingConfig"), {"thinkingLevel": "MEDIUM"})
 
-        # Low thinking level (< 1024 budget)
-        _, _, _, payload_low = sns_editorial._build_endpoint_request(
-            "ai_studio",
-            "gemini-4-argon",
-            "fake_key",
-            self.sample_prompt,
-            max_output_tokens=2000,
-            thinking_budget=512,
-        )
-        self.assertEqual(payload_low["generationConfig"].get("thinkingConfig"), {"thinkingLevel": "LOW"})
+            # Low thinking level (< 1024 budget)
+            _, _, _, payload_low = sns_editorial._build_endpoint_request(
+                "ai_studio",
+                m_name,
+                "fake_key",
+                self.sample_prompt,
+                max_output_tokens=2000,
+                thinking_budget=512,
+            )
+            self.assertEqual(payload_low["generationConfig"].get("thinkingConfig"), {"thinkingLevel": "LOW"})
 
     @mock.patch("requests.get")
-    def test_discover_ai_studio_models_argon_priority(self, mock_get):
-        """Verify _discover_ai_studio_models discovers and ranks gemini-4-argon first."""
+    def test_discover_ai_studio_models_carbon_priority(self, mock_get):
+        """Verify _discover_ai_studio_models discovers and ranks gemini-4-carbon first, gemini-4-argon second."""
         mock_resp = mock.MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -101,27 +104,37 @@ class TestGemini4ArgonPipeline(unittest.TestCase):
                     "name": "models/gemini-4-argon",
                     "supportedGenerationMethods": ["generateContent"],
                 },
+                {
+                    "name": "models/gemini-4-carbon",
+                    "supportedGenerationMethods": ["generateContent"],
+                },
             ]
         }
         mock_get.return_value = mock_resp
 
         discovered = sns_editorial._discover_ai_studio_models("test_key_discovery_123")
         self.assertGreater(len(discovered), 0)
-        self.assertEqual(discovered[0], "gemini-4-argon")
+        self.assertEqual(discovered[0], "gemini-4-carbon")
+        self.assertEqual(discovered[1], "gemini-4-argon")
         self.assertIn("gemini-3.1-pro-preview", discovered)
         self.assertIn("gemini-2.5-flash", discovered)
 
     @mock.patch("sns_editorial.get_gemini_api_key", return_value="fake_gemini_key")
     @mock.patch("sns_editorial.get_claude_api_key", return_value="")
     @mock.patch("requests.post")
-    def test_call_editorial_ai_json_argon_failover_to_pro_and_flash(self, mock_post, mock_c_key, mock_g_key):
-        """Verify failover: when gemini-4-argon encounters 429/404, fallback to Pro/Flash succeeds."""
-        # 1st call (gemini-4-argon) returns 429 Rate Limit
+    def test_call_editorial_ai_json_carbon_failover_to_argon_and_pro(self, mock_post, mock_c_key, mock_g_key):
+        """Verify failover: when gemini-4-carbon encounters 429/404, fallback to Argon/Pro succeeds."""
+        # 1st call (gemini-4-carbon) returns 429 Rate Limit
         resp_429 = mock.MagicMock()
         resp_429.status_code = 429
-        resp_429.text = "Quota exceeded for gemini-4-argon"
+        resp_429.text = "Quota exceeded for gemini-4-carbon"
 
-        # 2nd call (gemini-3.1-pro-preview) succeeds
+        # 2nd call (gemini-4-argon) returns 404
+        resp_404 = mock.MagicMock()
+        resp_404.status_code = 404
+        resp_404.text = "gemini-4-argon not found"
+
+        # 3rd call (gemini-3.1-pro-preview) succeeds
         resp_ok = mock.MagicMock()
         resp_ok.status_code = 200
         resp_ok.json.return_value = {
@@ -135,7 +148,7 @@ class TestGemini4ArgonPipeline(unittest.TestCase):
                 }
             ]
         }
-        mock_post.side_effect = [resp_429, resp_ok]
+        mock_post.side_effect = [resp_429, resp_404, resp_ok]
 
         parsed, model_used, err = sns_editorial.call_editorial_ai_json(
             prompt="テストプロンプト",
@@ -146,10 +159,12 @@ class TestGemini4ArgonPipeline(unittest.TestCase):
 
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.get("headline"), "週末ピーク直前！梅田ラウンジ速報")
-        # Ensure gemini-4-argon was attempted first
-        self.assertIn("gemini-4-argon", mock_post.call_args_list[0][0][0])
-        # Second call was Pro fallback
-        self.assertIn("gemini-3.1-pro-preview", mock_post.call_args_list[1][0][0])
+        # Ensure gemini-4-carbon was attempted first
+        self.assertIn("gemini-4-carbon", mock_post.call_args_list[0][0][0])
+        # Second call was gemini-4-argon fallback
+        self.assertIn("gemini-4-argon", mock_post.call_args_list[1][0][0])
+        # Third call was Pro fallback
+        self.assertIn("gemini-3.1-pro-preview", mock_post.call_args_list[2][0][0])
 
 
 class TestVisualQAGate(unittest.TestCase):
@@ -161,6 +176,13 @@ class TestVisualQAGate(unittest.TestCase):
             {"name": "ag 渋谷", "men": 20, "women": 24, "area": "渋谷", "status": "open"},
             {"name": "JIS 新宿", "men": 15, "women": 18, "area": "新宿", "status": "open"},
         ]
+
+    def test_qa_models_fallback_chain_prioritizes_carbon(self):
+        """Verify QA_MODELS_FALLBACK_CHAIN has gemini-4-carbon at rank 0 and gemini-4-argon at rank 1."""
+        self.assertIn("gemini-4-carbon", visual_qa_gate.QA_MODELS_FALLBACK_CHAIN)
+        self.assertIn("gemini-4-argon", visual_qa_gate.QA_MODELS_FALLBACK_CHAIN)
+        self.assertEqual(visual_qa_gate.QA_MODELS_FALLBACK_CHAIN[0], "gemini-4-carbon")
+        self.assertEqual(visual_qa_gate.QA_MODELS_FALLBACK_CHAIN[1], "gemini-4-argon")
 
     def test_inspect_reel_fail_open_when_no_api_key(self):
         """Fail-Open test: When API key is missing, visual QA must pass immediately."""
@@ -225,7 +247,7 @@ class TestVisualQAGate(unittest.TestCase):
         self.assertEqual(res.get("hook_strength"), 90)
         self.assertFalse(res.get("text_overflow"))
         self.assertFalse(res.get("text_overlap"))
-        self.assertEqual(res.get("model_used"), "gemini-4-argon")
+        self.assertEqual(res.get("model_used"), "gemini-4-carbon")
 
     @mock.patch("requests.post")
     def test_inspect_reel_rejection_and_alternative_template(self, mock_post):
@@ -287,6 +309,35 @@ class TestVisualQAGate(unittest.TestCase):
         res = visual_qa_gate.inspect_image_visual_quality(b"", image_type="ogp")
         self.assertTrue(res.get("pass"))
         self.assertEqual(res.get("overall_score"), 100)
+
+    @mock.patch("requests.post")
+    def test_inspect_image_visual_quality_carbon_thinking_config(self, mock_post):
+        """Verify inspect_image_visual_quality applies thinkingConfig LOW and maxOutputTokens 2048 to Carbon."""
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {"text": json.dumps({"pass": True, "overall_score": 95, "issues": []})}
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_post.return_value = mock_resp
+
+        dummy_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        res = visual_qa_gate.inspect_image_visual_quality(
+            dummy_png, image_type="ogp", api_key="dummy_key"
+        )
+        self.assertTrue(res.get("pass"))
+        self.assertEqual(res.get("model_used"), "gemini-4-carbon")
+        called_json = mock_post.call_args[1].get("json") or {}
+        gen_cfg = called_json.get("generationConfig") or {}
+        self.assertEqual(gen_cfg.get("thinkingConfig"), {"thinkingLevel": "LOW"})
+        self.assertEqual(gen_cfg.get("maxOutputTokens"), 2048)
 
 
 class TestInstagramAndOgpIntegration(unittest.TestCase):

@@ -34,8 +34,9 @@ GEMINI_KEY_STORAGE_PREFIX = "token:gemini_api_key"
 CLAUDE_KEY_STORAGE_PREFIX = "token:claude_api_key"
 AI_ENGINE_PREF_KEY = "editorial:ai_engine_pref"
 
-# Upgraded to Gemini 4 Argon -> Pro -> Standard Flash -> Lite emergency fallback
+# Upgraded to Gemini 4 Carbon -> Argon -> Pro -> Standard Flash -> Lite emergency fallback
 DEFAULT_GEMINI_MODELS = (
+    "gemini-4-carbon",
     "gemini-4-argon",
     "gemini-3.1-pro-preview",
     "gemini-2.5-pro",
@@ -4123,6 +4124,7 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
         if r.status_code != 200:
             return []
         models = (r.json() or {}).get("models") or []
+        carbon_cands = []
         argon_cands = []
         pro_cands = []
         flash_cands = []
@@ -4132,7 +4134,7 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             "1.0", "1.5", "robotics", "computer-use", "omni", "live", "image",
             "dialog", "learnlm", "gemma", "bison", "thinking",
         )
-        ver_re = re.compile(r"^gemini-(\d+(?:\.\d+)?)-(argon|pro|flash)(?:-[a-z0-9.-]+)?$")
+        ver_re = re.compile(r"^gemini-(\d+(?:\.\d+)?)-(carbon|argon|pro|flash)(?:-[a-z0-9.-]+)?$")
         for m in models:
             methods = m.get("supportedGenerationMethods") or []
             if "generateContent" not in methods:
@@ -4143,7 +4145,9 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
                 continue
             vm = ver_re.match(low)
             if not vm:
-                if "argon" in low:
+                if "carbon" in low:
+                    carbon_cands.append((4.0, name))
+                elif "argon" in low:
                     argon_cands.append((4.0, name))
                 continue
             try:
@@ -4153,7 +4157,9 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             if ver_num < 2.5:
                 continue
             kind = vm.group(2)
-            if kind == "argon" or "argon" in low:
+            if kind == "carbon" or "carbon" in low:
+                carbon_cands.append((ver_num, name))
+            elif kind == "argon" or "argon" in low:
                 argon_cands.append((ver_num, name))
             elif "pro" in low and "customtools" not in low:
                 pro_cands.append((ver_num, name))
@@ -4162,7 +4168,7 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             elif "flash" in low and "lite" in low:
                 lite_cands.append((ver_num, name))
 
-        # Pro / Argon: newest numeric version first (e.g. gemini-4-argon, gemini-3.1-pro-preview > gemini-2.5-pro); non-exp first.
+        # Carbon / Pro / Argon: newest numeric version first (e.g. gemini-4-carbon, gemini-4-argon, gemini-3.1-pro-preview > gemini-2.5-pro); non-exp first.
         def _pro_key(item):
             ver_num, nm = item
             low_nm = nm.lower()
@@ -4174,13 +4180,14 @@ def _discover_ai_studio_models(api_key: str, timeout: float = 4.5) -> list:
             low_nm = nm.lower()
             return (not ("exp" in low_nm), "preview" not in low_nm, ver_num, low_nm)
 
+        carbon_sorted = [nm for _, nm in sorted(carbon_cands, key=_pro_key, reverse=True)]
         argon_sorted = [nm for _, nm in sorted(argon_cands, key=_pro_key, reverse=True)]
         pro_sorted = [nm for _, nm in sorted(pro_cands, key=_pro_key, reverse=True)]
         flash_sorted = [nm for _, nm in sorted(flash_cands, key=_flash_key, reverse=True)]
         lite_sorted = [nm for _, nm in sorted(lite_cands, key=_flash_key, reverse=True)]
 
         ranked = []
-        for lst, cap in ((argon_sorted, 1), (pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
+        for lst, cap in ((carbon_sorted, 1), (argon_sorted, 1), (pro_sorted, 2), (flash_sorted, 2), (lite_sorted, 1)):
             for item in lst[:cap]:
                 if item not in ranked:
                     ranked.append(item)
@@ -4357,7 +4364,7 @@ def _build_endpoint_request(
         "responseMimeType": "application/json",
     }
     low_m = (model_name or "").lower()
-    if "argon" in low_m or low_m.startswith("gemini-4"):
+    if "carbon" in low_m or "argon" in low_m or low_m.startswith("gemini-4"):
         if tb_req >= 2048:
             th_level = "HIGH"
         elif tb_req >= 1024:
@@ -4425,11 +4432,12 @@ def call_editorial_ai_json(
     prefer_fast: bool = False,
     prefer_fable: bool = False,
     prefer_argon: bool = False,
+    prefer_carbon: bool = False,
 ) -> tuple:
     """
-    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Argon / Pro / Flash).
+    Unified Dual-Engine AI JSON caller supporting BOTH Anthropic Claude (Fable / Opus / Sonnet) and Upgraded Google Gemini (Carbon / Argon / Pro / Flash).
     Automatically routes based on configured keys and `get_ai_engine_pref()`, with instant failover across providers/models.
-    `prefer_argon=True` prioritizes `gemini-4-argon` for deep reasoning, math analysis, and visual inspections.
+    `prefer_carbon=True` (or `prefer_argon=True`) prioritizes `gemini-4-carbon` / `gemini-4-argon` for deep reasoning, math analysis, and visual inspections.
     `prefer_fable=True` promotes 1M-context `claude-fable-5-2` (effort=high) for flagship strategy & long-form columns while keeping daily SNS on Opus/Sonnet.
     Returns `(parsed_dict_or_None, model_label_str, last_error_str)`.
     """
@@ -4702,7 +4710,14 @@ def call_editorial_ai_json(
 
             if prefer_fast:
                 trial_models = list(g_models[:3])
-                if prefer_argon:
+                if prefer_carbon:
+                    top_carbon = next((m for m in g_models if "carbon" in m.lower()), None)
+                    if top_carbon and top_carbon in trial_models:
+                        trial_models.remove(top_carbon)
+                        trial_models.insert(0, top_carbon)
+                    elif top_carbon:
+                        trial_models.insert(0, top_carbon)
+                elif prefer_argon:
                     top_argon = next((m for m in g_models if "argon" in m.lower()), None)
                     if top_argon and top_argon in trial_models:
                         trial_models.remove(top_argon)
@@ -4710,11 +4725,14 @@ def call_editorial_ai_json(
                     elif top_argon:
                         trial_models.insert(0, top_argon)
             else:
-                # Prioritize gemini-4-argon first for deep math/reasoning & research,
+                # Prioritize gemini-4-carbon first, then gemini-4-argon for deep math/reasoning & research,
                 # then top healthy Pro (gemini-3.1-pro-preview / gemini-2.5-pro),
                 # then GA Flash (gemini-2.5-flash), then Flash-Lite emergency fallback.
                 trial_models = []
-                top_argon = next((m for m in g_models if "argon" in m.lower()), None)
+                top_carbon = next((m for m in g_models if "carbon" in m.lower()), None)
+                if top_carbon and (top_carbon not in _unhealthy_models or prefer_carbon):
+                    trial_models.append(top_carbon)
+                top_argon = next((m for m in g_models if "argon" in m.lower() and m not in trial_models), None)
                 if top_argon and (top_argon not in _unhealthy_models or prefer_argon):
                     trial_models.append(top_argon)
                 top_pro = next((m for m in g_models if "pro" in m.lower() and m not in trial_models), None)
@@ -4732,7 +4750,11 @@ def call_editorial_ai_json(
                 lite_fb = next((m for m in g_models if "lite" in m.lower()), "gemini-2.5-flash-lite")
                 if lite_fb not in trial_models:
                     trial_models.append(lite_fb)
-                if prefer_argon and top_argon and trial_models and trial_models[0] != top_argon:
+                if prefer_carbon and top_carbon and trial_models and trial_models[0] != top_carbon:
+                    if top_carbon in trial_models:
+                        trial_models.remove(top_carbon)
+                    trial_models.insert(0, top_carbon)
+                elif prefer_argon and top_argon and trial_models and trial_models[0] != top_argon and not prefer_carbon:
                     if top_argon in trial_models:
                         trial_models.remove(top_argon)
                     trial_models.insert(0, top_argon)
@@ -5172,7 +5194,7 @@ def _generate_gemini_adlib_candidate(
         per_call_timeout_sec=30.0,
         allow_blocking=True,
         now_jst=now_jst,
-        prefer_argon=True,
+        prefer_carbon=True,
     )
     if not parsed:
         return None

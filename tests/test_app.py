@@ -2096,8 +2096,8 @@ class FullAuditRegressionTests(unittest.TestCase):
             called_url = mock_aq_post.call_args[0][0]
             called_json = mock_aq_post.call_args[1]['json']
             self.assertTrue(
-                'gemini-4-argon:generateContent' in called_url or 'gemini-3.1-pro-preview:generateContent' in called_url,
-                f"Expected gemini-4-argon or gemini-3.1-pro-preview in called_url: {called_url}"
+                'gemini-4-carbon:generateContent' in called_url or 'gemini-4-argon:generateContent' in called_url or 'gemini-3.1-pro-preview:generateContent' in called_url,
+                f"Expected gemini-4-carbon, gemini-4-argon or gemini-3.1-pro-preview in called_url: {called_url}"
             )
             self.assertEqual(called_json['generationConfig'].get('thinkingConfig'), {'thinkingLevel': 'MEDIUM'})
             self.assertIn(called_json['generationConfig'].get('maxOutputTokens'), (4648, 6696))

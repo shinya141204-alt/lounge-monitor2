@@ -63,18 +63,21 @@ class Tier1FeatureCoverageTests(unittest.TestCase):
     # --------------------------------------------------------------------------
 
     def test_01_r1_default_gemini_models_includes_argon(self):
-        """R1.1: DEFAULT_GEMINI_MODELS の先頭または優先要素に 'gemini-4-argon' が指定されていること"""
+        """R1.1: DEFAULT_GEMINI_MODELS の先頭に 'gemini-4-carbon'、第2候補に 'gemini-4-argon' が指定されていること"""
         models = getattr(sns_editorial, "DEFAULT_GEMINI_MODELS", ())
+        self.assertIn("gemini-4-carbon", models, "DEFAULT_GEMINI_MODELS must include 'gemini-4-carbon'")
         self.assertIn("gemini-4-argon", models, "DEFAULT_GEMINI_MODELS must include 'gemini-4-argon'")
-        self.assertEqual(models[0], "gemini-4-argon", "'gemini-4-argon' should be the prioritized first model")
+        self.assertEqual(models[0], "gemini-4-carbon", "'gemini-4-carbon' should be the prioritized first model")
+        self.assertEqual(models[1], "gemini-4-argon", "'gemini-4-argon' should be the prioritized second model")
 
     def test_02_r1_model_discovery_regex_and_prioritizes_argon(self):
-        """R1.2: _discover_ai_studio_models が 'gemini-4-argon' を認識・パースし最優先にランク付けすること"""
+        """R1.2: _discover_ai_studio_models が 'gemini-4-carbon' を認識・パースし最優先にランク付けすること"""
         fake_api_response = {
             "models": [
                 {"name": "models/gemini-2.5-flash", "supportedGenerationMethods": ["generateContent"]},
                 {"name": "models/gemini-3.1-pro-preview", "supportedGenerationMethods": ["generateContent"]},
                 {"name": "models/gemini-4-argon", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-4-carbon", "supportedGenerationMethods": ["generateContent"]},
             ]
         }
         with patch("requests.get") as mock_get:
@@ -85,42 +88,46 @@ class Tier1FeatureCoverageTests(unittest.TestCase):
 
             discovered = sns_editorial._discover_ai_studio_models("test_key")
             self.assertIsInstance(discovered, list)
+            self.assertIn("gemini-4-carbon", discovered)
             self.assertIn("gemini-4-argon", discovered)
-            self.assertEqual(discovered[0], "gemini-4-argon", "Discovered models must prioritize 'gemini-4-argon' at rank 0")
+            self.assertEqual(discovered[0], "gemini-4-carbon", "Discovered models must prioritize 'gemini-4-carbon' at rank 0")
+            self.assertEqual(discovered[1], "gemini-4-argon", "Discovered models must place 'gemini-4-argon' at rank 1")
 
     def test_03_r1_build_endpoint_request_thinking_config(self):
-        """R1.3: _build_endpoint_request が 'gemini-4-argon' に対して thinkingConfig を設定すること"""
-        # thinking_budget に応じたレベル設定 (HIGH, MEDIUM, LOW)
-        _, _, _, body_high = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt text", thinking_budget=2048
-        )
-        gen_cfg_high = body_high.get("generationConfig", {})
-        self.assertIn("thinkingConfig", gen_cfg_high)
-        self.assertEqual(gen_cfg_high["thinkingConfig"].get("thinkingLevel"), "HIGH")
+        """R1.3: _build_endpoint_request が 'gemini-4-carbon' / 'gemini-4-argon' に対して thinkingConfig を設定すること"""
+        for m_name in ("gemini-4-carbon", "gemini-4-argon"):
+            # thinking_budget に応じたレベル設定 (HIGH, MEDIUM, LOW)
+            _, _, _, body_high = sns_editorial._build_endpoint_request(
+                "ai_studio", m_name, "dummy_key", "prompt text", thinking_budget=2048
+            )
+            gen_cfg_high = body_high.get("generationConfig", {})
+            self.assertIn("thinkingConfig", gen_cfg_high)
+            self.assertEqual(gen_cfg_high["thinkingConfig"].get("thinkingLevel"), "HIGH")
 
-        _, _, _, body_med = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt text", thinking_budget=1024
-        )
-        gen_cfg_med = body_med.get("generationConfig", {})
-        self.assertEqual(gen_cfg_med.get("thinkingConfig", {}).get("thinkingLevel"), "MEDIUM")
+            _, _, _, body_med = sns_editorial._build_endpoint_request(
+                "ai_studio", m_name, "dummy_key", "prompt text", thinking_budget=1024
+            )
+            gen_cfg_med = body_med.get("generationConfig", {})
+            self.assertEqual(gen_cfg_med.get("thinkingConfig", {}).get("thinkingLevel"), "MEDIUM")
 
-        _, _, _, body_low = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt text", thinking_budget=512
-        )
-        gen_cfg_low = body_low.get("generationConfig", {})
-        self.assertEqual(gen_cfg_low.get("thinkingConfig", {}).get("thinkingLevel"), "LOW")
+            _, _, _, body_low = sns_editorial._build_endpoint_request(
+                "ai_studio", m_name, "dummy_key", "prompt text", thinking_budget=512
+            )
+            gen_cfg_low = body_low.get("generationConfig", {})
+            self.assertEqual(gen_cfg_low.get("thinkingConfig", {}).get("thinkingLevel"), "LOW")
 
     def test_04_r1_build_endpoint_request_max_output_tokens(self):
-        """R1.4: _build_endpoint_request が 'gemini-4-argon' に対して思考バッファ込みの十分な maxOutputTokens (>=4096) を確保すること"""
-        _, _, _, body = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt text", max_output_tokens=2048
-        )
-        gen_cfg = body.get("generationConfig", {})
-        max_tokens = gen_cfg.get("maxOutputTokens", 0)
-        self.assertGreaterEqual(max_tokens, 4096, "maxOutputTokens for Argon must be >= 4096 to prevent JSON truncation")
+        """R1.4: _build_endpoint_request が 'gemini-4-carbon' / 'gemini-4-argon' に対して思考バッファ込みの十分な maxOutputTokens (>=4096) を確保すること"""
+        for m_name in ("gemini-4-carbon", "gemini-4-argon"):
+            _, _, _, body = sns_editorial._build_endpoint_request(
+                "ai_studio", m_name, "dummy_key", "prompt text", max_output_tokens=2048
+            )
+            gen_cfg = body.get("generationConfig", {})
+            max_tokens = gen_cfg.get("maxOutputTokens", 0)
+            self.assertGreaterEqual(max_tokens, 4096, f"maxOutputTokens for {m_name} must be >= 4096 to prevent JSON truncation")
 
     def test_05_r1_trial_models_starts_with_argon(self):
-        """R1.5: call_editorial_ai_json の試行候補モデルリストの最優先に 'gemini-4-argon' が含まれること"""
+        """R1.5: call_editorial_ai_json の試行候補モデルリストの最優先に 'gemini-4-carbon' が含まれること"""
         called_models = []
 
         def mock_post(url, headers=None, params=None, json=None, timeout=None):
@@ -138,7 +145,7 @@ class Tier1FeatureCoverageTests(unittest.TestCase):
             with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_test_key"}):
                 sns_editorial.call_editorial_ai_json("test prompt", prefer_fable=False)
                 self.assertTrue(len(called_models) > 0, "At least one model must be called")
-                self.assertEqual(called_models[0], "gemini-4-argon", "First model called must be gemini-4-argon")
+                self.assertEqual(called_models[0], "gemini-4-carbon", "First model called must be gemini-4-carbon")
 
     def test_06_r1_research_planner_uses_argon(self):
         """R1.6: pdca_engine や column_editorial のリサーチ・分析フェーズで高推論モデル (prefer_fable/argon) が指定されること"""
@@ -451,14 +458,18 @@ class Tier2BoundaryAndCornerCasesTests(unittest.TestCase):
             self.assertEqual(res, [], "Must safely return empty list on missing key")
 
     def test_25_r1_fallback_on_argon_404_or_429(self):
-        """R1.B2: Argon呼び出しで404（未対応）または429（クォータ枯渇）発生時に Pro/Flash へ安全フォールバックすること"""
-        call_count = {"argon": 0, "fallback": 0}
+        """R1.B2: Carbon / Argon呼び出しで404（未対応）または429（クォータ枯渇）発生時に Pro/Flash へ安全フォールバックすること"""
+        call_count = {"carbon": 0, "argon": 0, "fallback": 0}
 
         def mock_post(url, headers=None, params=None, json=None, timeout=None):
             m = re.search(r"models/([^:]+):", url or "")
             m_name = m.group(1) if m else ""
             mock_resp = MagicMock()
-            if "argon" in m_name:
+            if "carbon" in m_name:
+                call_count["carbon"] += 1
+                mock_resp.status_code = 429
+                mock_resp.text = "Quota exceeded for gemini-4-carbon"
+            elif "argon" in m_name:
                 call_count["argon"] += 1
                 mock_resp.status_code = 404
                 mock_resp.text = "Model gemini-4-argon not found"
@@ -475,13 +486,14 @@ class Tier2BoundaryAndCornerCasesTests(unittest.TestCase):
                 res, model_used, err = sns_editorial.call_editorial_ai_json("test prompt", prefer_fable=False)
                 self.assertIsNotNone(res)
                 self.assertEqual(res.get("status"), "ok_fallback")
-                self.assertGreaterEqual(call_count["argon"], 1, "Must have tried Argon first")
+                self.assertGreaterEqual(call_count["carbon"], 1, "Must have tried Carbon first")
+                self.assertGreaterEqual(call_count["argon"], 1, "Must have tried Argon second")
                 self.assertGreaterEqual(call_count["fallback"], 1, "Must have fallen back to next model")
 
     def test_26_r1_thinking_config_auto_expands_output_tokens(self):
         """R1.B3: 思考トークン指定時に maxOutputTokens が自動拡張（+4096）され出力打ち切りを防ぐこと"""
         _, _, _, body = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt", max_output_tokens=1000
+            "ai_studio", "gemini-4-carbon", "dummy_key", "prompt", max_output_tokens=1000
         )
         tokens = body["generationConfig"]["maxOutputTokens"]
         self.assertGreaterEqual(tokens, 5096, "Output tokens must be expanded by at least 4096 buffer")
@@ -489,7 +501,7 @@ class Tier2BoundaryAndCornerCasesTests(unittest.TestCase):
     def test_27_r1_invalid_thinking_level_fallback(self):
         """R1.B4: 不正な thinking_budget / レベル値が渡された場合に安全な既定値（LOW/MEDIUM）へフォールバックすること"""
         _, _, _, body = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", "prompt", thinking_budget=-999
+            "ai_studio", "gemini-4-carbon", "dummy_key", "prompt", thinking_budget=-999
         )
         th_level = body["generationConfig"]["thinkingConfig"]["thinkingLevel"]
         self.assertIn(th_level, ("LOW", "MEDIUM", "HIGH"), "Must safely resolve to valid thinking level")
@@ -503,7 +515,7 @@ class Tier2BoundaryAndCornerCasesTests(unittest.TestCase):
     def test_29_r1_empty_prompt_and_malformed_input_safety(self):
         """R1.B6: 空プロンプトや極大プロンプト入力時に制御された例外ハンドリングが行われること"""
         _, _, _, body_empty = sns_editorial._build_endpoint_request(
-            "ai_studio", "gemini-4-argon", "dummy_key", ""
+            "ai_studio", "gemini-4-carbon", "dummy_key", ""
         )
         self.assertIsInstance(body_empty, dict)
         self.assertIn("contents", body_empty)

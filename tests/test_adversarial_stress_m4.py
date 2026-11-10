@@ -196,7 +196,7 @@ class TestVisualQAGateAdversarial(unittest.TestCase):
             "brand_compliance": True,
             "issues": ["Severe text overflow"],
             "recommended_template": "area_battle",
-            "model_used": "gemini-4-argon",
+            "model_used": "gemini-4-carbon",
             "reason": "inspected",
             "latency_sec": 0.5,
         }

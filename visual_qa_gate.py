@@ -1,5 +1,5 @@
 """
-visual_qa_gate.py - Automated Pre-Delivery Visual Inspection Gate (Gemini 4 Argon / Multimodal)
+visual_qa_gate.py - Automated Pre-Delivery Visual Inspection Gate (Gemini 4 Carbon / Multimodal)
 
 Inspects dynamic Instagram Reels (MP4 frames) and OGP cards prior to SNS delivery.
 Ensures zero text overlap, no safe-zone clipping, punchy opening hooks (t=1.2s),
@@ -69,6 +69,7 @@ def _render_qa_frames(stores: list, rt: str, now_jst) -> Tuple[bytes, bytes]:
     return frame_hook, frame_data
 
 QA_MODELS_FALLBACK_CHAIN = (
+    "gemini-4-carbon",
     "gemini-4-argon",
     "gemini-2.5-flash",
     "gemini-2.5-pro",
@@ -127,7 +128,7 @@ def inspect_reel_visual_quality(
     api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Inspect Reel frames (t=1.2s hook and t=6.0s data scene) using gemini-4-argon / multimodal Gemini.
+    Inspect Reel frames (t=1.2s hook and t=6.0s data scene) using gemini-4-carbon / multimodal Gemini.
 
     Scores:
       1. text_overflow (safe-zone violations: top/bottom 15% or right-hand icon bar)
@@ -204,7 +205,7 @@ def inspect_reel_visual_quality(
             "maxOutputTokens": 1024,
         }
         low_m = m_name.lower()
-        if "argon" in low_m or low_m.startswith("gemini-4"):
+        if "carbon" in low_m or "argon" in low_m or low_m.startswith("gemini-4"):
             gen_cfg["thinkingConfig"] = {"thinkingLevel": "LOW"}
             gen_cfg["maxOutputTokens"] = 2048
 
@@ -325,7 +326,8 @@ def inspect_image_visual_quality(
             "responseMimeType": "application/json",
             "maxOutputTokens": 1024,
         }
-        if "argon" in m_name.lower():
+        low_m = m_name.lower()
+        if "carbon" in low_m or "argon" in low_m or low_m.startswith("gemini-4"):
             gen_cfg["thinkingConfig"] = {"thinkingLevel": "LOW"}
             gen_cfg["maxOutputTokens"] = 2048
 
