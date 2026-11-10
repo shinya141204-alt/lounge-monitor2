@@ -599,6 +599,11 @@ def store_detail_page(store_slug):
         except Exception as e:
             logging.warning(f"[second_venues] {sname}: {e}")
 
+        import datetime as _dt
+        now_og_jst = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9)))
+        og_bucket = f"{now_og_jst.strftime('%Y%m%d_%H')}{(now_og_jst.minute // 15) * 15:02d}"
+        og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={og_bucket}"
+
         return render_template(
             'store_detail.html',
             store=store_obj,
@@ -617,6 +622,7 @@ def store_detail_page(store_slug):
             related_guides=related_guides,
             jp_holidays=sorted(store_hours.JP_HOLIDAYS),
             last_updated=last_updated,
+            og_image_url=og_image_url,
             is_staff=bool(session.get('is_staff')),
         )
     import affiliate_manager

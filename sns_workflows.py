@@ -215,11 +215,19 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
         try:
             import ogp_generator
             slot_code = (slot_label or "20:00").replace(":", "")
-            png_bytes = ogp_generator.generate_live_ogp_png(
-                stores,
-                s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
-                now_jst=now_jst,
-            )
+            try:
+                png_bytes = ogp_generator.generate_live_ogp_png(
+                    stores,
+                    s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
+                    now_jst=now_jst,
+                    focus_text=text,
+                )
+            except TypeError:
+                png_bytes = ogp_generator.generate_live_ogp_png(
+                    stores,
+                    s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
+                    now_jst=now_jst,
+                )
         except Exception as e:
             logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
 

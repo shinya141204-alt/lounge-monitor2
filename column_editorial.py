@@ -1273,6 +1273,57 @@ def run_column_planner(research: dict, now_jst: datetime.datetime = None) -> dic
 # =====================================================================
 # Role 3: Writer (長考ストーリー＆note・X一括執筆係)
 # =====================================================================
+NOTE_HIGH_CTR_BRACKETS = {
+    "weekday_anaba": "【平日が一番勝てる】",
+    "second_venue_move": "【実は一番勝てる】",
+    "female_real_voice": "【女子の本音と逆張り】",
+    "last_train_cliff": "【終電前の逆転法則】",
+    "brand_waveform_fit": "【実は一番勝てる】",
+    "solo_trip": "【1人参戦でも勝てる】",
+    "rain_underground": "【雨の夜が一番勝てる】",
+    "area_hopping": "【実は一番勝てる】",
+}
+
+
+def format_high_ctr_note_title(raw_title: str, theme_key: str = "", research: dict = None) -> str:
+    """
+    Ensure `note_title` is optimized for note.com's internal recommendation feed (80.8% of traffic):
+      1. Opens with a concrete utility/benefit bracket (`【実は一番勝てる】`, `【平日が一番勝てる】`, `【2026年最新】`, etc.)
+      2. Contains the category keyword (`相席ラウンジ` or major brand name) near the front so non-followers immediately grasp the topic
+      3. Replaces abstract literary suffixes (`｜夜の行動経済学ノート`) with concrete data-backed value
+    """
+    cleaned = _sanitize_brand_names((raw_title or "").strip())
+    if not cleaned:
+        cleaned = "相席ラウンジの男女比データから見えた失敗しない店選びと時間帯の法則"
+
+    cleaned = re.sub(
+        r"｜(?:60店舗超のログから見えた)?夜の(?:行動経済学(?:ノート)?|意思決定ノート)$",
+        "｜全国60店舗超の実測データ検証",
+        cleaned,
+    )
+    # Replace low-CTR internal editorial brackets with reader-benefit brackets
+    cleaned = re.sub(r"^【(?:実測比較|女性目線の構造解剖|構造解剖)】\s*", "", cleaned)
+
+    bracket = NOTE_HIGH_CTR_BRACKETS.get(theme_key or "", "【実は一番勝てる】")
+    has_good_bracket = bool(
+        re.match(r"^【(?:202\d年|平日|実は|女子|終電|1人|雨の|実測|保存版|9\.\d万件|\d+万件)", cleaned)
+    )
+    if not has_good_bracket:
+        cleaned = re.sub(r"^【[^】]{1,12}】\s*", "", cleaned)
+        cleaned = f"{bracket}{cleaned}"
+
+    topic_tokens = ("相席ラウンジ", "オリエンタルラウンジ", "JIS", "ag", "相席ナビ")
+    if not any(tok in cleaned[:38] for tok in topic_tokens):
+        m_br = re.match(r"^(【[^】]+】)(.*)$", cleaned)
+        if m_br:
+            rest = m_br.group(2).lstrip("・｜ ")
+            cleaned = f"{m_br.group(1)}相席ラウンジ｜{rest}"
+        else:
+            cleaned = f"相席ラウンジ｜{cleaned}"
+
+    return cleaned
+
+
 def _build_note_essay_from_candidate(
     cand: dict,
     research: dict = None,
@@ -1286,7 +1337,12 @@ def _build_note_essay_from_candidate(
     site_base = (site_url or "https://aiseki-navi.com").rstrip("/")
     theme_key = (plan or {}).get("theme_key") or cand.get("theme_key") or "area_hopping"
     archetype = THEME_ARCHETYPES.get(theme_key, THEME_ARCHETYPES["area_hopping"])
-    note_title = _sanitize_brand_names(cand.get("note_title") or cand.get("title") or "")
+    note_title = format_high_ctr_note_title(
+        cand.get("note_title") or cand.get("title") or "",
+        theme_key=theme_key,
+        research=research,
+    )
+    cand["note_title"] = note_title
     thesis = _sanitize_brand_names(cand.get("mechanism_thesis") or archetype["causal_thesis"])
     hook = _sanitize_brand_names(archetype["note_essay_hook"])
     hist_cnt = int((research or {}).get("historical_log_count") or 0)
@@ -1834,7 +1890,11 @@ def _build_deterministic_candidates(
         ],
         "x_title": sp["short"],
         "x_main_text": sp["x_main"],
-        "note_title": f"{title_a}｜60店舗超のログから見えた夜の行動経済学",
+        "note_title": format_high_ctr_note_title(
+            f"{title_a}｜全国60店舗超の実測データ検証",
+            theme_key=theme_key,
+            research=research,
+        ),
         "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #行動経済学 #人間観察",
     }
 
@@ -1938,7 +1998,11 @@ def _build_deterministic_candidates(
                 f"なんとなく長居して疲れてしまう夜を減らすために、『{s1['casual_name']}』（女性比{s1['wpct']}%）など実測ログを使った時間帯別の店選びを整理しました📊👇\n"
                 "#相席ラウンジ #相席ナビ"
             ),
-            "note_title": f"{title_b}｜数字の裏側にある夜の意思決定ノート",
+            "note_title": format_high_ctr_note_title(
+                f"{title_b}｜全国60店舗超の実測データ検証",
+                theme_key=theme_key,
+                research=research,
+            ),
             "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #データ分析 #意思決定",
         }
     else:
@@ -2041,7 +2105,11 @@ def _build_deterministic_candidates(
                 f"非対称な時間コストと、『{s1['casual_name']}』など男女で真逆になる店選びの本音👇\n"
                 "#相席ラウンジ #相席ナビ"
             ),
-            "note_title": f"{title_b}｜『無料』の裏で女性が支払っている90分の正体",
+            "note_title": format_high_ctr_note_title(
+                f"「女の子は無料だから気楽でしょ？」が相席ラウンジで致命傷になる理由｜女性が払っている90分の正体",
+                theme_key="female_real_voice",
+                research=research,
+            ),
             "note_hashtags": "#相席ラウンジ #女子の本音 #オリエンタルラウンジ #相席ナビ #行動経済学",
         }
 
@@ -2184,7 +2252,7 @@ def _build_column_gemini_prompt(
         '  ],\n'
         '  "x_title": "Xリプ欄用の短い記事見出し",\n'
         '  "x_main_text": "X告知1投目（自然な気づき＋実測データ＋控えめな締め）",\n'
-        '  "note_title": "note読者向けの温度感ある人間観察エッセイタイトル（Webタイトルとは別表現）",\n'
+        '  "note_title": "note内レコメンド（流入の80%）でクリックされる実利・結論フック型タイトル（必ず先頭に『【実は一番勝てる】』『【平日が一番勝てる】』『【9.6万件データ検証】』『【女子の本音と逆張り】』等のベネフィット角括弧＋『相席ラウンジ』または具体疑問『「〜？」』を入れること。抽象的な『23時20分、〜』『暗い店ほど〜』だけのポエム見出しは禁止）",\n'
         '  "note_essay_markdown": "note.com専用の独立書き下ろし一人称エッセイ本文（先頭# タイトル無し、## 見出し2〜3個と > 引用を含め、専門用語に頼らず情景と思索で1,600文字以上）",\n'
         '  "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #エッセイ #人間観察"\n'
         "}"
@@ -2321,7 +2389,11 @@ def _generate_gemini_column_candidate(
 
     x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=False)
 
-    note_title_clean = _sanitize_brand_names(parsed.get("note_title") or f"{parsed.get('title')}｜夜の行動経済学ノート")
+    note_title_clean = format_high_ctr_note_title(
+        parsed.get("note_title") or f"{parsed.get('title')}｜全国60店舗超の実測データ検証",
+        theme_key=plan.get("theme_key") or "area_hopping",
+        research=research,
+    )
     note_hashtags_clean = str(parsed.get("note_hashtags") or baseline_cand["note_hashtags"]).strip()
     ai_note_essay = _sanitize_brand_names(str(parsed.get("note_essay_markdown") or "")).strip()
     pre_built_note_md = ""

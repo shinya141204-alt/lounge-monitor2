@@ -154,6 +154,88 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
                 self.assertTrue(instagram_poster.has_ig_grid_posted_recently(d2_next_day, min_hours=36.0))
                 self.assertFalse(instagram_poster.has_ig_grid_posted_recently(d3_two_days, min_hours=36.0))
 
+    def test_cross_sns_4_pillar_improvements(self):
+        import datetime
+        import re
+        import column_editorial
+        import ogp_generator
+        import reel_generator
+        import sns_editorial
+
+        # 1. Reels 8.5s timeline + Scene 1 animated bar + Scene 2 fly-in before 2.0s
+        self.assertEqual(reel_generator.REEL_DURATION_SEC, 8.5)
+        self.assertEqual(reel_generator.REEL_TOTAL_FRAMES, 204)
+        stores = [
+            {"name": "OLG 名古屋 栄", "women": 55, "men": 20, "region": "Chubu", "area": "栄"},
+            {"name": "OLG 新宿", "women": 46, "men": 22, "region": "Kanto", "area": "新宿"},
+            {"name": "JIS UMEDA", "women": 41, "men": 14, "region": "Kinki", "area": "梅田"},
+            {"name": "OLG 大阪駅前", "women": 9, "men": 9, "region": "Kinki", "area": "梅田"},
+            {"name": "XIX 岡山", "women": 10, "men": 9, "region": "Chugoku", "area": "岡山"},
+        ]
+        ctx = reel_generator.build_reel_context(stores, reel_type="tiktok_gap_shock")
+        comp = reel_generator._ReelSceneRenderer(ctx)
+        self.assertIsNotNone(comp.scene1_bar_spec)
+        for sec in (0.6, 1.2, 1.8, 6.0, 7.5):
+            jpeg = reel_generator.render_reel_preview_frame_jpeg(stores, reel_type="tiktok_gap_shock", sec=sec)
+            self.assertGreater(len(jpeg), 5000)
+
+        # 2. X OGP Card pins stores mentioned in tweet text (`focus_text`) into TOP 3 in mention order
+        tweet_okayama = "岡山、日曜でも1次会を早めに締めた男性陣がこの時間に動いてる。XIX岡山は1時間前まで女性比100%でしたが、いま女性10名・男性9名（53%）になってます。"
+        top3_okayama = ogp_generator._select_top3_for_slot(stores, "22:00", focus_text=tweet_okayama)
+        self.assertEqual(top3_okayama[0]["name"], "XIX 岡山")
+
+        tweet_umeda = "梅田の20時前、同じ駅まわりでも店のノリで初速がだいぶ違う。「JIS梅田」は女性41名・男性14名（75%）、徒歩4分の「オリエンタルラウンジ 大阪駅前」は女性9名・男性9名（50%）。"
+        top3_umeda = ogp_generator._select_top3_for_slot(stores, "20:00", focus_text=tweet_umeda)
+        self.assertEqual(top3_umeda[0]["name"], "JIS UMEDA")
+        self.assertEqual(top3_umeda[1]["name"], "OLG 大阪駅前")
+
+        self.assertEqual(ogp_generator.resolve_slot_from_param("x22_ai_live_adlib_20261110"), "22:00")
+        self.assertEqual(ogp_generator.resolve_slot_from_param("x20_ai_live_adlib_20261110"), "20:00")
+
+        # 3. Stale Reply OGP Card fix: `/` with `?s=x22_ai_live_adlib` and `/store/<slug>` always include YYYYMMDD cache-buster
+        r_home = self.client.get("/?s=x22_ai_live_adlib&staff_test=1")
+        self.assertEqual(r_home.status_code, 200)
+        home_html = r_home.get_data(as_text=True)
+        self.assertRegex(home_html, r'property="og:image"\s+content="https://aiseki-navi\.com/ogp/live\.png\?s=x22_ai_live_adlib_\d{8}_\d{4}"')
+
+        r_store = self.client.get("/store/oriental-lounge-shinjuku?s=x20_ai_live_adlib&staff_test=1")
+        self.assertEqual(r_store.status_code, 200)
+        store_html = r_store.get_data(as_text=True)
+        self.assertRegex(store_html, r'property="og:image"\s+content="https://aiseki-navi\.com/ogp/live\.png\?s=\d{8}_\d{4}"')
+        self.assertRegex(store_html, r'name="twitter:image"\s+content="https://aiseki-navi\.com/ogp/live\.png\?s=\d{8}_\d{4}"')
+
+        # 4. Threads poetic weather opener penalty & note high-CTR utility bracket title formatting
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        now_jst = datetime.datetime(2026, 11, 10, 22, 0, tzinfo=jst)
+        res = sns_editorial.run_researcher(stores, slot_label="22:00", now_jst=now_jst)
+        plan = sns_editorial.run_planner(res, slot_label="22:00", channel="threads", now_jst=now_jst)
+        eval_res = sns_editorial.run_evaluator(
+            [
+                {
+                    "style": "poetic_test",
+                    "main_text": "「このあとどうする？」が出るにはまだ少し早い、水曜の19時台。東京は曇りで16℃。\nオリエンタルラウンジ新宿は女性46名・男性22名。",
+                },
+                {
+                    "style": "concrete_test",
+                    "main_text": "岡山の話。XIX岡山、1時間前は女性比100%。いま女性10名・男性9名（女性比53%）でちょうど拮抗してます。",
+                },
+            ],
+            res,
+            plan,
+            channel="threads",
+            now_jst=now_jst,
+        )
+        scores_by_style = {c["style"]: c["scores"]["human_tone"] for c in eval_res["candidates"]}
+        self.assertLess(scores_by_style["poetic_test"], scores_by_style["concrete_test"])
+
+        note_t = column_editorial.format_high_ctr_note_title(
+            "23時20分、店内の空気が一斉に変わる｜60店舗超のログから見えた夜の行動経済学",
+            theme_key="last_train_cliff",
+        )
+        self.assertTrue(note_t.startswith("【終電前の逆転法則】"))
+        self.assertIn("相席ラウンジ", note_t[:30])
+        self.assertNotIn("夜の行動経済学", note_t)
+
 
 if __name__ == "__main__":
     unittest.main()

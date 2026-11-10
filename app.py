@@ -1806,10 +1806,8 @@ def index():
 
     def _render():
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-        s_param = explicit_s
-        if not s_param:
-            bucket_min = (now_jst.minute // 15) * 15
-            s_param = f"{now_jst.strftime('%Y%m%d_%H')}{bucket_min:02d}"
+        bucket_s = f"{now_jst.strftime('%Y%m%d_%H')}{(now_jst.minute // 15) * 15:02d}"
+        s_param = f"{explicit_s}_{bucket_s}" if explicit_s and not re.search(r'\d{8}', explicit_s) else (explicit_s or bucket_s)
         og_meta = None
         og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
         try:

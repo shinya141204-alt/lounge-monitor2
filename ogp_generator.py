@@ -222,14 +222,14 @@ SLOT_THEMES = {
 def resolve_slot_from_param(s_param: str = "", now_jst: datetime.datetime = None) -> str:
     """Determine which time slot theme ('20:00', '22:00', '00:00', '02:00') to use."""
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    s_clean = (s_param or "").strip()
-    if "2200" in s_clean or "22:00" in s_clean or "2230" in s_clean:
+    s_clean = (s_param or "").strip().lower()
+    if any(k in s_clean for k in ("2200", "22:00", "2230", "x22_", "th22_")):
         return "22:00"
-    if "0000" in s_clean or "00:00" in s_clean:
+    if any(k in s_clean for k in ("0000", "00:00", "x00_", "th00_")):
         return "00:00"
-    if "0200" in s_clean or "02:00" in s_clean:
+    if any(k in s_clean for k in ("0200", "02:00", "x02_", "th02_")):
         return "02:00"
-    if "2000" in s_clean or "20:00" in s_clean:
+    if any(k in s_clean for k in ("2000", "20:00", "x20_", "th20_", "x19_", "th19_")):
         return "20:00"
 
     h = now_jst.hour
@@ -258,7 +258,7 @@ def get_ogp_meta_for_slot(s_param: str = "", now_jst: datetime.datetime = None) 
     }
 
 
-def _select_top3_for_slot(stores: list, slot_label: str) -> list:
+def _select_top3_for_slot(stores: list, slot_label: str, focus_text: str = "") -> list:
     korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
     dom_stores = [
         s for s in (stores or [])
@@ -267,6 +267,42 @@ def _select_top3_for_slot(stores: list, slot_label: str) -> list:
     ]
     if not dom_stores:
         return []
+
+    pinned = []
+    if focus_text:
+        focus_compact = re.sub(r"\s+", "", str(focus_text))
+        matched_spans = []
+        candidates_with_tokens = []
+        for s in dom_stores:
+            ja_name = x_poster.format_ja_store_name(s.get("name") or "").strip()
+            raw_name = (s.get("name") or "").strip()
+            tokens = [
+                re.sub(r"\s+", "", t)
+                for t in (ja_name, raw_name)
+                if t and len(re.sub(r"\s+", "", t)) >= 3
+            ]
+            if tokens:
+                candidates_with_tokens.append((max(len(t) for t in tokens), tokens, s))
+        candidates_with_tokens.sort(key=lambda item: item[0], reverse=True)
+        pinned_with_pos = []
+        for _, tokens, s in candidates_with_tokens:
+            best_pos = None
+            best_end = None
+            for tok in sorted(set(tokens), key=len, reverse=True):
+                idx = focus_compact.find(tok)
+                while idx != -1:
+                    end_idx = idx + len(tok)
+                    if not any(not (end_idx <= m_start or idx >= m_end) for m_start, m_end in matched_spans):
+                        if best_pos is None or idx < best_pos:
+                            best_pos = idx
+                            best_end = end_idx
+                        break
+                    idx = focus_compact.find(tok, idx + 1)
+            if best_pos is not None:
+                matched_spans.append((best_pos, best_end))
+                pinned_with_pos.append((best_pos, s))
+        pinned_with_pos.sort(key=lambda item: item[0])
+        pinned = [s for _, s in pinned_with_pos[:3]]
 
     if slot_label in ("22:00", "22:30"):
         candidates = [s for s in dom_stores if int(s.get("women") or 0) >= 10]
@@ -277,14 +313,30 @@ def _select_top3_for_slot(stores: list, slot_label: str) -> list:
             ),
             reverse=True,
         )
-        return candidates[:3] if len(candidates) >= 3 else dom_stores[:3]
+        base_ranked = candidates if len(candidates) >= 3 else sorted(
+            dom_stores,
+            key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)),
+            reverse=True,
+        )
+    else:
+        base_ranked = sorted(
+            dom_stores,
+            key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)),
+            reverse=True,
+        )
 
-    dom_stores_sorted = sorted(
-        dom_stores,
-        key=lambda x: (int(x.get("women") or 0), int(x.get("men") or 0)),
-        reverse=True,
-    )
-    return dom_stores_sorted[:3]
+    if not pinned:
+        return base_ranked[:3]
+
+    pinned_names = {s.get("name") for s in pinned}
+    merged = list(pinned)
+    for s in base_ranked:
+        if len(merged) >= 3:
+            break
+        if s.get("name") not in pinned_names:
+            merged.append(s)
+            pinned_names.add(s.get("name"))
+    return merged[:3]
 
 
 def _draw_radial_glow(base_img: Image.Image, center: tuple, radius: int, rgba_color: tuple):
@@ -402,12 +454,18 @@ def _get_cached_base_canvas(
                     _BASE_CANVAS_INFLIGHT.pop(cache_key, None)
 
 
-def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.datetime = None) -> bytes:
+def generate_live_ogp_png(
+    stores: list,
+    s_param: str = "",
+    now_jst: datetime.datetime = None,
+    focus_text: str = "",
+) -> bytes:
     """
     Render a 1200x630 dynamic OGP card image (PNG bytes) with:
       - Time-slot specific background photo & neon color palette
       - Date/time badge & nationwide total headcount
       - Live TOP 3 stores with Japanese names, female/male counts, and ratio progress bars
+        (pinning any stores explicitly mentioned in `focus_text` into the TOP 3 cards)
     """
     W, H = 1200, 630
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
@@ -455,7 +513,7 @@ def generate_live_ogp_png(stores: list, s_param: str = "", now_jst: datetime.dat
     ]
     total_w = sum(int(s.get("women") or 0) for s in dom_stores)
     total_m = sum(int(s.get("men") or 0) for s in dom_stores)
-    top3 = _select_top3_for_slot(dom_stores, slot_label)
+    top3 = _select_top3_for_slot(dom_stores, slot_label, focus_text=focus_text)
 
     # =========================================================================
     # LEFT COLUMN (x=52 to 548)

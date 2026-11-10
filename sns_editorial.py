@@ -101,7 +101,8 @@ HUMAN_INSIDER_VOICE_GUIDE = (
     "2. 毎回きれいに教訓や説教（『〜すると損』『〜が正解』『賢く選ぼう』等）でまとめないこと。事実の偏りや街の空気をポンと置くだけで十分伝わる。\n"
     "3. 語尾をワンパターンにしないこと。『〜なんだよな』『正直さ、』のような口癖の連発は厳禁。体言止め、普通の言い切り（『〜てる』『〜だった』『〜の差。』）、ふと混ざる素の丁寧語（『〜ですね』『〜かも』『〜置いときます』）を日によって自然に織り交ぜること。\n"
     "4. 絵文字や感嘆符（！）は極力減らし、全体で0〜1個までに抑えること（絵文字ゼロの素っ気ない文面も大歓迎）。キラキラ絵文字の連打や大げさな煽りは一切しない。\n"
-    "5. 店舗名・女性XX名・男性YY名・女性比ZZ%の数値は、ファクトシートの検証済みデータと1人・1%も違わず正確に書くこと。"
+    "5. 1行目に『東京は曇りで〇〇℃』『白い息』『コート』『上着』『このあとどうする？が出るにはまだ少し早い』等の天気・気温・服装・季節ポエムは絶対に書かないこと。必ず1行目から『具体的な都市名・店舗名』と『人数・比率・時間変化の数字』で切り出すこと（例：『岡山の話。XIX岡山、1時間前は女性比100%。』）。\n"
+    "6. 店舗名・女性XX名・男性YY名・女性比ZZ%の数値は、ファクトシートの検証済みデータと1人・1%も違わず正確に書くこと。"
 )
 
 _weather_cache = {"ts": 0.0, "data": None, "fetching": False}
@@ -2484,7 +2485,7 @@ def _write_x_candidates(
             body_a = body_a.replace("待ちが出そうな時は近くの別店舗も覗くのが確実👇", "混雑時は周辺の別店舗へ👇")
         reply_a = (
             f"📍 {hub_name}エリアの料金・現在人数横並び比較はこちら\n"
-            f"{site_url}/price-comparison?area={area_id}&s=x{slot_hh}_hub_gap\n\n"
+            f"{site_url}/price-comparison?area={area_id}&s=x{slot_hh}_hub_gap_{ymd}\n\n"
             f"🔍 全国60店舗超リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_hub_gap_{ymd}"
         )
         candidates.append({
@@ -2568,7 +2569,7 @@ def _write_x_candidates(
     f_slug = store_master.slug_of(focus["name"])
     reply_b = (
         f"📊 {focus['ja_name']}の現在人数・終電後の残りやすさ指標はこちら\n"
-        f"{site_url}/store/{f_slug}?s=x{slot_hh}_surge_focus\n\n"
+        f"{site_url}/store/{f_slug}?s=x{slot_hh}_surge_focus_{ymd}\n\n"
         f"🔍 全国60店舗超リアルタイム人数ランキング\n{site_url}/?s=x{slot_hh}_surge_focus_{ymd}"
     )
     candidates.append({
@@ -2654,7 +2655,7 @@ def _write_x_candidates(
 
     reply_c = (
         f"🔍 全国60店舗超の現在人数＆普段の同曜日比（平比）はこちら\n{site_url}/?s=x{slot_hh}_{c_style}_{ymd}\n\n"
-        f"💴 時間帯料金・開催中イベント横並び比較ボード\n{site_url}/price-comparison?s=x{slot_hh}_{c_style}"
+        f"💴 時間帯料金・開催中イベント横並び比較ボード\n{site_url}/price-comparison?s=x{slot_hh}_{c_style}_{ymd}"
     )
     candidates.append({
         "style": c_style,
@@ -3745,11 +3746,11 @@ X_POST_ARCHETYPES = (
     },
     {
         "key": "street_air_note",
-        "label": "外の季節感×ブランドのノリ相性メモ",
+        "label": "都市・店舗名＋数字ギャップ即出しフック（前置きゼロ型）",
         "silent_tree": False,
         "directive": (
-            "- 【今回の骨格：外の空気感×ブランド相性メモ（78〜116文字）】\n"
-            "- 外の気温や曜日・時間帯の空気を短い1フレーズ添え、落ち着いて話せる店と活気がある店の実測人数をフラットに溶かし込むこと。\n"
+            "- 【今回の骨格：都市・店舗名＋数字ギャップ即出しフック（70〜112文字）】\n"
+            "- 天気や気温の前置きを一切省き、1文目から『〇〇の話。△△、1時間前は女性比XX%。』『火曜22時すぎ、〇〇で女性だけが増えていく1時間。』のように具体的な街名・店名と数字のギャップを単刀直入に置くこと。\n"
             "- 宣伝臭い煽りは避け、末尾に小さくリプ欄案内または『#相席ナビ #相席ラウンジ』を添える。"
         ),
     },
@@ -3826,8 +3827,14 @@ def _build_gemini_prompt(
     fact_payload = {
         "current_time": f"{cal_ctx.get('weekday_ja', '')}曜 {t_str}",
         "calendar_vibe": f"{cal_ctx.get('tag', '')} - {cal_ctx.get('note', '')}",
-        "weather_vibe": weather_ctx.get("adlib_hint") or "穏やかな夜",
-        "weather_detail": weather_ctx.get("summary") or "",
+        **(
+            {
+                "weather_vibe": weather_ctx.get("adlib_hint") or "",
+                "weather_detail": "雨天（地下直結・駅近店舗への集中傾向）",
+            }
+            if weather_ctx.get("is_rainy")
+            else {}
+        ),
         **({"tonight_street_pulse": pulse_dict} if pulse_dict else {}),
         "recommended_spotlight_tier": research.get("spotlight_tier_label") or "",
         "recently_used_stores_avoid_if_possible": research.get("recently_featured_names") or [],
@@ -3928,14 +3935,15 @@ def _build_gemini_prompt(
         f_slug = store_master.slug_of(focus["name"]) if focus else ""
         x_arch = select_x_post_archetype(slot_label=slot_label, now_jst=now_jst, recent_texts=recent_full_texts)
         reply_variants = (
-            f"{focus['ja_name']}の推移と近隣店舗の比較メモ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国リアルタイム一覧\n{live_url}",
-            f"いまの{focus['ja_name']}の時間帯データはこちらに置いてあります\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n他エリアの現在人数\n{live_url}",
-            f"📍 {focus['ja_name']}の現在値・終電後の残りやすさ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib\n\n全国60店舗超の一覧\n{live_url}",
+            f"{focus['ja_name']}の推移と近隣店舗の比較メモ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib_{ymd}\n\n全国リアルタイム一覧\n{live_url}",
+            f"いまの{focus['ja_name']}の時間帯データはこちらに置いてあります\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib_{ymd}\n\n他エリアの現在人数\n{live_url}",
+            f"📍 {focus['ja_name']}の現在値・終電後の残りやすさ\n{site_url}/store/{f_slug}?s=x{slot_hh}_ai_live_adlib_{ymd}\n\n全国60店舗超の一覧\n{live_url}",
         ) if focus else (f"全国リアルタイム人数一覧\n{live_url}",)
         reply_text = reply_variants[(now_jst.day + now_jst.hour) % len(reply_variants)]
         platform_spec = (
             f"【対象SNS：X（旧Twitter）｜今回の指定構成：{x_arch['label']}】\n"
             "- 文字数上限：全角122文字・X換算250ウェイト絶対上限（短く余白があるほど人間らしい）\n"
+            "- 【1行目の鉄則（超重要）】：1行目に天気・気温（『〇〇℃』『曇りで』『白い息』『コート』『上着』等）や抽象的な季節ポエムは絶対に書かないこと。必ず1行目（最初の1文）から具体的な『都市名・店舗名』と『人数・女性比・1時間前からの変化』を単刀直入に出すこと（例：『岡山の話。XIX岡山、1時間前は女性比100%。いま女性10名・男性9名（53%）になってます。』）。\n"
             "- 禁止事項：URL（http...）は本文に絶対に入れない。『🥇🥈🥉』メダルや『【〇〇】』見出しは禁止。『モニター見てたら』『看板だけで〜』『〜なんだよな』のような定型口癖は使わない。同じ店舗名を2回繰り返さない。\n"
             f"{x_arch['directive']}"
         )
@@ -3945,6 +3953,9 @@ def _build_gemini_prompt(
         platform_spec = (
             "【対象SNS：Meta Threads（スレッズ）｜350字前後の心理・街・ブランド考察エッセイ】\n"
             "- 文字数制限：全体で **280文字〜435文字以内**（絶対上限480文字）\n"
+            "- 【1行目の鉄則（インプレッション最大化ルール）】：\n"
+            "  1行目に『東京は曇りで〇〇℃』『白い息まじり』『コートいらなかったね』『上着を腕に』『このあとどうする？が出るにはまだ少し早い』のような天気・気温・服装・抽象ポエムを書くことは厳禁（タイムラインで即スワイプされ再生数0になります）。\n"
+            "  必ず最初の1行目（冒頭40文字以内）に **『具体的な都市名・店舗名』と『驚きの数字・女性比・1時間前からの変化』** をポンと置くこと（実測で再生数が跳ねる黄金フック例：『岡山の話。XIX岡山、1時間前は女性比100%。』『火曜の22時すぎ、梅田で女性だけが増えていく1時間。』『男も女も、この1時間でちょうど21名ずつ増えた。』）。\n"
             "- 禁止事項：『🥇🥈🥉』メダルや『【〇〇】』見出し、『モニター見てたら』『バックヤードで』等の裏方アピールは禁止。ハッシュタグは末尾フッター内のもの以外付けない。\n"
             "- 構成（ただの人数列挙ではなく、1段深い気づきを書くこと）：\n"
             "  ファクトシートの `waveform_drama_60m`（1時間前からの波の変化）、`same_city_brand_contrast`（同じ街でのオリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBAR等の年齢感やノリ・時間帯相性の違い）、または `gender_asymmetry_pair`（男性の余裕店＝女余りになりやすく、逆に男性先行店こそ女子2人組が待ちゼロ即乾杯になる非対称構造）の中から一番面白いテーマを1つ選び、男女どちらにも偏らないフラットな観察眼で穏やかに綴ること（絵文字0〜1個）。\n"
@@ -5293,13 +5304,21 @@ def run_evaluator(
             metric_val = len(text)
             metric_unit = f"{metric_val}文字"
 
-        # 1. Human Tone (max 35) — strictly penalizes bot medals, bracket headers, AND AI copywriting cliches
+        # 1. Human Tone (max 35) — strictly penalizes bot medals, bracket headers, poetic weather openers, AND AI cliches
         is_medal_bot = ("🥇" in text and "🥈" in text and "🥉" in text)
         is_bracket_banner = first_line.startswith("【") and "】" in first_line
+        poetic_weather_openers = ("白い息", "コートいらな", "上着を腕", "出るにはまだ少し早い", "東京は曇り", "東京は晴れ", "大阪は曇り", "大阪は晴れ")
+        has_poetic_opener = ch in ("x", "threads") and (
+            any(pw in first_line for pw in poetic_weather_openers)
+            or bool(re.search(r"\d+\s*[℃度]", first_line))
+        )
         detected_cliches = [w for w in AI_CLICHE_WORDS if w in text]
         if style == classic_key or is_medal_bot:
             human_score = 18
             human_comment = "⚠️ 毎回同じ『🥇🥈🥉 TOP3』や【角括弧見出し】の定型フォーマットで業者・ボット感が出やすいため減点。"
+        elif has_poetic_opener:
+            human_score = 20
+            human_comment = "⚠️ 1行目が天気・気温・服装ポエムから始まっておりタイムラインで離脱されやすいため減点（店名・都市名＋数字フックを優先）。"
         elif detected_cliches:
             human_score = 22
             human_comment = f"⚠️ AI・宣伝っぽく見えやすい定型ワード（『{'』『'.join(detected_cliches[:2])}』）が含まれているため減点。"

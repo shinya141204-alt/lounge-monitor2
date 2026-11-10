@@ -36,9 +36,10 @@
     <meta property="og:description" content="{% if store.total > 0 %}{{ store.seo_name }}の現在人数は女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}のリアルタイム男女人数・男女比を毎分更新（直近ピーク女性{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・狙い目平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）。周辺の相席ラウンジとのハシゴ比較もひと目で確認できます。{% else %}{{ store.seo_name }}のリアルタイム男女人数・男女比・待ち時間傾向を毎分自動更新。周辺の相席ラウンジとの人数比較もひと目で確認できます。{% endif %}">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://aiseki-navi.com/store/{{ store.slug }}">
-    <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
+    <meta property="og:image" content="{{ og_image_url or 'https://aiseki-navi.com/ogp/live.png' }}">
     <meta property="og:site_name" content="相席ナビ">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ og_image_url or 'https://aiseki-navi.com/ogp/live.png' }}">
 
     <script type="application/ld+json">
     [

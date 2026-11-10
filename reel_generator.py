@@ -49,8 +49,8 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 REEL_WIDTH = 720
 REEL_HEIGHT = 1280
 REEL_FPS = 24
-REEL_DURATION_SEC = 11.5
-REEL_TOTAL_FRAMES = int(round(REEL_DURATION_SEC * REEL_FPS))  # 276 frames
+REEL_DURATION_SEC = 8.5
+REEL_TOTAL_FRAMES = int(round(REEL_DURATION_SEC * REEL_FPS))  # 204 frames
 REEL_CACHE_TTL_SEC = 120.0
 REEL_SHARED_CACHE_TTL_SEC = 900
 
@@ -1879,6 +1879,7 @@ class _ReelSceneRenderer:
             else "オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
         )
 
+        s1_left_ratio = max(0.12, min(0.88, float(self.ctx.get("overall_wpct") or 58) / 100.0))
         if self.rt == "tiktok_gap_shock":
             gp0 = (self.ctx.get("gap_pairs") or [None])[0]
             if gp0 and gp0.get("heaven_store") and gp0.get("crowded_store"):
@@ -1887,6 +1888,7 @@ class _ReelSceneRenderer:
                 hdr_lbl = f"⚡ {gp0['hub_label']}の男女比ギャップ（差{gp0['gap_pt']}pt）"
                 stat_main = f"◎ {hi_s['ja_name']}（女{hi_s['women']}:男{hi_s['men']}）"
                 ratio_note = f"狙い目 女性比{hi_s['wpct']}%  vs  対照店 {lo_s['ja_name']} 女性比{lo_s['wpct']}%"
+                s1_left_ratio = max(0.12, min(0.88, float(hi_s.get("wpct") or 60) / 100.0))
         elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
             l1 = (self.ctx.get("ladies_top5") or [None])[0]
             if l1:
@@ -1894,6 +1896,7 @@ class _ReelSceneRenderer:
                 stat_main = f"{l1['ja_name']}｜男{l1['men']}名 : 女{l1['women']}名"
                 lead_pt = f"+{l1['male_lead']}名先行・" if int(l1.get("male_lead") or 0) > 0 else ""
                 ratio_note = f"男性{lead_pt}男性比{l1['mpct']}%（{l1['area_label']}）｜女子ペア即案内圏"
+                s1_left_ratio = max(0.12, min(0.88, float(l1.get("mpct") or 60) / 100.0))
         elif self.rt == "area_battle":
             zones = self.ctx.get("area_battles") or []
             lead_z = next((z for z in zones if z.get("is_leader")), zones[0] if zones else None)
@@ -1903,8 +1906,10 @@ class _ReelSceneRenderer:
                 stat_main = f"{lead_z['label']}｜女{lead_z['women']}名 vs 男{lead_z['men']}名"
                 if bs:
                     ratio_note = f"狙い目1位：{bs['ja_name']}（女{bs['women']}:男{bs['men']}・女性比{bs['wpct']}%）"
+                    s1_left_ratio = max(0.12, min(0.88, float(bs.get("wpct") or lead_z.get("wpct") or 58) / 100.0))
                 else:
                     ratio_note = f"エリア女性比 {lead_z['wpct']}%  ｜  全国{self.ctx['active_store_count']}店舗リアルタイム比較"
+                    s1_left_ratio = max(0.12, min(0.88, float(lead_z.get("wpct") or 58) / 100.0))
         elif self.rt == "tiktok_midnight_cliff":
             m1 = (self.ctx.get("midnight_top4") or self.ctx.get("top5_volume") or [None])[0]
             if m1:
@@ -1913,21 +1918,36 @@ class _ReelSceneRenderer:
                 mr = m1.get("midnight_retention_pct")
                 ret_txt = f"終電後維持 {mr}%" if mr is not None else f"現在 女性比 {m1['wpct']}%"
                 ratio_note = f"{ret_txt}（{m1['area_label']}）｜深夜2軒目の有力候補"
+                s1_left_ratio = max(0.12, min(0.88, float(m1.get("wpct") or 58) / 100.0))
         else:
             top1 = (self.ctx.get("top5_volume") or [None])[0]
             if top1:
                 hdr_lbl = f"🔥 いま全国1位の激アツ店舗（全{self.ctx['active_store_count']}店リアルタイム集計）"
                 stat_main = f"{top1['ja_name']}｜女{top1['women']}名 : 男{top1['men']}名"
                 ratio_note = f"1位店 女性比{top1['wpct']}%  ｜  全国合計：女性{self.ctx['total_women']}名 / 男性{self.ctx['total_men']}名"
+                s1_left_ratio = max(0.12, min(0.88, float(top1.get("wpct") or 58) / 100.0))
 
         hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
-        draw.text((lx + 24, cy1 + 22), hl_fit, font=f_hl, fill=acc2)
+        draw.text((lx + 24, cy1 + 18), hl_fit, font=f_hl, fill=acc2)
 
         sm_fit, sm_font, _ = ogp_generator.fit_text_and_font(draw, stat_main, sw - 48, 36 if self.is_tiktok else 38, 22)
-        draw.text((lx + 24, cy1 + 68), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
+        draw.text((lx + 24, cy1 + 58), sm_fit, font=sm_font, fill=(255, 255, 255, 255))
 
         rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 13)
-        draw.text((lx + 24, cy1 + 142), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
+        draw.text((lx + 24, cy1 + 122), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
+
+        s1_bx, s1_by, s1_bw, s1_bh = lx + 24, cy1 + 162, sw - 48, 18
+        draw.rounded_rectangle((s1_bx, s1_by, s1_bx + s1_bw, s1_by + s1_bh), radius=9, fill=(32, 40, 62, 235))
+        self.scene1_bar_spec = (
+            s1_bx,
+            s1_by,
+            s1_bw,
+            s1_bh,
+            9,
+            s1_left_ratio,
+            self.theme["bar_left"],
+            self.theme["bar_right"],
+        )
 
         # Bottom teaser pill (inside safe zone)
         ty_pill = 832 if self.is_tiktok else 906
@@ -2042,7 +2062,7 @@ class _ReelSceneRenderer:
                     "full_sprite": full_sp,
                     "x": lx,
                     "y": 242 + idx * (ch + 14),
-                    "t_in": 2.08 + idx * 0.38,
+                    "t_in": 1.34 + idx * 0.28,
                     "bar_rect": (bx, by, bw, bh, 10),
                     "left_ratio": left_ratio,
                     "left_col": self.theme["bar_left"],
@@ -2123,7 +2143,7 @@ class _ReelSceneRenderer:
                     "full_sprite": full_sp,
                     "x": lx,
                     "y": 196 + idx * (ch + 18),
-                    "t_in": 2.28 + idx * 0.42,
+                    "t_in": 1.36 + idx * 0.30,
                     "bar_rect": (bx, by, bw, bh, 11),
                     "left_ratio": left_ratio,
                     "left_col": self.theme["bar_left"],
@@ -2233,13 +2253,13 @@ class _ReelSceneRenderer:
 
             base_y = 240 if self.is_tiktok else 192
             step_gap = 12 if self.is_tiktok else 14
-            t_base = 2.08 if self.is_tiktok else 2.28
+            t_base = 1.34 if self.is_tiktok else 1.38
             cards.append({
                 "sprite": sp,
                 "full_sprite": full_sp,
                 "x": lx,
                 "y": base_y + idx * (ch + step_gap),
-                "t_in": t_base + idx * 0.30,
+                "t_in": t_base + idx * 0.22,
                 "bar_rect": (bx, by, bw, bh, 9),
                 "left_ratio": left_ratio,
                 "left_col": self.theme["bar_left"],
@@ -2425,22 +2445,41 @@ class _ReelSceneRenderer:
                     sp_n.close()
             return
 
-        s1_end = 2.04 if self.is_tiktok else 2.22
-        s2_start = 1.98 if self.is_tiktok else 2.18
+        s1_end = 1.36 if self.is_tiktok else 1.40
+        s2_start = 1.28 if self.is_tiktok else 1.32
 
-        # Scene 1: Hook
-        s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.32 if self.is_tiktok else 0.38, fade_out=0.20)
+        # Scene 1: Hook (fast 1.3s cut to beat the 2.0s viewer swipe cliff while keeping t=1.2s 100% opaque)
+        s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.24 if self.is_tiktok else 0.26, fade_out=0.16)
         if s1_alpha > 0.01:
-            dy = int(24 * (1.0 - _ease_out_cubic(min(1.0, t / 0.38))))
+            dy = int(20 * (1.0 - _ease_out_cubic(min(1.0, t / 0.28))))
             sp1 = _apply_opacity(self.scene1_sprite, s1_alpha)
             canvas.alpha_composite(sp1, dest=(0, dy))
             if sp1 is not self.scene1_sprite:
                 sp1.close()
+            s1_bar = getattr(self, "scene1_bar_spec", None)
+            if s1_bar:
+                s1_bx, s1_by, s1_bw, s1_bh, s1_rad, s1_lratio, s1_lcol, s1_rcol = s1_bar
+                s1_bease = _ease_out_cubic(min(1.0, max(0.08, (t - 0.06) / 0.88)))
+                cur_bw = max(s1_rad * 2, int(s1_bw * s1_bease))
+                left_bw = max(s1_rad * 2, min(cur_bw, int(cur_bw * s1_lratio)))
+                b_alpha_r = int(235 * s1_alpha)
+                b_alpha_l = int(255 * s1_alpha)
+                if cur_bw > s1_rad * 2:
+                    draw.rounded_rectangle(
+                        (s1_bx, s1_by + dy, s1_bx + cur_bw, s1_by + dy + s1_bh),
+                        radius=s1_rad,
+                        fill=(*s1_rcol, b_alpha_r),
+                    )
+                draw.rounded_rectangle(
+                    (s1_bx, s1_by + dy, s1_bx + left_bw, s1_by + dy + s1_bh),
+                    radius=s1_rad,
+                    fill=(*s1_lcol, b_alpha_l),
+                )
 
-        # Scene 2: Cards + Animated Gender Bars
-        s2_out = 1.0 if t < 8.26 else max(0.0, (8.52 - t) / 0.26)
-        if s2_start <= t <= 8.52 and s2_out > 0.01:
-            hdr_in = _ease_out_cubic((t - s2_start) / 0.30)
+        # Scene 2: Cards + Animated Gender Bars (1.32s .. 6.48s; 100% opaque at t=6.0s for visual QA)
+        s2_out = 1.0 if t < 6.24 else max(0.0, (6.48 - t) / 0.24)
+        if s2_start <= t <= 6.48 and s2_out > 0.01:
+            hdr_in = _ease_out_cubic((t - s2_start) / 0.26)
             hdr_alpha = min(hdr_in, s2_out)
             if hdr_alpha > 0.01:
                 h_sp = _apply_opacity(self.scene2_header, hdr_alpha)
@@ -2452,12 +2491,12 @@ class _ReelSceneRenderer:
                 if t < c["t_in"]:
                     continue
                 el = t - c["t_in"]
-                c_in = _ease_out_cubic(el / 0.36)
+                c_in = _ease_out_cubic(el / 0.30)
                 c_alpha = min(c_in, s2_out)
                 if c_alpha <= 0.01:
                     continue
-                cy = c["y"] + int(20 * (1.0 - c_in))
-                bar_ease = _ease_out_cubic(el / 0.72)
+                cy = c["y"] + int(18 * (1.0 - c_in))
+                bar_ease = _ease_out_cubic(el / 0.62)
 
                 if bar_ease >= 0.998:
                     final_card = _apply_opacity(c["full_sprite"], c_alpha)
@@ -2487,10 +2526,10 @@ class _ReelSceneRenderer:
                         final_card.close()
                     card_work.close()
 
-        # Scene 3: 8.48 .. 11.5s
-        s3_alpha = _fade_window(t, 8.48, REEL_DURATION_SEC + 0.1, fade_in=0.38, fade_out=0.0)
+        # Scene 3: 6.42 .. 8.5s
+        s3_alpha = _fade_window(t, 6.42, REEL_DURATION_SEC + 0.1, fade_in=0.34, fade_out=0.0)
         if s3_alpha > 0.01:
-            dy3 = int(22 * (1.0 - _ease_out_cubic((t - 8.48) / 0.40)))
+            dy3 = int(20 * (1.0 - _ease_out_cubic((t - 6.42) / 0.36)))
             sp3 = _apply_opacity(self.scene3_sprite, s3_alpha)
             canvas.alpha_composite(sp3, dest=(0, dy3))
             if sp3 is not self.scene3_sprite:
@@ -2749,16 +2788,16 @@ def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: 
         pcm[i * 2] = int(sl * 24000)
         pcm[i * 2 + 1] = int(sr_val * 24000)
 
-    # 4. Overlay synchronized UI transition chimes (Hook 0.04s, Scene 2 2.02s, Card pops, Scene 3 Save CTA 8.48s)
+    # 4. Overlay synchronized UI transition chimes (Hook 0.04s, Scene 2 1.32s, Card pops, Scene 3 Save CTA 6.42s)
     chime_events = [
         (0.04, 880.0, 1318.5, 0.28, 0.22),
-        (2.02, 587.33, 1174.66, 0.26, 0.20),
-        (2.28, 659.25, 987.77, 0.16, 0.13),
-        (2.58, 783.99, 1174.66, 0.16, 0.13),
-        (2.88, 880.00, 1318.51, 0.16, 0.13),
-        (3.18, 987.77, 1479.98, 0.16, 0.13),
-        (8.48, 659.25, 1318.51, 0.34, 0.24),
-        (8.62, 987.77, 1567.98, 0.36, 0.24),
+        (1.32, 587.33, 1174.66, 0.26, 0.20),
+        (1.38, 659.25, 987.77, 0.16, 0.13),
+        (1.60, 783.99, 1174.66, 0.16, 0.13),
+        (1.82, 880.00, 1318.51, 0.16, 0.13),
+        (2.04, 987.77, 1479.98, 0.16, 0.13),
+        (6.42, 659.25, 1318.51, 0.34, 0.24),
+        (6.56, 987.77, 1567.98, 0.36, 0.24),
     ]
     for start_t, f1, f2, dur_t, amp in chime_events:
         s_idx = int(start_t * sr)
@@ -2797,7 +2836,7 @@ def _ensure_reel_bgm_wav_path(reel_type: str = "live_top5") -> str:
         pass
     try:
         os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
-        wav_path = os.path.join(REEL_TMP_CACHE_DIR, f"bgm_v1_{rt}.wav")
+        wav_path = os.path.join(REEL_TMP_CACHE_DIR, f"bgm_v2_{rt}.wav")
         if os.path.isfile(wav_path) and os.path.getsize(wav_path) > 10000:
             return wav_path
         wav_bytes = synthesize_lounge_bgm_wav_bytes(rt)
