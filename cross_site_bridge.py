@@ -444,7 +444,11 @@ def pull_partner_area_evening_feed(
 def maybe_trigger_partner_pull_async(testing: bool = False) -> None:
     """公開リクエストをブロックせず15分に1回だけバックグラウンドで姉妹フィードを同期する。"""
     global _last_partner_pull_mono
-    if testing:
+    if (
+        testing
+        or os.environ.get("DISABLE_SCHEDULER") == "1"
+        or os.environ.get("DISABLE_SHEETS") == "1"
+    ):
         return
     now_m = time.monotonic()
     with _partner_pull_lock:

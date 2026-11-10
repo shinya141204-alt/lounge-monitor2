@@ -1291,29 +1291,48 @@ def format_high_ctr_note_title(raw_title: str, theme_key: str = "", research: di
       1. Opens with a concrete utility/benefit bracket (`【実は一番勝てる】`, `【平日が一番勝てる】`, `【2026年最新】`, etc.)
       2. Contains the category keyword (`相席ラウンジ` or major brand name) near the front so non-followers immediately grasp the topic
       3. Replaces abstract literary suffixes (`｜夜の行動経済学ノート`) with concrete data-backed value
+      4. Verifies any `N万件` log count against `research['historical_log_count']` (AGENTS.md §1 zero guesswork)
     """
     cleaned = _sanitize_brand_names((raw_title or "").strip())
     if not cleaned:
         cleaned = "相席ラウンジの男女比データから見えた失敗しない店選びと時間帯の法則"
 
+    hist_cnt = int((research or {}).get("historical_log_count") or 0)
+    verified_hist_lbl = _hist_label(hist_cnt) if hist_cnt >= 10000 else ""
+    if re.search(r"\d+(?:\.\d+)?万件", cleaned):
+        if verified_hist_lbl:
+            cleaned = re.sub(r"\d+(?:\.\d+)?万件", verified_hist_lbl, cleaned)
+        else:
+            cleaned = re.sub(r"\d+(?:\.\d+)?万件(?:の)?", "実測", cleaned)
+
+    replacement_suffix = (
+        f"｜全国60店舗超・{verified_hist_lbl}ログ検証"
+        if verified_hist_lbl
+        else "｜全国60店舗超の実測データ検証"
+    )
     cleaned = re.sub(
-        r"｜(?:60店舗超のログから見えた)?夜の(?:行動経済学(?:ノート)?|意思決定ノート)$",
-        "｜全国60店舗超の実測データ検証",
+        r"｜(?:(?:60店舗超のログから見えた)?夜の(?:行動経済学(?:ノート)?|意思決定ノート)|数字の裏側にある夜の意思決定ノート)$",
+        replacement_suffix,
         cleaned,
     )
-    # Replace low-CTR internal editorial brackets with reader-benefit brackets
+    # Replace low-CTR internal editorial brackets with reader-benefit brackets (never strip store-name brackets)
     cleaned = re.sub(r"^【(?:実測比較|女性目線の構造解剖|構造解剖)】\s*", "", cleaned)
 
     bracket = NOTE_HIGH_CTR_BRACKETS.get(theme_key or "", "【実は一番勝てる】")
     has_good_bracket = bool(
-        re.match(r"^【(?:202\d年|平日|実は|女子|終電|1人|雨の|実測|保存版|9\.\d万件|\d+万件)", cleaned)
+        re.match(
+            r"^【(?:202\d年|平日|実は|女子|終電|1人|雨の|実測|保存版|\d+(?:\.\d+)?万件|相席ラウンジ|オリエンタルラウンジ|ag|JIS|ヤタコイ|ASOBIBAR)",
+            cleaned,
+        )
     )
     if not has_good_bracket:
-        cleaned = re.sub(r"^【[^】]{1,12}】\s*", "", cleaned)
         cleaned = f"{bracket}{cleaned}"
 
-    topic_tokens = ("相席ラウンジ", "オリエンタルラウンジ", "JIS", "ag", "相席ナビ")
-    if not any(tok in cleaned[:38] for tok in topic_tokens):
+    has_topic_near_front = (
+        any(tok in cleaned[:38] for tok in ("相席ラウンジ", "オリエンタルラウンジ", "相席ナビ", "ヤタコイ", "ASOBIBAR"))
+        or bool(re.search(r"(?:^|[^A-Za-z])(?:ag|JIS)(?:[^A-Za-z]|$)", cleaned[:38]))
+    )
+    if not has_topic_near_front:
         m_br = re.match(r"^(【[^】]+】)(.*)$", cleaned)
         if m_br:
             rest = m_br.group(2).lstrip("・｜ ")
@@ -1321,6 +1340,8 @@ def format_high_ctr_note_title(raw_title: str, theme_key: str = "", research: di
         else:
             cleaned = f"相席ラウンジ｜{cleaned}"
 
+    if len(cleaned) > 96:
+        cleaned = cleaned[:95].rstrip("・｜ ") + "…"
     return cleaned
 
 
@@ -2106,7 +2127,7 @@ def _build_deterministic_candidates(
                 "#相席ラウンジ #相席ナビ"
             ),
             "note_title": format_high_ctr_note_title(
-                f"「女の子は無料だから気楽でしょ？」が相席ラウンジで致命傷になる理由｜女性が払っている90分の正体",
+                f"{title_b}｜女性が払っている90分の正体",
                 theme_key="female_real_voice",
                 research=research,
             ),
@@ -2252,7 +2273,7 @@ def _build_column_gemini_prompt(
         '  ],\n'
         '  "x_title": "Xリプ欄用の短い記事見出し",\n'
         '  "x_main_text": "X告知1投目（自然な気づき＋実測データ＋控えめな締め）",\n'
-        '  "note_title": "note内レコメンド（流入の80%）でクリックされる実利・結論フック型タイトル（必ず先頭に『【実は一番勝てる】』『【平日が一番勝てる】』『【9.6万件データ検証】』『【女子の本音と逆張り】』等のベネフィット角括弧＋『相席ラウンジ』または具体疑問『「〜？」』を入れること。抽象的な『23時20分、〜』『暗い店ほど〜』だけのポエム見出しは禁止）",\n'
+        '  "note_title": "note内レコメンド（流入の80%）でクリックされる実利・結論フック型タイトル（必ず先頭に『【実は一番勝てる】』『【平日が一番勝てる】』『【実測データ検証】』『【女子の本音と逆張り】』等のベネフィット角括弧＋『相席ラウンジ』または具体疑問『「〜？」』を入れること。抽象的な『23時20分、〜』『暗い店ほど〜』だけのポエム見出しは禁止）",\n'
         '  "note_essay_markdown": "note.com専用の独立書き下ろし一人称エッセイ本文（先頭# タイトル無し、## 見出し2〜3個と > 引用を含め、専門用語に頼らず情景と思索で1,600文字以上）",\n'
         '  "note_hashtags": "#相席ラウンジ #オリエンタルラウンジ #相席ナビ #エッセイ #人間観察"\n'
         "}"
@@ -2390,7 +2411,7 @@ def _generate_gemini_column_candidate(
     x_main = _sanitize_brand_names(parsed.get("x_main_text") or baseline_cand["x_main_text"], prefer_casual_if_tight=False)
 
     note_title_clean = format_high_ctr_note_title(
-        parsed.get("note_title") or f"{parsed.get('title')}｜全国60店舗超の実測データ検証",
+        parsed.get("note_title") or f"{parsed.get('title') or ''}｜全国60店舗超の実測データ検証",
         theme_key=plan.get("theme_key") or "area_hopping",
         research=research,
     )

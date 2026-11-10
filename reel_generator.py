@@ -1651,6 +1651,7 @@ class _ReelSceneRenderer:
         self.prog_y = 1002 if self.is_tiktok else 1208
         # No live measurements (off-hours / all-zero) -> render an honest notice frame, never fabricated headcounts
         self.is_insufficient = (ctx.get("data_status") == "insufficient")
+        self.scene1_bar_spec = None
 
         self.chrome_base = self._build_chrome_sprite()
         if self.is_insufficient:
@@ -1879,53 +1880,64 @@ class _ReelSceneRenderer:
             else "オリエンタルラウンジ・ag・JIS 全国60店舗超対応"
         )
 
-        s1_left_ratio = max(0.12, min(0.88, float(self.ctx.get("overall_wpct") or 58) / 100.0))
+        def _norm_ratio(val) -> float | None:
+            if val is None:
+                return None
+            try:
+                return max(0.08, min(0.92, float(val) / 100.0))
+            except Exception:
+                return None
+
+        s1_left_ratio = _norm_ratio(self.ctx.get("overall_wpct"))
         if self.rt == "tiktok_gap_shock":
             gp0 = (self.ctx.get("gap_pairs") or [None])[0]
             if gp0 and gp0.get("heaven_store") and gp0.get("crowded_store"):
                 hi_s = gp0["heaven_store"]
                 lo_s = gp0["crowded_store"]
-                hdr_lbl = f"⚡ {gp0['hub_label']}の男女比ギャップ（差{gp0['gap_pt']}pt）"
+                hdr_lbl = f"◆ {gp0.get('hub_label') or '同駅'}の男女比ギャップ（差{gp0.get('gap_pt', 0)}pt）"
                 stat_main = f"◎ {hi_s['ja_name']}（女{hi_s['women']}:男{hi_s['men']}）"
-                ratio_note = f"狙い目 女性比{hi_s['wpct']}%  vs  対照店 {lo_s['ja_name']} 女性比{lo_s['wpct']}%"
-                s1_left_ratio = max(0.12, min(0.88, float(hi_s.get("wpct") or 60) / 100.0))
+                ratio_note = f"狙い目 女性比{hi_s.get('wpct')}%  vs  対照店 {lo_s['ja_name']} 女性比{lo_s.get('wpct')}%"
+                s1_left_ratio = _norm_ratio(hi_s.get("wpct"))
         elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
             l1 = (self.ctx.get("ladies_top5") or [None])[0]
             if l1:
-                hdr_lbl = "💄 いま受付待ち0・男性先行1位の狙い目店"
+                hdr_lbl = "◆ いま受付待ちほぼ0・男性先行1位の狙い目店"
                 stat_main = f"{l1['ja_name']}｜男{l1['men']}名 : 女{l1['women']}名"
-                lead_pt = f"+{l1['male_lead']}名先行・" if int(l1.get("male_lead") or 0) > 0 else ""
-                ratio_note = f"男性{lead_pt}男性比{l1['mpct']}%（{l1['area_label']}）｜女子ペア即案内圏"
-                s1_left_ratio = max(0.12, min(0.88, float(l1.get("mpct") or 60) / 100.0))
+                lead_pt = f"男性+{l1['male_lead']}名先行・" if int(l1.get("male_lead") or 0) > 0 else ""
+                area_s = f"（{l1['area_label']}）" if l1.get("area_label") else ""
+                ratio_note = f"{lead_pt}男性比{l1.get('mpct')}%{area_s}｜女子ペア即案内圏"
+                s1_left_ratio = _norm_ratio(l1.get("mpct"))
         elif self.rt == "area_battle":
             zones = self.ctx.get("area_battles") or []
             lead_z = next((z for z in zones if z.get("is_leader")), zones[0] if zones else None)
             if lead_z and int(lead_z.get("total") or 0) > 0:
                 bs = lead_z.get("best_store")
-                hdr_lbl = f"⚡ いま最も盛り上がっている激戦区：{lead_z['label']}"
+                hdr_lbl = f"◆ いま最も盛り上がっている激戦区：{lead_z['label']}"
                 stat_main = f"{lead_z['label']}｜女{lead_z['women']}名 vs 男{lead_z['men']}名"
                 if bs:
-                    ratio_note = f"狙い目1位：{bs['ja_name']}（女{bs['women']}:男{bs['men']}・女性比{bs['wpct']}%）"
-                    s1_left_ratio = max(0.12, min(0.88, float(bs.get("wpct") or lead_z.get("wpct") or 58) / 100.0))
+                    ratio_note = f"狙い目1位：{bs['ja_name']}（女{bs['women']}:男{bs['men']}・女性比{bs.get('wpct')}%）"
+                    s1_left_ratio = _norm_ratio(bs.get("wpct") if bs.get("wpct") is not None else lead_z.get("wpct"))
                 else:
-                    ratio_note = f"エリア女性比 {lead_z['wpct']}%  ｜  全国{self.ctx['active_store_count']}店舗リアルタイム比較"
-                    s1_left_ratio = max(0.12, min(0.88, float(lead_z.get("wpct") or 58) / 100.0))
+                    ratio_note = f"エリア女性比 {lead_z.get('wpct')}%  ｜  全国{self.ctx['active_store_count']}店舗リアルタイム比較"
+                    s1_left_ratio = _norm_ratio(lead_z.get("wpct"))
         elif self.rt == "tiktok_midnight_cliff":
+            has_mid = bool(self.ctx.get("midnight_top4"))
             m1 = (self.ctx.get("midnight_top4") or self.ctx.get("top5_volume") or [None])[0]
             if m1:
-                hdr_lbl = "🌙 23時20分の終電崖に強い深夜1位ラウンジ"
+                hdr_lbl = "◆ 23時20分の終電崖に強い深夜1位ラウンジ" if has_mid else "◆ 深夜営業ラウンジ 現在人数1位"
                 stat_main = f"{m1['ja_name']}｜女{m1['women']}名 : 男{m1['men']}名"
                 mr = m1.get("midnight_retention_pct")
-                ret_txt = f"終電後維持 {mr}%" if mr is not None else f"現在 女性比 {m1['wpct']}%"
-                ratio_note = f"{ret_txt}（{m1['area_label']}）｜深夜2軒目の有力候補"
-                s1_left_ratio = max(0.12, min(0.88, float(m1.get("wpct") or 58) / 100.0))
+                ret_txt = f"終電後維持 {mr}%" if mr is not None else f"現在 女性比 {m1.get('wpct')}%"
+                area_s = f"（{m1['area_label']}）" if m1.get("area_label") else ""
+                ratio_note = f"{ret_txt}{area_s}｜深夜2軒目の有力候補"
+                s1_left_ratio = _norm_ratio(m1.get("wpct"))
         else:
             top1 = (self.ctx.get("top5_volume") or [None])[0]
             if top1:
-                hdr_lbl = f"🔥 いま全国1位の激アツ店舗（全{self.ctx['active_store_count']}店リアルタイム集計）"
+                hdr_lbl = f"◆ いま全国1位の注目店舗（全{self.ctx['active_store_count']}店リアルタイム集計）"
                 stat_main = f"{top1['ja_name']}｜女{top1['women']}名 : 男{top1['men']}名"
-                ratio_note = f"1位店 女性比{top1['wpct']}%  ｜  全国合計：女性{self.ctx['total_women']}名 / 男性{self.ctx['total_men']}名"
-                s1_left_ratio = max(0.12, min(0.88, float(top1.get("wpct") or 58) / 100.0))
+                ratio_note = f"1位店 女性比{top1.get('wpct')}%  ｜  全国合計：女性{self.ctx['total_women']}名 / 男性{self.ctx['total_men']}名"
+                s1_left_ratio = _norm_ratio(top1.get("wpct"))
 
         hl_fit, f_hl, _ = ogp_generator.fit_text_and_font(draw, hdr_lbl, sw - 48, 19, 14)
         draw.text((lx + 24, cy1 + 18), hl_fit, font=f_hl, fill=acc2)
@@ -1936,22 +1948,25 @@ class _ReelSceneRenderer:
         rn_fit, rn_font, _ = ogp_generator.fit_text_and_font(draw, ratio_note, sw - 48, 18, 13)
         draw.text((lx + 24, cy1 + 122), rn_fit, font=rn_font, fill=(182, 194, 212, 240))
 
-        s1_bx, s1_by, s1_bw, s1_bh = lx + 24, cy1 + 162, sw - 48, 18
-        draw.rounded_rectangle((s1_bx, s1_by, s1_bx + s1_bw, s1_by + s1_bh), radius=9, fill=(32, 40, 62, 235))
-        self.scene1_bar_spec = (
-            s1_bx,
-            s1_by,
-            s1_bw,
-            s1_bh,
-            9,
-            s1_left_ratio,
-            self.theme["bar_left"],
-            self.theme["bar_right"],
-        )
+        if s1_left_ratio is not None:
+            s1_bx, s1_by, s1_bw, s1_bh = lx + 24, cy1 + 162, sw - 48, 18
+            draw.rounded_rectangle((s1_bx, s1_by, s1_bx + s1_bw, s1_by + s1_bh), radius=9, fill=(32, 40, 62, 235))
+            self.scene1_bar_spec = (
+                s1_bx,
+                s1_by,
+                s1_bw,
+                s1_bh,
+                9,
+                s1_left_ratio,
+                self.theme["bar_left"],
+                self.theme["bar_right"],
+            )
+        else:
+            self.scene1_bar_spec = None
 
         # Bottom teaser pill (inside safe zone)
         ty_pill = 832 if self.is_tiktok else 906
-        next_txt = "📌【保存】推奨｜すぐ下にリアル比較＆狙い目店を公開 >>>" if self.is_tiktok else "📌 行く前に見返せる【保存】推奨｜上位TOP5をすぐ公開 >>>"
+        next_txt = "【保存】推奨｜すぐ下にリアル比較＆狙い目店を公開 >>>" if self.is_tiktok else "行く前に見返せる【保存】推奨｜上位TOP5をすぐ公開 >>>"
         nt_fit, f_nt, _ = ogp_generator.fit_text_and_font(draw, next_txt, sw - 36, 19, 14)
         nw = int(draw.textlength(nt_fit, font=f_nt)) + 36
         nx = lx + max(0, (sw - nw) // 2)
@@ -2382,7 +2397,7 @@ class _ReelSceneRenderer:
         f_url = _get_reel_font(25 if self.is_tiktok else 28)
         f_note = _get_reel_font(16 if self.is_tiktok else 18)
 
-        k_txt = "📌 誰にもバレない【右下の保存】で入店3分前に見返す！"
+        k_txt = "★ 誰にもバレない【右下の保存】で入店3分前に見返す！"
         k_fit, f_k_fit, _ = ogp_generator.fit_text_and_font(draw, k_txt, sw - 40, 21, 15)
         kw = int(draw.textlength(k_fit, font=f_k_fit))
         draw.text((lx + max(0, (sw - kw) // 2), cta_y1 + (28 if self.is_tiktok else 40)), k_fit, font=f_k_fit, fill=acc)
@@ -2405,7 +2420,7 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((ux, uy, ux + uw, uy + uh), radius=16, fill=(12, 18, 34, 248), outline=acc2, width=2)
         draw.text((ux + 24, uy + (17 if self.is_tiktok else 20)), u_fit, font=f_u_fit, fill=acc2)
 
-        n1 = "フォローで毎晩20時「待ち時間0の穴場法則」を通知"
+        n1 = "フォローで最新の人数速報＆「待ち時間回避の穴場法則」をチェック"
         n2 = "オリエンタルラウンジ・ag・JIS ほか全国60店舗超対応"
         n1_fit, f_n1, _ = ogp_generator.fit_text_and_font(draw, n1, sw - 36, 16 if self.is_tiktok else 18, 13)
         n2_fit, f_n2, _ = ogp_generator.fit_text_and_font(draw, n2, sw - 36, 16 if self.is_tiktok else 18, 13)
@@ -2452,29 +2467,35 @@ class _ReelSceneRenderer:
         s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.24 if self.is_tiktok else 0.26, fade_out=0.16)
         if s1_alpha > 0.01:
             dy = int(20 * (1.0 - _ease_out_cubic(min(1.0, t / 0.28))))
-            sp1 = _apply_opacity(self.scene1_sprite, s1_alpha)
-            canvas.alpha_composite(sp1, dest=(0, dy))
-            if sp1 is not self.scene1_sprite:
-                sp1.close()
             s1_bar = getattr(self, "scene1_bar_spec", None)
             if s1_bar:
+                sp1_base = self.scene1_sprite.copy()
+                s1_draw = ImageDraw.Draw(sp1_base, "RGBA")
                 s1_bx, s1_by, s1_bw, s1_bh, s1_rad, s1_lratio, s1_lcol, s1_rcol = s1_bar
                 s1_bease = _ease_out_cubic(min(1.0, max(0.08, (t - 0.06) / 0.88)))
                 cur_bw = max(s1_rad * 2, int(s1_bw * s1_bease))
                 left_bw = max(s1_rad * 2, min(cur_bw, int(cur_bw * s1_lratio)))
-                b_alpha_r = int(235 * s1_alpha)
-                b_alpha_l = int(255 * s1_alpha)
                 if cur_bw > s1_rad * 2:
-                    draw.rounded_rectangle(
-                        (s1_bx, s1_by + dy, s1_bx + cur_bw, s1_by + dy + s1_bh),
+                    s1_draw.rounded_rectangle(
+                        (s1_bx, s1_by, s1_bx + cur_bw, s1_by + s1_bh),
                         radius=s1_rad,
-                        fill=(*s1_rcol, b_alpha_r),
+                        fill=(*s1_rcol, 235),
                     )
-                draw.rounded_rectangle(
-                    (s1_bx, s1_by + dy, s1_bx + left_bw, s1_by + dy + s1_bh),
+                s1_draw.rounded_rectangle(
+                    (s1_bx, s1_by, s1_bx + left_bw, s1_by + s1_bh),
                     radius=s1_rad,
-                    fill=(*s1_lcol, b_alpha_l),
+                    fill=(*s1_lcol, 255),
                 )
+                sp1 = _apply_opacity(sp1_base, s1_alpha)
+                canvas.alpha_composite(sp1, dest=(0, dy))
+                if sp1 is not sp1_base:
+                    sp1.close()
+                sp1_base.close()
+            else:
+                sp1 = _apply_opacity(self.scene1_sprite, s1_alpha)
+                canvas.alpha_composite(sp1, dest=(0, dy))
+                if sp1 is not self.scene1_sprite:
+                    sp1.close()
 
         # Scene 2: Cards + Animated Gender Bars (1.32s .. 6.48s; 100% opaque at t=6.0s for visual QA)
         s2_out = 1.0 if t < 6.24 else max(0.0, (6.48 - t) / 0.24)
@@ -2712,15 +2733,16 @@ def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: 
     Synthesize a warm 22,050Hz stereo 16-bit WAV Lounge Deep House / Chill groove + synchronized UI transition chimes:
       - Eliminates silent `anullsrc` tracks that cause 1-2s instant swipe-aways on Instagram Reels & TikTok.
       - Uses a fast 2-bar (4.0s @ 120 BPM) precomputed stereo loop tiled across `duration_sec` plus
-        UI sparkle/chime overlays at `t=0.04s` (Hook), `t=2.02s` (Scene 2), `t=2.28..3.48s` (Card pops),
-        and `t=8.48s` (Scene 3 Save/Profile CTA).
+        UI sparkle/chime overlays at `t=0.04s` (Hook), `t=1.32s` (Scene 2), `t=1.38..2.04s` (Card pops),
+        and `t=6.42s` (Scene 3 Save/Profile CTA).
     """
     import array
     import wave
 
     rt = normalize_reel_type(reel_type)
+    dur_key = (rt, round(float(duration_sec), 2))
     with _BGM_WAV_LOCK:
-        cached = _BGM_WAV_MEM_CACHE.get(rt)
+        cached = _BGM_WAV_MEM_CACHE.get(dur_key)
         if cached:
             return cached
 
@@ -2819,7 +2841,7 @@ def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: 
     wav_bytes = buf.getvalue()
 
     with _BGM_WAV_LOCK:
-        _BGM_WAV_MEM_CACHE[rt] = wav_bytes
+        _BGM_WAV_MEM_CACHE[dur_key] = wav_bytes
     return wav_bytes
 
 
@@ -2836,7 +2858,8 @@ def _ensure_reel_bgm_wav_path(reel_type: str = "live_top5") -> str:
         pass
     try:
         os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
-        wav_path = os.path.join(REEL_TMP_CACHE_DIR, f"bgm_v2_{rt}.wav")
+        dur_tag = int(round(float(REEL_DURATION_SEC) * 10))
+        wav_path = os.path.join(REEL_TMP_CACHE_DIR, f"bgm_v3_{rt}_{dur_tag}.wav")
         if os.path.isfile(wav_path) and os.path.getsize(wav_path) > 10000:
             return wav_path
         wav_bytes = synthesize_lounge_bgm_wav_bytes(rt)
@@ -3030,6 +3053,8 @@ def _encode_with_ffmpeg(
             "-r", str(REEL_FPS),
             "-i", "pipe:0",
             *audio_input_args,
+            "-map", "0:v:0",
+            "-map", "1:a:0",
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-crf", "25",

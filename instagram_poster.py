@@ -120,7 +120,7 @@ def has_ig_grid_posted_recently(
     if has_ig_feed_posted_today(now_jst):
         return True
     try:
-        raw_ts = (job_state.get_value(LAST_IG_GRID_POST_TS_KEY, allow_blocking=False) or "").strip()
+        raw_ts = (job_state.get_value(LAST_IG_GRID_POST_TS_KEY, allow_blocking=True) or "").strip()
         if raw_ts:
             last_naive = datetime.datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
             cur_naive = _coerce_ig_jst_naive(now_jst)
@@ -1133,6 +1133,29 @@ def publish_live_reel_to_instagram(
             rt = reel_generator.select_scheduled_reel_type(stores, now_jst=now_jst, platform="instagram")
         else:
             rt = reel_generator.normalize_reel_type(reel_type)
+
+        # Smart profile-grid protection: if a Carousel/Feed post ran today, or a Grid post ran within 36h,
+        # publish this Reel to Reels/Explore non-follower discovery (`share_to_feed=False`) so the profile grid stays clean.
+        effective_share_to_feed = bool(share_to_feed)
+        if not force and has_ig_grid_posted_recently(now_jst, min_hours=36.0):
+            effective_share_to_feed = False
+        elif effective_share_to_feed and not force and (reel_type or "").strip().lower() == "auto":
+            # Never allow two consecutive Grid Reels to share the same template cover;
+            # rotate across all 4 templates using the business-date ordinal offset so one template isn't favored.
+            last_grid_rt = (job_state.get_value(LAST_IG_GRID_REEL_TYPE_KEY, allow_blocking=True) or "").strip()
+            if last_grid_rt and rt == last_grid_rt:
+                all_rts = ("area_battle", "live_top5", "tiktok_gap_shock", "ladies_zero_wait")
+                rot_offset = now_jst.toordinal() % len(all_rts)
+                rotated_rts = all_rts[rot_offset:] + all_rts[:rot_offset]
+                dom_chk = threads_poster._filter_domestic_stores(stores)
+                for alt_rt in rotated_rts:
+                    if alt_rt == last_grid_rt:
+                        continue
+                    if alt_rt == "ladies_zero_wait" and sum(int(s.get("men") or 0) for s in dom_chk) < 12:
+                        continue
+                    rt = alt_rt
+                    break
+
         dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
 
         if not force:
@@ -1154,25 +1177,6 @@ def publish_live_reel_to_instagram(
                         f"Skipping scheduled IG Reel ({slot_label}): insufficient female headcount (women={total_dom_women})."
                     )
                     return {"status": "skipped", "ok": False, "reason": "Insufficient live headcount"}
-
-        # Smart profile-grid protection: if a Carousel/Feed post ran today, or a Grid post ran within 36h,
-        # publish this Reel to Reels/Explore non-follower discovery (`share_to_feed=False`) so the profile grid stays clean.
-        effective_share_to_feed = bool(share_to_feed)
-        if not force and has_ig_grid_posted_recently(now_jst, min_hours=36.0):
-            effective_share_to_feed = False
-        elif effective_share_to_feed and not force and (reel_type or "").strip().lower() == "auto":
-            # Never allow two consecutive Grid Reels to share the same template cover
-            last_grid_rt = (job_state.get_value(LAST_IG_GRID_REEL_TYPE_KEY, allow_blocking=False) or "").strip()
-            if last_grid_rt and rt == last_grid_rt:
-                for alt_rt in ("area_battle", "live_top5", "tiktok_gap_shock", "ladies_zero_wait"):
-                    if alt_rt != last_grid_rt:
-                        if alt_rt == "ladies_zero_wait":
-                            dom_chk = threads_poster._filter_domestic_stores(stores)
-                            if sum(int(s.get("men") or 0) for s in dom_chk) < 12:
-                                continue
-                        rt = alt_rt
-                        dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
-                        break
 
         refresh_ig_token_if_needed(force=False)
         cleaned_custom = reel_generator.enforce_brand_rule((custom_caption or "").strip())

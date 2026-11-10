@@ -219,10 +219,32 @@ SLOT_THEMES = {
 }
 
 
+def _slot_from_hour(h: int) -> str:
+    if 1 <= h < 6:
+        return "02:00"
+    if h == 0 or h == 23:
+        return "00:00"
+    if 21 <= h <= 22:
+        return "22:00"
+    return "20:00"
+
+
 def resolve_slot_from_param(s_param: str = "", now_jst: datetime.datetime = None) -> str:
     """Determine which time slot theme ('20:00', '22:00', '00:00', '02:00') to use."""
     now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     s_clean = (s_param or "").strip().lower()
+    if s_clean:
+        # When a campaign prefix (e.g. `x22_...`) is combined with a trailing 15-min live bucket
+        # (`_YYYYMMDD_HHMM`), prefer the live bucket hour if it has drifted by >2 hours from the prefix.
+        m_prefix = re.search(r"(?:^|_)(?:x|th)(19|20|22|00|02)_", s_clean)
+        m_bucket = re.search(r"_(\d{8})_(\d{2})(\d{2})$", s_clean)
+        if m_prefix and m_bucket:
+            pref_h = int(m_prefix.group(1))
+            bucket_h = int(m_bucket.group(2))
+            hour_diff = min((bucket_h - pref_h) % 24, (pref_h - bucket_h) % 24)
+            if hour_diff > 2:
+                return _slot_from_hour(bucket_h)
+
     if any(k in s_clean for k in ("2200", "22:00", "2230", "x22_", "th22_")):
         return "22:00"
     if any(k in s_clean for k in ("0000", "00:00", "x00_", "th00_")):
@@ -232,14 +254,7 @@ def resolve_slot_from_param(s_param: str = "", now_jst: datetime.datetime = None
     if any(k in s_clean for k in ("2000", "20:00", "x20_", "th20_", "x19_", "th19_")):
         return "20:00"
 
-    h = now_jst.hour
-    if 1 <= h < 6:
-        return "02:00"
-    if h == 0 or h == 23:
-        return "00:00"
-    if 21 <= h <= 22:
-        return "22:00"
-    return "20:00"
+    return _slot_from_hour(now_jst.hour)
 
 
 def get_ogp_meta_for_slot(s_param: str = "", now_jst: datetime.datetime = None) -> dict:
@@ -514,6 +529,8 @@ def generate_live_ogp_png(
     total_w = sum(int(s.get("women") or 0) for s in dom_stores)
     total_m = sum(int(s.get("men") or 0) for s in dom_stores)
     top3 = _select_top3_for_slot(dom_stores, slot_label, focus_text=focus_text)
+    base_top3 = _select_top3_for_slot(dom_stores, slot_label, focus_text="") if focus_text else top3
+    has_focus_pin = bool(focus_text) and [s.get("name") for s in top3] != [s.get("name") for s in base_top3]
 
     # =========================================================================
     # LEFT COLUMN (x=52 to 548)
@@ -682,8 +699,9 @@ def generate_live_ogp_png(
         return out.getvalue()
 
     # Panel Header
-    draw.text((rx + 26, ry + 20), "★ リアルタイム上位3店舗", font=f_panel_hdr, fill=(229, 200, 120, 255))
-    live_badge = "● LIVE RANKING"
+    panel_hdr_txt = "★ ピックアップ＆上位店舗" if has_focus_pin else "★ リアルタイム上位3店舗"
+    draw.text((rx + 26, ry + 20), panel_hdr_txt, font=f_panel_hdr, fill=(229, 200, 120, 255))
+    live_badge = "● LIVE PICKUP" if has_focus_pin else "● LIVE RANKING"
     lb_w = int(draw.textlength(live_badge, font=f_panel_hdr))
     draw.text((rx + rw - lb_w - 26, ry + 20), live_badge, font=f_panel_hdr, fill=(74, 222, 128, 255))
     draw.line((rx + 24, ry + 54, rx + rw - 24, ry + 54), fill=(255, 255, 255, 35), width=1)

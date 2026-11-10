@@ -12,8 +12,8 @@
   - データベース: Fly Postgres `aiseki-navi-tokyo-db`（**512MB VM**：メモリ上限を意識し大量行の一括 `fetchall()` を避けること）＋ Redis（高速キャッシュ）＋ SQLite WAL（ローカル/フォールバック）＋ Google Sheets（バックアップ同期）
 - **コアサーバー & Blueprint 分割**:
   - `app.py`: Flask 初期化・認証・セキュリティヘッダー・`/`（SSR軽量描画）・`/staff`・コア `/api/status`・`/api/vote`・`/api/watch-intent`・`/link/<item_id>`
-  - `routes/portal_bp.py`: ブランド別・`/store/<slug>`・`/areas`・`/columns`・`/stats`・`/stats/monthly.csv`・`/stats/year-end-2026`・`/price-comparison`・`/for-women`・`/concierge`・`/grooming`・`/about`・`/contact`・全 `/guide/*`
-  - `routes/seo_feeds_bp.py`: `/robots.txt`・`/sitemap.xml`・`/llms.txt`・`/llms-full.txt`・`/api/llms-facts.json`（`schema_version="2.1"`）・`/ads.txt`
+  - `routes/portal_bp.py`: ブランド別・`/store/<slug>`・`/areas`・`/columns`・`/stats`・`/stats/monthly.csv`・`/stats/weekend-index`・`/stats/monthly/<yyyy_mm>`・`/stats/year-end-2026`・`/price-comparison`・`/for-women`・`/concierge`・`/grooming`・`/about`・`/contact`・全 `/guide/*`
+  - `routes/seo_feeds_bp.py`: `/robots.txt`・`/sitemap.xml`・`/llms.txt`・`/llms-full.txt`・`/api/llms-facts.json`（`schema_version="2.1"`）・`/api/cross-site/area-night-summary.json`・`/ads.txt`
   - `routes/staff_bp.py`: スタッフ・マスター管理APIおよび IG スライドキャッシュ
   - `routes/sns_jobs_bp.py`: 動的 OGP / リール動画配信、非同期 SNS ジョブキュー、全 `/api/trigger-*`
   - `routes/push_line_bp.py` / `push_watch.py`: Web Push 条件ウォッチ購読（RFC 8292 VAPID ES256 + RFC 8291 `aes128gcm`）＆公式 LINE Messaging API 0円自動応答 Webhook
@@ -21,6 +21,7 @@
 - **独自データモート・分析モジュール**:
   - `local_db.py` / `turbo_store.py`: 生ログ90日保持＋1時間粒度永久ロールアップ（`store_hourly_rollups`）、日次文脈（`day_context_logs`）、現地投票（`crowd_votes`）、条件ウォッチ（`store_watch_intents`）、60分後予測精度検証
   - `arena_calendar.py` / `events.py` / `moat_intelligence.py`: 全国主要ドーム・アリーナ公演収集（`arena_schedule_events`）、JR主要路線遅延×来店サージ相関、公式イベント差分履歴（`store_event_history`）、リアルタイム60分予測＆待ち時間推論
+  - `cross_site_bridge.py` / `second_venues.py`: 姉妹サイト『マチナビ』横断の週末夜間需給DI指数（`/stats/weekend-index`）・月次凍結アーカイブ（`/stats/monthly/<yyyy_mm>`）集計、および店舗別の徒歩圏2軒目スポット構造化データ
   - `price_comparison.py`: 国内全店舗の料金体系（`STORE_PRICE_TABLE`）＋ 別業態横断比較（`ADJACENT_FORMAT_SPECS`：マッチングアプリ・街コン・審査制デート等との時間単価・当日性・会話保証比較）
   - `store_master.py` / `store_hours.py` / `store_insights.py` / `data_audit.py`: 店舗マスタ・営業時間判定・店舗別実測分析・ドリフト監査
   - `affiliate_manager.py` / `analytics.py` / `pdca_engine.py`: アフィリエイト枠管理・アクセス計測・自律グロースPDCA参謀
@@ -93,7 +94,7 @@ python3 .agents/skills/ops-sentinel/scripts/run_ops_sentinel.py --live
 - **外部データの出典保持**: ドーム公演・JR運行情報・店舗公式イベント等の外部収集レコードは `source_url` と取得時刻を保持し、出典不明のレコードを生成しないこと。
 
 ## 9. 一次統計公開 ＆ CC BY 4.0 引用規約
-- `/stats/monthly.csv` および `/stats/year-end-2026` は **CC BY 4.0** ライセンス（帰属表記：`出典: 相席ナビ編集部（https://aiseki-navi.com）`）で公開する一次統計インフラである。
+- `/stats/monthly.csv`・`/stats/weekend-index`・`/stats/monthly/<yyyy_mm>`・`/stats/year-end-2026` は **CC BY 4.0** ライセンス（帰属表記：`出典: 相席ナビ編集部（https://aiseki-navi.com）`）で公開する一次統計インフラである。
 - 報道機関・研究者・ブロガー・AI検索からの引用信頼性と被リンク価値を守るため、**一次統計ページ・CSV・`/api/llms-facts.json` には `/link/` アフィリエイトリンクを一切含めないこと**。
 - DB一時障害等で集計結果が0件（空データ）となった場合、空レスポンスを長時間メモリキャッシュしないこと。CSVカラム構造を変更する場合は `llms-facts.json` の `schema_version` 更新とセットで行うこと。
 

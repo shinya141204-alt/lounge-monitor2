@@ -11,8 +11,8 @@
     <title>{{ store.seo_name }} 現在人数・男女比｜営業時間・客層・韓国ソウルの入店条件｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業時間・定休日・客層（年齢層）・パスポート等の入店条件やソウル2拠点の比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新。営業時間・定休日・客層（年齢層）・パスポート等の顔写真付き身分証ルールや、江南・弘大2店舗の使い分けも実測データで解説。{% endif %}">
     {% elif store.slug == 'oriental-lounge-oita' %}
-    <title>{{ store.seo_name }}の評判＆現在人数・男女比｜料金・客層・1人入店・待ち時間｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。実測ログから見た曜日・時間帯別の混み方レビュー、料金システム、男性1人入店の可否、フード・ドリンクの特徴まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新。過去実測データから見た曜日・時間帯別の集客傾向レビュー、時間帯別料金・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・待ち時間｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。実測ログから見た曜日・時間帯別の混み方傾向、料金システム、男性1人入店の可否、待ち時間の目安まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新。過去実測データから見た曜日・時間帯別の集客傾向、時間帯別料金・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
     {% elif store.slug == 'oriental-lounge-fukuoka' %}
     <title>{{ store.seo_name }} 現在人数・男女比｜JIS（ジス）比較・料金・客層｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神とのリアルタイム人数・料金・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
@@ -1422,12 +1422,22 @@
         {% endif %}
 
         {% if 'ソウル' not in store.name %}
-        {% set _mn_area_map = {'shinjuku': 'shinjuku', 'shibuya': 'shibuya', 'kanto': 'yokohama', 'osaka': 'umeda', 'nagoya': 'nagoya_sakae', 'fukuoka': 'fukuoka_tenjin'} %}
-        {% set _mn_area_id = 'ebisu' if '恵比寿' in store.name else ('namba' if ('難波' in store.name or '心斎橋' in store.name or 'NAMBA' in store.name) else _mn_area_map.get(area_slug or '', '')) %}
+        {% set _mn_area_id = (
+            'ebisu' if '恵比寿' in store.name else
+            'yokohama' if '横浜' in store.name else
+            'shinjuku' if ('新宿' in store.name or area_slug == 'shinjuku') else
+            'shibuya' if ('渋谷' in store.name or area_slug == 'shibuya') else
+            'namba' if ('難波' in store.name or '心斎橋' in store.name or '道頓堀' in store.name or 'NAMBA' in store.name) else
+            'umeda' if ('梅田' in store.name or '茶屋町' in store.name or '天満' in store.name) else
+            'nagoya_sakae' if ('名古屋' in store.name or '栄' in store.name or area_slug == 'nagoya') else
+            'fukuoka_tenjin' if ('福岡' in store.name or '天神' in store.name or '小倉' in store.name or area_slug == 'fukuoka') else
+            ''
+        ) %}
         <aside id="sister-machinavi-bridge"
                data-nosnippet
                data-mn-area="{{ _mn_area_id }}"
                data-store-slug="{{ store.slug }}"
+               data-is-open="{{ '1' if store.is_open_now else '0' }}"
                data-trigger-mode="{{ store_smart_cta.mode if store_smart_cta else 'store_detail' }}"
                style="display:none; margin: 0 0 18px; padding: 14px 16px; border-radius: 10px; background: var(--card-elevated, rgba(255,255,255,0.03)); border: 1px solid var(--border-subtle);"
                aria-label="姉妹サイト・マチナビ（街コン・婚活パーティー残席＆コスパ比較）への案内">
@@ -1448,17 +1458,20 @@
                    href="https://machinavi-data.com/{% if _mn_area_id %}area/{{ _mn_area_id }}/{% endif %}?s=an_store_{{ store.slug }}"
                    target="_blank"
                    rel="noopener"
-                   style="display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:7px; font-size:0.78rem; font-weight:700; color:var(--text-main); background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); text-decoration:none; white-space:nowrap;">
+                   style="display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:8px 14px; border-radius:7px; font-size:0.78rem; font-weight:700; color:var(--text-main); background:var(--card-bg); border:1px solid var(--border-subtle); text-decoration:none; white-space:nowrap;">
                     マチナビで残席・コスパを見る ›
                 </a>
             </div>
         </aside>
         <script>
         (function initCoViewAndSisterBridge() {
+            var isStaffSession = {{ ('true' if (is_staff or session.get('is_staff')) else 'false') }};
+            var qsRaw = String(window.location.search || '').toLowerCase();
+            var isStaffProbe = isStaffSession || qsRaw.indexOf('staff_test=1') !== -1;
             try {
                 var curSlug = {{ store.slug | tojson }};
                 var prevSlug = sessionStorage.getItem('an_last_store_slug') || '';
-                if (prevSlug && prevSlug !== curSlug) {
+                if (!isStaffProbe && prevSlug && prevSlug !== curSlug) {
                     var pairKey = 'an_coview_' + prevSlug + '_' + curSlug;
                     if (!sessionStorage.getItem(pairKey)) {
                         sessionStorage.setItem(pairKey, '1');
@@ -1477,11 +1490,12 @@
                 var bridge = document.getElementById('sister-machinavi-bridge');
                 if (!bridge) return;
                 var ref = String(document.referrer || '').toLowerCase();
-                var qs = String(window.location.search || '').toLowerCase();
+                var qs = qsRaw;
                 if (ref.indexOf('machinavi-data.com') !== -1 || qs.indexOf('s=mn_') !== -1 || qs.indexOf('from=machinavi') !== -1) {
                     return;
                 }
                 var trig = bridge.getAttribute('data-trigger-mode') || 'store_detail';
+                var isOpenFlag = bridge.getAttribute('data-is-open') === '1';
                 var mnArea = bridge.getAttribute('data-mn-area') || 'all';
                 if (trig === 'men_glut' || trig === 'off_or_low') {
                     bridge.style.display = 'block';
@@ -1489,8 +1503,9 @@
                     try {
                         if (localStorage.getItem('aiseki_audience_mode') === 'women') aud = 'women';
                     } catch (e) {}
-                    var lbl = mnArea + ':' + (trig === 'men_glut' ? 'men_glut' : 'closed') + ':' + aud;
-                    if (!sessionStorage.getItem('an_sbr_imp_' + lbl)) {
+                    var reasonTag = trig === 'men_glut' ? 'men_glut' : (isOpenFlag ? 'open_low' : 'closed');
+                    var lbl = mnArea + ':' + reasonTag + ':' + aud;
+                    if (!isStaffProbe && !sessionStorage.getItem('an_sbr_imp_' + lbl)) {
                         sessionStorage.setItem('an_sbr_imp_' + lbl, '1');
                         fetch('/api/track', {
                             method: 'POST',
@@ -1500,7 +1515,7 @@
                         }).catch(function () {});
                     }
                     var lk = document.getElementById('sister-machinavi-link');
-                    if (lk) {
+                    if (lk && !isStaffProbe) {
                         lk.addEventListener('click', function () {
                             fetch('/api/track', {
                                 method: 'POST',

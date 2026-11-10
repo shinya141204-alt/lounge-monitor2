@@ -213,21 +213,16 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
     png_bytes = None
     if not skip_media_card:
         try:
+            import inspect
             import ogp_generator
             slot_code = (slot_label or "20:00").replace(":", "")
-            try:
-                png_bytes = ogp_generator.generate_live_ogp_png(
-                    stores,
-                    s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
-                    now_jst=now_jst,
-                    focus_text=text,
-                )
-            except TypeError:
-                png_bytes = ogp_generator.generate_live_ogp_png(
-                    stores,
-                    s_param=f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
-                    now_jst=now_jst,
-                )
+            ogp_kwargs = {
+                "s_param": f"{now_jst.strftime('%Y%m%d')}_{slot_code}",
+                "now_jst": now_jst,
+            }
+            if "focus_text" in inspect.signature(ogp_generator.generate_live_ogp_png).parameters:
+                ogp_kwargs["focus_text"] = text
+            png_bytes = ogp_generator.generate_live_ogp_png(stores, **ogp_kwargs)
         except Exception as e:
             logging.warning(f"Failed to generate live OGP PNG for X post ({slot_label}): {e}")
 

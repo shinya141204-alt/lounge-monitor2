@@ -236,6 +236,59 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
         self.assertIn("相席ラウンジ", note_t[:30])
         self.assertNotIn("夜の行動経済学", note_t)
 
+        # 5. Fable 5.2 audit regression checks:
+        # (a) Unverified `9.6万件` stripped when historical_log_count is absent; preserved when verified
+        note_unverified = column_editorial.format_high_ctr_note_title(
+            "【9.6万件データ検証】金曜21時に並ぶ人がハマる罠｜数字の裏側にある夜の意思決定ノート",
+            theme_key="friday_rush",
+            research={"historical_log_count": 0},
+        )
+        self.assertNotIn("9.6万件", note_unverified)
+        self.assertNotIn("意思決定ノート", note_unverified)
+        note_verified = column_editorial.format_high_ctr_note_title(
+            "金曜21時に並ぶ人がハマる罠｜数字の裏側にある夜の意思決定ノート",
+            theme_key="friday_rush",
+            research={"historical_log_count": 96000},
+        )
+        self.assertIn("96,000件", note_verified)
+
+        # (b) Store-name bracket preserved & English `Instagram` not false-matched as `ag`
+        note_store_b = column_editorial.format_high_ctr_note_title(
+            "【オリエンタルラウンジ新宿】22時台の女性比とInstagram口コミの差",
+            theme_key="area_hopping",
+        )
+        self.assertIn("【オリエンタルラウンジ新宿】", note_store_b)
+
+        # (c) Empty stores do not fabricate 58%/60% Scene 1 bar
+        empty_ctx = reel_generator.build_reel_context([], reel_type="live_top5")
+        empty_comp = reel_generator._ReelSceneRenderer(empty_ctx)
+        self.assertIsNone(empty_comp.scene1_bar_spec)
+
+        # (d) Stale campaign prefix (`x22_...`) + daytime 15m bucket (`_20261111_1500`) resolves to daytime/20:00
+        self.assertEqual(
+            ogp_generator.resolve_slot_from_param("x22_ai_live_adlib_20261111_1500"),
+            "20:00",
+        )
+        self.assertEqual(
+            ogp_generator.resolve_slot_from_param("x22_ai_live_adlib_20261110_2215"),
+            "22:00",
+        )
+
+        # (e) `2度目の波` in first line is NOT penalized as a temperature opener
+        eval_deg = sns_editorial.run_evaluator(
+            [
+                {
+                    "style": "wave_test",
+                    "main_text": "新宿の23時半、今夜2度目の波が来てる。オリエンタルラウンジ新宿は女性46名・男性22名（女性比68%）。",
+                }
+            ],
+            res,
+            plan,
+            channel="threads",
+            now_jst=now_jst,
+        )
+        self.assertGreaterEqual(eval_deg["candidates"][0]["scores"]["human_tone"], 28)
+
 
 if __name__ == "__main__":
     unittest.main()

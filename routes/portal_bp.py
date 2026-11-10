@@ -626,12 +626,15 @@ def store_detail_page(store_slug):
             is_staff=bool(session.get('is_staff')),
         )
     import affiliate_manager
+    import datetime as _dt_cache
+    now_cache_jst = _dt_cache.datetime.now(_dt_cache.timezone(_dt_cache.timedelta(hours=9)))
+    og_cache_bucket = f"{now_cache_jst.strftime('%Y%m%d_%H')}{(now_cache_jst.minute // 15) * 15:02d}"
     store_mon_sig = (
         affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
         affiliate_manager.is_slot_monetized('women_dating', allow_blocking=False),
         affiliate_manager.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
     )
-    return core._get_cached_html_or_render(('store', store_slug, store_mon_sig), _render)
+    return core._get_cached_html_or_render(('store', store_slug, store_mon_sig, og_cache_bucket), _render)
 
 
 @portal_bp.route('/columns')
@@ -926,7 +929,9 @@ def stats_monthly_csv():
 def stats_weekend_index_page():
     """Canonical HTML whitepaper for the 2-Axis Weekend Supply-Demand DI Index (CC BY 4.0, zero /link/)."""
     import cross_site_bridge
-    raw_days = request.args.get('days', 28, type=int) or 28
+    raw_input = request.args.get('days', 28, type=int) or 28
+    clamped = max(7, min(90, int(raw_input)))
+    raw_days = min((7, 14, 28, 90), key=lambda d: abs(d - clamped))
     cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
     di_report = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
     with core.data_lock:
