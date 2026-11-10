@@ -1897,7 +1897,7 @@ class _ReelSceneRenderer:
                 lo_s = gp0["crowded_store"]
                 hdr_lbl = f"◆ {gp0.get('hub_label') or '同駅'}の男女比ギャップ（差{gp0.get('gap_pt', 0)}pt）"
                 stat_main = f"◎ {hi_s['ja_name']}（女{hi_s['women']}:男{hi_s['men']}）"
-                ratio_note = f"狙い目 女性比{hi_s.get('wpct')}%  vs  対照店 {lo_s['ja_name']} 女性比{lo_s.get('wpct')}%"
+                ratio_note = f"狙い目 女性比{hi_s.get('wpct')}%  vs  混雑店 女性比{lo_s.get('wpct')}%（女{lo_s['women']}:男{lo_s['men']}）"
                 s1_left_ratio = _norm_ratio(hi_s.get("wpct"))
         elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
             l1 = (self.ctx.get("ladies_top5") or [None])[0]
@@ -2040,13 +2040,13 @@ class _ReelSceneRenderer:
                     "w": int(z0.get("women") or 0),
                     "m": int(z0.get("men") or 0),
                     "pct_lbl": f"女{z0.get('wpct')}%",
-                    "tag": str(z0.get("label") or "1位")[:3],
+                    "tag": str(z0.get("label") or "1位").replace("エリア", "").strip()[:4],
                 }
                 tower_b = {
                     "w": int(z1.get("women") or 0),
                     "m": int(z1.get("men") or 0),
                     "pct_lbl": f"女{z1.get('wpct')}%",
-                    "tag": str(z1.get("label") or "2位")[:3],
+                    "tag": str(z1.get("label") or "2位").replace("エリア", "").strip()[:4],
                 }
                 badge_lbl = "3D都市対決"
         elif self.rt in ("ladies_zero_wait", "tiktok_ladies_real"):
@@ -2109,7 +2109,7 @@ class _ReelSceneRenderer:
         tot_a = max(1, tower_a["w"] + tower_a["m"])
         tot_b = max(1, tower_b["w"] + tower_b["m"])
         max_tot = max(tot_a, tot_b, 12)
-        max_px = 104.0
+        max_px = 96.0
 
         for tw, tot in ((tower_a, tot_a), (tower_b, tot_b)):
             total_h = max(26.0, min(max_px, (tot / max_tot) * max_px))
@@ -2180,8 +2180,8 @@ class _ReelSceneRenderer:
 
         # Draw back-right tower (tower_b) then front-left tower (tower_a)
         towers_pos = [
-            (spec["tower_b"], wx1 + 136, wy2 - 34, (148, 163, 184, 245)),
-            (spec["tower_a"], wx1 + 56, wy2 - 28, (243, 213, 160, 255)),
+            (spec["tower_b"], wx1 + 136, wy2 - 42, (148, 163, 184, 245)),
+            (spec["tower_a"], wx1 + 56, wy2 - 36, (243, 213, 160, 255)),
         ]
         for tw, bx, by, lbl_col in towers_pos:
             hm = tw["h_m"] * ease_clamped
