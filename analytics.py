@@ -467,6 +467,8 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
     if ev == 'cushion_click':
         return 'cushion_click'
     if ev == 'sns_inflow':
+        if lbl.startswith(('cv:', 'cush:', 'cvslot:')):
+            return ''
         return 'sns_inflow'
     if ev in ('map_cafe', 'map_bar'):
         return 'map_search'
@@ -954,6 +956,18 @@ def normalize_inflow_source(raw_s: str) -> str:
     return s_low
 
 
+def track_sns_cushion_attribution(clean_lbl: str, raw_inflow: str) -> None:
+    """Attribute a `cushion_click` event back to an active `an_src` SNS inflow cookie (`cush:<tag> @ <hub>`)."""
+    try:
+        inflow_tag = normalize_inflow_source((raw_inflow or '').strip())
+        if inflow_tag:
+            tgt_hub = (clean_lbl or '').split('@', 1)[0].strip() or '/grooming'
+            if tgt_hub.startswith('/'):
+                track('sns_inflow', f"cush:{inflow_tag} @ {tgt_hub[:32]}")
+    except Exception:
+        pass
+
+
 def describe_inflow_tag(tag: str) -> str:
     """Human-readable label for a normalized inflow tag like 'x22_hub_gap' or 'th22_threads_city_story'."""
     import re
@@ -961,6 +975,15 @@ def describe_inflow_tag(tag: str) -> str:
     if t.startswith('cv:'):
         inner = describe_inflow_tag(t[3:])
         return f"🎯 アフィリエイトCV（流入元: {inner}）"
+    if t.startswith('cush:'):
+        rest = t[5:].split('@', 1)[0].strip()
+        inner = describe_inflow_tag(rest)
+        return f"🧭 2ステップクッション遷移（流入元: {inner}）"
+    if t.startswith('cvslot:'):
+        rest = t[7:].split('@', 1)[0].strip()
+        slot_part = t.split('@', 1)[1].strip() if '@' in t else ''
+        inner = describe_inflow_tag(rest)
+        return f"💰 案件別CV帰属 {slot_part}（流入元: {inner}）"
     m_x = re.match(r'^x(\d{2})_(.+)$', t)
     if m_x:
         hr, st = m_x.group(1), m_x.group(2)

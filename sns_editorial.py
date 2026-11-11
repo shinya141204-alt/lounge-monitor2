@@ -4068,6 +4068,22 @@ def _build_gemini_prompt(
         else "[]"
     )
 
+    loop_feedback_block = ""
+    try:
+        import pdca_engine
+        act_dir = pdca_engine.get_active_directives(allow_blocking=False) or {}
+        fb_blocks = []
+        if ch in ("x", "threads", "tiktok", "note") and act_dir.get("sns_prompt_feedback"):
+            fb_blocks.append(str(act_dir["sns_prompt_feedback"]).strip())
+        if ch == "note":
+            note_dir = str(((act_dir.get("note_ctr_feedback") or {}).get("prompt_directive")) or "").strip()
+            if note_dir:
+                fb_blocks.append(f"【noteタイトル＆導入CTR学習指針】\n- {note_dir}")
+        if fb_blocks:
+            loop_feedback_block = "\n\n".join(fb_blocks) + "\n\n"
+    except Exception:
+        loop_feedback_block = ""
+
     prompt = (
         "あなたは夜の街の空気感や男女のリアルな温度差によく通じた、気取らない大人の友人・街ウォッチャー（『相席ナビ』執筆者）です。\n"
         "毎回似た構成のボット投稿や綺麗にまとまりすぎたAI構文ではなく、"
@@ -4083,6 +4099,7 @@ def _build_gemini_prompt(
         "- ファクトシートに `tonight_street_pulse`（今夜のリアルな街の催し・ライブ帰り・空気感）が含まれており、かつ今回取り上げるエリアと自然に噛み合う場合のみ、半フレーズだけさりげなく街の空気を滲ませてもよい（エリアが違ったり無理がある場合は触れなくてよい）。\n"
         "- ファクトシートの数字と1人・1%の狂いもないよう正確に書くこと。\n\n"
         f"{platform_spec}\n\n"
+        f"{loop_feedback_block}"
         "【絶対厳守ルール（違反するとデスク検閲で減点・不採用になります）】\n"
         "1. 下記の JSON ファクトシートに含まれる店舗名・人数・パーセンテージ以外は絶対に書かないこと。数値を1人でも盛ったり丸めたり変更することは厳禁。\n"
         "2. 自分が今日客として入店した架空の体験談（『さっき行ってきた』『相席相手が〜』等）は絶対に書かないこと。\n"
@@ -5327,11 +5344,15 @@ def run_evaluator(
     classic_key = plan.get("classic_key")
 
     pdca_boosts = {}
+    hook_boosts = {}
     try:
         import pdca_engine
-        pdca_boosts = (pdca_engine.get_active_directives(allow_blocking=False) or {}).get("sns_style_boosts") or {}
+        act_dir = pdca_engine.get_active_directives(allow_blocking=False) or {}
+        pdca_boosts = act_dir.get("sns_style_boosts") or {}
+        hook_boosts = act_dir.get("hook_archetype_boosts") or {}
     except Exception:
         pdca_boosts = {}
+        hook_boosts = {}
 
     evaluated = []
     for cand in candidates:
@@ -5507,7 +5528,19 @@ def run_evaluator(
                 weight_comment = f"◯ 文字数（{metric_unit}）・タグ{tag_cnt}個は標準範囲内。"
 
         pdca_boost = int(pdca_boosts.get(style, 0)) if (data_score > 0 and weight_score > 0) else 0
-        raw_total = human_score + fresh_score + data_score + weight_score + pdca_boost
+        hook_arch = ""
+        hook_boost = 0
+        if ch in ("x", "threads"):
+            try:
+                import sns_insights_loop
+                hook_arch = sns_insights_loop.classify_opening_hook_archetype(text)
+                if data_score > 0 and weight_score > 0:
+                    hook_boost = int(hook_boosts.get(hook_arch, 0))
+            except Exception:
+                hook_arch = ""
+                hook_boost = 0
+        combined_boost = max(-6, min(7, pdca_boost + hook_boost))
+        raw_total = human_score + fresh_score + data_score + weight_score + combined_boost
         total_score = min(100, raw_total)
         desk_comments = [
             human_comment,
@@ -5519,6 +5552,10 @@ def run_evaluator(
             desk_comments.append(
                 f"🧭 PDCA参謀補正：直近のサイト流入・回遊実績に基づきスコアを {pdca_boost:+d}点 自動調整しました。"
             )
+        if hook_boost != 0:
+            desk_comments.append(
+                f"📈 SNSインサイト1行目フック学習：『{hook_arch}』型の実測表示リフトに基づきスコアを {hook_boost:+d}点 自動調整しました。"
+            )
         item_copy = dict(cand)
         item_copy.update({
             "channel": ch,
@@ -5526,6 +5563,8 @@ def run_evaluator(
             "total_score": total_score,
             "raw_total_score": raw_total,
             "pdca_boost": pdca_boost,
+            "hook_archetype": hook_arch,
+            "hook_boost": hook_boost,
             "weight": metric_val,
             "metric_unit": metric_unit,
             "scores": {
@@ -5534,6 +5573,7 @@ def run_evaluator(
                 "data_specificity": data_score,
                 "weight_fit": weight_score,
                 "pdca_boost": pdca_boost,
+                "hook_boost": hook_boost,
             },
             "desk_comments": desk_comments,
         })

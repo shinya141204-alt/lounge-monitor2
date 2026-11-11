@@ -695,10 +695,23 @@ def execute_scheduled_threads_post(stores: list, slot_label: str = "20:00", forc
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                try:
+                    import sns_insights_loop
+                    sns_insights_loop.register_published_post(
+                        channel="threads",
+                        post_id=str(res.get("id") or ""),
+                        text=text,
+                        style=(editorial_winner or {}).get("style") or "threads_live",
+                        slot_label=slot_label,
+                        now_jst=now_jst,
+                    )
+                except Exception:
+                    pass
                 if not force:
                     job_state.mark_done(dedup_key)
                     record_threads_auto_post_timestamp(now_jst)
                     if ed_session_record:
+                        ed_session_record["post_id"] = str(res.get("id") or "")
                         sns_editorial.persist_editorial_session_record("threads", ed_session_record)
             else:
                 sns_editorial.record_sns_delivery_status(
@@ -771,10 +784,23 @@ def execute_scheduled_ladies_threads_post(
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                try:
+                    import sns_insights_loop
+                    sns_insights_loop.register_published_post(
+                        channel="threads",
+                        post_id=str(res.get("id") or ""),
+                        text=text,
+                        style="threads_ladies_zero_wait",
+                        slot_label=slot_label,
+                        now_jst=now_jst,
+                    )
+                except Exception:
+                    pass
                 if not force:
                     sns_editorial.persist_editorial_session_record(
                         "threads",
                         {
+                            "post_id": str(res.get("id") or ""),
                             "slot_label": slot_label,
                             "style": "threads_ladies_zero_wait",
                             "selected_text": text[:360],

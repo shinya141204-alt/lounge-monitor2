@@ -203,11 +203,12 @@ class TestAdversarialWeatherApi(unittest.TestCase):
 
     def test_cold_surge_exact_threshold_minus_2_9_vs_3_0(self):
         """寒暖差 -2.9℃（通常） vs -3.0℃（急冷サージ発動境界）の厳密検証"""
+        yday = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         # -2.9℃ -> is_cold_surge=False
         mock_normal = [{
             "current": {"temperature_2m": 12.1, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 3.0},
             "hourly": {
-                "time": ["2026-11-09T20:00", "2026-11-09T21:00", "2026-11-09T22:00", "2026-11-09T23:00"],
+                "time": [f"{yday}T20:00", f"{yday}T21:00", f"{yday}T22:00", f"{yday}T23:00"],
                 "temperature_2m": [15.0] * 4,
             },
         }] * 10
@@ -216,7 +217,7 @@ class TestAdversarialWeatherApi(unittest.TestCase):
         mock_surge = [{
             "current": {"temperature_2m": 12.0, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 3.0},
             "hourly": {
-                "time": ["2026-11-09T20:00", "2026-11-09T21:00", "2026-11-09T22:00", "2026-11-09T23:00"],
+                "time": [f"{yday}T20:00", f"{yday}T21:00", f"{yday}T22:00", f"{yday}T23:00"],
                 "temperature_2m": [15.0] * 4,
             },
         }] * 10
@@ -244,10 +245,11 @@ class TestAdversarialWeatherApi(unittest.TestCase):
 
     def test_extreme_and_special_temperatures(self):
         """極端な気温（-50℃, +50℃）および小数点丸め精度"""
+        yday = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         mock_payload = [{
             "current": {"temperature_2m": -45.678, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 0.0},
             "hourly": {
-                "time": ["2026-11-09T20:00"],
+                "time": [f"{yday}T20:00"],
                 "temperature_2m": [-40.123],
             },
         }] * 10

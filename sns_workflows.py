@@ -243,7 +243,21 @@ def execute_scheduled_x_post(latest_data, slot_label="20:00", force=False, inclu
                 post_id=tweet_id,
                 now_jst=now_jst,
             )
+            try:
+                import sns_insights_loop
+                sns_insights_loop.register_published_post(
+                    channel="x",
+                    post_id=str(tweet_id or ""),
+                    text=text,
+                    style=(ed_session_record or {}).get("selected_style") or "x_live",
+                    slot_label=slot_label,
+                    s_param=sns_insights_loop._extract_s_param_from_text(reply_text or ""),
+                    now_jst=now_jst,
+                )
+            except Exception:
+                pass
             if not force and ed_session_record:
+                ed_session_record["post_id"] = str(tweet_id or "")
                 sns_editorial.persist_editorial_session_record("x", ed_session_record)
         except Exception:
             pass

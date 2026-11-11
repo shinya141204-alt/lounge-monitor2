@@ -708,6 +708,102 @@
             color: var(--sub);
             font-size: 0.8rem;
         }
+        .loop-form-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 0.85fr auto;
+            gap: 12px;
+            align-items: end;
+            padding-block: 12px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+        @media (max-width: 860px) {
+            .loop-form-grid {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+        }
+        .loop-field {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+            min-width: 0;
+        }
+        .loop-field label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .loop-field .loop-hint {
+            font-size: 0.72rem;
+            color: var(--sub);
+        }
+        .loop-control {
+            width: 100%;
+            font: inherit;
+            font-size: max(1rem, 1em);
+            min-height: 48px;
+            padding: 0.55rem 0.75rem;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: var(--inner-card);
+            color: var(--text);
+        }
+        .loop-control:focus-visible,
+        .mini-btn:focus-visible,
+        .run-btn:focus-visible,
+        .table-wrap:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .loop-submit-btn {
+            width: auto;
+            min-height: 48px;
+            padding-inline: 18px;
+            white-space: nowrap;
+        }
+        @media (max-width: 860px) {
+            .loop-submit-btn {
+                width: 100%;
+                white-space: normal;
+            }
+        }
+        .loop-status-msg {
+            display: none;
+            margin-bottom: 12px;
+            padding: 9px 12px;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: var(--inner-card);
+            color: var(--text);
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .loop-subhead {
+            font-size: 0.84rem;
+            font-weight: 800;
+            color: var(--text);
+            margin: 0 0 8px;
+        }
+        .loop-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            border-top: 1px solid var(--border);
+        }
+        .loop-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.78rem;
+            font-variant-numeric: tabular-nums;
+        }
         @media (max-width: 520px) {
             .score-box {
                 flex-direction: column;
@@ -751,6 +847,7 @@
     {% set gaps = d.monetization_gaps or (pdca.monetization_gaps if pdca is defined else []) or [] %}
     {% set sns_eff = d.sns_channel_efficiency or (pdca.sns_channel_efficiency if pdca is defined else {}) or {} %}
     {% set growth_actions = d.weekly_growth_actions or (pdca.weekly_growth_actions if pdca is defined else []) or [] %}
+    {% set loop_fb = d.closed_loop_feedback or (pdca.closed_loop_feedback if pdca is defined else {}) or {} %}
     <div class="wrap">
         {% set master_active_tab = 'pdca' %}
         {% include '_master_nav.html' %}
@@ -774,6 +871,7 @@
             <a href="#pdca-directives" class="master-jump-chip">自動編成指令</a>
             <a href="#pdca-monetization" class="master-jump-chip">案件別CTR・機会損失</a>
             <a href="#pdca-sns" class="master-jump-chip">SNS効率＆Reels企画</a>
+            <a href="#pdca-closed-loop" class="master-jump-chip">3層自動改善ループ</a>
             <a href="#pdca-articles" class="master-jump-chip">記事別CTR・未露出在庫</a>
             <a href="#pdca-history" class="master-jump-chip">実行ログ</a>
         </nav>
@@ -1163,20 +1261,185 @@
             </div>
         </div>
 
+        <!-- 3-Layer Closed-Loop SNS Insights, Carbon Vision Ingestion & Reel Bandit Studio -->
+        {% set reel_diag = loop_fb.reel_diagnostics if loop_fb is mapping and loop_fb.reel_diagnostics is defined else {} %}
+        {% set hook_stats = loop_fb.hook_archetype_stats if loop_fb is mapping and loop_fb.hook_archetype_stats is defined else [] %}
+        {% set note_fb = loop_fb.note_ctr_feedback if loop_fb is mapping and loop_fb.note_ctr_feedback is defined else {} %}
+        {% set sample_cnts = loop_fb.sample_counts if loop_fb is mapping and loop_fb.sample_counts is defined else {} %}
+        <div class="card" id="pdca-closed-loop" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+                <h2 id="closed-loop-heading" style="font-size:1rem; margin:0;">3層クローズドループ学習スタジオ（SNSインサイト自動回収・スクショ読取・リール維持率バンディット）</h2>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    {% if loop_fb.last_sync_at %}
+                    <span class="ultra-badge" style="font-variant-numeric:tabular-nums;">最終API同期: {{ loop_fb.last_sync_at }}</span>
+                    {% else %}
+                    <span class="ultra-badge">自動同期: 毎日 17:25 / 03:25 JST</span>
+                    {% endif %}
+                    <button type="button" id="sync-meta-insights-btn" class="mini-btn">Meta公式API（Threads / IGリール）を即時同期</button>
+                </div>
+            </div>
+            <p class="lead" style="margin-bottom:12px;">
+                Threads・Instagramリールの公式APIインサイトと、note・リール画面スクリーンショット（Gemini 4 Carbon Vision読取）から、1行目フック配点・リール企画バンディット・noteタイトル指針を自動更新します。
+            </p>
+
+            <div class="kpi-strip" style="margin-bottom:12px;">
+                <div class="kpi-cell">
+                    <div class="kpi-label">蓄積テキスト投稿（Threads/X）</div>
+                    <div class="kpi-val">{{ sample_cnts.text_posts_with_views|default(0) }}本</div>
+                    <div class="kpi-sub">1行目フック学習母数</div>
+                </div>
+                <div class="kpi-cell">
+                    <div class="kpi-label">リール実測平均再生時間</div>
+                    <div class="kpi-val">{% if reel_diag.avg_watch_sec is not none and reel_diag.avg_watch_sec is defined %}{{ reel_diag.avg_watch_sec }}秒{% else %}未計測{% endif %}</div>
+                    <div class="kpi-sub">計測リール {{ reel_diag.sample_count|default(0) }}本</div>
+                </div>
+                <div class="kpi-cell">
+                    <div class="kpi-label">リール実測スキップ率</div>
+                    <div class="kpi-val">{% if reel_diag.avg_skip_rate_pct is not none and reel_diag.avg_skip_rate_pct is defined %}{{ reel_diag.avg_skip_rate_pct }}%{% else %}未計測{% endif %}</div>
+                    <div class="kpi-sub">{% if reel_diag.skip_cliff_alert %}冒頭2秒離脱アラート稼働中{% else %}スクショ取込で算出{% endif %}</div>
+                </div>
+                <div class="kpi-cell">
+                    <div class="kpi-label">note記事ビュー学習母数</div>
+                    <div class="kpi-val">{{ sample_cnts.note_articles|default(0) }}本</div>
+                    <div class="kpi-sub">見出しCTRフィードバック</div>
+                </div>
+            </div>
+
+            <div id="insights-loop-status" class="loop-status-msg" role="status" aria-live="polite"></div>
+
+            <form id="insights-ingest-form" method="post" action="/api/pdca/sns-insights/ingest" enctype="multipart/form-data" aria-labelledby="closed-loop-heading" class="loop-form-grid">
+                <div class="loop-field">
+                    <label for="insight-screenshot-file">インサイト画面スクリーンショット <span aria-hidden="true">*</span></label>
+                    <input type="file" id="insight-screenshot-file" name="file" accept="image/png,image/jpeg,image/webp" required aria-describedby="insight-file-help" class="loop-control">
+                    <span id="insight-file-help" class="loop-hint">PNG / JPEG / WebP（上限6MB・画面内の実測値のみ抽出、未表示項目は推測せず除外）</span>
+                </div>
+                <div class="loop-field">
+                    <label for="insight-platform-select">対象プラットフォーム</label>
+                    <select id="insight-platform-select" name="platform" class="loop-control">
+                        <option value="auto">自動判定（推奨）</option>
+                        <option value="reels">Instagramリール（スキップ率・平均再生秒）</option>
+                        <option value="threads">Threads（表示回数・返信・再投稿）</option>
+                        <option value="note">noteアクセス状況（全体ビュー・スキ）</option>
+                        <option value="x">Xアナリティクス（インプレッション）</option>
+                        <option value="instagram">Instagramフィード投稿</option>
+                    </select>
+                    <span class="loop-hint">API非公開のスキップ率やnote全体ビューも即時反映</span>
+                </div>
+                <button type="submit" id="ingest-screenshot-btn" class="run-btn loop-submit-btn">スクショ数値を抽出して学習反映</button>
+            </form>
+
+            <div class="two-col" style="margin-bottom:0;">
+                <div>
+                    <h3 id="hook-loop-table-heading" class="loop-subhead">Loop 1：1行目フック型別 実測表示リフト＆自動採点ブースト</h3>
+                    {% if hook_stats %}
+                    <div class="table-wrap" tabindex="0" role="region" aria-labelledby="hook-loop-table-heading" style="margin-bottom:10px;">
+                        <table class="pdca-table" style="min-width:480px;">
+                            <thead>
+                                <tr>
+                                    <th>1行目フック分類</th>
+                                    <th>投稿数</th>
+                                    <th>平均表示</th>
+                                    <th>全体比リフト</th>
+                                    <th>デスク補正</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hs in hook_stats %}
+                                <tr>
+                                    <td><strong>{{ hs.label }}</strong></td>
+                                    <td>{{ hs.sample_count }}本</td>
+                                    <td>{{ hs.avg_views }}回</td>
+                                    <td>{{ hs.lift_ratio }}倍</td>
+                                    <td>
+                                        {% if hs.score_boost > 0 %}
+                                        <span class="chip plus">+{{ hs.score_boost }}点</span>
+                                        {% elif hs.score_boost < 0 %}
+                                        <span class="chip minus">{{ hs.score_boost }}点</span>
+                                        {% else %}
+                                        <span>±0点</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state-box" style="margin-bottom:10px;">
+                        実測データ蓄積待ちです。「Meta公式APIを即時同期」またはThreads/Xインサイトのスクリーンショット取込を実行すると、伸びた1行目の型へ自動で採点ブーストが掛かります。
+                    </div>
+                    {% endif %}
+
+                    {% if note_fb.top_titles %}
+                    <div class="loop-subhead" style="margin-top:8px;">Loop 3：note実測上位タイトル傾向</div>
+                    <ul class="loop-list">
+                        {% for nt in note_fb.top_titles %}
+                        <li>
+                            <span>{{ nt.title }}</span>
+                            <strong>{{ nt.views }}ビュー{% if nt.likes is not none %} / スキ {{ nt.likes }}{% endif %}</strong>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <h3 id="reel-bandit-table-heading" class="loop-subhead">Loop 2：Instagramリール 企画別UCB1維持率バンディット順位</h3>
+                    {% if reel_diag.bandit_table %}
+                    <div class="table-wrap" tabindex="0" role="region" aria-labelledby="reel-bandit-table-heading" style="margin-bottom:0;">
+                        <table class="pdca-table" style="min-width:500px;">
+                            <thead>
+                                <tr>
+                                    <th>リール企画テンプレート</th>
+                                    <th>計測数</th>
+                                    <th>平均再生</th>
+                                    <th>スキップ率</th>
+                                    <th>UCB1優先度</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rb in reel_diag.bandit_table %}
+                                <tr>
+                                    <td><strong>{{ rb.label }}</strong></td>
+                                    <td>{{ rb.sample_count }}本</td>
+                                    <td>{% if rb.avg_watch_sec is not none %}{{ rb.avg_watch_sec }}秒{% else %}-{% endif %}</td>
+                                    <td>{% if rb.avg_skip_rate_pct is not none %}{{ rb.avg_skip_rate_pct }}%{% else %}-{% endif %}</td>
+                                    <td>
+                                        <strong>{{ rb.ucb_score }}</strong>
+                                        {% if rb.bandit_boost > 0 %}
+                                        <span class="chip plus">+{{ rb.bandit_boost }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state-box">
+                        リール実測データが2本以上蓄積されると、平均再生秒・スキップ率・保存シェア率を統合したUCB1バンディットが稼働し、20:00 / 22:50 の自動リール編成順を最適化します（Frame 0 即時描画改修は適用済み）。
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- SNS ?s= Cohort Tracking Table -->
         <div class="card" style="margin-bottom:18px;">
-            <h2 style="font-size:0.98rem; margin:0 0 6px;">SNS投稿枠・切り口別（<code>?s=</code>）サイト流入＆アフィリエイトCV成績</h2>
-            <p class="lead" style="margin-bottom:10px;">X（20時/22時/0時・18時Tips・新着告知）およびThreads奇数日リンクに付与した識別子ごとの実測流入と24時間以内アフィリエイト遷移数です。</p>
+            <h2 id="cohort-funnel-heading" style="font-size:0.98rem; margin:0 0 6px;">SNS投稿枠・切り口別（<code>?s=</code>）2ステップ遷移＆案件別EPC成績</h2>
+            <p class="lead" style="margin-bottom:10px;">SNS流入からクッション導線（<code>/grooming</code>・<code>/for-women</code>等）への遷移率と、アフィリエイト案件単価を掛け合わせた1流入あたり期待収益（EPC）です。</p>
             {% if d.inflow_cohorts %}
-            <div class="table-wrap" style="margin-bottom:0;">
+            <div class="table-wrap" tabindex="0" role="region" aria-labelledby="cohort-funnel-heading" style="margin-bottom:0;">
                 <table class="pdca-table">
                     <thead>
                         <tr>
                             <th>SNS投稿枠・切り口コホート</th>
                             <th>識別タグ</th>
                             <th>サイト流入数</th>
+                            <th>2ステップ遷移</th>
                             <th>アフィリエイトCV</th>
                             <th>CV率</th>
+                            <th>期待収益 / 1流入EPC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1185,8 +1448,10 @@
                             <td><strong>{{ c.label }}</strong></td>
                             <td><code>?s={{ c.tag }}</code></td>
                             <td>{{ c.visits }}回</td>
+                            <td>{{ c.cushion_clicks|default(0) }}回（{{ c.cushion_rate_pct|default(0) }}%）</td>
                             <td><strong>{{ c.conversions }}件</strong></td>
                             <td>{{ c.cvr_pct }}%</td>
+                            <td><strong>¥{{ c.est_revenue_yen|default(0) }}</strong>（EPC ¥{{ c.epc_yen|default(0) }}）</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -1194,7 +1459,7 @@
             </div>
             {% else %}
             <div class="empty-state-box">
-                まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads自動投稿から切り口別の流入とCVが自動集計されます。
+                まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads・リール自動投稿から切り口別の2ステップ遷移とEPCが自動集計されます。
             </div>
             {% endif %}
         </div>
@@ -1528,6 +1793,123 @@
             }
             return null;
         }
+
+        function setLoopStatus(msg, isError) {
+            const box = document.getElementById('insights-loop-status');
+            if (!box) return;
+            box.textContent = msg || '';
+            box.style.display = msg ? 'block' : 'none';
+            box.style.borderColor = isError ? 'var(--rose)' : 'var(--green)';
+            box.style.background = isError ? 'var(--rose-soft)' : 'var(--green-soft)';
+            box.style.color = isError ? 'var(--rose-ink)' : 'var(--green-ink)';
+        }
+
+        async function syncMetaInsightsNow() {
+            const btn = document.getElementById('sync-meta-insights-btn');
+            if (!btn || btn.disabled) return;
+            btn.disabled = true;
+            const origText = btn.textContent;
+            btn.textContent = 'Meta公式APIから実測インサイトを回収中...';
+            setLoopStatus('Threads / Instagram Graph API から直近投稿の閲覧数・平均再生時間を取得しています...', false);
+            let redirected = false;
+            try {
+                const j = await fetchJsonSafe('/api/pdca/sns-insights/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({})
+                }, 45000);
+                if (j && j.ok) {
+                    const sum = (j.sync && j.sync.summary) || {};
+                    setLoopStatus(`同期完了（Threads更新: ${sum.threads_updated || 0}件 / IG・リール更新: ${sum.instagram_updated || 0}件）。画面を最新状態へ更新します...`, false);
+                    redirected = true;
+                    setTimeout(() => {
+                        window.location.href = `/staff/pdca?days=${CURRENT_DAYS}#pdca-closed-loop`;
+                    }, 700);
+                    return;
+                }
+                setLoopStatus('API同期エラー: ' + ((j && j.error) || '同期に失敗しました'), true);
+            } catch (e) {
+                setLoopStatus('API同期エラー: ' + ((e && e.message) || '通信エラーが発生しました'), true);
+            } finally {
+                if (!redirected && btn) {
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const syncBtn = document.getElementById('sync-meta-insights-btn');
+            if (syncBtn) {
+                syncBtn.addEventListener('click', syncMetaInsightsNow);
+            }
+            const ingestForm = document.getElementById('insights-ingest-form');
+            const fileInput = document.getElementById('insight-screenshot-file');
+            if (fileInput) {
+                fileInput.addEventListener('input', () => {
+                    fileInput.setCustomValidity('');
+                    fileInput.removeAttribute('aria-invalid');
+                });
+            }
+            if (ingestForm) {
+                ingestForm.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                        if (fileInput) {
+                            fileInput.setAttribute('aria-invalid', 'true');
+                            fileInput.setCustomValidity('インサイト画面のスクリーンショット画像を選択してください。');
+                            fileInput.reportValidity();
+                            fileInput.focus();
+                        }
+                        return;
+                    }
+                    const f = fileInput.files[0];
+                    if (f.size > 6 * 1024 * 1024) {
+                        fileInput.setAttribute('aria-invalid', 'true');
+                        fileInput.setCustomValidity('画像サイズは6MB以内にしてください。');
+                        fileInput.reportValidity();
+                        fileInput.focus();
+                        return;
+                    }
+                    const submitBtn = document.getElementById('ingest-screenshot-btn');
+                    const origLabel = submitBtn ? submitBtn.textContent : '';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Gemini 4 Carbonで実測数値を抽出・学習中...';
+                    }
+                    setLoopStatus('スクリーンショット内の実測数値を抽出し、3層ループ編成指令を更新しています...', false);
+                    let redirected = false;
+                    try {
+                        const fd = new FormData(ingestForm);
+                        const j = await fetchJsonSafe('/api/pdca/sns-insights/ingest', {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: fd
+                        }, 45000);
+                        if (j && j.ok) {
+                            const ing = j.ingest || {};
+                            setLoopStatus(
+                                `学習完了（モデル: ${ing.model_used || 'Carbon'} / 投稿 ${ing.posts_ingested || 0}件 / note ${ing.notes_ingested || 0}件）。画面を更新します...`,
+                                false
+                            );
+                            redirected = true;
+                            setTimeout(() => {
+                                window.location.href = `/staff/pdca?days=${CURRENT_DAYS}#pdca-closed-loop`;
+                            }, 700);
+                            return;
+                        }
+                        setLoopStatus('取込エラー: ' + ((j && j.error) || '数値抽出に失敗しました'), true);
+                    } catch (e) {
+                        setLoopStatus('取込エラー: ' + ((e && e.message) || '通信エラーが発生しました'), true);
+                    } finally {
+                        if (!redirected && submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = origLabel;
+                        }
+                    }
+                });
+            }
+        });
 
         const INITIAL_PDCA_FORCE_AI = {{ 'true' if request.args.get('refresh_ai') == '1' else 'false' }};
         if (INITIAL_PDCA_FORCE_AI) {

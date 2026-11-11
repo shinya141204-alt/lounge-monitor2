@@ -2194,6 +2194,18 @@ def _build_column_gemini_prompt(
     cliches_str = "・".join(f"「{w}」" for w in COLUMN_AI_CLICHES)
     fantasy_str = "・".join(f"「{w}」" for w in SWEET_FANTASY_CLICHES)
     banned_str = "・".join(f"「{w}」" for w in (plan.get("banned_tropes") or []))
+    note_ctr_rule = ""
+    try:
+        import pdca_engine
+        note_dir = (
+            ((pdca_engine.get_active_directives(allow_blocking=False) or {}).get("note_ctr_feedback") or {})
+            .get("prompt_directive")
+            or ""
+        ).strip()
+        if note_dir:
+            note_ctr_rule = f"7. {note_dir}\n"
+    except Exception:
+        note_ctr_rule = ""
     return (
         "あなたは夜の街の空気感・男女の人間模様・全国63店舗の実測データに通じた『相席ナビ』編集長・くわもんです。\n"
         "どの記事を読んでも同じ専門用語や煽り語（「徹底解説」「完全攻略」「間違いなし」等）を繰り返す硬い解説文ではなく、記事ごとに筆致と呼吸を変えながら、"
@@ -2221,7 +2233,8 @@ def _build_column_gemini_prompt(
         f"3. AI臭ワードの完全禁止：{cliches_str} はどこにも使わないこと。\n"
         f"4. ご都合主義セリフの禁止：{fantasy_str} のような浅いファンタジー会話は禁止。\n"
         "5. `note_essay_markdown` は先頭に `# タイトル` を付けず（本文のみ）、必ず `## ` 見出しを2〜3個と `> ` 会話引用を1〜2箇所含め、表や箇条書き攻略リストを使わず情景と思索で1,700〜2,400文字にまとめ、末尾にWeb版URLと `https://aiseki-navi.com/` への案内を添えること。\n"
-        "6. X告知文（`x_main_text`）は全角95〜120文字前後（Twitter weight 252以内、絵文字0〜1個、裏方ワード無し）に引き締め、控えめに `#相席ラウンジ` を添えること。\n\n"
+        "6. X告知文（`x_main_text`）は全角95〜120文字前後（Twitter weight 252以内、絵文字0〜1個、裏方ワード無し）に引き締め、控えめに `#相席ラウンジ` を添えること。\n"
+        f"{note_ctr_rule}\n"
         f"【検証済みファクトシート】\n{json.dumps(fact_sheet, ensure_ascii=False, indent=2)}\n\n"
         "以下のJSONオブジェクト形式のみで出力してください（Markdownコードブロック不要）：\n"
         "{\n"

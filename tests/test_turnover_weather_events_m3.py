@@ -169,17 +169,18 @@ class TestTemperatureDiffAndColdSurge(unittest.TestCase):
     def test_cold_surge_exact_threshold(self):
         """寒暖差境界値: -2.9℃は通常（is_cold_surge=False）、-3.0℃は急冷サージ（True）"""
         # モックデータで _fetch_open_meteo_all_cities のパースロジックをテスト
+        yday = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         mock_resp_normal = {
             "current": {"temperature_2m": 12.1, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 5.0},
             "hourly": {
-                "time": ["2026-11-09T20:00", "2026-11-09T21:00", "2026-11-09T22:00", "2026-11-09T23:00"],
+                "time": [f"{yday}T20:00", f"{yday}T21:00", f"{yday}T22:00", f"{yday}T23:00"],
                 "temperature_2m": [15.0, 15.0, 15.0, 15.0],  # 前日夜平均 15.0℃ -> 差分 -2.9℃
             },
         }
         mock_resp_surge = {
             "current": {"temperature_2m": 12.0, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 5.0},
             "hourly": {
-                "time": ["2026-11-09T20:00", "2026-11-09T21:00", "2026-11-09T22:00", "2026-11-09T23:00"],
+                "time": [f"{yday}T20:00", f"{yday}T21:00", f"{yday}T22:00", f"{yday}T23:00"],
                 "temperature_2m": [15.0, 15.0, 15.0, 15.0],  # 前日夜平均 15.0℃ -> 差分 -3.0℃
             },
         }

@@ -782,10 +782,23 @@ def execute_scheduled_instagram_post(stores: list, mode: str = "carousel", slot_
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                try:
+                    import sns_insights_loop
+                    sns_insights_loop.register_published_post(
+                        channel="instagram",
+                        post_id=str(res.get("id") or ""),
+                        text=caption,
+                        style=(editorial_winner or {}).get("style") or f"ig_{mode}",
+                        slot_label=slot_label,
+                        now_jst=now_jst,
+                    )
+                except Exception:
+                    pass
                 if not force:
                     job_state.mark_done(dedup_key)
                     record_ig_auto_post_timestamp(now_jst, is_feed=True)
                     if ed_session_record:
+                        ed_session_record["post_id"] = str(res.get("id") or "")
                         sns_editorial.persist_editorial_session_record("instagram", ed_session_record)
             else:
                 sns_editorial.record_sns_delivery_status(
@@ -861,6 +874,7 @@ def execute_scheduled_ladies_instagram_post(
                 )
                 if not force:
                     sns_editorial.persist_editorial_session_record("instagram", {
+                        "post_id": str(res.get("id") or ""),
                         "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
                         "slot_label": slot_label,
                         "selected_style": "ig_ladies_night_guide",
@@ -1258,11 +1272,26 @@ def publish_live_reel_to_instagram(
                     post_id=res.get("id") or "",
                     now_jst=now_jst,
                 )
+                try:
+                    import sns_insights_loop
+                    sns_insights_loop.register_published_post(
+                        channel="reels",
+                        post_id=str(res.get("id") or ""),
+                        text=caption,
+                        style=f"reel_{rt}",
+                        reel_type=rt,
+                        slot_label=slot_label,
+                        now_jst=now_jst,
+                    )
+                except Exception:
+                    pass
                 if not force:
                     sns_editorial.persist_editorial_session_record("instagram", {
+                        "post_id": str(res.get("id") or ""),
                         "timestamp": now_jst.strftime("%Y-%m-%d %H:%M:%S"),
                         "slot_label": slot_label,
                         "selected_style": f"reel_{rt}",
+                        "reel_type": rt,
                         "selected_text": caption,
                     })
             else:

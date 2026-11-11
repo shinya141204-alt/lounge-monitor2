@@ -1003,6 +1003,25 @@ def select_scheduled_reel_type(
     if not has_real_hub_gap and "tiktok_gap_shock" in ranked and len(ranked) > 1:
         ranked = [x for x in ranked if x != "tiktok_gap_shock"]
 
+    # Closed-Loop Bandit Reranking (Loop 2): when empirical IG Reel watch-time / skip-rate boosts exist,
+    # promote higher-retention UCB1 templates while preserving cold-start determinism and anti-collision rules.
+    try:
+        import pdca_engine
+        act_dir = pdca_engine.get_active_directives(allow_blocking=False) or {}
+        reel_boosts = act_dir.get("reel_template_boosts") or {}
+        if isinstance(reel_boosts, dict) and any(abs(float(v or 0.0)) >= 0.05 for v in reel_boosts.values()):
+            demoted_tail = []
+            if len(ladies_cands) < 2 and "ladies_zero_wait" in ranked and len(ranked) > 1:
+                ranked = [x for x in ranked if x != "ladies_zero_wait"]
+                demoted_tail.append("ladies_zero_wait")
+            orig_pos = {rt_k: idx for idx, rt_k in enumerate(ranked)}
+            ranked = sorted(
+                ranked,
+                key=lambda rt_k: (-round(float(reel_boosts.get(rt_k, 0.0)), 2), orig_pos[rt_k]),
+            ) + demoted_tail
+    except Exception:
+        pass
+
     # Determine exact business date of `last_1` so both same-day 20:00->22:50 AND cross-day transitions avoid visual/Ken-Burns collision
     prev_ref_dt = None
     if last_1:
@@ -1818,29 +1837,56 @@ class _ReelSceneRenderer:
             sub2 = "実測データから判明した深夜維持率トップ級の現在人数速報"
         elif self.rt == "area_battle":
             kicker = f"AREA REALTIME BATTLE  |  {self.ctx['weekday_ja']}曜夜"
-            lines = [
-                ("新宿 vs 梅田 vs 渋谷", acc),
-                ("今の男女比", (255, 255, 255, 255)),
-                ("リアル徹底対決！", acc2),
-            ]
+            zones_h = self.ctx.get("area_battles") or []
+            lead_zh = next((z for z in zones_h if z.get("is_leader")), zones_h[0] if zones_h else None)
+            if lead_zh and int(lead_zh.get("total") or 0) > 0:
+                lines = [
+                    ("新宿 vs 梅田 vs 渋谷", acc),
+                    (f"いま1位は{lead_zh['label']}！", (255, 255, 255, 255)),
+                    (f"女{lead_zh['women']}名 vs 男{lead_zh['men']}名", acc2),
+                ]
+            else:
+                lines = [
+                    ("新宿 vs 梅田 vs 渋谷", acc),
+                    ("今の男女比", (255, 255, 255, 255)),
+                    ("リアル徹底対決！", acc2),
+                ]
             sub1 = "同じ夜でもエリアとブランドで待ち時間は激変！"
             sub2 = "3大激戦区の現在人数＆一番入りやすい狙い目店を比較"
         elif self.rt == "ladies_zero_wait":
             kicker = f"FOR LADIES  |  {self.ctx['weekday_ja']}曜夜の女子得ガイド"
-            lines = [
-                ("女子ペア向け！", acc),
-                ("今すぐ受付待ち0＆", (255, 255, 255, 255)),
-                ("狙い目ラウンジ速報", acc2),
-            ]
+            l1_h = (self.ctx.get("ladies_top5") or [None])[0]
+            if l1_h and int(l1_h.get("men") or 0) > 0:
+                a_tag = f"（{l1_h['area_label']}）" if l1_h.get("area_label") else ""
+                lines = [
+                    (f"女子ペア待ち0圏{a_tag}", acc),
+                    (f"{l1_h['ja_name']}", (255, 255, 255, 255)),
+                    (f"男性{l1_h['men']}名 : 女性{l1_h['women']}名", acc2),
+                ]
+            else:
+                lines = [
+                    ("女子ペア向け！", acc),
+                    ("今すぐ受付待ち0＆", (255, 255, 255, 255)),
+                    ("狙い目ラウンジ速報", acc2),
+                ]
             sub1 = "男性が先行して盛り上がっている「即乾杯圏」上位店を厳選"
             sub2 = "受付待ちゼロでスマートに楽しめる最新ランキング"
         else:
             kicker = f"NATIONWIDE LIVE  |  {self.ctx['weekday_ja']}曜夜リアルタイム"
-            lines = [
-                ("今夜のリアルタイム", (255, 255, 255, 255)),
-                ("女性人数 TOP5", acc),
-                ("＆ 狙い目穴場速報", acc2),
-            ]
+            top1_h = (self.ctx.get("top5_volume") or [None])[0]
+            if top1_h and int(top1_h.get("women") or 0) > 0:
+                a_lbl = top1_h.get("area_label") or "全国注目"
+                lines = [
+                    (f"いま全国1位は{a_lbl}！", (255, 255, 255, 255)),
+                    (f"{top1_h['ja_name']}", acc),
+                    (f"女{top1_h['women']}名 : 男{top1_h['men']}名（{top1_h['wpct']}%）", acc2),
+                ]
+            else:
+                lines = [
+                    ("今夜のリアルタイム", (255, 255, 255, 255)),
+                    ("女性人数 TOP5", acc),
+                    ("＆ 狙い目穴場速報", acc2),
+                ]
             sub1 = "「男性待ち1時間」を回避してスマートに相席するための"
             sub2 = "全国リアルタイム人数＆高女性比率ピックアップ"
 
@@ -1853,7 +1899,7 @@ class _ReelSceneRenderer:
         line_step = 74 if self.is_tiktok else 80
         max_h_sz = 50 if self.is_tiktok else 54
         for txt, col in lines:
-            fit_t, fit_f, fit_sz = ogp_generator.fit_text_and_font(draw, txt, sw, max_h_sz, 30)
+            fit_t, fit_f, fit_sz = ogp_generator.fit_text_and_font(draw, txt, sw, max_h_sz, 26)
             draw.text((lx, hy + max(0, (max_h_sz - fit_sz) // 2)), fit_t, font=fit_f, fill=col)
             hy += line_step
 
@@ -2336,7 +2382,7 @@ class _ReelSceneRenderer:
                     "full_sprite": full_sp,
                     "x": lx,
                     "y": 242 + idx * (ch + 14),
-                    "t_in": 1.34 + idx * 0.28,
+                    "t_in": 1.58 + idx * 0.24,
                     "bar_rect": (bx, by, bw, bh, 10),
                     "left_ratio": left_ratio,
                     "left_col": self.theme["bar_left"],
@@ -2417,7 +2463,7 @@ class _ReelSceneRenderer:
                     "full_sprite": full_sp,
                     "x": lx,
                     "y": 196 + idx * (ch + 18),
-                    "t_in": 1.36 + idx * 0.30,
+                    "t_in": 1.62 + idx * 0.24,
                     "bar_rect": (bx, by, bw, bh, 11),
                     "left_ratio": left_ratio,
                     "left_col": self.theme["bar_left"],
@@ -2527,13 +2573,13 @@ class _ReelSceneRenderer:
 
             base_y = 240 if self.is_tiktok else 192
             step_gap = 12 if self.is_tiktok else 14
-            t_base = 1.34 if self.is_tiktok else 1.38
+            t_base = 1.58 if self.is_tiktok else 1.64
             cards.append({
                 "sprite": sp,
                 "full_sprite": full_sp,
                 "x": lx,
                 "y": base_y + idx * (ch + step_gap),
-                "t_in": t_base + idx * 0.22,
+                "t_in": t_base + idx * 0.20,
                 "bar_rect": (bx, by, bw, bh, 9),
                 "left_ratio": left_ratio,
                 "left_col": self.theme["bar_left"],
@@ -2710,8 +2756,8 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((lx, py, lx + prog_w, py + 6), radius=3, fill=(*acc, 245))
 
         if getattr(self, "is_insufficient", False):
-            # Static honest notice for the whole clip (fade-in only)
-            n_alpha = _fade_window(t, 0.0, REEL_DURATION_SEC + 0.1, fade_in=0.38, fade_out=0.0)
+            # Static honest notice for the whole clip (100% opaque from Frame 0)
+            n_alpha = _fade_window(t, 0.0, REEL_DURATION_SEC + 0.1, fade_in=0.0, fade_out=0.0)
             if n_alpha > 0.01:
                 sp_n = _apply_opacity(self.scene1_sprite, n_alpha)
                 canvas.alpha_composite(sp_n)
@@ -2719,13 +2765,14 @@ class _ReelSceneRenderer:
                     sp_n.close()
             return
 
-        s1_end = 1.36 if self.is_tiktok else 1.40
-        s2_start = 1.28 if self.is_tiktok else 1.32
+        s1_end = 1.66 if self.is_tiktok else 1.72
+        s2_start = 1.56 if self.is_tiktok else 1.62
 
-        # Scene 1: Hook (fast 1.3s cut to beat the 2.0s viewer swipe cliff while keeping t=1.2s 100% opaque)
-        s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.24 if self.is_tiktok else 0.26, fade_out=0.16)
+        # Scene 1: Hook — 100% opaque from Frame 0 (t=0.0s, zero blank autoplay start!) through 1.54s,
+        # giving 1.7s to read concrete store/ratio shock + 3D tower while cutting into Scene 2 before the 2.0s swipe cliff.
+        s1_alpha = _fade_window(t, 0.0, s1_end, fade_in=0.0, fade_out=0.18)
         if s1_alpha > 0.01:
-            dy = int(20 * (1.0 - _ease_out_cubic(min(1.0, t / 0.28))))
+            dy = int(12 * (1.0 - _ease_out_cubic(min(1.0, t / 0.22))))
             s1_bar = getattr(self, "scene1_bar_spec", None)
             s1_iso = getattr(self, "scene1_iso_tower_spec", None)
             if s1_bar or s1_iso:
@@ -2733,7 +2780,7 @@ class _ReelSceneRenderer:
                 s1_draw = ImageDraw.Draw(sp1_base, "RGBA")
                 if s1_bar:
                     s1_bx, s1_by, s1_bw, s1_bh, s1_rad, s1_lratio, s1_lcol, s1_rcol = s1_bar
-                    s1_bease = _ease_out_cubic(min(1.0, max(0.08, (t - 0.06) / 0.88)))
+                    s1_bease = _ease_out_cubic(min(1.0, max(0.32, (t + 0.16) / 0.86)))
                     cur_bw = max(s1_rad * 2, int(s1_bw * s1_bease))
                     left_bw = max(s1_rad * 2, min(cur_bw, int(cur_bw * s1_lratio)))
                     if cur_bw > s1_rad * 2:
@@ -2748,7 +2795,7 @@ class _ReelSceneRenderer:
                         fill=(*s1_lcol, 255),
                     )
                 if s1_iso:
-                    iso_ease = _ease_out_cubic(min(1.0, max(0.10, (t - 0.04) / 0.82)))
+                    iso_ease = _ease_out_cubic(min(1.0, max(0.36, (t + 0.18) / 0.84)))
                     self._draw_isometric_3d_tower_duel(s1_draw, s1_iso, iso_ease)
                 sp1 = _apply_opacity(sp1_base, s1_alpha)
                 canvas.alpha_composite(sp1, dest=(0, dy))

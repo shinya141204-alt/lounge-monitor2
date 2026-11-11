@@ -571,6 +571,8 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled weekly X post failed: {err}")
             scheduler.add_job(func=_x_weekly_sun_fallback_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
+            import sns_insights_loop
+            scheduler.add_job(func=sns_insights_loop.run_scheduled_sync_safe, trigger="cron", hour="8,18", minute=25, jitter=90, executor="sns_ai")
             def _pdca_autonomous_job():
                 try:
                     cur_stores, _ = _visible_live_stores()
@@ -1961,6 +1963,7 @@ def affiliate_redirect(item_id):
                 inflow_tag = analytics.normalize_inflow_source(raw_inflow)
                 if inflow_tag:
                     analytics.track('sns_inflow', f"cv:{inflow_tag}")
+                    analytics.track('sns_inflow', f"cvslot:{inflow_tag} @ {clean_id[:36]}")
         except Exception:
             pass
     resp = redirect(target_url, code=302)
@@ -2149,7 +2152,10 @@ def track_event():
     if ev_name == 'hashigo_intent' and not turbo_store.check_sliding_rate_limit('hashigo_intent_ip', client_ip, limit=10, window_sec=600):
         return ('', 204)
     import analytics
-    analytics.track(ev_name, str(payload.get('label', '')).strip()[:96])
+    clean_lbl = str(payload.get('label', '')).strip()[:96]
+    analytics.track(ev_name, clean_lbl)
+    if ev_name == 'cushion_click':
+        analytics.track_sns_cushion_attribution(clean_lbl, request.cookies.get('an_src'))
     return ('', 204)
 
 

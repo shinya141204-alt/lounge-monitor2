@@ -250,6 +250,17 @@ def _web_push_watch_job():
         logger.error(f"[worker] Web Push watch dispatch failed: {err}")
 
 
+def _sns_insights_sync_job():
+    if not turbo_store.acquire_distributed_lock("cron:sns_insights_sync", ttl_sec=180):
+        return
+    try:
+        import sns_insights_loop
+        res = sns_insights_loop.sync_all_sns_insights(limit=15)
+        logger.info(f"[worker] SNS insights closed-loop sync completed: {res.get('summary')}")
+    except Exception as err:
+        logger.warning(f"[worker] SNS insights sync failed: {err}")
+
+
 def _pdca_autonomous_job():
     if not turbo_store.acquire_distributed_lock("cron:pdca_cycle", ttl_sec=180):
         return
@@ -357,6 +368,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="bonus_alert_10m", func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
     scheduler.add_job(id="web_push_watch_2m", func=_web_push_watch_job, trigger="interval", minutes=2)
     scheduler.add_job(id="x_weekly_sun", func=_x_weekly_sun_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
+    scheduler.add_job(id="sns_insights_sync", func=_sns_insights_sync_job, trigger="cron", hour="8,18", minute=25, jitter=90, executor="sns_ai")
     scheduler.add_job(id="pdca_cycle", func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
     scheduler.add_job(id="sheets_retention", func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
     scheduler.add_job(id="daily_token_db_maint", func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")

@@ -115,6 +115,9 @@ def get_active_directives(allow_blocking: bool = False) -> dict:
     if data and not settings.get("auto_optimize_sns", True):
         data["sns_style_boosts"] = {}
         data["priority_column_paths"] = []
+        data["hook_archetype_boosts"] = {}
+        data["sns_prompt_feedback"] = ""
+        data["reel_template_boosts"] = {}
 
     if is_verified:
         with _pdca_lock:
@@ -658,6 +661,10 @@ def _classify_sns_tag(tag: str) -> tuple:
     t = (tag or "").strip().lower()
     if t.startswith("sns_inflow:"):
         t = t.split(":", 1)[1].strip()
+    for pfx in ("cvslot:", "cush:", "cv:"):
+        if t.startswith(pfx):
+            t = t[len(pfx):].split("@", 1)[0].strip()
+            break
     if not t:
         return "x", "", "live"
 
@@ -756,9 +763,11 @@ def _build_sns_channel_efficiency(
 
     ch_visits = collections.defaultdict(int)
     ch_cvs = collections.defaultdict(int)
+    ch_cushions = collections.defaultdict(int)
+    ch_rev_yen = collections.defaultdict(int)
     ch_hours = collections.defaultdict(lambda: collections.defaultdict(int))
     ch_styles = collections.defaultdict(lambda: collections.defaultdict(int))
-    style_agg = collections.defaultdict(lambda: {"visits": 0, "conversions": 0, "channel_key": "x"})
+    style_agg = collections.defaultdict(lambda: {"visits": 0, "conversions": 0, "est_revenue_yen": 0, "channel_key": "x"})
     seen_tag_visits = collections.defaultdict(int)
     seen_tag_cvs = collections.defaultdict(int)
 
@@ -767,18 +776,23 @@ def _build_sns_channel_efficiency(
         norm_t = analytics.normalize_inflow_source(tag) or tag.strip().lower()
         v = int(c.get("visits") or 0)
         cv = int(c.get("conversions") or 0)
+        cush = int(c.get("cushion_clicks") or 0)
+        rev_y = int(c.get("est_revenue_yen") or 0)
         ck, hr, st = _classify_sns_tag(tag)
         ch_visits[ck] += v
         ch_cvs[ck] += cv
+        ch_cushions[ck] += cush
+        ch_rev_yen[ck] += rev_y
         seen_tag_visits[norm_t] += v
         seen_tag_cvs[norm_t] += cv
-        score_w = v + cv * 5
+        score_w = v + cush * 2 + cv * 5 + int(rev_y / 60)
         if hr:
             ch_hours[ck][hr] += score_w
         if st:
             ch_styles[ck][st] += score_w
             style_agg[st]["visits"] += v
             style_agg[st]["conversions"] += cv
+            style_agg[st]["est_revenue_yen"] += rev_y
             style_agg[st]["channel_key"] = ck
 
     # Support optional `by_event['sns_inflow:<channel_or_tag>']` without double-counting or dropping sibling tags
@@ -789,6 +803,8 @@ def _build_sns_channel_efficiency(
         if not ev_str.lower().startswith("sns_inflow:"):
             continue
         sub = ev_str.split(":", 1)[1].strip()
+        if sub.lower().startswith(("cush:", "cvslot:")):
+            continue
         if sub.lower().startswith("cv:"):
             raw_cv_tag = sub[3:].strip()
             norm_cv_tag = analytics.normalize_inflow_source(raw_cv_tag) or raw_cv_tag.lower()
@@ -820,9 +836,14 @@ def _build_sns_channel_efficiency(
         ck = cdef["channel_key"]
         v = int(ch_visits.get(ck, 0))
         cv = int(ch_cvs.get(ck, 0))
+        cush_c = int(ch_cushions.get(ck, 0))
+        rev_y = int(ch_rev_yen.get(ck, 0))
+        if rev_y == 0 and cv > 0:
+            rev_y = cv * 95
+        epc_v = round(rev_y / float(v), 1) if v > 0 else 0.0
         cvr = round((cv / v) * 100, 1) if v > 0 else 0.0
         share_pct = round((v / total_sns_visits) * 100, 1) if total_sns_visits > 0 else 0.0
-        eff_score = round(cv * 15.0 + v * 2.5 + cvr * 0.3, 1)
+        eff_score = round(cv * 15.0 + cush_c * 3.0 + (rev_y / 35.0) + v * 2.5 + cvr * 0.3, 1)
 
         if ch_hours.get(ck):
             top_hr = max(ch_hours[ck], key=ch_hours[ck].get)
@@ -841,7 +862,10 @@ def _build_sns_channel_efficiency(
             "channel_key": ck,
             "label": cdef["label"],
             "visits": v,
+            "cushion_clicks": cush_c,
             "conversions": cv,
+            "est_revenue_yen": rev_y,
+            "epc_yen": epc_v,
             "cvr_pct": cvr,
             "share_pct": share_pct,
             "posts_logged": cdef["posts_logged"],
@@ -1372,37 +1396,77 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         reverse=True,
     )
 
-    # 2. Aggregate SNS `?s=` Inflow Cohorts + SNS Editorial Logs
+    # 2. Aggregate SNS `?s=` Inflow Cohorts (Visits -> 2-Step Cushion -> Slot-Weighted EPC Revenue) + SNS Editorial Logs
     inflow_visits = collections.defaultdict(int)
     inflow_cvs = collections.defaultdict(int)
+    inflow_cushions = collections.defaultdict(int)
+    inflow_slot_clicks = collections.defaultdict(lambda: collections.defaultdict(int))
     style_inflow_score = collections.defaultdict(int)
 
     for raw_lbl, cnt in inflow_by_label.items():
+        c_int = int(cnt or 0)
+        if c_int <= 0:
+            continue
         src_part = raw_lbl.split("@", 1)[0].strip() if "@" in raw_lbl else raw_lbl.strip()
+        rhs_part = raw_lbl.split("@", 1)[1].strip() if "@" in raw_lbl else ""
         if src_part.startswith("cv:"):
             tag = analytics.normalize_inflow_source(src_part[3:])
             if tag:
-                inflow_cvs[tag] += cnt
+                inflow_cvs[tag] += c_int
+        elif src_part.startswith("cush:"):
+            tag = analytics.normalize_inflow_source(src_part[5:])
+            if tag:
+                inflow_cushions[tag] += c_int
+        elif src_part.startswith("cvslot:"):
+            tag = analytics.normalize_inflow_source(src_part[7:])
+            if tag and rhs_part:
+                inflow_slot_clicks[tag][rhs_part.lower()] += c_int
         else:
             tag = analytics.normalize_inflow_source(src_part)
             if tag:
-                inflow_visits[tag] += cnt
+                inflow_visits[tag] += c_int
 
     inflow_cohorts = []
-    all_tags = sorted(set(inflow_visits.keys()) | set(inflow_cvs.keys()), key=lambda t: (inflow_cvs[t] * 10 + inflow_visits[t]), reverse=True)
+    all_tags = sorted(
+        set(inflow_visits.keys()) | set(inflow_cvs.keys()) | set(inflow_cushions.keys()) | set(inflow_slot_clicks.keys()),
+        key=lambda t: (inflow_cvs[t] * 12 + inflow_cushions[t] * 3 + inflow_visits[t]),
+        reverse=True,
+    )
     for tag in all_tags:
         v_cnt = inflow_visits[tag]
         cv_cnt = inflow_cvs[tag]
+        cush_cnt = inflow_cushions[tag]
+        slot_map = inflow_slot_clicks.get(tag) or {}
+        slot_rev_yen = 0
+        top_slot_id = ""
+        if slot_map:
+            top_slot_id = max(slot_map, key=slot_map.get)
+            for s_id, s_c in slot_map.items():
+                cat_k = _classify_offer_category(s_id)
+                unit_epc = int((_OFFER_META_BY_KEY.get(cat_k) or {}).get("epc_yen") or 95)
+                slot_rev_yen += s_c * unit_epc
+            counted_slot_cvs = sum(slot_map.values())
+            if cv_cnt > counted_slot_cvs:
+                slot_rev_yen += (cv_cnt - counted_slot_cvs) * 95
+        elif cv_cnt > 0:
+            slot_rev_yen = cv_cnt * 95
+
+        epc_per_visit = round(slot_rev_yen / float(v_cnt), 1) if v_cnt > 0 else 0.0
         inflow_cohorts.append({
             "tag": tag,
             "label": analytics.describe_inflow_tag(tag),
             "visits": v_cnt,
+            "cushion_clicks": cush_cnt,
+            "cushion_rate_pct": round((cush_cnt / v_cnt) * 100, 1) if v_cnt > 0 else 0.0,
             "conversions": cv_cnt,
             "cvr_pct": round((cv_cnt / v_cnt) * 100, 1) if v_cnt > 0 else 0.0,
+            "est_revenue_yen": slot_rev_yen,
+            "epc_yen": epc_per_visit,
+            "top_slot": top_slot_id,
         })
         _, _, st_key = _classify_sns_tag(tag)
         if st_key:
-            style_inflow_score[st_key] += v_cnt + (cv_cnt * 5)
+            style_inflow_score[st_key] += v_cnt + (cush_cnt * 2) + (cv_cnt * 5) + int(slot_rev_yen / 45)
 
     # Inspect recent SNS Editorial history across X, Threads, Instagram, and TikTok/Reels
     x_hist = sns_editorial.get_recent_editorial_history("x", limit=10, allow_blocking=allow_blocking)
@@ -1455,6 +1519,21 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         sns_style_boosts["ai_live_adlib"] = 3
         sns_style_boosts["hub_gap"] = 3 if style_usage_counts.get("hub_gap", 0) < 3 else 0
         sns_style_boosts["usual_anomaly"] = 2 if style_usage_counts.get("usual_anomaly", 0) < 2 else 0
+
+    # Closed-Loop Feedback Integration (Threads/X Hook Insights + IG Reels Bandit + note CTR)
+    closed_loop_feedback = {}
+    try:
+        import sns_insights_loop
+        closed_loop_feedback = sns_insights_loop.compute_loop_feedback(
+            days=max(days, 28),
+            allow_blocking=allow_blocking,
+        ) or {}
+        for st_k, delta_pts in (closed_loop_feedback.get("sns_style_boosts_delta") or {}).items():
+            cur_pts = int(sns_style_boosts.get(st_k, 0))
+            sns_style_boosts[st_k] = max(-4, min(5, cur_pts + int(delta_pts)))
+    except Exception as loop_err:
+        logger.debug(f"[pdca_engine] closed_loop_feedback skipped: {loop_err}")
+        closed_loop_feedback = {}
 
     style_labels_map = {}
     for st_k in set(list(candidate_styles) + list(sns_style_boosts.keys())):
@@ -1670,6 +1749,10 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     directives = {
         "updated_at": datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
         "sns_style_boosts": sns_style_boosts,
+        "hook_archetype_boosts": dict(closed_loop_feedback.get("hook_archetype_boosts") or {}),
+        "sns_prompt_feedback": str(closed_loop_feedback.get("sns_prompt_feedback") or ""),
+        "reel_template_boosts": dict(closed_loop_feedback.get("reel_template_boosts") or {}),
+        "note_ctr_feedback": dict(closed_loop_feedback.get("note_ctr_feedback") or {}),
         "priority_column_paths": priority_column_paths,
         "recommended_column_theme": demand_gap["recommended_theme"],
         "recommended_custom_topic": demand_gap["recommended_topic"],
@@ -1719,6 +1802,7 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         "monetization_gaps": monetization_gaps,
         "sns_channel_efficiency": sns_channel_efficiency,
         "weekly_growth_actions": weekly_growth_actions,
+        "closed_loop_feedback": closed_loop_feedback,
     }
 
 
@@ -1963,6 +2047,7 @@ def run_pdca_cycle(
         "monetization_gaps": diag["monetization_gaps"],
         "sns_channel_efficiency": diag["sns_channel_efficiency"],
         "weekly_growth_actions": diag["weekly_growth_actions"],
+        "closed_loop_feedback": diag.get("closed_loop_feedback") or {},
     }
 
 

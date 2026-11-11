@@ -1008,6 +1008,111 @@ def api_pdca_run():
     return jsonify({'ok': True, 'pdca': res})
 
 
+@staff_bp.route('/api/pdca/sns-insights')
+def api_pdca_sns_insights():
+    """Master-only JSON endpoint returning 3-layer closed-loop SNS insights, Reel bandit, and note CTR feedback."""
+    if not core.is_master_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    import sns_insights_loop
+    days = _safe_clamped_days(request.args.get('days'), default=28)
+    return jsonify(sns_insights_loop.get_insights_dashboard_payload(days=days, allow_blocking=True))
+
+
+@staff_bp.route('/api/pdca/sns-insights/sync', methods=['POST'])
+def api_pdca_sns_insights_sync():
+    """Master-only endpoint to trigger immediate Meta Graph API (Threads + IG Reels) insight harvest & PDCA directive refresh."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import pdca_engine
+    import sns_insights_loop
+    core.restore_latest_data_if_empty()
+    sync_res = sns_insights_loop.sync_all_sns_insights(limit=15)
+    live_s = _get_visible_live_stores()
+    pdca_res = pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=14,
+        apply_actions=True,
+        use_ai=False,
+        record_log=False,
+    )
+    core.clear_fast_http_caches()
+    return jsonify({
+        'ok': True,
+        'sync': sync_res,
+        'active_directives': pdca_res.get('active_directives') or {},
+        'closed_loop_feedback': pdca_res.get('closed_loop_feedback') or sync_res.get('feedback') or {},
+    })
+
+
+@staff_bp.route('/api/pdca/sns-insights/ingest', methods=['POST'])
+def api_pdca_sns_insights_ingest():
+    """
+    Master-only endpoint to ingest SNS/note insight screenshots (via Gemini 4 Carbon Vision)
+    or structured JSON records and immediately apply updated directives.
+    """
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import pdca_engine
+    import sns_insights_loop
+    core.restore_latest_data_if_empty()
+
+    ingest_res = None
+    if request.files and 'file' in request.files:
+        f_obj = request.files['file']
+        raw_bytes = f_obj.read(sns_insights_loop.MAX_SCREENSHOT_BYTES + 1024)
+        mime_type = f_obj.mimetype or 'image/png'
+        platform_hint = request.form.get('platform') or 'auto'
+        ingest_res = sns_insights_loop.ingest_insight_screenshot_via_carbon(
+            raw_bytes,
+            mime_type=mime_type,
+            platform_hint=platform_hint,
+        )
+    else:
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({'ok': False, 'error': '不正なリクエスト形式です（画像ファイルまたはJSONを指定してください）'}), 400
+        if payload.get('image_base64'):
+            import base64
+            b64_raw = str(payload.get('image_base64') or '')
+            if ',' in b64_raw and b64_raw.lstrip().startswith('data:'):
+                b64_raw = b64_raw.split(',', 1)[1]
+            try:
+                raw_bytes = base64.b64decode(b64_raw, validate=False)
+            except Exception:
+                return jsonify({'ok': False, 'error': 'base64画像のデコードに失敗しました'}), 400
+            ingest_res = sns_insights_loop.ingest_insight_screenshot_via_carbon(
+                raw_bytes,
+                mime_type=str(payload.get('mime_type') or 'image/png'),
+                platform_hint=str(payload.get('platform') or 'auto'),
+            )
+        else:
+            ingest_res = sns_insights_loop.ingest_manual_insight_records(
+                payload,
+                source='master_json_api',
+            )
+
+    if not ingest_res or not ingest_res.get('ok'):
+        return jsonify(ingest_res or {'ok': False, 'error': 'インサイト取込に失敗しました'}), 400
+
+    live_s = _get_visible_live_stores()
+    pdca_res = pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=14,
+        apply_actions=True,
+        use_ai=False,
+        record_log=False,
+    )
+    core.clear_fast_http_caches()
+    return jsonify({
+        'ok': True,
+        'ingest': ingest_res,
+        'active_directives': pdca_res.get('active_directives') or {},
+        'closed_loop_feedback': pdca_res.get('closed_loop_feedback') or ingest_res.get('feedback') or {},
+    })
+
+
 @staff_bp.route('/staff/sns-kit')
 def staff_sns_kit():
     """Master-only one-click Instagram / Threads weekend forecast carousel & caption generator."""
