@@ -8,7 +8,7 @@ Features:
    `area_battle`, `ladies_zero_wait`, `tiktok_gap_shock`, `tiktok_ladies_real`, `tiktok_midnight_cliff`)
    with zero fabricated metrics and strict official brand naming (`オリエンタルラウンジ`, `ag`, `JIS`, `ASOBIBAR`, `ヤタコイ`).
 3. Dedicated Japanese TTS phonetic sanitizer (`to_tts_phonetic_japanese`) so Latin brand names (`ag`->`アグ`,
-   `JIS`->`ジス`, `XIX`->`ナインティーン`), Japanese nightlife districts (`茶屋町`->`ちゃやまち`, `心斎橋`->`しんさいばし`),
+   `JIS`->`ジス`, `XIX`->`ジックス`), Japanese nightlife districts (`茶屋町`->`ちゃやまち`, `心斎橋`->`しんさいばし`),
    and counters/units (`%`->`パーセント`, `pt`->`ポイント`, `2軒目`->`にけんめ`) are pronounced naturally.
 4. Disk (`/tmp/aiseki_reels`) + `turbo_store` TTS audio cache keyed by `(voice_id, model_id, phonetic_text)`
    to conserve ElevenLabs Starter credits across previews and multi-platform publishing.
@@ -79,7 +79,7 @@ _BRAND_PHONETIC_RULES = (
     (re.compile(r"(?<![A-Za-z0-9])ASOBIBAR(?![A-Za-z0-9])", re.IGNORECASE), "アソビバー"),
     (re.compile(r"(?<![A-Za-z0-9])CLOVERS(?![A-Za-z0-9])", re.IGNORECASE), "クローバーズ"),
     (re.compile(r"(?<![A-Za-z0-9])ALFA(?![A-Za-z0-9])", re.IGNORECASE), "アルファ"),
-    (re.compile(r"(?<![A-Za-z0-9])XIX(?![A-Za-z0-9])", re.IGNORECASE), "ナインティーン"),
+    (re.compile(r"(?<![A-Za-z0-9])XIX(?![A-Za-z0-9])", re.IGNORECASE), "ジックス"),
     (re.compile(r"(?<![A-Za-z0-9])JIS(?![A-Za-z0-9])", re.IGNORECASE), "ジス"),
     (re.compile(r"(?<![A-Za-z0-9])ag(?![A-Za-z0-9])", re.IGNORECASE), "アグ"),
 )
@@ -133,7 +133,7 @@ VOICE_CLONE_SAMPLE_SCRIPT = (
     "同じ駅でも徒歩4分離れたアグ渋谷やジス大宮を見比べると、受付待ちゼロでそのまま案内されやすい穴場が見つかります。\n\n"
     "続いて大阪・梅田と難波エリア。茶屋町や心斎橋の周辺では、21時を過ぎてから一気に人数が伸びてきました。\n"
     "女子ふたり組で2軒目や夜カフェ代わりに寄るなら、女性が多すぎるお店より、男性先行で盛り上がっている店舗を選ぶほうが席替えもスムーズです。\n\n"
-    "そして23時20分の終電を過ぎたあとも、アソビバーやヤタコイ、ナインティーンなど深夜に強いラウンジはまだまだ活況が続いています。\n"
+    "そして23時20分の終電を過ぎたあとも、アソビバーやヤタコイ、ジックスなど深夜に強いラウンジはまだまだ活況が続いています。\n"
     "全国60店舗以上のいま現在の人数と料金シミュレーターは、プロフィールのリンク、相席ナビから3秒でチェックできます。\n"
     "今夜のお店選びで失敗しないように、ぜひ保存して向かう直前に見返してみてください。"
 )

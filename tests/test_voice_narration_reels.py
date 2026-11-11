@@ -2,7 +2,7 @@
 tests/test_voice_narration_reels.py - Unit & Integration tests for ElevenLabs Custom Voice Narration.
 
 Verifies:
-1. Japanese TTS phonetic conversion (`to_tts_phonetic_japanese`) & official brand naming (`オリエンタルラウンジ`, `ag`->`アグ`, `JIS`->`ジス`, `XIX`->`ナインティーン`, `茶屋町`->`ちゃやまち`, `%`->`パーセント`, `pt`->`ポイント`).
+1. Japanese TTS phonetic conversion (`to_tts_phonetic_japanese`) & official brand naming (`オリエンタルラウンジ`, `ag`->`アグ`, `JIS`->`ジス`, `XIX`->`ジックス`, `茶屋町`->`ちゃやまち`, `%`->`パーセント`, `pt`->`ポイント`).
 2. Factual 8.5s narration script generation across all 6 Reel/TikTok templates + zero-metric off-hours honesty.
 3. Encrypted/obfuscated `job_state` storage (`token:elevenlabs_api_key`), ElevenLabs API synthesis (`xi-api-key` header), credit-saving disk/shared cache hit on repeat synthesis, and strict fail-open on HTTP 429/5xx.
 4. Real FFmpeg 9:16 MP4 muxing with synthetic voice track + sidechain BGM auto-ducking + overlong `atempo` fit (< 8.5s).
@@ -119,7 +119,8 @@ class VoiceNarrationReelsTests(unittest.TestCase):
         self.assertIn("アグ渋谷", phonetic)
         self.assertIn("ジスちゃやまち", phonetic)
         self.assertIn("しんさいばし", phonetic)
-        self.assertIn("ナインティーン", phonetic)
+        self.assertIn("ジックス", phonetic)
+        self.assertNotIn("ナインティーン", phonetic)
         self.assertIn("アソビバー", phonetic)
         self.assertIn("ヤタコイ", phonetic)
         self.assertIn("にけんめ", phonetic)

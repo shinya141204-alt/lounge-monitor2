@@ -3683,7 +3683,7 @@ def get_monthly_store_stats_rows(days: int = 30) -> list:
         "yatakoi": "ヤタコイ",
         "alfa": "ALFA（アルファ）",
         "clovers": "CLOVERS（クローバーズ）",
-        "xix": "XIX（キックス）",
+        "xix": "XIX（ジックス）",
     }
 
     result = []

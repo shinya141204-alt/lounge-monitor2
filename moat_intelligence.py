@@ -1799,11 +1799,11 @@ def _resolve_internal_store_key(store_name: str) -> str:
                 else:
                     branch = s.replace("ヤタコイ", "").replace("YATAKOI", "").replace("yatakoi", "").strip()
                     resolved = f"YATAKOI {branch}" if branch else "YATAKOI UMEDA"
-            elif "XIX" in s.upper() or "シックス" in s:
-                if "岡山" in s or "OKAYAMA" in s.upper() or s.upper() in ("XIX", "シックス"):
+            elif "XIX" in s.upper() or "ジックス" in s or "シックス" in s:
+                if "岡山" in s or "OKAYAMA" in s.upper() or s.upper() in ("XIX", "ジックス", "シックス"):
                     resolved = "XIX OKAYAMA"
                 else:
-                    branch = s.replace("シックス", "").replace("XIX", "").replace("xix", "").strip()
+                    branch = s.replace("ジックス", "").replace("シックス", "").replace("XIX", "").replace("xix", "").strip()
                     resolved = f"XIX {branch}" if branch else "XIX OKAYAMA"
             elif "JIS" in s.upper() or "ジス" in s:
                 jis_mapping = {
