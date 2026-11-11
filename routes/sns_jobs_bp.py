@@ -515,6 +515,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         import reel_generator
         rt = reel_generator.normalize_reel_type(p.get('reel_type', 'live_top5'))
         cap = str(p.get('caption') or '').strip()
+        nar_txt = str(p.get('narration_text') or '').strip()
         share_feed = bool(p.get('share_to_feed', True))
         slot = str(p.get('slot') or 'manual_reel').strip()
         stores = _get_visible_live_stores()
@@ -525,6 +526,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
             share_to_feed=share_feed,
             slot_label=slot,
             force=force,
+            custom_narration_text=nar_txt,
         )
 
     if jtype == 'tiktok_inbox':
@@ -532,6 +534,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         import tiktok_poster
         rt = reel_generator.normalize_reel_type(p.get('reel_type', 'tiktok_gap_shock'))
         cap = str(p.get('caption') or '').strip()
+        nar_txt = str(p.get('narration_text') or '').strip()
         slot = str(p.get('slot') or 'manual_tiktok').strip()
         stores = _get_visible_live_stores()
         return tiktok_poster.publish_live_reel_to_tiktok_inbox(
@@ -540,6 +543,7 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
             custom_caption=cap,
             slot_label=slot,
             force=force,
+            custom_narration_text=nar_txt,
         )
 
     if jtype == 'ladies_sns':

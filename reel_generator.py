@@ -38,6 +38,7 @@ import ogp_generator
 import sns_editorial
 import store_master
 import turbo_store
+import voice_narration
 
 logger = logging.getLogger(__name__)
 
@@ -647,7 +648,7 @@ def build_reel_context(
 
 def _build_insufficient_reel_context(rt: str, now_jst: datetime.datetime, time_label: str, wd_str: str) -> dict:
     """Honest empty context: no live measurements -> no headcounts, no ratios, no fabricated stores."""
-    return {
+    ctx = {
         "reel_type": rt,
         "now_jst": now_jst,
         "time_label": time_label,
@@ -669,6 +670,10 @@ def _build_insufficient_reel_context(rt: str, now_jst: datetime.datetime, time_l
         "has_same_hub_gap": False,
         "midnight_top4": [],
     }
+    nar_script = voice_narration.build_reel_narration_script(ctx)
+    ctx["narration_script"] = nar_script
+    ctx["narration_phonetic"] = voice_narration.to_tts_phonetic_japanese(nar_script)
+    return ctx
 
 
 def _build_reel_context_uncached(
@@ -833,7 +838,7 @@ def _build_reel_context_uncached(
         reverse=True,
     )[:4]
 
-    return {
+    ctx = {
         "reel_type": rt,
         "now_jst": now_jst,
         "time_label": time_label,
@@ -855,6 +860,10 @@ def _build_reel_context_uncached(
         "has_same_hub_gap": has_same_hub_gap,
         "midnight_top4": midnight_top4,
     }
+    nar_script = voice_narration.build_reel_narration_script(ctx)
+    ctx["narration_script"] = nar_script
+    ctx["narration_phonetic"] = voice_narration.to_tts_phonetic_japanese(nar_script)
+    return ctx
 
 
 REEL_RECENT_TYPES_KEY = "reel_recent_types"
@@ -3002,7 +3011,35 @@ def render_reel_preview_frames_jpeg(
     return out
 
 
-def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datetime.datetime = None) -> str:
+def clear_reel_mp4_caches() -> None:
+    """Clear in-memory and `/tmp/aiseki_reels` MP4 caches when voice narration or studio config changes."""
+    with _MEM_CACHE_LOCK:
+        _MEM_MP4_CACHE.clear()
+    with _PINNED_SLOT_LOCK:
+        for k in list(_PINNED_SLOT_CACHE.keys()):
+            if ":prev_" in k:
+                _PINNED_SLOT_CACHE.pop(k, None)
+    try:
+        if os.path.isdir(REEL_TMP_CACHE_DIR):
+            for fname in os.listdir(REEL_TMP_CACHE_DIR):
+                if fname.startswith(("latest_", "reel_", "slot_")) and fname.endswith(".mp4"):
+                    if fname.startswith("slot_") and "_prev_" not in fname:
+                        continue
+                    try:
+                        os.remove(os.path.join(REEL_TMP_CACHE_DIR, fname))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+
+def _compute_reel_cache_key(
+    stores: list,
+    rt: str,
+    bg_info: dict,
+    now_jst: datetime.datetime = None,
+    voice_sig: str = "bgm_only",
+) -> str:
     dom = [s for s in (stores or []) if _is_domestic_store(s)]
     dom.sort(key=lambda x: (str(x.get("name") or ""), int(x.get("women") or 0), int(x.get("men") or 0)))
     top_sig = "|".join(
@@ -3021,7 +3058,7 @@ def _compute_reel_cache_key(stores: list, rt: str, bg_info: dict, now_jst: datet
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         if abs((chk - real_now).total_seconds()) > 180:
             custom_ts = chk.strftime("%Y%m%d%H%M")
-    raw = f"v3|{rt}|{bg_sig}|{custom_ts}|{top_sig}"
+    raw = f"v4|{rt}|{bg_sig}|{custom_ts}|{voice_sig}|{top_sig}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{rt}_{digest}"
 
@@ -3290,14 +3327,45 @@ def get_pinned_reel_mp4_slot(reel_type: str, slot_token: str) -> bytes:
     return None
 
 
+def _build_ffmpeg_narration_audio_filter(
+    bgm_input_idx: int,
+    voice_input_idx: int,
+    duration_sec: float,
+    voice_dur_sec: float = 0.0,
+) -> str:
+    """
+    Build FFmpeg audio filter graph mixing foreground custom voice narration (`adelay=120|120`)
+    with sidechain-ducked Lounge Chill BGM, plus auto `atempo` fit so speech never clips at `duration_sec`.
+    """
+    max_voice_sec = max(2.0, float(duration_sec) - 0.38)
+    tempo_chain = ""
+    if voice_dur_sec and voice_dur_sec > max_voice_sec:
+        tempo_val = min(1.38, max(1.02, float(voice_dur_sec) / (max_voice_sec - 0.08)))
+        tempo_chain = f"atempo={tempo_val:.3f},"
+
+    return (
+        f"[{voice_input_idx}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+        f"{tempo_chain}highpass=f=85,volume=1.28,adelay=120|120,"
+        f"apad=whole_dur={duration_sec:.2f},atrim=duration={duration_sec:.2f},asetpts=PTS-STARTPTS,"
+        f"asplit=2[v_fg][v_sc];"
+        f"[{bgm_input_idx}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,"
+        f"atrim=duration={duration_sec:.2f},asetpts=PTS-STARTPTS,volume=0.52[bgm_pre];"
+        f"[bgm_pre][v_sc]sidechaincompress=threshold=0.022:ratio=6:attack=25:release=280:makeup=1.0[bgm_duck];"
+        f"[bgm_duck][v_fg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,"
+        f"alimiter=limit=0.95[aout]"
+    )
+
+
 def _encode_with_ffmpeg(
     ffmpeg_bin: str,
     renderer: _ReelSceneRenderer,
     bg_info: dict,
     out_mp4_path: str,
     use_video_bg: bool,
+    narration_audio_path: str = None,
+    narration_duration_sec: float = 0.0,
 ) -> None:
-    """Stream raw frames one-by-one into FFmpeg stdin (<4MB peak RAM) and mux Lounge Chill BGM + UI SFX AAC + faststart."""
+    """Stream raw frames one-by-one into FFmpeg stdin (<4MB peak RAM) and mux Lounge Chill BGM (+ optional ElevenLabs voice narration with auto-ducking) + faststart."""
     W, H = REEL_WIDTH, REEL_HEIGHT
     bg_video_path, _, bg_image_path, bg_image_mtime = _resolve_bg_paths(bg_info)
     kb_mode = bg_info.get("ken_burns_mode", "zoom_in_up")
@@ -3308,13 +3376,29 @@ def _encode_with_ffmpeg(
         if (bgm_wav_path and os.path.isfile(bgm_wav_path))
         else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"]
     )
+    has_voice = bool(
+        narration_audio_path
+        and os.path.isfile(narration_audio_path)
+        and os.path.getsize(narration_audio_path) > 256
+    )
+    eff_voice_dur = float(narration_duration_sec or 0.0)
+    if has_voice and eff_voice_dur <= 0.0:
+        eff_voice_dur = voice_narration.probe_audio_duration_sec(narration_audio_path, ffmpeg_bin=ffmpeg_bin)
+    voice_input_args = ["-i", narration_audio_path] if has_voice else []
 
     if use_video_bg and bg_video_path and os.path.isfile(bg_video_path):
-        filter_complex = (
+        v_filter = (
             f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
             f"crop={W}:{H},fps={REEL_FPS},trim=duration={REEL_DURATION_SEC:.2f},setpts=PTS-STARTPTS[bg];"
             f"[bg][1:v]overlay=0:0:format=auto:shortest=1[vout]"
         )
+        if has_voice:
+            a_filter = _build_ffmpeg_narration_audio_filter(2, 3, REEL_DURATION_SEC, eff_voice_dur)
+            filter_complex = f"{v_filter};{a_filter}"
+            audio_map_arg = "[aout]"
+        else:
+            filter_complex = v_filter
+            audio_map_arg = "2:a"
         cmd = [
             ffmpeg_bin,
             "-y",
@@ -3328,9 +3412,10 @@ def _encode_with_ffmpeg(
             "-r", str(REEL_FPS),
             "-i", "pipe:0",
             *audio_input_args,
+            *voice_input_args,
             "-filter_complex", filter_complex,
             "-map", "[vout]",
-            "-map", "2:a",
+            "-map", audio_map_arg,
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-crf", "25",
@@ -3353,6 +3438,18 @@ def _encode_with_ffmpeg(
             image_mtime=bg_image_mtime,
             bg_variant=bg_variant,
         )
+        if has_voice:
+            a_filter = _build_ffmpeg_narration_audio_filter(1, 2, REEL_DURATION_SEC, eff_voice_dur)
+            filter_and_maps = [
+                "-filter_complex", a_filter,
+                "-map", "0:v:0",
+                "-map", "[aout]",
+            ]
+        else:
+            filter_and_maps = [
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+            ]
         cmd = [
             ffmpeg_bin,
             "-y",
@@ -3364,8 +3461,8 @@ def _encode_with_ffmpeg(
             "-r", str(REEL_FPS),
             "-i", "pipe:0",
             *audio_input_args,
-            "-map", "0:v:0",
-            "-map", "1:a:0",
+            *voice_input_args,
+            *filter_and_maps,
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-crf", "25",
@@ -3438,9 +3535,13 @@ def render_reel_mp4_bytes(
     reel_type: str = "live_top5",
     now_jst: datetime.datetime = None,
     force_refresh: bool = False,
+    narration_override: bool = None,
+    custom_narration_text: str = None,
+    narration_audio_path_override: str = None,
 ) -> bytes:
     """
-    Render a 720x1280 24fps H.264 + silent AAC MP4 (~11.5s) with 120s in-memory + `/tmp/aiseki_reels/`
+    Render a 720x1280 24fps H.264 + AAC MP4 (~8.5s) with Lounge Chill BGM and optional ElevenLabs
+    cloned-voice narration + auto-ducking, backed by 120s in-memory + `/tmp/aiseki_reels/`
     + 900s shared `turbo_store` cache for cross-process Meta / TikTok async crawlers.
     Raises `RuntimeError("ffmpeg binary not available")` if FFmpeg cannot be resolved.
     """
@@ -3450,17 +3551,34 @@ def render_reel_mp4_bytes(
 
     rt = normalize_reel_type(reel_type)
     bg_info = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
-    cache_key = _compute_reel_cache_key(stores, rt, bg_info, now_jst=now_jst)
+    cleaned_custom_narration = voice_narration.normalize_narration_script_input(custom_narration_text or "")
+    if narration_audio_path_override:
+        ov_hash = hashlib.sha256(str(narration_audio_path_override).encode("utf-8")).hexdigest()[:12]
+        voice_sig = f"ov_audio:{ov_hash}"
+    else:
+        voice_sig = voice_narration.get_reel_cache_voice_signature(
+            narration_override=narration_override,
+            custom_narration_text=cleaned_custom_narration,
+            allow_blocking=False,
+        )
+    cache_key = _compute_reel_cache_key(stores, rt, bg_info, now_jst=now_jst, voice_sig=voice_sig)
     now_ts = time.time()
     is_live_clock = True
     if now_jst is not None:
         real_now = datetime.datetime.now(JST)
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         is_live_clock = abs((chk - real_now).total_seconds()) <= 180
+    use_latest_shortcut = bool(
+        is_live_clock
+        and not cleaned_custom_narration
+        and not narration_audio_path_override
+        and narration_override is None
+    )
+    latest_vtag = "bgm" if voice_sig == "bgm_only" else hashlib.sha256(voice_sig.encode("utf-8")).hexdigest()[:8]
 
     os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
     disk_exact_path = os.path.join(REEL_TMP_CACHE_DIR, f"reel_{cache_key}.mp4")
-    disk_latest_path = os.path.join(REEL_TMP_CACHE_DIR, f"latest_{rt}.mp4")
+    disk_latest_path = os.path.join(REEL_TMP_CACHE_DIR, f"latest_{rt}_{latest_vtag}.mp4")
 
     if not force_refresh:
         with _MEM_CACHE_LOCK:
@@ -3469,7 +3587,7 @@ def render_reel_mp4_bytes(
                 _MEM_MP4_CACHE.move_to_end(cache_key)
                 return mem_entry["bytes"]
 
-        for cand_path in (disk_exact_path, disk_latest_path if is_live_clock else ""):
+        for cand_path in (disk_exact_path, disk_latest_path if use_latest_shortcut else ""):
             if cand_path and os.path.isfile(cand_path):
                 try:
                     if (now_ts - os.path.getmtime(cand_path)) < REEL_CACHE_TTL_SEC and os.path.getsize(cand_path) > 1024:
@@ -3485,8 +3603,8 @@ def render_reel_mp4_bytes(
 
         try:
             shared_exact = turbo_store.get_media_blob(f"reel_mp4:{rt}:{cache_key}")
-            if not shared_exact and is_live_clock:
-                shared_exact = turbo_store.get_media_blob(f"reel_mp4_latest:{rt}")
+            if not shared_exact and use_latest_shortcut:
+                shared_exact = turbo_store.get_media_blob(f"reel_mp4_latest:{rt}:{latest_vtag}")
             if shared_exact and shared_exact[0] and len(shared_exact[0]) > 1024:
                 mp4_data = shared_exact[0]
                 with _MEM_CACHE_LOCK:
@@ -3507,21 +3625,54 @@ def render_reel_mp4_bytes(
                     return mem_entry["bytes"]
 
         ctx = build_reel_context(stores, reel_type=rt, now_jst=now_jst)
+        nar_audio_path = None
+        nar_dur_sec = 0.0
+        if narration_audio_path_override and os.path.isfile(narration_audio_path_override):
+            nar_audio_path = narration_audio_path_override
+            nar_dur_sec = voice_narration.probe_audio_duration_sec(nar_audio_path, ffmpeg_bin=ffmpeg_bin)
+        elif voice_sig != "bgm_only":
+            script_for_tts = cleaned_custom_narration or ctx.get("narration_script") or voice_narration.build_reel_narration_script(ctx)
+            tts_res = voice_narration.synthesize_narration_audio(script_for_tts)
+            if tts_res.get("ok") and tts_res.get("audio_path") and os.path.isfile(tts_res["audio_path"]):
+                nar_audio_path = tts_res["audio_path"]
+                nar_dur_sec = float(tts_res.get("duration_sec") or 0.0)
+            else:
+                logger.info(
+                    f"[reel_generator] Voice narration skipped/fail-open for {rt}: {tts_res.get('error') or 'unavailable'}"
+                )
+
         renderer = _ReelSceneRenderer(ctx)
         tmp_fd, tmp_mp4_path = tempfile.mkstemp(prefix=f"tmp_{rt}_", suffix=".mp4", dir=REEL_TMP_CACHE_DIR)
         os.close(tmp_fd)
+
+        def _run_encode(with_video_bg: bool):
+            if nar_audio_path:
+                try:
+                    _encode_with_ffmpeg(
+                        ffmpeg_bin,
+                        renderer,
+                        bg_info,
+                        tmp_mp4_path,
+                        use_video_bg=with_video_bg,
+                        narration_audio_path=nar_audio_path,
+                        narration_duration_sec=nar_dur_sec,
+                    )
+                    return
+                except Exception as nar_err:
+                    logger.warning(f"Voice narration FFmpeg mix failed; falling back to Lounge BGM only: {nar_err}")
+            _encode_with_ffmpeg(ffmpeg_bin, renderer, bg_info, tmp_mp4_path, use_video_bg=with_video_bg)
 
         try:
             v_path, _, _, _ = _resolve_bg_paths(bg_info)
             wants_video_bg = bg_info.get("active_mode") == "veo3_video" and bool(v_path)
             if wants_video_bg:
                 try:
-                    _encode_with_ffmpeg(ffmpeg_bin, renderer, bg_info, tmp_mp4_path, use_video_bg=True)
+                    _run_encode(True)
                 except Exception as veo_err:
                     logger.warning(f"Veo 3 video background composite failed; falling back to Ken Burns bg: {veo_err}")
-                    _encode_with_ffmpeg(ffmpeg_bin, renderer, bg_info, tmp_mp4_path, use_video_bg=False)
+                    _run_encode(False)
             else:
-                _encode_with_ffmpeg(ffmpeg_bin, renderer, bg_info, tmp_mp4_path, use_video_bg=False)
+                _run_encode(False)
 
             with open(tmp_mp4_path, "rb") as f:
                 mp4_bytes = f.read()
@@ -3530,7 +3681,7 @@ def render_reel_mp4_bytes(
                 os.replace(tmp_mp4_path, disk_exact_path)
             except Exception:
                 pass
-            if is_live_clock:
+            if use_latest_shortcut:
                 try:
                     shutil.copyfile(disk_exact_path, disk_latest_path)
                 except Exception:
@@ -3556,9 +3707,9 @@ def render_reel_mp4_bytes(
                 mime_type="video/mp4",
                 ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
             )
-            if is_live_clock:
+            if use_latest_shortcut:
                 turbo_store.set_media_blob(
-                    f"reel_mp4_latest:{rt}",
+                    f"reel_mp4_latest:{rt}:{latest_vtag}",
                     mp4_bytes,
                     mime_type="video/mp4",
                     ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
@@ -3579,6 +3730,7 @@ def get_reel_studio_info(
 ) -> dict:
     """Assemble clean JSON metadata payload for `/api/staff/sns-reel/info`."""
     rt = normalize_reel_type(reel_type)
+    ctx = build_reel_context(stores, reel_type=rt, now_jst=now_jst)
     bg_raw = list_available_backgrounds(reel_type=rt, now_jst=now_jst)
     bg_public = {
         "bg_dir": bg_raw["bg_dir"],
@@ -3593,6 +3745,9 @@ def get_reel_studio_info(
         "ok": True,
         "reel_type": rt,
         "caption": build_reel_caption(stores, reel_type=rt, now_jst=now_jst),
+        "narration_script": ctx.get("narration_script") or "",
+        "narration_phonetic": ctx.get("narration_phonetic") or "",
+        "voice_narration": voice_narration.get_voice_narration_status(allow_blocking=False),
         "templates": REEL_TEMPLATES,
         "veo3_prompts": VEO3_PROMPT_PRESETS,
         "backgrounds": bg_public,

@@ -738,6 +738,242 @@
             overflow-wrap: anywhere;
             word-break: break-word;
         }
+        /* ElevenLabs Custom Voice Narration Studio */
+        .vn-section {
+            margin-top: 4px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-strong);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .vn-head-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .vn-title-group {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .vn-heading {
+            margin: 0;
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .vn-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        .vn-status-badge.is-active {
+            background: var(--green-soft);
+            border-color: var(--green);
+            color: var(--green-ink);
+        }
+        .vn-status-badge.is-unconfigured {
+            background: var(--amber-soft);
+            border-color: var(--amber);
+            color: var(--amber-ink);
+        }
+        .vn-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+        .vn-toggle-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 40px;
+        }
+        .vn-toggle-wrap input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            accent-color: var(--green);
+            cursor: pointer;
+        }
+        .vn-toggle-wrap label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .vn-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+        .vn-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .vn-field label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .vn-hint {
+            font-size: 0.74rem;
+            color: var(--sub);
+            line-height: 1.5;
+            font-variant-numeric: tabular-nums;
+        }
+        .vn-field-control {
+            width: 100%;
+            font: inherit;
+            font-size: max(1rem, 1em);
+            line-height: 1.5;
+            padding: 10px 12px;
+            min-height: 48px;
+            border-radius: 9px;
+            border: 1px solid #71717a;
+            background: var(--input-bg);
+            color: var(--text);
+            box-sizing: border-box;
+        }
+        .vn-field-control:focus-visible,
+        .vn-btn:focus-visible,
+        .vn-toggle-wrap input[type="checkbox"]:focus-visible,
+        .vn-disclosure summary:focus-visible {
+            outline: 2px solid var(--text);
+            outline-offset: 2px;
+        }
+        textarea.vn-field-control {
+            min-height: 82px;
+            resize: vertical;
+        }
+        .vn-phonetic-line {
+            font-size: 0.74rem;
+            color: var(--sub);
+            background: var(--subtle-bg);
+            border-left: 2px solid var(--border-strong);
+            padding: 6px 10px;
+            border-radius: 0 6px 6px 0;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+        .vn-btn-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .vn-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+            padding: 8px 14px;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .vn-btn:hover { opacity: 0.92; }
+        .vn-btn:disabled { opacity: 0.55; cursor: wait; }
+        .vn-btn-primary {
+            background: var(--active-bg);
+            border-color: var(--active-bg);
+            color: var(--active-ink);
+        }
+        .vn-audio-wrap {
+            display: none;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-top: 4px;
+        }
+        .vn-audio-wrap.is-visible {
+            display: flex;
+        }
+        .vn-audio-wrap audio {
+            flex: 1;
+            min-width: min(100%, 240px);
+            height: 40px;
+        }
+        .vn-disclosure {
+            margin-top: 6px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+        }
+        .vn-disclosure summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 40px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .vn-disclosure summary::-webkit-details-marker { display: none; }
+        .vn-disclosure summary::after {
+            content: "▾";
+            font-size: 0.82rem;
+            color: var(--sub);
+        }
+        .vn-disclosure[open] summary::after {
+            content: "▴";
+        }
+        .vn-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .vn-input-inline {
+            display: flex;
+            gap: 6px;
+            align-items: stretch;
+        }
+        .vn-input-inline .vn-field-control {
+            flex: 1;
+            min-width: 0;
+        }
+        .vn-script-sample {
+            margin: 8px 0;
+            padding: 12px 14px;
+            border-radius: 9px;
+            border: 1px solid var(--border-strong);
+            background: var(--code-bg);
+            color: var(--code-ink);
+            font-size: 0.82rem;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font-variant-numeric: tabular-nums;
+        }
+        .vn-num {
+            font-variant-numeric: tabular-nums;
+        }
         /* Inline Editing & Realtime Counter (F2.3) */
         .cand-edit-box {
             margin-top: 8px;
@@ -1204,11 +1440,15 @@
                 "recommended_filename": "veo_champagne.mp4"
             }
         ])) %}
+        {% set _vn_init = (_reel_studio.get('voice_narration') if _reel_studio else none) or {} %}
+        {% set _vn_init_script = (_reel_studio.get('narration_script') if _reel_studio else '') or '' %}
+        {% set _vn_init_phonetic = (_reel_studio.get('narration_phonetic') if _reel_studio else '') or '' %}
+        {% set _vn_guide = (_vn_init.get('recording_guide') if _vn_init else none) or {} %}
         <div class="reel-studio-card" id="reel-studio-section">
             <div class="reel-studio-head">
                 <div>
                     <h2 class="reel-studio-title">🎬 Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
-                    <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + 音声トラック付きMP4・約11.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
+                    <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + BGM・自分の声AIナレーション自動調整MP4・8.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
                     <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="毎日20:00枠（1軒目探し）＋活況夜22:50枠（2軒目・終電前・リールタブ専用）の1日最大2本・5テンプレ自動ローテーション投稿します">
@@ -1239,6 +1479,8 @@
                         <video id="reel-video-player"
                                controls
                                playsinline
+                               width="262"
+                               height="466"
                                preload="none"
                                poster="/ogp/reel/{{ _reel_init_type }}.jpg?t=init">
                             <source id="reel-video-source" src="/ogp/reel/{{ _reel_init_type }}.mp4?t=init" type="video/mp4">
@@ -1347,7 +1589,167 @@
                         </div>
                     </div>
 
-                    <div id="reel-action-msg" style="font-size:0.78rem; min-height:1.2em; color:var(--green-ink); overflow-wrap:anywhere;"></div>
+                    <div id="reel-action-msg" role="status" aria-live="polite" style="font-size:0.78rem; min-height:1.2em; color:var(--green-ink); overflow-wrap:anywhere;"></div>
+
+                    <!-- ③ ElevenLabs Custom Voice Narration Studio -->
+                    <section class="vn-section" aria-labelledby="vn-section-heading">
+                        <div class="vn-head-row">
+                            <div class="vn-title-group">
+                                <h3 class="vn-heading" id="vn-section-heading">③ 自分の声AIナレーション（ElevenLabs・8.5秒フル読み上げ＋BGM自動調整）</h3>
+                                <span id="vn-status-badge"
+                                      class="vn-status-badge {{ 'is-active' if _vn_init.get('active') else ('is-unconfigured' if not _vn_init.get('configured') else '') }}">
+                                    <span class="vn-dot" aria-hidden="true"></span>
+                                    <span id="vn-status-badge-text">
+                                        {% if _vn_init.get('active') %}
+                                        稼働中（{{ _vn_init.get('voice_name') or _vn_init.get('voice_id') }}）
+                                        {% elif _vn_init.get('configured') %}
+                                        OFF（BGMのみ合成）
+                                        {% else %}
+                                        未設定（現在はBGMのみ合成）
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="vn-toggle-wrap">
+                                <input type="checkbox"
+                                       id="vn-enabled-toggle"
+                                       name="vn_enabled"
+                                       {{ 'checked' if _vn_init.get('enabled') else '' }}>
+                                <label for="vn-enabled-toggle">ナレーション自動合成を有効にする</label>
+                            </div>
+                        </div>
+
+                        <div class="vn-field">
+                            <div class="vn-label-row">
+                                <label for="reel-narration-input">読み上げ台本（0.1秒結論フック → 実測店舗・人数 → プロフ誘導）</label>
+                                <span id="vn-char-counter" class="vn-hint vn-num">{{ (_vn_init_script | length) }}文字 / 45〜62文字目安（約7.5秒）</span>
+                            </div>
+                            <textarea id="reel-narration-input"
+                                      name="narration_text"
+                                      class="vn-field-control"
+                                      maxlength="220"
+                                      aria-describedby="vn-phonetic-preview"
+                                      placeholder="選択中のテンプレートと現在の実測人数から、8.5秒に収まる読み上げ台本を自動生成します">{{ _vn_init_script }}</textarea>
+                            <div id="vn-phonetic-preview" class="vn-phonetic-line">
+                                発音変換プレビュー：{{ _vn_init_phonetic or '台本を入力するとブランド名・地名の読み仮名変換が表示されます' }}
+                            </div>
+                        </div>
+
+                        <div class="vn-btn-row">
+                            <button type="button" id="vn-test-audio-btn" class="vn-btn">音声だけ試聴</button>
+                            <button type="button" id="vn-render-video-btn" class="vn-btn vn-btn-primary">この台本で動画を合成・プレビュー</button>
+                            <button type="button" id="vn-reset-script-btn" class="vn-btn">実測データの自動台本に戻す</button>
+                        </div>
+
+                        <div id="vn-audio-wrap" class="vn-audio-wrap">
+                            <audio id="vn-test-audio" controls preload="none" aria-label="ナレーション音声の試聴プレーヤー"></audio>
+                            <span id="vn-audio-meta" class="vn-hint vn-num"></span>
+                        </div>
+
+                        <div id="vn-status-msg" role="status" aria-live="polite" style="font-size:0.78rem; min-height:1.1em; color:var(--green-ink); overflow-wrap:anywhere;"></div>
+
+                        <!-- ElevenLabs API Key & Voice ID Settings Form -->
+                        <details class="vn-disclosure" id="vn-config-details" {{ 'open' if not _vn_init.get('configured') else '' }}>
+                            <summary>ElevenLabs APIキー・Voice ID 連携設定（暗号化保存・定期自動投稿にも連動）</summary>
+                            <form id="voice-narration-config-form"
+                                  action="/api/staff/voice-narration/config"
+                                  method="POST"
+                                  aria-labelledby="vn-section-heading">
+                                <div class="vn-form-grid">
+                                    <div class="vn-field">
+                                        <label for="vn-api-key-input">
+                                            ElevenLabs APIキー
+                                            <span id="vn-masked-key-note" class="vn-hint">
+                                                {% if _vn_init.get('has_api_key') %}（登録済：{{ _vn_init.get('masked_key') }}）{% else %}（未登録）{% endif %}
+                                            </span>
+                                        </label>
+                                        <div class="vn-input-inline">
+                                            <input type="password"
+                                                   id="vn-api-key-input"
+                                                   name="api_key"
+                                                   class="vn-field-control"
+                                                   autocomplete="new-password"
+                                                   autocorrect="off"
+                                                   autocapitalize="none"
+                                                   spellcheck="false"
+                                                   placeholder="{{ '変更する場合のみ新しい sk_... キーを入力' if _vn_init.get('has_api_key') else 'sk_... で始まるAPIキーを貼り付け' }}">
+                                            <button type="button"
+                                                    id="vn-key-visibility-btn"
+                                                    class="vn-btn"
+                                                    aria-pressed="false"
+                                                    aria-label="APIキーを表示">表示</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="vn-field">
+                                        <label for="vn-voice-id-input">Voice ID（クローン音声ID）</label>
+                                        <div class="vn-input-inline">
+                                            <input type="text"
+                                                   id="vn-voice-id-input"
+                                                   name="voice_id"
+                                                   class="vn-field-control"
+                                                   value="{{ _vn_init.get('voice_id') or '' }}"
+                                                   autocorrect="off"
+                                                   autocapitalize="none"
+                                                   spellcheck="false"
+                                                   placeholder="例: JBFqnCBsd6RMkjVDRZzb">
+                                            <button type="button" id="vn-fetch-voices-btn" class="vn-btn">声一覧を取得</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="vn-form-grid">
+                                    <div class="vn-field" id="vn-voice-picker-field" style="display:none;">
+                                        <label for="vn-voice-picker">ElevenLabsアカウント内の音声から選択</label>
+                                        <select id="vn-voice-picker" name="voice_picker" class="vn-field-control">
+                                            <option value="">取得した音声を選択するとVoice IDへ自動反映します</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="vn-field">
+                                        <label for="vn-model-select">音声合成モデル</label>
+                                        <select id="vn-model-select" name="model_id" class="vn-field-control">
+                                            {% for m in (_vn_init.get('supported_models') or [{'id': 'eleven_multilingual_v2', 'label': 'Multilingual v2（日本語の抑揚・自然さ最優先／推奨）'}, {'id': 'eleven_flash_v2_5', 'label': 'Flash v2.5（高速・クレジット50%節約）'}, {'id': 'eleven_v3', 'label': 'Eleven v3（感情・表現力重視）'}]) %}
+                                            <option value="{{ m.id }}" {{ 'selected' if (_vn_init.get('model_id') or 'eleven_multilingual_v2') == m.id else '' }}>{{ m.label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="vn-voice-name-input" name="voice_name" value="{{ _vn_init.get('voice_name') or '' }}">
+
+                                <div class="vn-btn-row" style="margin-top:12px;">
+                                    <button type="submit" id="vn-save-config-btn" class="vn-btn vn-btn-primary">設定を保存</button>
+                                    <button type="button"
+                                            id="vn-clear-key-btn"
+                                            class="vn-btn"
+                                            style="display:{{ 'inline-flex' if _vn_init.get('key_source') == 'job_state' else 'none' }};">保存済みAPIキーを削除</button>
+                                    <span class="vn-hint">※ 未設定時やクレジット上限到達時はエラー停止せず、自動的にラウンジBGM単体へ切り替わります。</span>
+                                </div>
+                            </form>
+                        </details>
+
+                        <!-- Voice Clone Recording Guide & Domain-Tuned Sample Script -->
+                        <details class="vn-disclosure" id="vn-guide-details">
+                            <summary>{{ _vn_guide.get('title') or '自分の声クローン作成ガイド＆専用収録台本（スマホ1分半で完了）' }}</summary>
+                            <div style="margin-top:8px;">
+                                <ol style="margin:0 0 10px; padding-left:20px; font-size:0.78rem; color:var(--sub); line-height:1.65;">
+                                    {% for step_txt in (_vn_guide.get('steps') or [
+                                        '静かな室内で iPhone「ボイスメモ」等を開き、スマホを口元から15〜20cm離して下の台本を読み上げます（約1分半）。',
+                                        '張り上げず「友達に今夜の穴場店を落ち着いて教える自然なトーン」で読むとショート動画で一番馴染みます。',
+                                        'ElevenLabs（Starterプラン以上）の「Voices → Add a new voice → Instant Voice Clone」に録音データをアップロード後、上の「声一覧を取得」を押すとワンタップで連携できます。'
+                                    ]) %}
+                                    <li style="margin-bottom:4px;">{{ step_txt }}</li>
+                                    {% endfor %}
+                                </ol>
+                                <div class="vn-label-row" style="margin-bottom:4px;">
+                                    <span style="font-size:0.78rem; font-weight:700; color:var(--text);">相席ナビ専用・音声クローン収録用サンプル台本（店舗名・数字・パーセント網羅）</span>
+                                    <button type="button" id="vn-copy-sample-btn" class="vn-btn" style="min-height:38px; padding:5px 12px; font-size:0.76rem;">収録台本をコピー</button>
+                                </div>
+                                <div id="vn-sample-script-box" class="vn-script-sample">{{ _vn_guide.get('script_text') or '' }}</div>
+                            </div>
+                        </details>
+                    </section>
                 </div>
             </div>
 
@@ -2417,6 +2819,76 @@
             }
         }
 
+        var _vnAutoScript = {{ _vn_init_script | tojson }};
+        var _vnAutoPhonetic = {{ _vn_init_phonetic | tojson }};
+        var _vnScriptDirty = false;
+        var _vnActionInFlight = false;
+
+        function _updateVnCharCounter() {
+            var narEl = document.getElementById("reel-narration-input");
+            var cntEl = document.getElementById("vn-char-counter");
+            if (!narEl || !cntEl) return;
+            var len = (narEl.value || "").trim().length;
+            var estSec = len > 0 ? Math.max(1.5, (len / 7.4)).toFixed(1) : "0.0";
+            cntEl.textContent = len + "文字（推定 約" + estSec + "秒 / 8.5秒枠）";
+            cntEl.style.color = len > 82 ? "var(--amber-ink)" : "var(--sub)";
+        }
+
+        function _getEffectiveCustomNarrationText() {
+            var narEl = document.getElementById("reel-narration-input");
+            if (!narEl) return "";
+            var val = (narEl.value || "").trim();
+            if (!val || (!_vnScriptDirty && val === (_vnAutoScript || "").trim())) {
+                return "";
+            }
+            return val;
+        }
+
+        function _applyVoiceNarrationStatusUi(st) {
+            if (!st || typeof st !== "object") return;
+            var badge = document.getElementById("vn-status-badge");
+            var badgeTxt = document.getElementById("vn-status-badge-text");
+            var chk = document.getElementById("vn-enabled-toggle");
+            var note = document.getElementById("vn-masked-key-note");
+            var clearBtn = document.getElementById("vn-clear-key-btn");
+            var keyIn = document.getElementById("vn-api-key-input");
+            var vidIn = document.getElementById("vn-voice-id-input");
+            var vnameIn = document.getElementById("vn-voice-name-input");
+            var modelSel = document.getElementById("vn-model-select");
+
+            if (badge && badgeTxt) {
+                badge.className = "vn-status-badge" + (st.active ? " is-active" : (!st.configured ? " is-unconfigured" : ""));
+                if (st.active) {
+                    badgeTxt.textContent = "稼働中（" + (st.voice_name || st.voice_id || "Voice Clone") + "）";
+                } else if (st.configured) {
+                    badgeTxt.textContent = "OFF（BGMのみ合成）";
+                } else {
+                    badgeTxt.textContent = "未設定（現在はBGMのみ合成）";
+                }
+            }
+            if (chk && typeof st.enabled === "boolean") {
+                chk.checked = st.enabled;
+            }
+            if (note) {
+                note.textContent = st.has_api_key ? ("（登録済：" + (st.masked_key || "****") + "）") : "（未登録）";
+            }
+            if (keyIn) {
+                keyIn.placeholder = st.has_api_key ? "変更する場合のみ新しい sk_... キーを入力" : "sk_... で始まるAPIキーを貼り付け";
+            }
+            if (clearBtn) {
+                clearBtn.style.display = (st.key_source === "job_state") ? "inline-flex" : "none";
+            }
+            if (vidIn && st.voice_id && !vidIn.value.trim()) {
+                vidIn.value = st.voice_id;
+            }
+            if (vnameIn && typeof st.voice_name === "string") {
+                vnameIn.value = st.voice_name;
+            }
+            if (modelSel && st.model_id) {
+                modelSel.value = st.model_id;
+            }
+        }
+
         async function loadReelStudioInfo(reelType, overwriteCaption) {
             var rt = reelType || _currentReelType || "live_top5";
             try {
@@ -2445,6 +2917,23 @@
                 var capEl = document.getElementById("reel-caption-input");
                 if (capEl && typeof data.caption === "string" && (overwriteCaption || !capEl.value.trim())) {
                     capEl.value = data.caption;
+                }
+                if (typeof data.narration_script === "string") {
+                    _vnAutoScript = data.narration_script;
+                    _vnAutoPhonetic = data.narration_phonetic || "";
+                    var narEl = document.getElementById("reel-narration-input");
+                    var phoEl = document.getElementById("vn-phonetic-preview");
+                    if (narEl && (overwriteCaption || !_vnScriptDirty || !narEl.value.trim())) {
+                        narEl.value = data.narration_script;
+                        _vnScriptDirty = false;
+                        if (phoEl && _vnAutoPhonetic) {
+                            phoEl.textContent = "発音変換プレビュー：" + _vnAutoPhonetic;
+                        }
+                        _updateVnCharCounter();
+                    }
+                }
+                if (data.voice_narration) {
+                    _applyVoiceNarrationStatusUi(data.voice_narration);
                 }
                 if (typeof data.auto_schedule_enabled === "boolean") {
                     _applyReelAutoScheduleUi(data.auto_schedule_enabled);
@@ -2479,42 +2968,100 @@
 
         function selectReelType(reelType) {
             _currentReelType = reelType || "live_top5";
+            _vnScriptDirty = false;
             selectReelTextTab(_currentReelType);
             _updateReelMediaUrls(_currentReelType, false, false);
             loadReelStudioInfo(_currentReelType, true);
         }
 
-        function previewReelVideoNow() {
+        async function previewReelVideoNow(forceCustomPin) {
             var msgEl = document.getElementById("reel-action-msg");
             var genBtn = document.getElementById("reel-generate-btn");
+            var renderVnBtn = document.getElementById("vn-render-video-btn");
             var videoEl = document.getElementById("reel-video-player");
+            var srcEl = document.getElementById("reel-video-source");
+            var dlEl = document.getElementById("reel-download-link");
+            var customNar = forceCustomPin
+                ? ((document.getElementById("reel-narration-input") || {}).value || "").trim()
+                : _getEffectiveCustomNarrationText();
+
             if (msgEl) {
                 msgEl.style.color = "var(--green-ink)";
-                msgEl.textContent = "🎬 最新データで9:16ショート動画（MP4）を生成・読み込み中です（約2〜4秒）...";
+                msgEl.textContent = "最新データで9:16ショート動画（MP4）を生成・読み込み中です（約2〜5秒）...";
             }
             if (genBtn) genBtn.disabled = true;
+            if (renderVnBtn) renderVnBtn.disabled = true;
 
             if (videoEl) {
                 videoEl.onloadeddata = function() {
                     if (genBtn) genBtn.disabled = false;
+                    if (renderVnBtn) renderVnBtn.disabled = false;
                     if (msgEl) {
                         msgEl.style.color = "var(--green-ink)";
-                        msgEl.textContent = "✅ リール動画の生成・プレビュー準備が完了しました！（そのまま再生またはMP4保存できます）";
+                        msgEl.textContent = "リール動画の生成・プレビュー準備が完了しました（そのまま再生またはMP4保存できます）。";
                     }
                 };
                 videoEl.onerror = function() {
                     if (genBtn) genBtn.disabled = false;
+                    if (renderVnBtn) renderVnBtn.disabled = false;
                     if (msgEl) {
                         msgEl.style.color = "var(--err-ink)";
-                        msgEl.textContent = "⚠️ MP4動画の読み込みに失敗しました（FFmpeg未導入環境では静止画サムネイルのみ表示されます）。";
+                        msgEl.textContent = "MP4動画の読み込みに失敗しました（FFmpeg未導入環境では静止画サムネイルのみ表示されます）。";
                     }
                 };
             }
+
+            if (customNar) {
+                try {
+                    var pinRes = await fetchJsonSafe("/api/staff/voice-narration/pin-preview", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                        body: JSON.stringify({
+                            reel_type: _currentReelType,
+                            narration_text: customNar
+                        })
+                    }, 45000);
+                    if (pinRes && pinRes.ok && pinRes.mp4_url) {
+                        if (pinRes.phonetic_text) {
+                            var phoEl = document.getElementById("vn-phonetic-preview");
+                            if (phoEl) phoEl.textContent = "発音変換プレビュー：" + pinRes.phonetic_text;
+                        }
+                        if (dlEl && pinRes.download_url) {
+                            dlEl.href = pinRes.download_url;
+                            dlEl.setAttribute("download", "aiseki_navi_" + _currentReelType + "_" + (pinRes.preview_token || Date.now()) + ".mp4");
+                        }
+                        if (videoEl) {
+                            try { videoEl.pause(); } catch (e) {}
+                            videoEl.preload = "auto";
+                            if (pinRes.jpg_url) videoEl.setAttribute("poster", pinRes.jpg_url);
+                            if (srcEl) {
+                                srcEl.src = pinRes.mp4_url;
+                            } else {
+                                videoEl.src = pinRes.mp4_url;
+                            }
+                            videoEl.load();
+                            var pProm = videoEl.play();
+                            if (pProm && typeof pProm.catch === "function") pProm.catch(function() {});
+                        }
+                        return;
+                    }
+                } catch (pinErr) {
+                    if (msgEl) {
+                        msgEl.style.color = "var(--err-ink)";
+                        msgEl.textContent = "カスタム台本レンダリングエラー: " + ((pinErr && pinErr.message) || "通信エラー");
+                    }
+                    if (genBtn) genBtn.disabled = false;
+                    if (renderVnBtn) renderVnBtn.disabled = false;
+                    return;
+                }
+            }
+
             _updateReelMediaUrls(_currentReelType, true, true);
             loadReelStudioInfo(_currentReelType, false);
             setTimeout(function() {
                 if (genBtn) genBtn.disabled = false;
-            }, 6000);
+                if (renderVnBtn) renderVnBtn.disabled = false;
+            }, 6500);
         }
 
         function copyReelCaption(btn) {
@@ -2632,6 +3179,7 @@
                     body: JSON.stringify({
                         reel_type: _currentReelType,
                         caption: caption,
+                        narration_text: _getEffectiveCustomNarrationText(),
                         share_to_feed: shareToFeed
                     })
                 }, 95000);
@@ -2702,7 +3250,8 @@
                     headers: {"Content-Type": "application/json", "Accept": "application/json"},
                     body: JSON.stringify({
                         reel_type: _currentReelType,
-                        caption: capEl ? capEl.value.trim() : ""
+                        caption: capEl ? capEl.value.trim() : "",
+                        narration_text: _getEffectiveCustomNarrationText()
                     })
                 }, 75000);
 
@@ -2737,11 +3286,288 @@
             }
         }
 
+        function _setVnStatusMsg(text, isError) {
+            var el = document.getElementById("vn-status-msg");
+            if (!el) return;
+            el.style.color = isError ? "var(--err-ink)" : "var(--green-ink)";
+            el.textContent = text || "";
+        }
+
+        async function _saveVoiceNarrationConfigPayload(payloadObj, loadingMsg) {
+            if (_vnActionInFlight) return null;
+            _vnActionInFlight = true;
+            var saveBtn = document.getElementById("vn-save-config-btn");
+            if (saveBtn) saveBtn.disabled = true;
+            _setVnStatusMsg(loadingMsg || "設定を保存しています...", false);
+            try {
+                var res = await fetchJsonSafe("/api/staff/voice-narration/config", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify(payloadObj || {})
+                }, 25000);
+                if (res && res.ok) {
+                    if (res.voice_narration) {
+                        _applyVoiceNarrationStatusUi(res.voice_narration);
+                        if (res.voice_narration.configured) {
+                            var det = document.getElementById("vn-config-details");
+                            if (det && payloadObj && payloadObj.api_key) det.open = false;
+                        }
+                    }
+                    var keyIn = document.getElementById("vn-api-key-input");
+                    if (keyIn && payloadObj && payloadObj.api_key) keyIn.value = "";
+                    _setVnStatusMsg(res.message || "設定を保存しました。", false);
+                    return res;
+                }
+                _setVnStatusMsg((res && res.error) || "設定の保存に失敗しました。", true);
+                return res;
+            } catch (err) {
+                _setVnStatusMsg("通信エラー: " + ((err && err.message) || "保存できませんでした"), true);
+                return null;
+            } finally {
+                _vnActionInFlight = false;
+                if (saveBtn) saveBtn.disabled = false;
+            }
+        }
+
+        async function _fetchElevenLabsVoices() {
+            if (_vnActionInFlight) return;
+            _vnActionInFlight = true;
+            var fetchBtn = document.getElementById("vn-fetch-voices-btn");
+            var keyIn = document.getElementById("vn-api-key-input");
+            var pickerField = document.getElementById("vn-voice-picker-field");
+            var picker = document.getElementById("vn-voice-picker");
+            var vidIn = document.getElementById("vn-voice-id-input");
+            var vnameIn = document.getElementById("vn-voice-name-input");
+            if (fetchBtn) fetchBtn.disabled = true;
+            _setVnStatusMsg("ElevenLabsアカウントからクローン音声一覧を取得しています...", false);
+            try {
+                var tempKey = keyIn ? keyIn.value.trim() : "";
+                var res = await fetchJsonSafe("/api/staff/voice-narration/voices", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({api_key: tempKey})
+                }, 20000);
+                if (!res || !res.ok || !Array.isArray(res.voices)) {
+                    _setVnStatusMsg((res && res.error) || "音声一覧を取得できませんでした。", true);
+                    return;
+                }
+                if (!res.voices.length) {
+                    _setVnStatusMsg("利用可能な音声が見つかりませんでした。ElevenLabs側でVoice Cloneを作成してください。", true);
+                    return;
+                }
+                if (picker && pickerField) {
+                    picker.innerHTML = '<option value="">音声を選択してください（クローン音声が先頭に表示されます）</option>' +
+                        res.voices.map(function(v) {
+                            var prefix = v.is_cloned ? "[クローン] " : "[" + (v.category || "標準") + "] ";
+                            return '<option value="' + escHtml(v.voice_id) + '" data-voice-name="' + escHtml(v.name || "") + '">' +
+                                escHtml(prefix + (v.name || v.voice_id) + " (" + v.voice_id + ")") +
+                            '</option>';
+                        }).join("");
+                    pickerField.style.display = "flex";
+                    var firstCloned = res.voices.find(function(v) { return v.is_cloned; }) || res.voices[0];
+                    if (firstCloned && vidIn && !vidIn.value.trim()) {
+                        vidIn.value = firstCloned.voice_id;
+                        picker.value = firstCloned.voice_id;
+                        if (vnameIn) vnameIn.value = firstCloned.name || "";
+                    }
+                }
+                _setVnStatusMsg(res.voices.length + "件の音声を取得しました。プルダウンから選択して「設定を保存」を押してください。", false);
+            } catch (err) {
+                _setVnStatusMsg("音声一覧の取得エラー: " + ((err && err.message) || "通信エラー"), true);
+            } finally {
+                _vnActionInFlight = false;
+                if (fetchBtn) fetchBtn.disabled = false;
+            }
+        }
+
+        async function _testVoiceNarrationAudio() {
+            if (_vnActionInFlight) return;
+            var narEl = document.getElementById("reel-narration-input");
+            var testBtn = document.getElementById("vn-test-audio-btn");
+            var keyIn = document.getElementById("vn-api-key-input");
+            var vidIn = document.getElementById("vn-voice-id-input");
+            var modelSel = document.getElementById("vn-model-select");
+            var audioWrap = document.getElementById("vn-audio-wrap");
+            var audioEl = document.getElementById("vn-test-audio");
+            var audioMeta = document.getElementById("vn-audio-meta");
+            var phoEl = document.getElementById("vn-phonetic-preview");
+
+            var scriptText = narEl ? narEl.value.trim() : "";
+            if (!scriptText) {
+                _setVnStatusMsg("読み上げ台本を入力してください。", true);
+                if (narEl) narEl.focus();
+                return;
+            }
+            _vnActionInFlight = true;
+            if (testBtn) testBtn.disabled = true;
+            _setVnStatusMsg("ElevenLabsでナレーション音声を合成しています...", false);
+            try {
+                var res = await fetchJsonSafe("/api/staff/voice-narration/test", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        reel_type: _currentReelType,
+                        text: scriptText,
+                        api_key: keyIn ? keyIn.value.trim() : "",
+                        voice_id: vidIn ? vidIn.value.trim() : "",
+                        model_id: modelSel ? modelSel.value : "eleven_multilingual_v2"
+                    })
+                }, 30000);
+                if (res && res.phonetic_text && phoEl) {
+                    phoEl.textContent = "発音変換プレビュー：" + res.phonetic_text;
+                }
+                if (!res || !res.ok || !res.audio_data_url) {
+                    _setVnStatusMsg((res && res.error) || "音声合成に失敗しました（APIキー・Voice IDをご確認ください）。", true);
+                    return;
+                }
+                if (audioWrap) audioWrap.classList.add("is-visible");
+                if (audioMeta) {
+                    var durTxt = res.duration_sec ? (Number(res.duration_sec).toFixed(1) + "秒") : "";
+                    var cacheTxt = res.cached ? "キャッシュ再生（クレジット消費0）" : "新規合成";
+                    audioMeta.textContent = (durTxt ? ("長さ: " + durTxt + " ｜ ") : "") + cacheTxt;
+                }
+                if (audioEl) {
+                    audioEl.src = res.audio_data_url;
+                    var playProm = audioEl.play();
+                    if (playProm && typeof playProm.catch === "function") playProm.catch(function() {});
+                }
+                _setVnStatusMsg("ナレーション音声の準備ができました。動画へ反映する場合は「この台本で動画を合成・プレビュー」を押してください。", false);
+            } catch (err) {
+                _setVnStatusMsg("音声試聴エラー: " + ((err && err.message) || "通信エラー"), true);
+            } finally {
+                _vnActionInFlight = false;
+                if (testBtn) testBtn.disabled = false;
+            }
+        }
+
+        function _bindVoiceNarrationStudioEvents() {
+            var narEl = document.getElementById("reel-narration-input");
+            if (narEl) {
+                narEl.addEventListener("input", function() {
+                    _vnScriptDirty = ((narEl.value || "").trim() !== (_vnAutoScript || "").trim());
+                    _updateVnCharCounter();
+                });
+            }
+            var chk = document.getElementById("vn-enabled-toggle");
+            if (chk) {
+                chk.addEventListener("change", async function() {
+                    var desired = !!chk.checked;
+                    var res = await _saveVoiceNarrationConfigPayload(
+                        {enabled: desired},
+                        desired ? "ナレーション自動合成をONに切り替えています..." : "ナレーション自動合成をOFF（BGMのみ）に切り替えています..."
+                    );
+                    if (!res || !res.ok) {
+                        chk.checked = !desired;
+                    }
+                });
+            }
+            var cfgForm = document.getElementById("voice-narration-config-form");
+            if (cfgForm) {
+                cfgForm.addEventListener("submit", function(e) {
+                    e.preventDefault();
+                    var keyIn = document.getElementById("vn-api-key-input");
+                    var vidIn = document.getElementById("vn-voice-id-input");
+                    var vnameIn = document.getElementById("vn-voice-name-input");
+                    var modelSel = document.getElementById("vn-model-select");
+                    var enChk = document.getElementById("vn-enabled-toggle");
+                    var keyVal = keyIn ? keyIn.value.trim() : "";
+                    var vidVal = vidIn ? vidIn.value.trim() : "";
+                    var payload = {
+                        voice_id: vidVal,
+                        voice_name: vnameIn ? vnameIn.value.trim() : "",
+                        model_id: modelSel ? modelSel.value : "eleven_multilingual_v2",
+                        enabled: enChk ? !!enChk.checked : true
+                    };
+                    if (keyVal) payload.api_key = keyVal;
+                    if (vidVal && enChk && !enChk.checked && keyVal) {
+                        payload.enabled = true;
+                    }
+                    _saveVoiceNarrationConfigPayload(payload, "ElevenLabs連携設定を暗号化保存しています...");
+                });
+            }
+            var visBtn = document.getElementById("vn-key-visibility-btn");
+            if (visBtn) {
+                visBtn.addEventListener("click", function() {
+                    var keyIn = document.getElementById("vn-api-key-input");
+                    if (!keyIn) return;
+                    var showPlain = (keyIn.type === "password");
+                    keyIn.type = showPlain ? "text" : "password";
+                    visBtn.setAttribute("aria-pressed", showPlain ? "true" : "false");
+                    visBtn.textContent = showPlain ? "隠す" : "表示";
+                });
+            }
+            var fetchBtn = document.getElementById("vn-fetch-voices-btn");
+            if (fetchBtn) {
+                fetchBtn.addEventListener("click", _fetchElevenLabsVoices);
+            }
+            var picker = document.getElementById("vn-voice-picker");
+            if (picker) {
+                picker.addEventListener("change", function() {
+                    var vidIn = document.getElementById("vn-voice-id-input");
+                    var vnameIn = document.getElementById("vn-voice-name-input");
+                    var selOpt = picker.options[picker.selectedIndex];
+                    if (picker.value && vidIn) {
+                        vidIn.value = picker.value;
+                        if (vnameIn && selOpt) {
+                            vnameIn.value = selOpt.getAttribute("data-voice-name") || "";
+                        }
+                    }
+                });
+            }
+            var clearBtn = document.getElementById("vn-clear-key-btn");
+            if (clearBtn) {
+                clearBtn.addEventListener("click", function() {
+                    if (!confirm("保存済みのElevenLabs APIキーを削除しますか？")) return;
+                    _saveVoiceNarrationConfigPayload({action: "clear_key"}, "APIキーを削除しています...");
+                });
+            }
+            var testBtn = document.getElementById("vn-test-audio-btn");
+            if (testBtn) {
+                testBtn.addEventListener("click", _testVoiceNarrationAudio);
+            }
+            var renderBtn = document.getElementById("vn-render-video-btn");
+            if (renderBtn) {
+                renderBtn.addEventListener("click", function() {
+                    previewReelVideoNow(true);
+                });
+            }
+            var resetBtn = document.getElementById("vn-reset-script-btn");
+            if (resetBtn) {
+                resetBtn.addEventListener("click", function() {
+                    var narInput = document.getElementById("reel-narration-input");
+                    var phoEl = document.getElementById("vn-phonetic-preview");
+                    if (narInput) {
+                        narInput.value = _vnAutoScript || "";
+                        _vnScriptDirty = false;
+                        _updateVnCharCounter();
+                    }
+                    if (phoEl && _vnAutoPhonetic) {
+                        phoEl.textContent = "発音変換プレビュー：" + _vnAutoPhonetic;
+                    }
+                    _setVnStatusMsg("現在の実測データ連動の自動台本に戻しました。", false);
+                });
+            }
+            var copySampleBtn = document.getElementById("vn-copy-sample-btn");
+            if (copySampleBtn) {
+                copySampleBtn.addEventListener("click", function() {
+                    var sampleBox = document.getElementById("vn-sample-script-box");
+                    if (!sampleBox || !sampleBox.innerText) return;
+                    navigator.clipboard.writeText(sampleBox.innerText.trim()).then(function() {
+                        var orig = copySampleBtn.textContent;
+                        copySampleBtn.textContent = "コピーしました";
+                        setTimeout(function() { copySampleBtn.textContent = orig; }, 1800);
+                    });
+                });
+            }
+            _updateVnCharCounter();
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             if (INITIAL_FORCE_REFRESH && window.history && window.history.replaceState) {
                 var cleanUrl = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
                 window.history.replaceState(null, "", cleanUrl);
             }
+            _bindVoiceNarrationStudioEvents();
             selectReelTextTab(_currentReelType);
             loadReelStudioInfo(_currentReelType, false);
             if (INITIAL_FORCE_REFRESH) {

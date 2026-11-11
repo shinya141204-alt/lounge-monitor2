@@ -1108,6 +1108,7 @@ def publish_live_reel_to_instagram(
     force: bool = True,
     now_jst: datetime.datetime = None,
     thumb_offset_ms: int = 1200,
+    custom_narration_text: str = "",
 ) -> dict:
     """
     Warm-generate the live 9:16 MP4 Reel in-process, publish via Meta Instagram Graph API
@@ -1203,6 +1204,7 @@ def publish_live_reel_to_instagram(
 
         ts_code = now_jst.strftime("%Y%m%d_%H%M")
 
+        eff_narration_text = (custom_narration_text or "").strip()
         # Visual QA Gate (Gemini 4 Argon / Multimodal Inspection)
         qa_result = None
         try:
@@ -1215,6 +1217,7 @@ def publish_live_reel_to_instagram(
                     f"[instagram_poster] Reel QA rejected '{rt}', auto-rerendering alternative template '{qa_rt}'"
                 )
                 rt = qa_rt
+                eff_narration_text = ""
                 # Re-derive dedup key for the finally-published template so mark_done / is_done stay consistent
                 dedup_key = f"ig_post:{biz_date}_reel_{rt}_{slot_label}"
                 if not force and job_state.is_done(dedup_key):
@@ -1228,7 +1231,12 @@ def publish_live_reel_to_instagram(
             logging.warning(f"[instagram_poster] Visual QA gate bypassed (fail-open): {qa_err}")
 
         try:
-            mp4_bytes = reel_generator.render_reel_mp4_bytes(stores, reel_type=rt, now_jst=now_jst)
+            mp4_bytes = reel_generator.render_reel_mp4_bytes(
+                stores,
+                reel_type=rt,
+                now_jst=now_jst,
+                custom_narration_text=eff_narration_text or None,
+            )
             if isinstance(mp4_bytes, (bytes, bytearray)) and len(mp4_bytes) > 1024:
                 reel_generator.pin_shared_reel_mp4_slot(rt, ts_code, bytes(mp4_bytes))
         except Exception as warm_err:

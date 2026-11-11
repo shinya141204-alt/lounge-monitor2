@@ -504,12 +504,14 @@ def api_staff_sns_reel_publish():
     payload = request.get_json(silent=True) or {}
     reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
     custom_caption = (payload.get('caption') or '').strip()
+    custom_narration = (payload.get('narration_text') or '').strip()
     share_to_feed = bool(payload.get('share_to_feed', True))
     if request.args.get('async') == '1' or payload.get('async') is True:
         worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
         job_rec = core._enqueue_sns_job_and_maybe_dispatch('ig_reel', {
             'reel_type': reel_type,
             'caption': custom_caption,
+            'narration_text': custom_narration,
             'share_to_feed': share_to_feed,
             'force': True,
         }, worker_only=worker_only)
@@ -528,6 +530,7 @@ def api_staff_sns_reel_publish():
         share_to_feed=share_to_feed,
         slot_label='manual_reel',
         force=True,
+        custom_narration_text=custom_narration,
     )
     ok_flag = res.get('status') == 'success'
     return jsonify({'ok': ok_flag, **res}), (200 if ok_flag else 400)
@@ -545,11 +548,13 @@ def api_staff_tiktok_publish_inbox():
     payload = request.get_json(silent=True) or {}
     reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'tiktok_gap_shock'))
     custom_caption = (payload.get('caption') or '').strip()
+    custom_narration = (payload.get('narration_text') or '').strip()
     if request.args.get('async') == '1' or payload.get('async') is True:
         worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
         job_rec = core._enqueue_sns_job_and_maybe_dispatch('tiktok_inbox', {
             'reel_type': reel_type,
             'caption': custom_caption,
+            'narration_text': custom_narration,
             'force': True,
         }, worker_only=worker_only)
         return jsonify({
@@ -566,11 +571,195 @@ def api_staff_tiktok_publish_inbox():
         custom_caption=custom_caption,
         slot_label='manual_tiktok',
         force=True,
+        custom_narration_text=custom_narration,
     )
     st = res.get('status')
     ok_flag = (st == 'success')
     http_code = 200 if st in ('success', 'phase1_manual', 'skipped') else 400
     return jsonify({'ok': ok_flag, **res}), http_code
+
+
+@staff_bp.route('/api/staff/voice-narration/status')
+def api_staff_voice_narration_status():
+    """Master-only JSON status & current factual narration script for ElevenLabs custom voice cloning."""
+    if not core.is_master_authorized():
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+    import reel_generator
+    import voice_narration
+    core.restore_latest_data_if_empty()
+    rt = reel_generator.normalize_reel_type(request.args.get('reel_type', 'live_top5'))
+    live_s = _get_visible_live_stores()
+    ctx = reel_generator.build_reel_context(live_s, reel_type=rt)
+    return jsonify({
+        'ok': True,
+        'reel_type': rt,
+        'narration_script': ctx.get('narration_script') or '',
+        'narration_phonetic': ctx.get('narration_phonetic') or '',
+        'voice_narration': voice_narration.get_voice_narration_status(allow_blocking=True),
+    })
+
+
+@staff_bp.route('/api/staff/voice-narration/config', methods=['POST'])
+def api_staff_voice_narration_config():
+    """Master-only endpoint to save/clear ElevenLabs API key, Voice ID, model, and ON/OFF toggle."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import reel_generator
+    import voice_narration
+    payload = request.get_json(silent=True) or {}
+    action = (payload.get('action') or 'save').strip().lower()
+
+    try:
+        if action == 'clear_key':
+            st = voice_narration.set_voice_narration_config(clear_api_key=True)
+            reel_generator.clear_reel_mp4_caches()
+            return jsonify({
+                'ok': True,
+                'message': '登録済みのElevenLabs APIキーを削除しました。',
+                'voice_narration': st,
+            })
+
+        api_key = payload.get('api_key')
+        if api_key is not None:
+            api_key = str(api_key).strip()
+            if api_key and len(api_key) < 12:
+                return jsonify({'ok': False, 'error': '有効なElevenLabs APIキーを入力してください（12文字以上）。'}), 400
+            if not api_key:
+                api_key = None
+
+        enabled_val = payload.get('enabled')
+        if enabled_val is not None:
+            enabled_val = bool(enabled_val)
+
+        st = voice_narration.set_voice_narration_config(
+            api_key=api_key,
+            voice_id=payload.get('voice_id'),
+            voice_name=payload.get('voice_name'),
+            enabled=enabled_val,
+            model_id=payload.get('model_id'),
+        )
+        reel_generator.clear_reel_mp4_caches()
+        if st.get('active'):
+            msg = '自分の声AIナレーション設定を保存し、自動合成を「稼働中」に切り替えました。'
+        elif not st.get('enabled'):
+            msg = '自分の声AIナレーションを「OFF（BGMのみ）」に保存しました。'
+        else:
+            msg = '設定を保存しました（APIキーとVoice IDの両方が揃うと自動合成が有効になります）。'
+        return jsonify({
+            'ok': True,
+            'message': msg,
+            'voice_narration': st,
+        })
+    except ValueError as ve:
+        return jsonify({'ok': False, 'error': str(ve)}), 400
+
+
+@staff_bp.route('/api/staff/voice-narration/voices', methods=['GET', 'POST'])
+def api_staff_voice_narration_voices():
+    """Master-only helper to list cloned/available voices from the user's ElevenLabs account."""
+    if request.method == 'POST':
+        guard = _check_master_api_csrf()
+        if guard is not None:
+            return guard
+        payload = request.get_json(silent=True) or {}
+        temp_key = (payload.get('api_key') or '').strip() or None
+    else:
+        if not core.is_master_authorized():
+            return jsonify({'ok': False, 'error': 'Unauthorized'}), 401
+        temp_key = None
+
+    import voice_narration
+    res = voice_narration.list_elevenlabs_voices(api_key=temp_key)
+    return jsonify(res), (200 if res.get('ok') else 400)
+
+
+@staff_bp.route('/api/staff/voice-narration/test', methods=['POST'])
+def api_staff_voice_narration_test():
+    """Master-only 1-click voice audition returning base64 MP3 data URL + phonetic preview."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import base64
+    import reel_generator
+    import voice_narration
+    core.restore_latest_data_if_empty()
+    payload = request.get_json(silent=True) or {}
+    rt = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
+    raw_text = (payload.get('text') or '').strip()
+    if not raw_text:
+        live_s = _get_visible_live_stores()
+        ctx = reel_generator.build_reel_context(live_s, reel_type=rt)
+        raw_text = ctx.get('narration_script') or ''
+    temp_key = (payload.get('api_key') or '').strip() or None
+    temp_vid = (payload.get('voice_id') or '').strip() or None
+    temp_model = (payload.get('model_id') or '').strip() or None
+
+    res = voice_narration.synthesize_narration_audio(
+        raw_text,
+        voice_id=temp_vid,
+        api_key=temp_key,
+        model_id=temp_model,
+    )
+    if not res.get('ok') or not res.get('audio_bytes'):
+        return jsonify({
+            'ok': False,
+            'error': res.get('error') or '音声合成に失敗しました。',
+            'script_text': res.get('script_text') or raw_text,
+            'phonetic_text': res.get('phonetic_text') or voice_narration.to_tts_phonetic_japanese(raw_text),
+        }), 400
+
+    b64_mp3 = base64.b64encode(res['audio_bytes']).decode('ascii')
+    return jsonify({
+        'ok': True,
+        'cached': bool(res.get('cached')),
+        'duration_sec': float(res.get('duration_sec') or 0.0),
+        'script_text': res.get('script_text') or raw_text,
+        'phonetic_text': res.get('phonetic_text') or '',
+        'audio_data_url': f"data:audio/mpeg;base64,{b64_mp3}",
+    })
+
+
+@staff_bp.route('/api/staff/voice-narration/pin-preview', methods=['POST'])
+def api_staff_voice_narration_pin_preview():
+    """Master-only endpoint to render & pin a custom-script narrated 9:16 MP4 slot for `<video>` preview & download."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import time as _time
+    import reel_generator
+    import voice_narration
+    core.restore_latest_data_if_empty()
+    payload = request.get_json(silent=True) or {}
+    rt = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
+    narration_text = (payload.get('narration_text') or '').strip()
+    voice_on = payload.get('voice_on')
+    if voice_on is not None:
+        voice_on = bool(voice_on)
+
+    live_s = _get_visible_live_stores()
+    try:
+        mp4_bytes = reel_generator.render_reel_mp4_bytes(
+            live_s,
+            reel_type=rt,
+            force_refresh=True,
+            narration_override=voice_on,
+            custom_narration_text=narration_text or None,
+        )
+        tok = str(int(_time.time() * 1000))
+        reel_generator.pin_shared_reel_mp4_slot(rt, f"prev_{tok}", mp4_bytes, ttl_sec=600)
+        return jsonify({
+            'ok': True,
+            'reel_type': rt,
+            'preview_token': tok,
+            'mp4_url': f"/ogp/reel/{rt}.mp4?refresh=1&t={tok}",
+            'jpg_url': f"/ogp/reel/{rt}.jpg?refresh=1&t={tok}",
+            'download_url': f"/ogp/reel/{rt}.mp4?refresh=1&t={tok}&download=1",
+            'phonetic_text': voice_narration.to_tts_phonetic_japanese(narration_text) if narration_text else '',
+            'voice_active': voice_narration.is_voice_narration_active(allow_blocking=False) if voice_on is None else bool(voice_on),
+        })
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': f"動画レンダリングエラー: {exc}"}), 503
 
 
 @staff_bp.route('/api/sns-editorial')
