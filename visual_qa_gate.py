@@ -12,6 +12,7 @@ import io
 import os
 import re
 import json
+import math
 import time
 import base64
 import logging
@@ -76,10 +77,24 @@ QA_MODELS_FALLBACK_CHAIN = (
 )
 
 
+MAX_QA_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB memory safety guard
+
+
+def _coerce_qa_score(val: Any, default: int) -> int:
+    """Coerce numeric QA score to 0..100 without turning legitimate 0 into default; non-numeric values raise."""
+    if val is None or isinstance(val, bool):
+        return default
+    fval = float(val)
+    if not math.isfinite(fval):
+        raise ValueError("non-finite QA score")
+    return max(0, min(100, int(round(fval))))
+
+
 def _safe_fail_open_result(reason: str, recommended_template: str = "") -> Dict[str, Any]:
     """Generate safe, non-blocking default verdict (Fail-Open)."""
     return {
         "pass": True,
+        "qa_status": "fail_open_unverified",
         "overall_score": 100,
         "hook_strength": 100,
         "contrast_readability": 100,
@@ -161,10 +176,15 @@ def inspect_reel_visual_quality(
         res = _safe_fail_open_result("empty_frames", recommended_template=rt)
         res["latency_sec"] = round(time.monotonic() - t0, 3)
         return res
+    if (len(frame_hook) + len(frame_data)) > MAX_QA_IMAGE_BYTES:
+        res = _safe_fail_open_result("frames_too_large", recommended_template=rt)
+        res["latency_sec"] = round(time.monotonic() - t0, 3)
+        return res
 
     b64_hook = base64.b64encode(frame_hook).decode("ascii")
     b64_data = base64.b64encode(frame_data).decode("ascii")
 
+    tpl_choices_str = " / ".join(reel_generator.REEL_TEMPLATES.keys())
     prompt = (
         "あなたはInstagram Reels / TikTok（9:16縦画面動画）の厳格な視覚QA検閲官です。\n"
         "提供された2枚の動画フレーム（Frame 1: 冒頭1.2秒フック画面、Frame 2: 6.0秒データ比較画面）を検閲してください。\n\n"
@@ -176,7 +196,7 @@ def inspect_reel_visual_quality(
         "5. brand_compliance (bool): 不正な略称（単体『オリエンタル』等）はなく『オリエンタルラウンジ』等の正式表記か？\n\n"
         "【合否判定ルール】\n"
         "- overall_score >= 70 かつ text_overflow == false かつ text_overlap == false かつ contrast_readability >= 60 かつ brand_compliance == true の場合のみ pass: true\n"
-        f"- 不合格の場合は pass: false とし、recommended_template に別テンプレート名（live_top5 / area_battle / ladies_zero_wait）を指定してください。\n\n"
+        f"- 不合格の場合は pass: false とし、recommended_template に別テンプレート名（{tpl_choices_str}）を指定してください。\n\n"
         "必ず以下のJSON形式のみで出力してください:\n"
         "{\n"
         '  "pass": true,\n'
@@ -194,7 +214,7 @@ def inspect_reel_visual_quality(
     models_to_try = list(QA_MODELS_FALLBACK_CHAIN)
     last_err = ""
 
-    for m_name in models_to_try:
+    for m_idx, m_name in enumerate(models_to_try):
         rem_sec = timeout_sec - (time.monotonic() - t0)
         if rem_sec <= 1.0:
             break
@@ -225,9 +245,15 @@ def inspect_reel_visual_quality(
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
         headers = {"Content-Type": "application/json", "x-goog-api-key": effective_key}
+        has_fallback_model = m_idx < len(models_to_try) - 1
+        call_timeout = (
+            min(rem_sec, max(1.6, rem_sec * 0.52))
+            if has_fallback_model
+            else min(rem_sec, timeout_sec)
+        )
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=min(rem_sec, timeout_sec))
+            resp = requests.post(url, headers=headers, json=payload, timeout=call_timeout)
             if resp.status_code == 200:
                 cands = ((resp.json() or {}).get("candidates")) or []
                 if cands:
@@ -235,17 +261,31 @@ def inspect_reel_visual_quality(
                     raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
                     parsed = _parse_qa_json_response(raw_txt)
                     if parsed and isinstance(parsed, dict):
-                        is_pass = bool(parsed.get("pass", True))
-                        score = int(parsed.get("overall_score", 85) or 85)
+                        raw_pass = True if parsed.get("pass") is None else bool(parsed.get("pass"))
+                        score = _coerce_qa_score(parsed.get("overall_score"), 85)
+                        hook_score = _coerce_qa_score(parsed.get("hook_strength"), 80)
+                        contrast = _coerce_qa_score(parsed.get("contrast_readability"), 80)
+                        text_overflow = bool(parsed.get("text_overflow", False))
+                        text_overlap = bool(parsed.get("text_overlap", False))
+                        brand_ok = True if parsed.get("brand_compliance") is None else bool(parsed.get("brand_compliance"))
+                        is_pass = bool(
+                            raw_pass
+                            and score >= 70
+                            and contrast >= 60
+                            and not text_overflow
+                            and not text_overlap
+                            and brand_ok
+                        )
                         rec_template = _normalize_recommended_template(parsed.get("recommended_template"), rt)
                         return {
                             "pass": is_pass,
+                            "qa_status": "inspected",
                             "overall_score": score,
-                            "hook_strength": int(parsed.get("hook_strength", 80) or 80),
-                            "contrast_readability": int(parsed.get("contrast_readability", 80) or 80),
-                            "text_overflow": bool(parsed.get("text_overflow", False)),
-                            "text_overlap": bool(parsed.get("text_overlap", False)),
-                            "brand_compliance": bool(parsed.get("brand_compliance", True)),
+                            "hook_strength": hook_score,
+                            "contrast_readability": contrast,
+                            "text_overflow": text_overflow,
+                            "text_overlap": text_overlap,
+                            "brand_compliance": brand_ok,
                             "issues": parsed.get("issues") or [],
                             "recommended_template": rec_template,
                             "model_used": m_name,
@@ -288,6 +328,10 @@ def inspect_image_visual_quality(
         res = _safe_fail_open_result("api_key_or_image_missing")
         res["latency_sec"] = round(time.monotonic() - t0, 3)
         return res
+    if len(image_bytes) > MAX_QA_IMAGE_BYTES:
+        res = _safe_fail_open_result("image_too_large")
+        res["latency_sec"] = round(time.monotonic() - t0, 3)
+        return res
 
     b64_img = base64.b64encode(image_bytes).decode("ascii")
     mime = "image/png" if image_bytes.startswith(b"\x89PNG") else "image/jpeg"
@@ -316,7 +360,7 @@ def inspect_image_visual_quality(
 
     models_to_try = list(QA_MODELS_FALLBACK_CHAIN)
     last_err = ""
-    for m_name in models_to_try:
+    for m_idx, m_name in enumerate(models_to_try):
         rem_sec = timeout_sec - (time.monotonic() - t0)
         if rem_sec <= 1.0:
             break
@@ -345,9 +389,15 @@ def inspect_image_visual_quality(
         }
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent"
         headers = {"Content-Type": "application/json", "x-goog-api-key": effective_key}
+        has_fallback_model = m_idx < len(models_to_try) - 1
+        call_timeout = (
+            min(rem_sec, max(1.6, rem_sec * 0.52))
+            if has_fallback_model
+            else min(rem_sec, timeout_sec)
+        )
 
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=min(rem_sec, timeout_sec))
+            resp = requests.post(url, headers=headers, json=payload, timeout=call_timeout)
             if resp.status_code == 200:
                 cands = ((resp.json() or {}).get("candidates")) or []
                 if cands:
@@ -355,13 +405,28 @@ def inspect_image_visual_quality(
                     raw_txt = "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
                     parsed = _parse_qa_json_response(raw_txt)
                     if parsed and isinstance(parsed, dict):
+                        raw_pass = True if parsed.get("pass") is None else bool(parsed.get("pass"))
+                        score = _coerce_qa_score(parsed.get("overall_score"), 85)
+                        contrast = _coerce_qa_score(parsed.get("contrast_readability"), 85)
+                        text_overflow = bool(parsed.get("text_overflow", False))
+                        text_overlap = bool(parsed.get("text_overlap", False))
+                        brand_ok = True if parsed.get("brand_compliance") is None else bool(parsed.get("brand_compliance"))
+                        is_pass = bool(
+                            raw_pass
+                            and score >= 70
+                            and contrast >= 60
+                            and not text_overflow
+                            and not text_overlap
+                            and brand_ok
+                        )
                         return {
-                            "pass": bool(parsed.get("pass", True)),
-                            "overall_score": int(parsed.get("overall_score", 85) or 85),
-                            "contrast_readability": int(parsed.get("contrast_readability", 85) or 85),
-                            "text_overflow": bool(parsed.get("text_overflow", False)),
-                            "text_overlap": bool(parsed.get("text_overlap", False)),
-                            "brand_compliance": bool(parsed.get("brand_compliance", True)),
+                            "pass": is_pass,
+                            "qa_status": "inspected",
+                            "overall_score": score,
+                            "contrast_readability": contrast,
+                            "text_overflow": text_overflow,
+                            "text_overlap": text_overlap,
+                            "brand_compliance": brand_ok,
                             "issues": parsed.get("issues") or [],
                             "model_used": m_name,
                             "reason": "inspected",

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -247,7 +248,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -277,7 +278,7 @@
         <header class="article-header">
             <span class="article-cat-tag">天候・カレンダー別 9.6万件データ検証</span>
             <h1 class="article-title">雨の日・給料日前後・連休中日で男女比はどう変わる？9.6万件ログで見たカレンダー・天候別の傾向</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -413,7 +414,7 @@
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:-6px 0 18px;">
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:-6px 0 18px;">
                 ※上表の数値は通年のコア帯（20:00〜23:59）平均であり、雨天日のみの限定集計ではありません。
             </p>
 
@@ -461,8 +462,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">今日の天気・カレンダーで「いま女性が多い店」を確認する</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">今日の天気・カレンダーで「いま女性が多い店」を確認する</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     雨の夜でも賑わっている地下直結店や、給料日前の女性比率が高いラウンジをリアルタイム人数ランキングですぐに探せます。
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>

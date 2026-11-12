@@ -146,6 +146,10 @@ def _discover_public_routes(client):
             "/ladies",
             "/guide/compare",
             "/guide/strategy",
+            "/xix",
+            "/yatakoi",
+            "/clovers",
+            "/alfa",
         ) or r in upcoming_paths:
             continue
         expected_public.add(r)

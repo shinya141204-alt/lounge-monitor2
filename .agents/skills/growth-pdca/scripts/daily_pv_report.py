@@ -140,7 +140,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
                 s_part, p_part = [x.strip() for x in lbl.split("@", 1)]
             else:
                 s_part, p_part = lbl.strip(), "/other"
-            cid = affiliate_manager.canonical_slot_id(s_part) or s_part.lower()
+            cid = affiliate_manager.canonical_slot_id(s_part)
             surf = analytics.normalize_cta_surface(p_part)
             if cid and surf != "/stats":
                 aff_imp_by_pair[(cid, surf)] += cnt
@@ -149,7 +149,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
                 s_part, p_part = [x.strip() for x in lbl.split("@", 1)]
             else:
                 s_part, p_part = lbl.strip(), "/other"
-            cid = affiliate_manager.canonical_slot_id(s_part) or s_part.lower()
+            cid = affiliate_manager.canonical_slot_id(s_part)
             surf = analytics.normalize_cta_surface(p_part)
             if cid and surf != "/stats":
                 aff_clk_by_pair[(cid, surf)] += cnt
@@ -157,6 +157,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
             sns_inflows[lbl] += cnt
 
     pv = by_ev.get("page_view", 0)
+    human_pv = by_ev.get("human_pv", 0)
     top_pv = pv_by_path.get("/", 0)
     sub_pv = max(0, pv - top_pv)
     guide_pv = sum(c for p, c in pv_by_path.items() if p == "/columns" or p.startswith("/guide"))
@@ -165,6 +166,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
     cushion = by_ev.get("cushion_click", 0)
     aff_imp = sum(aff_imp_by_pair.values())
     aff_clk = by_ev.get("affiliate_click", 0)
+    aff_measurable_clk = sum(aff_clk_by_pair.values()) if aff_imp > 0 else 0
     official_clk = by_ev.get("official_click", 0)
     sns_clk = by_ev.get("sns_click", 0) + by_ev.get("share", 0)
     vote_cnt = by_ev.get("vote", 0)
@@ -174,6 +176,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
         "date_label": _date_with_wd(date_str),
         "has_any_event": sum(by_ev.values()) > 0,
         "pv": pv,
+        "human_pv": human_pv,
         "top_pv": top_pv,
         "sub_pv": sub_pv,
         "sub_pv_share_pct": round((sub_pv / pv) * 100, 1) if pv > 0 else 0.0,
@@ -183,7 +186,8 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
         "cushion_click": cushion,
         "aff_imp": aff_imp,
         "aff_click": aff_clk,
-        "aff_slot_ctr_pct": round((aff_clk / aff_imp) * 100, 2) if aff_imp > 0 else None,
+        "aff_measurable_click": aff_measurable_clk,
+        "aff_slot_ctr_pct": round((aff_measurable_clk / aff_imp) * 100, 2) if aff_imp > 0 else None,
         "aff_pv_ctr_pct": round((aff_clk / pv) * 100, 2) if pv > 0 else 0.0,
         "est_occurrence_yen": aff_clk * 90,
         "est_confirmed_yen": aff_clk * 30,
@@ -225,15 +229,16 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
     prev_series_7d = [_day_metrics(totals, d) for d in prev_days_7]
 
     pv_7d = sum(x["pv"] for x in series_7d)
+    human_pv_7d = sum(x["human_pv"] for x in series_7d)
     prev_pv_7d = sum(x["pv"] for x in prev_series_7d)
     prev_7d_has_data = any(x["has_any_event"] for x in prev_series_7d)
     avg_pv_7d = round(pv_7d / 7.0, 1)
     aff_clk_7d = sum(x["aff_click"] for x in series_7d)
     aff_imp_7d = sum(x["aff_imp"] for x in series_7d)
-    aff_measurable_clk_7d = sum(x["aff_click"] for x in series_7d if x["aff_imp"] > 0)
+    aff_measurable_clk_7d = sum(x["aff_measurable_click"] for x in series_7d if x["aff_imp"] > 0)
     cushion_7d = sum(x["cushion_click"] for x in series_7d)
     store_open_7d = sum(x["store_open"] for x in series_7d)
-    ctr_7d = min(100.0, round((aff_measurable_clk_7d / aff_imp_7d) * 100, 2)) if aff_imp_7d > 0 else None
+    ctr_7d = round((aff_measurable_clk_7d / aff_imp_7d) * 100, 2) if aff_imp_7d > 0 else None
 
     # 人気ページ TOP10（対象日）
     top_pages_day = []
@@ -342,7 +347,8 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
             "day_click": day_clk,
             "imp_7d": imp_c,
             "click_7d": clk_c,
-            "ctr_7d_pct": min(100.0, round((m_clk_c / imp_c) * 100, 2)) if imp_c > 0 else None,
+            "ctr_7d_pct": round((m_clk_c / imp_c) * 100, 2) if imp_c > 0 else None,
+            "ctr_7d_anomaly": bool(imp_c > 0 and m_clk_c > imp_c),
         })
 
     # クッション遷移内訳（直近7日）
@@ -433,6 +439,7 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
             "since": days_7[0],
             "until": days_7[-1],
             "pv_total": pv_7d,
+            "human_pv_total": human_pv_7d,
             "pv_avg_daily": avg_pv_7d,
             "prev_7d_pv_total": prev_pv_7d if prev_7d_has_data else None,
             "store_open_total": store_open_7d,

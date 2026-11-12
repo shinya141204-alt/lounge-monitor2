@@ -1893,14 +1893,11 @@ AFFILIATE_REDIRECTS = {
     'women_second_venue': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
 }
 
-_BARE_INTERNAL_FROM_SLUGS = frozenset({
-    'concierge', 'grooming', 'for-women', 'guide', 'stats', 'columns', 'areas', 'price-comparison',
-})
-
-@app.route('/link/<path:item_id>')
+@app.route('/link/<path:item_id>', methods=['GET', 'POST'])
 def affiliate_redirect(item_id):
-    """Safe internal redirect shielding affiliate links from ad-blockers, with live runtime override resolution."""
+    """Safe internal redirect shielding affiliate links from ad-blockers & non-JS crawlers."""
     import affiliate_manager
+    import analytics
     clean_id = item_id.strip().lower()
     target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
@@ -1910,64 +1907,64 @@ def affiliate_redirect(item_id):
         or bool(session.get('is_staff') or session.get('is_master'))
     )
     if not is_staff_probe and (_is_bot_request() or _is_prefetch_request()):
-        hub = '/for-women' if clean_id.startswith('women_') else '/grooming'
-        resp_bot = redirect(hub, code=302)
+        resp_bot = redirect('/for-women' if clean_id.startswith('women_') else '/grooming', code=302)
         resp_bot.headers['X-Robots-Tag'] = 'noindex, nofollow'
         resp_bot.headers['Cache-Control'] = 'private, no-store'
         return resp_bot
+    ref_path = affiliate_manager.resolve_safe_ref_path(
+        request.args.get('from', ''), request.referrer or '', request.host or ''
+    )
+    parsed_ref = urllib_parse.urlparse(request.referrer or '')
+    explicit_s = (request.args.get('s') or '').strip()
+    ref_s = explicit_s or (urllib_parse.parse_qs(parsed_ref.query).get('s') or [''])[0].strip()
+    inflow_tag = analytics.normalize_inflow_source(ref_s or (request.cookies.get('an_src') or '').strip())
+    require_hp = app.config.get('ENFORCE_AFFILIATE_HUMAN_PROOF')
+    if require_hp is None:
+        require_hp = not bool(app.config.get('TESTING'))
+    if not is_staff_probe:
+        is_post_ok = (
+            request.method == 'POST'
+            and affiliate_manager.verify_click_confirm_token(
+                str(app.secret_key), clean_id, request.form.get('csrf_clk', '')
+            )
+        )
+        is_get_ok = request.method == 'GET' and ((not require_hp) or request.cookies.get('an_hp') == '1')
+        if not (is_post_ok or is_get_ok):
+            qs_map = {}
+            if ref_path and ref_path != '-':
+                qs_map['from'] = ref_path
+            if (explicit_s or ref_s) and inflow_tag:
+                qs_map['s'] = inflow_tag
+            act_url = f"/link/{urllib_parse.quote(clean_id, safe='_-')}" + (f"?{urllib_parse.urlencode(qs_map)}" if qs_map else '')
+            tok = affiliate_manager.issue_click_confirm_token(str(app.secret_key), clean_id)
+            body = affiliate_manager.render_click_interstitial_html(
+                clean_id, act_url, tok, back_href=(ref_path if ref_path.startswith('/') else '/')
+            )
+            return (body, 200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'X-Robots-Tag': 'noindex, nofollow',
+                'Cache-Control': 'private, no-store',
+            })
     client_ip = get_client_ip()
     if (
-        request.method == 'GET'
-        and not is_staff_probe
+        not is_staff_probe
         and turbo_store.check_sliding_rate_limit('aff_clk_ip', client_ip, limit=30, window_sec=600)
         and turbo_store.check_sliding_rate_limit(
-            'aff_clk_human',
-            f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}",
-            limit=10,
-            window_sec=600,
+            'aff_clk_human', f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}", limit=10, window_sec=600
         )
     ):
         try:
-            import analytics
-            parsed_ref = urllib_parse.urlparse(request.referrer or '')
-            raw_from = (request.args.get('from') or '').strip()
-            unquoted_from = urllib_parse.unquote(raw_from).strip()
-            if unquoted_from in _BARE_INTERNAL_FROM_SLUGS:
-                unquoted_from = '/' + unquoted_from
-            ref_path = ''
-            if unquoted_from.startswith('/') and not unquoted_from.startswith('//') and '\\' not in raw_from and '\\' not in unquoted_from:
-                parsed_from = urllib_parse.urlparse(unquoted_from)
-                clean_from = (parsed_from.path or '').strip()
-                if (
-                    not parsed_from.scheme
-                    and not parsed_from.netloc
-                    and '..' not in clean_from
-                    and re.fullmatch(r'/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*/?)?', clean_from)
-                ):
-                    ref_path = clean_from[:80]
-            if not ref_path:
-                ref_host = (parsed_ref.hostname or '').lower()
-                req_host = (request.host or '').split(':', 1)[0].lower()
-                same_host = (
-                    (not parsed_ref.netloc)
-                    or (ref_host == req_host)
-                    or (ref_host in ('aiseki-navi.com', 'www.aiseki-navi.com', 'aiseki-navi-tokyo.fly.dev'))
-                )
-                fallback_ref = re.sub(r'[\r\n\x00@\\]', '', (parsed_ref.path or '').strip())[:80] if same_host else ''
-                ref_path = fallback_ref if (fallback_ref.startswith('/') and not fallback_ref.startswith('//')) else '-'
             analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
-            explicit_s = (request.args.get('s') or '').strip()
-            ref_s = explicit_s or (urllib_parse.parse_qs(parsed_ref.query).get('s') or [''])[0].strip()
-            raw_inflow = ref_s or (request.cookies.get('an_src') or '').strip()
-            if raw_inflow:
-                inflow_tag = analytics.normalize_inflow_source(raw_inflow)
-                if inflow_tag:
-                    analytics.track('sns_inflow', f"cv:{inflow_tag}")
-                    analytics.track('sns_inflow', f"cvslot:{inflow_tag} @ {clean_id[:36]}")
+            if inflow_tag:
+                analytics.track('sns_inflow', f"cv:{inflow_tag}")
+                analytics.track('sns_inflow', f"cvslot:{inflow_tag} @ {clean_id[:36]}")
         except Exception:
             pass
-    resp = redirect(target_url, code=302)
+    resp = redirect(target_url, code=(303 if request.method == 'POST' else 302))
     resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
+    resp.headers['Cache-Control'] = 'private, no-store'
+    if request.method == 'POST':
+        resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
     return resp
 
 # --- First-party analytics (no personal data) ---
@@ -1975,15 +1972,15 @@ import urllib.parse as urllib_parse
 
 _BOT_MARKERS = (
     'bot', 'spider', 'crawl', 'slurp', 'facebookexternalhit', 'preview', 'headless', 'python-requests', 'curl',
-    # AI assistants / fetchers & ad/SEO/headless scanners whose UA does not always contain "bot"
     'chatgpt-user', 'perplexity-user', 'claude-user', 'claude-web', 'anthropic-ai', 'mistralai-user',
     'meta-externalfetcher', 'meta-externalagent', 'cohere-ai', 'google-extended', 'applebot-extended',
     'mediapartners-google', 'adsbot', 'apis-google', 'feedfetcher-google', 'google-read-aloud',
     'google-inspectiontool', 'googleother', 'storebot-google',
     'lighthouse', 'chrome-lighthouse', 'phantomjs', 'playwright', 'puppeteer', 'selenium',
-    'semrush', 'ahrefs', 'petal', 'censys', 'zgrab',
+    'semrush', 'ahrefs', 'petal', 'censys', 'zgrab', 'mj12', 'screaming frog', 'siteaudit', 'barkrowler',
     'bytespider', 'gptbot', 'oai-searchbot', 'python-httpx', 'aiohttp', 'go-http-client', 'wget', 'scrapy',
-    'axios', 'node-fetch', 'undici', 'okhttp', 'libwww-perl', 'java/',
+    'axios', 'node-fetch', 'undici', 'okhttp', 'libwww-perl', 'java/', 'apache-httpclient', 'cfnetwork/',
+    'postmanruntime', 'insomnia', 'uptimerobot', 'pingdom', 'datadog', 'statuscake', 'line-poker', 'slack-imgproxy',
 )
 _TRACKED_PAGE_PREFIXES = ('/guide', '/columns', '/areas', '/area/', '/concierge', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/asobibar', '/store/')
 _LIVE_NO_CACHE_PREFIXES = ('/price-comparison', '/for-women', '/concierge', '/store/', '/areas', '/area/', '/oriental-lounge', '/ag', '/jis', '/asobibar')
@@ -2019,15 +2016,11 @@ def _jinja_brand_ja(val):
 
 _BADGE_EMOJI_PREFIX_RE = re.compile(r'^[\U0001F300-\U0001FAFF\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+')
 
-
 @app.template_filter('clean_badge')
 def _jinja_clean_badge(val):
     if val is None:
         return ''
-    s = _BADGE_EMOJI_PREFIX_RE.sub('', str(val))
-    s = re.sub(r'^推定:\s*', '', s)
-    return s.strip()
-
+    return re.sub(r'^推定:\s*', '', _BADGE_EMOJI_PREFIX_RE.sub('', str(val))).strip()
 
 @app.template_filter('merge_brand_stats')
 def _jinja_merge_brand_stats(by_brand):
@@ -2038,36 +2031,28 @@ def _jinja_merge_brand_stats(by_brand):
         if not isinstance(bdata, dict):
             continue
         disp = _jinja_brand_ja(raw_brand)
-        sc = int(bdata.get('store_count', 0) or 0)
-        aw = float(bdata.get('total_avg_women', 0) or 0)
-        am = float(bdata.get('total_avg_men', 0) or 0)
+        sc, aw, am = int(bdata.get('store_count', 0) or 0), float(bdata.get('total_avg_women', 0) or 0), float(bdata.get('total_avg_men', 0) or 0)
+        w_i, m_i = isinstance(bdata.get('total_avg_women'), int), isinstance(bdata.get('total_avg_men'), int)
         if disp not in merged:
-            merged[disp] = {
-                'store_count': sc,
-                'total_avg_women': aw,
-                'total_avg_men': am,
-                '_w_int': isinstance(bdata.get('total_avg_women'), int),
-                '_m_int': isinstance(bdata.get('total_avg_men'), int),
-            }
+            merged[disp] = {'store_count': sc, 'total_avg_women': aw, 'total_avg_men': am, '_w_int': w_i, '_m_int': m_i}
         else:
-            merged[disp]['store_count'] += sc
-            merged[disp]['total_avg_women'] += aw
-            merged[disp]['total_avg_men'] += am
-            merged[disp]['_w_int'] = merged[disp]['_w_int'] and isinstance(bdata.get('total_avg_women'), int)
-            merged[disp]['_m_int'] = merged[disp]['_m_int'] and isinstance(bdata.get('total_avg_men'), int)
-    out = {}
-    for disp, m in merged.items():
-        out[disp] = {
+            m = merged[disp]
+            m['store_count'] += sc
+            m['total_avg_women'] += aw
+            m['total_avg_men'] += am
+            m['_w_int'], m['_m_int'] = m['_w_int'] and w_i, m['_m_int'] and m_i
+    return {
+        disp: {
             'store_count': m['store_count'],
             'total_avg_women': int(round(m['total_avg_women'])) if m['_w_int'] else round(m['total_avg_women'], 1),
             'total_avg_men': int(round(m['total_avg_men'])) if m['_m_int'] else round(m['total_avg_men'], 1),
         }
-    return out
+        for disp, m in merged.items()
+    }
 
 def _is_bot_request():
     ua = (request.headers.get('User-Agent') or '').lower()
     return (not ua) or any(m in ua for m in _BOT_MARKERS)
-
 
 def _is_prefetch_request():
     if request.headers.get('X-Sw-Prefetch') == '1':
@@ -2075,15 +2060,13 @@ def _is_prefetch_request():
     purp = f"{request.headers.get('Sec-Purpose', '')} {request.headers.get('Purpose', '')} {request.headers.get('X-Moz', '')}".lower()
     return 'prefetch' in purp or 'preview' in purp
 
-
 def _is_staff_test_request(include_referrer: bool = False) -> bool:
     if (request.args.get('staff_test') or '').strip().lower() in ('1', 'true'):
         return True
     if include_referrer and request.referrer:
         try:
             ref_qs = urllib_parse.parse_qs(urllib_parse.urlparse(request.referrer).query)
-            if (ref_qs.get('staff_test') or [''])[0].strip().lower() in ('1', 'true'):
-                return True
+            return (ref_qs.get('staff_test') or [''])[0].strip().lower() in ('1', 'true')
         except Exception:
             pass
     return False
@@ -2101,20 +2084,26 @@ def track_page_views(response):
                 and not _is_bot_request()
                 and not _is_prefetch_request()):
             import analytics
-            analytics.track('page_view', request.path)
+            pv_ok = True
+            if not app.config.get('TESTING'):
+                has_hp = request.cookies.get('an_hp') == '1'
+                pv_ok = turbo_store.check_sliding_rate_limit(
+                    'pv_ip_hp' if has_hp else 'pv_ip_nohp',
+                    get_client_ip(),
+                    limit=(90 if has_hp else 18),
+                    window_sec=600,
+                )
+            if pv_ok:
+                analytics.track('page_view', request.path)
             raw_s = (request.args.get('s') or '').strip()
             if raw_s:
                 inflow_tag = analytics.normalize_inflow_source(raw_s)
                 if inflow_tag:
-                    analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
+                    if pv_ok:
+                        analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
                     response.set_cookie(
-                        'an_src',
-                        inflow_tag,
-                        max_age=86400,
-                        path='/',
-                        samesite='Lax',
-                        secure=bool(request.is_secure),
-                        httponly=True,
+                        'an_src', inflow_tag, max_age=86400, path='/',
+                        samesite='Lax', secure=bool(request.is_secure), httponly=True,
                     )
     except Exception:
         pass
@@ -2122,9 +2111,8 @@ def track_page_views(response):
 
 
 _BEACON_ALLOWED_EVENTS = frozenset({
-    'affiliate_impression', 'cushion_click', 'store_open', 'map_cafe', 'map_bar',
-    'official_click', 'sns_click', 'share', 'vote',
-    'hashigo_intent',
+    'human_pv', 'affiliate_impression', 'cushion_click', 'store_open', 'map_cafe', 'map_bar',
+    'official_click', 'sns_click', 'share', 'vote', 'hashigo_intent',
 })
 
 
@@ -2151,12 +2139,17 @@ def track_event():
         return ('', 204)
     if ev_name == 'hashigo_intent' and not turbo_store.check_sliding_rate_limit('hashigo_intent_ip', client_ip, limit=10, window_sec=600):
         return ('', 204)
+    if ev_name == 'human_pv' and not turbo_store.check_sliding_rate_limit('human_pv_ip', ua_key, limit=90, window_sec=600):
+        return ('', 204)
     import analytics
     clean_lbl = str(payload.get('label', '')).strip()[:96]
     analytics.track(ev_name, clean_lbl)
     if ev_name == 'cushion_click':
         analytics.track_sns_cushion_attribution(clean_lbl, request.cookies.get('an_src'))
-    return ('', 204)
+    resp = app.response_class('', status=204)
+    if request.cookies.get('an_hp') != '1':
+        resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
+    return resp
 
 
 @app.route('/staff', methods=['GET', 'POST'])
@@ -2592,6 +2585,8 @@ def get_store_votes(store_name):
     if not store_name or len(store_name) > 80 or any(ord(ch) < 32 for ch in store_name):
         return jsonify({'status': 'error', 'error': 'Invalid store name'}), 400
     internal_name = store_master.to_internal_store_name(store_name)
+    if not store_master.get(internal_name):
+        return jsonify({'status': 'error', 'error': 'Store not found'}), 404
     if ops_governance.is_store_hidden(internal_name or store_name):
         return jsonify({'status': 'error', 'error': 'Store not found'}), 404
     counts = local_db.get_recent_votes(store_name=internal_name, hours=4)
@@ -2614,10 +2609,13 @@ def post_store_vote():
     store_name = store_master.to_internal_store_name(raw_store)
     if ops_governance.is_store_hidden(store_name):
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
-    # Only accept votes for stores that actually exist in the current ranking (prevents junk rows)
+    # Only accept votes for stores that actually exist in the current ranking or store_master (prevents junk rows on cold boot)
     with data_lock:
         known_names = {s.get('name') for s in latest_data.get('full_data', [])}
-    if known_names and store_name not in known_names:
+    if known_names:
+        if store_name not in known_names:
+            return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
+    elif not store_master.get(store_name):
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     if _is_staff_test_request(include_referrer=True):
         counts = local_db.get_recent_votes(store_name=store_name, hours=4)

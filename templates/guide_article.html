@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>初めての相席ラウンジ基本ガイド｜料金システム・服装・身分証・お店選びの基本（全国63店舗対応）｜相席ナビ</title>
     <meta name="description" content="初めて相席ラウンジ・相席バーに行く男女向けの基本ガイド。オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）など全国63店舗の料金システム、必須の顔写真付き身分証、服装ドレスコード、98万件の実測データから見た待ち時間を抑えやすい時間帯・お店選びのポイントを解説します。">
@@ -527,7 +528,7 @@
             border-color: rgba(236, 72, 153, 0.5);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -626,7 +627,7 @@
             <div style="overflow-x:auto; margin: 18px 0 24px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
                 <table style="width:100%; border-collapse:collapse; min-width:580px; font-size:0.86rem; line-height:1.6; font-variant-numeric:tabular-nums;">
                     <thead>
-                        <tr style="background:rgba(255,255,255,0.06); color:#f8fafc; text-align:left;">
+                        <tr style="background:var(--card-bg-2); color:var(--text-main); text-align:left;">
                             <th style="padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.12);">ブランド分類</th>
                             <th style="padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.12);">主な年齢層・雰囲気</th>
                             <th style="padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.12);">男性料金システム（女性は全店0円）</th>
@@ -661,7 +662,7 @@
                     </tbody>
                 </table>
             </div>
-            <p style="font-size:0.86rem; color:#94a3b8;">
+            <p style="font-size:0.86rem; color:var(--text-sub);">
                 ※店舗別の単価や開催中イベントは<a href="/guide/brand-comparison" style="text-decoration:underline;">3大ブランド比較コラム</a>と<a href="/price-comparison" data-cushion="1" style="text-decoration:underline;">国内61店舗の料金・イベント比較ボード</a>で確認できます。女性同士で行く日の店選びは<a href="/for-women" data-cushion="1" style="color:#f472b6;">女性向け・待ち時間の少ない店舗ガイド</a>へ。
             </p>
 
@@ -721,25 +722,25 @@
             <h2 id="section-faq">6. 初心者がよく迷うQ&amp;A（料金・保険証・1人入店・女性の待ち時間）</h2>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
                 <h3>Q1. 女性は本当に無料ですか？ 女性でも待たされることはありますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
+                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
                     はい、女性はチャージも飲み放題も無料（店舗によりフード・スイーツ特典あり）です。ただし女性ばかりが集中している「女余り店」に行くと、受付で20〜40分待つことがあります。女性ペアは<a href="/for-women" data-cushion="1" style="color:#f472b6;">女性向け穴場ランキング</a>で「男性が先行入店している店舗」を選ぶと待ち時間を抑えやすくなります。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
                 <h3>Q2. 男性の1晩あたりの予算目安はいくらくらいですか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
+                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
                     着席型ラウンジ（オリエンタルラウンジ・ag（アグ）・JIS（ジス））に1時間〜1時間半滞在した場合、平日は約4,000〜6,500円、金土祝前日は約5,500〜8,500円前後が目安です（飲み放題込み・VIP席や有料フードを除く）。時間課金を気にせず飲みたい日は定額・チケット制の<a href="/asobibar" style="text-decoration:underline;">ASOBIBAR（アソビバー）</a>も選択肢に入ります（損益分岐の詳細は<a href="/guide/cost-break-even" style="text-decoration:underline;">料金損益分岐シミュレーション</a>へ）。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 16px;">
                 <h3>Q3. 健康保険証や学生証だけで入店できますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
+                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
                     顔写真のない健康保険証単体やコピー・スマホ画像では入店できません。必ず<strong>運転免許証・マイナンバーカード・パスポート・在留カード等の公的顔写真付き身分証（原本）</strong>を全員分ご持参ください。
                 </p>
             </div>
             <div class="article-highlight-box" style="margin-bottom: 28px;">
                 <h3>Q4. 1人（ソロ）でも浮きませんか？ どこに行けば入れますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:#e2e8f0;">
+                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
                     平日の仕事帰りや週末2軒目で1人入店する男女は珍しくありません。JIS（新宿店を除く全店）やASOBIBAR全10店、オリエンタルラウンジの1名対応24店舗なら1名でも自然に馴染めます（詳しくは<a href="/guide/solo-vs-pair" style="text-decoration:underline;">1人入店 vs 2人ペア入店の実測比較</a>や<a href="/guide/thirties-lounge-guide" style="text-decoration:underline;">30代の店選びガイド</a>をご覧ください）。
                 </p>
             </div>

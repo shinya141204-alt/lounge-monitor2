@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -279,7 +280,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -309,7 +310,7 @@
         <header class="article-header">
             <span class="article-cat-tag">年齢層×客層データ考察 ｜ アラサー向け</span>
             <h1 class="article-title">相席ラウンジは30代・アラサーでも浮かない？｜『学生ノリで疲れる店』と『落ち着いた大人が集まる店』の境界線をデータと実態で検証</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：{{ scheduled_item.publish_at_ja if scheduled_item else '2026年11月4日(水) 19:00' }} ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：{{ scheduled_item.publish_at_ja if scheduled_item else '2026年11月4日(水) 19:00' }} ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -354,19 +355,19 @@
 
             <div class="stat-grid">
                 <div class="stat-box">
-                    <div style="font-size:0.8rem;color:#94a3b8;">ag（アグ）主要年齢層</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">ag（アグ）主要年齢層</div>
                     <div class="stat-num pink">20〜23歳</div>
-                    <div style="font-size:0.75rem;color:#cbd5e1;">学生・第2新卒・カジュアル中心</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">学生・第2新卒・カジュアル中心</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.8rem;color:#94a3b8;">オリエンタルラウンジ主要層</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">オリエンタルラウンジ主要層</div>
                     <div class="stat-num">24〜33歳</div>
-                    <div style="font-size:0.75rem;color:#cbd5e1;">一般社会人・OL・医療系中心</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">一般社会人・OL・医療系中心</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.8rem;color:#94a3b8;">JIS（ジス）主要年齢層</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">JIS（ジス）主要年齢層</div>
                     <div class="stat-num">26〜38歳</div>
-                    <div style="font-size:0.75rem;color:#cbd5e1;">専門職・落ち着いた大人の男女</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">専門職・落ち着いた大人の男女</div>
                 </div>
             </div>
 
@@ -456,7 +457,7 @@
             </p>
 
             <div class="highlight-box">
-                <ul style="margin:0;padding-left:20px;color:#cbd5e1;">
+                <ul style="margin:0;padding-left:20px;color:var(--text-sub);">
                     <li><strong>「騒がしい大衆居酒屋の飲み会より、空間がきれいで居心地がいい」</strong></li>
                     <li><strong>「ホテルのバーのようなソファ席で、お酒と料理を気軽に楽しめる」</strong></li>
                     <li><strong>「空気が合わない席でも、スタッフさんが間に入って自然に席替え・退店ができるから安心」</strong></li>
@@ -593,8 +594,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <h3 style="margin:0 0 8px 0;color:#f8fafc;font-size:1.1rem;">全国主要店舗の現在の混雑状況を確認する</h3>
-                <p style="margin:0;font-size:0.85rem;color:#94a3b8;">女性先行で待ち時間が少ない店舗をリアルタイムデータから探せます。</p>
+                <h3 style="margin:0 0 8px 0;color:var(--text-main);font-size:1.1rem;">全国主要店舗の現在の混雑状況を確認する</h3>
+                <p style="margin:0;font-size:0.85rem;color:var(--text-sub);">女性先行で待ち時間が少ない店舗をリアルタイムデータから探せます。</p>
                 <a href="/" class="cta-btn">全国リアルタイム混雑ランキングを見る ›</a>
             </div>
         </div>

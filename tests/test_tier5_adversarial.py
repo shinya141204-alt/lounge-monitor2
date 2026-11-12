@@ -12,7 +12,9 @@ Stress tests:
 """
 
 import os
+import shutil
 import sys
+import tempfile
 import time
 import json
 import unittest
@@ -25,6 +27,32 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import app as app_module
+import local_db
+
+_TMP_DB_DIR = None
+_ORIG_DB_PATH = None
+_ORIG_DATABASE_URL = None
+
+
+def setUpModule():
+    global _TMP_DB_DIR, _ORIG_DB_PATH, _ORIG_DATABASE_URL
+    _TMP_DB_DIR = tempfile.mkdtemp(prefix="aiseki_tier5_adv_")
+    _ORIG_DB_PATH = local_db.DB_PATH
+    _ORIG_DATABASE_URL = os.environ.pop("DATABASE_URL", None)
+    local_db.DB_PATH = os.path.join(_TMP_DB_DIR, "test_lounge.db")
+    local_db.reset_caches_for_tests()
+    local_db.init_db()
+
+
+def tearDownModule():
+    local_db.reset_caches_for_tests()
+    if _ORIG_DB_PATH is not None:
+        local_db.DB_PATH = _ORIG_DB_PATH
+    if _ORIG_DATABASE_URL is not None:
+        os.environ["DATABASE_URL"] = _ORIG_DATABASE_URL
+    local_db.reset_caches_for_tests()
+    if _TMP_DB_DIR:
+        shutil.rmtree(_TMP_DB_DIR, ignore_errors=True)
 
 
 class Tier5AdversarialStressTests(unittest.TestCase):
@@ -114,7 +142,8 @@ class Tier5AdversarialStressTests(unittest.TestCase):
             "p99_ms": p99,
             "peak_mem_mb": peak_mem / (1024 * 1024)
         }
-        with open(os.path.join(ROOT, "benchmark_stress_result.json"), "w") as f:
+        out_dir = _TMP_DB_DIR or ROOT
+        with open(os.path.join(out_dir, "benchmark_stress_result.json"), "w") as f:
             json.dump(stress_result, f, indent=2)
 
         self.assertEqual(len(errors), 0, f"Encountered {len(errors)} errors during stress test: {errors[:5]}")

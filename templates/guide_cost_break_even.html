@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>相席ラウンジ男性料金の損益分岐点｜90分粘るvs40分で見切るコスパ検証｜相席ナビ</title>
     <meta name="description" content="10分単位で課金される相席ラウンジで男性が損をしやすい「惰性の90分滞在」と、費用対効果が高くなる「40分見切りルール」を料金表から試算。新宿・梅田・渋谷の同一時刻ログから判明した徒歩5分圏内の男女比ギャップ（最大17.5pt差）も公開。">
@@ -247,7 +248,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -277,7 +278,7 @@
         <header class="article-header">
             <span class="article-cat-tag">滞在時間×料金コスパ検証</span>
             <h1 class="article-title">微妙な席で90分粘るか、40分で切り上げるか｜滞在時間とトータル料金の「損益分岐点」実測検証</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月1日 ・ 更新日：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年11月1日 ・ 更新日：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -384,22 +385,22 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong><a href="/area/osaka" style="color:#fff;">大阪・梅田 / 茶屋町（5店舗）</a></strong></td>
+                            <td><strong><a href="/area/osaka" style="color:var(--text-main);">大阪・梅田 / 茶屋町（5店舗）</a></strong></td>
                             <td>平均 <strong>15.2ポイント差</strong></td>
                             <td><strong style="color:#4ade80;">87.5%</strong></td>
                         </tr>
                         <tr>
-                            <td><strong><a href="/area/shibuya" style="color:#fff;">東京・渋谷・恵比寿エリア（3店舗）</a></strong></td>
+                            <td><strong><a href="/area/shibuya" style="color:var(--text-main);">東京・渋谷・恵比寿エリア（3店舗）</a></strong></td>
                             <td>平均 <strong>9.3ポイント差</strong></td>
                             <td><strong style="color:#4ade80;">56.2%</strong></td>
                         </tr>
                         <tr>
-                            <td><strong><a href="/area/shinjuku" style="color:#fff;">東京・新宿エリア（3店舗）</a></strong></td>
+                            <td><strong><a href="/area/shinjuku" style="color:var(--text-main);">東京・新宿エリア（3店舗）</a></strong></td>
                             <td>平均 <strong>17.5ポイント差</strong></td>
                             <td><strong style="color:#4ade80;">48.9%</strong></td>
                         </tr>
                         <tr>
-                            <td><strong><a href="/area/kanto" style="color:#fff;">埼玉・大宮エリア（2店舗）</a></strong></td>
+                            <td><strong><a href="/area/kanto" style="color:var(--text-main);">埼玉・大宮エリア（2店舗）</a></strong></td>
                             <td>平均 <strong>8.1ポイント差</strong></td>
                             <td><strong>39.3%</strong></td>
                         </tr>
@@ -434,11 +435,11 @@
             </div>
 
             <div class="highlight-box">
-                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 1：お店に向かう前に「男女比」と「15分増減（↗）」を見る</h3>
+                <h3 style="margin:0 0 8px 0;color:var(--text-main);">STEP 1：お店に向かう前に「男女比」と「15分増減（↗）」を見る</h3>
                 <p style="margin:0 0 14px 0;">
                     看板の知名度だけで入らず、直前にリアルタイム人数を確認します。男性過多で女性の増加トレンド（↗）も止まっている店舗を避けるだけで、受付待ちで消耗するパターンを減らせます。
                 </p>
-                <h3 style="margin:0 0 8px 0;color:#f8fafc;">STEP 2：着席から「35分〜45分」で判断する</h3>
+                <h3 style="margin:0 0 8px 0;color:var(--text-main);">STEP 2：着席から「35分〜45分」で判断する</h3>
                 <p style="margin:0;">
                     ・<strong>相手からも質問が返ってきて会話が弾んでいる場合</strong>：店内で満腹になる前に、<strong>45分〜50分時点</strong>で「30分だけ夜カフェか静かなバー寄らない？」と短時間提案で外へ誘う。<br>
                     ・<strong>一問一答でスマホが気になり始めている場合</strong>：気を使って課金を積み増さず、「明日朝イチで予定があって今日は1時間だけって決めてたんだ、乾杯できて楽しかった！」と明るくお礼を伝えて切り上げるのが、男女双方にとって負担の少ないマナーです。
@@ -458,8 +459,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">徒歩5分圏内の「いま入りやすい店舗」をまとめて比較</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">徒歩5分圏内の「いま入りやすい店舗」をまとめて比較</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     新宿・渋谷・梅田・栄・大宮・福岡など全国63店舗の男女人数・女性比率・直近15分の増減をリアルタイム表示中。
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>

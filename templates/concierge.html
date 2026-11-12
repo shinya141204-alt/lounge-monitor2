@@ -11,6 +11,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
     <title>今夜どこ行く？相席ラウンジ 穴場＆徒歩ハシゴ診断（全国63店舗リアルタイム対応）｜相席ナビ</title>
     <meta name="description" content="新宿・渋谷・恵比寿・梅田・難波・名古屋・福岡・札幌・仙台・広島など全国63店舗（オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）他）の現在男女人数と過去ログ統計から、いま入りやすい第1候補と徒歩ハシゴ第2候補を診断。男性目線（男余り回避）・女性目線（受付待ちゼロ）・ソロ参戦にも対応。">
     <meta name="keywords" content="相席ラウンジ 診断,オリエンタルラウンジ 穴場,JIS 相席 待ち時間,ag 相席 男女比,相席ラウンジ ハシゴ,相席ラウンジ 一人,相席ナビ">
@@ -696,7 +697,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -868,6 +869,19 @@
                 </article>
             </div>
 
+            {% if not is_staff and not session.get('is_staff') %}
+            <!-- Smart Action Card (Placed right beneath Primary/Backup diagnosis; hidden completely in Staff Mode) -->
+            <aside class="smart-prep-card" id="concierge-smart-action-wrap">
+                <div class="smart-prep-kicker" id="sac-kicker">{{ sac.kicker }}</div>
+                <h3 id="sac-title">{{ sac.title }}</h3>
+                <p id="sac-body">{{ sac.body }}</p>
+                <div class="card-btn-row">
+                    <a href="{{ sac.primary_url }}" class="btn-gold-action" id="sac-primary-btn" rel="nofollow sponsored noopener" target="_blank">{{ sac.primary_label }} ›</a>
+                    <a href="{{ sac.secondary_url }}" class="btn-subtle-action" id="sac-secondary-btn">{{ sac.secondary_label }} ›</a>
+                </div>
+            </aside>
+            {% endif %}
+
             <!-- Other Candidates in Same Area -->
             <section class="other-stores-box" id="other-stores-section" {% if not res.other_candidates %}style="display:none;"{% endif %}>
                 <h3 class="other-stores-title">同エリア内の他店舗リアルタイム比較</h3>
@@ -923,19 +937,6 @@
                 <div class="invite-quote" id="sv-phrase">誘い方例：{{ sv.invite_phrase }}</div>
                 <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">目安タイミング：{{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
             </section>
-
-            {% if not is_staff and not session.get('is_staff') %}
-            <!-- Smart Action Card (Hidden completely in Staff Mode) -->
-            <aside class="smart-prep-card" id="concierge-smart-action-wrap">
-                <div class="smart-prep-kicker" id="sac-kicker">{{ sac.kicker }}</div>
-                <h3 id="sac-title">{{ sac.title }}</h3>
-                <p id="sac-body">{{ sac.body }}</p>
-                <div class="card-btn-row">
-                    <a href="{{ sac.primary_url }}" class="btn-gold-action" id="sac-primary-btn" rel="nofollow sponsored noopener" target="_blank">{{ sac.primary_label }} ›</a>
-                    <a href="{{ sac.secondary_url }}" class="btn-subtle-action" id="sac-secondary-btn">{{ sac.secondary_label }} ›</a>
-                </div>
-            </aside>
-            {% endif %}
         </div>
 
         <!-- Share & Cross-Navigation Bar -->

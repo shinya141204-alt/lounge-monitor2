@@ -109,10 +109,12 @@
         if (p.indexOf('/area/') === 0) return 'エリア別データ を読み込み中...';
         if (p.indexOf('/store/') === 0) return '店舗詳細データ を読み込み中...';
         if (p === '/stats') return '統計データ白書 を読み込み中...';
+        if (p === '/stats/weekend-index') return '2軸需給DI指数 を読み込み中...';
+        if (p.indexOf('/stats/') === 0) return '統計アーカイブ を読み込み中...';
         if (p === '/grooming') return '服装・事前準備 を読み込み中...';
         if (p === '/guide/brand-comparison') return '3大ブランド比較 を読み込み中...';
         if (p.indexOf('/guide') === 0) return '特集コラム を読み込み中...';
-        if (p === '/oriental-lounge' || p === '/ag' || p === '/jis') return 'ブランド別人数 を読み込み中...';
+        if (p === '/oriental-lounge' || p === '/ag' || p === '/jis' || p === '/asobibar') return 'ブランド別人数 を読み込み中...';
         return 'ページを読み込み中...';
     }
 
@@ -433,7 +435,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=109', { updateViaCache: 'none' }).then(function(reg) {
+                navigator.serviceWorker.register('/sw.js?v=110', { updateViaCache: 'none' }).then(function(reg) {
                     // Throttle explicit SW update checks to once per 10 minutes per tab session
                     try {
                         var KEY = 'aiseki_sw_update_at';

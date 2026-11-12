@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -187,7 +188,7 @@
             .data-table th, .data-table td { padding: 7px 5px; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -211,7 +212,7 @@
         <header class="article-header">
             <span class="article-cat-tag">週末ピークの混雑データ</span>
             <h1 class="article-title">金・土の相席ラウンジで「男性待ち1時間」を避ける方法｜週末3つの時間帯別ムーブと徒歩3分ハシゴの考え方</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:-6px 0 14px 0;">公開日：2026年10月23日・更新：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:-6px 0 14px 0;">公開日：2026年10月23日・更新：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
             <div style="margin: 16px 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12);">
                 <picture>
                     <source srcset="/static/eyecatch-weekend.webp?v=3" type="image/webp">
@@ -295,7 +296,7 @@
             <p>
                 以下の5大エリアでは、徒歩2〜5分圏内に複数の相席ラウンジが集まっています。1店舗目の受付で「男性待ち」と言われたら、その場で待たずに近隣店舗の数字を見て切り替える。それだけです。
             </p>
-            <ul style="color:#cbd5e1; font-size:0.93rem; line-height:1.9;">
+            <ul style="color:var(--text-sub); font-size:0.93rem; line-height:1.9;">
                 <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（4店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>が詰まっていても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>が女性優位になっている夜がよくあります。立ち飲み感覚で回遊できる<a href="/store/asobibar-shinjuku" style="color:#f472b6;">ASOBIBAR（アソビバー）新宿</a>も、受付で並びたくない夜の逃げ道になります。</li>
                 <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタルラウンジ渋谷本店</a>・<a href="/store/ag-shibuya" style="color:#f472b6;">ag渋谷</a>に、1駅先の<a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタルラウンジ恵比寿</a>まで含めて比べられます。若いノリならag、落ち着いた会社員層なら渋谷本店か恵比寿と、その場で切り替えがききます。</li>
                 <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタルラウンジ大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>が密集していて、どこかの店舗で女性優位のタイミングが生まれやすい街です。</li>

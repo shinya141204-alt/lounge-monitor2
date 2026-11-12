@@ -69,10 +69,8 @@ _VOICE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
 _FULL_BRAND_OLG = "オリエンタルラウンジ"
 _STANDALONE_OLG_RE = re.compile(_FULL_BRAND_OLG[:6] + r"(?!ラウンジ)")
 _DURATION_STDERR_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
-_REDUNDANT_BRAND_RUBY_RE = re.compile(
-    r"(?:ORIENTAL\s*LOUNGE|オリエンタルラウンジ|ASOBIBAR|アソビバー|CLOVERS|クローバーズ|YATAKOI|ヤタコイ|ALFA|アルファ|XIX|JIS|ag)\s*[（(]\s*"
-    r"(?:ORIENTAL\s*LOUNGE|オリエンタルラウンジ|アソビバー|クローバーズ|ヤタコイ|アルファ|ジックス|シックス|キックス|ジス|アグ)\s*[）)]",
-    re.IGNORECASE,
+_SAME_KANA_RUBY_RE = re.compile(
+    r"(オリエンタルラウンジ|アグ|ジス|アソビバー|ヤタコイ|ジックス|クローバーズ|アルファ)\s*[（(]\s*\1\s*[）)]"
 )
 
 # Strip emojis, variation selectors, and decorative box/bullet glyphs before TTS synthesis
@@ -89,6 +87,9 @@ _EMOJI_STRIP_RE = re.compile(
 # Collapse brand + parenthetical reading into single spoken brand before general replacements
 _BRAND_RUBY_COLLAPSE_RULES = (
     (re.compile(r"オリエンタルラウンジ\s*[（(]\s*ORIENTAL\s*LOUNGE\s*[）)]", re.IGNORECASE), "オリエンタルラウンジ"),
+    (re.compile(r"相席ラウンジ\s*XIX\s*[（(]\s*(?:ジックス|シックス|キックス)\s*[）)]", re.IGNORECASE), "相席ラウンジジックス"),
+    (re.compile(r"相席\s*CLOVERS\s*[（(]\s*クローバーズ\s*[）)]", re.IGNORECASE), "相席クローバーズ"),
+    (re.compile(r"相席ラウンジ\s*ALFA\s*[（(]\s*アルファ\s*[）)]", re.IGNORECASE), "相席ラウンジアルファ"),
     (re.compile(r"(?<![A-Za-z0-9])ASOBIBAR\s*[（(]\s*アソビバー\s*[）)]", re.IGNORECASE), "アソビバー"),
     (re.compile(r"(?<![A-Za-z0-9])CLOVERS\s*[（(]\s*クローバーズ\s*[）)]", re.IGNORECASE), "クローバーズ"),
     (re.compile(r"(?<![A-Za-z0-9])ALFA\s*[（(]\s*アルファ\s*[）)]", re.IGNORECASE), "アルファ"),
@@ -262,6 +263,7 @@ _DOMAIN_KANJI_PHONETIC_RULES = (
     ("入る前", "はいるまえ"),
     ("入りやすい", "はいりやすい"),
     ("入れる", "はいれる"),
+    ("見られます", "みられます"),
     ("見れます", "みれます"),
     ("見比べると", "みくらべると"),
     ("見比べて", "みくらべて"),
@@ -539,6 +541,20 @@ _runtime_meta = {
     "last_duration_sec": 0.0,
     "last_cached": False,
 }
+# Memoize working fallback model per `(voice_id, requested_model)` for 30 min + 180s HTTP 429 circuit breaker
+_FALLBACK_MEMO_TTL_SEC = 1800.0
+_QUOTA_429_COOLDOWN_SEC = 180.0
+_fallback_model_memo = {}  # {(voice_id, requested_model): (working_model, expires_monotonic)}
+_quota_429_cooldown_until = 0.0
+
+
+def reset_voice_narration_state_for_tests() -> None:
+    """Reset in-memory fallback model memoization and HTTP 429 circuit breaker for deterministic unit tests."""
+    global _quota_429_cooldown_until
+    with _status_lock:
+        _fallback_model_memo.clear()
+        _quota_429_cooldown_until = 0.0
+        _runtime_meta["last_error"] = ""
 
 
 def _mask_secret(raw: str) -> str:
@@ -721,6 +737,9 @@ def set_voice_narration_config(
 
     with _status_lock:
         _runtime_meta["last_error"] = ""
+        _fallback_model_memo.clear()
+        global _quota_429_cooldown_until
+        _quota_429_cooldown_until = 0.0
 
     return get_voice_narration_status(allow_blocking=True)
 
@@ -820,6 +839,7 @@ def to_tts_phonetic_japanese(script_text: str) -> str:
     if not script_text:
         return ""
     txt = enforce_spoken_brand_rule(str(script_text))
+    txt = _SAME_KANA_RUBY_RE.sub(r"\1", txt)
     txt = _EMOJI_STRIP_RE.sub("", txt)
     # Remove markdown/quote brackets and `[` `]` (inline audio-tag delimiters in Eleven v3/v4)
     for ch in ("『", "』", "「", "」"):
@@ -832,6 +852,7 @@ def to_tts_phonetic_japanese(script_text: str) -> str:
 
     for pattern, repl in _BRAND_PHONETIC_RULES:
         txt = pattern.sub(repl, txt)
+    txt = _SAME_KANA_RUBY_RE.sub(r"\1", txt)
 
     for pattern, repl in _ROMAN_CITY_RULES:
         txt = pattern.sub(repl, txt)
@@ -996,7 +1017,7 @@ def build_reel_narration_script(ctx: dict) -> str:
         else:
             script = (
                 f"今夜の全国速報。1位は{s1_name}で女性{w1}名、男性{m1}名。"
-                f"全店の現在人数はプロフの相席ナビから3秒で見れます。"
+                f"全店の現在人数はプロフの相席ナビからすぐ見られます。"
             )
         return enforce_spoken_brand_rule(script)
 
@@ -1264,10 +1285,35 @@ def synthesize_narration_audio(
         "Accept": "audio/mpeg",
     }
 
+    global _quota_429_cooldown_until
+    now_mono = time.monotonic()
+    with _status_lock:
+        if not force_refresh and _quota_429_cooldown_until > now_mono:
+            rem_cd = int(max(1.0, _quota_429_cooldown_until - now_mono))
+            cd_msg = f"ElevenLabsレート制限クールダウン中（残り約{rem_cd}秒）のためBGMへ自動フォールバックしました。"
+            _runtime_meta["last_error"] = cd_msg
+            return {
+                "ok": False,
+                "error": cd_msg,
+                "cooldown_active": True,
+                "script_text": clean_script,
+                "phonetic_text": phonetic_text,
+                "voice_id": eff_vid,
+                "model_id": eff_model,
+            }
+        memo_entry = _fallback_model_memo.get((eff_vid, eff_model))
+        if memo_entry and memo_entry[1] > now_mono:
+            initial_model = memo_entry[0]
+        else:
+            if memo_entry:
+                _fallback_model_memo.pop((eff_vid, eff_model), None)
+            initial_model = eff_model
+
     try:
-        used_model = eff_model
-        resp = requests.post(url, json=_build_tts_body(used_model, minimal=False), headers=headers, timeout=timeout)
-        if resp.status_code in (400, 404, 422):
+        used_model = initial_model
+        use_minimal_init = (used_model != eff_model)
+        resp = requests.post(url, json=_build_tts_body(used_model, minimal=use_minimal_init), headers=headers, timeout=timeout)
+        if resp.status_code in (400, 404, 422) and not use_minimal_init:
             # Fallback 1: minimal payload for same model (drops `apply_text_normalization` / `style` if rejected)
             resp = requests.post(url, json=_build_tts_body(used_model, minimal=True), headers=headers, timeout=timeout)
         if resp.status_code in (400, 404, 422):
@@ -1279,7 +1325,17 @@ def synthesize_narration_audio(
                 if alt_resp.status_code == 200 and alt_resp.content and len(alt_resp.content) >= 512:
                     resp = alt_resp
                     used_model = alt_model
+                    with _status_lock:
+                        _fallback_model_memo[(eff_vid, eff_model)] = (alt_model, time.monotonic() + _FALLBACK_MEMO_TTL_SEC)
                     break
+                if alt_resp.status_code == 429:
+                    resp = alt_resp
+                    used_model = alt_model
+                    break
+
+        if resp.status_code == 429:
+            with _status_lock:
+                _quota_429_cooldown_until = time.monotonic() + _QUOTA_429_COOLDOWN_SEC
 
         if resp.status_code != 200 or not resp.content or len(resp.content) < 512:
             err_detail = _sanitize_error_text(resp.text if resp.status_code != 200 else "empty audio payload", eff_key)

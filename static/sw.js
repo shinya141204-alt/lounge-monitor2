@@ -1,5 +1,5 @@
 // Service Worker — Supersedes aiseki-navi-v47 .. (all generations older than CACHE_NAME below; purged automatically on activate)
-const CACHE_NAME = 'aiseki-navi-v109';
+const CACHE_NAME = 'aiseki-navi-v110';
 const SHELL_KEY = '/';
 const LIVE_FRESH_TTL_MS = 45000;
 const LIVE_MAX_STALE_MS = 600000; // Never serve live headcount HTML older than 10 minutes
@@ -20,6 +20,7 @@ const LIVE_SSR_EXACT = new Set([
   '/for-women',
   '/areas',
   '/stats',
+  '/stats/weekend-index',
   '/stats/year-end-2026',
   '/columns',
   '/oriental-lounge',
@@ -30,13 +31,14 @@ const LIVE_SSR_EXACT = new Set([
 const LIVE_SSR_PREFIXES = [
   '/price-comparison',
   '/store/',
-  '/area/'
+  '/area/',
+  '/stats/monthly/'
 ];
 const CORE_ASSETS = [
   '/static/style.css?v=20261109_2',
-  '/static/calm.css?v=42',
+  '/static/calm.css?v=43',
   '/static/portal.css?v=17',
-  '/static/app.js?v=20261110_1',
+  '/static/app.js?v=20261112_1',
   '/static/affiliate_config.js?v=18',
   '/static/manifest.json?v=3'
 ];

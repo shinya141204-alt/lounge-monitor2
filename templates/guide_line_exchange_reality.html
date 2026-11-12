@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -255,7 +256,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -285,7 +286,7 @@
         <header class="article-header">
             <span class="article-cat-tag">行動ログ×心理データ 10.6万件実測検証</span>
             <h1 class="article-title">相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜1晩で3組と話す女性の記憶容量と初デートに繋がる連絡の境界線</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年11月11日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年11月11日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -503,8 +504,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">今夜の「リアルタイム待ちゼロ店舗」を確認する</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">今夜の「リアルタイム待ちゼロ店舗」を確認する</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     全国63店舗のリアルタイム混雑人数と男女比をライブ更新中。今すぐ相席できる店舗がひと目で分かります。
                 </p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る →</a>

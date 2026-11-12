@@ -171,7 +171,7 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         self.assertIn('data-context-mode="men_glut"', html)
         self.assertIn('data-women-variant=', html)
         self.assertIn(f'/link/dating_instant?from=/store/{shibuya_slug}', html)
-        self.assertIn('/static/cta_tracker.js?v=4', html)
+        self.assertIn('/static/cta_tracker.js?v=5', html)
 
         # /api/track でブラウザからのインプレッション送信が受理されること
         tr_resp = self.client.post(
@@ -191,7 +191,7 @@ class MonetizationSmartCtaTests(unittest.TestCase):
         self.assertEqual(resp_staff.status_code, 200)
         staff_html = resp_staff.get_data(as_text=True)
         self.assertNotIn('id="store-smart-cta-card"', staff_html)
-        self.assertNotIn('/static/cta_tracker.js?v=4', staff_html)
+        self.assertNotIn('/static/cta_tracker.js?v=5', staff_html)
 
     def test_women_variant_and_for_women_top_picks_auto_promotion(self):
         """未設定直URLの間は稼働中ASP枠が選ばれ、women_beauty_clinic にASPタグが登録された瞬間に自動昇格すること"""

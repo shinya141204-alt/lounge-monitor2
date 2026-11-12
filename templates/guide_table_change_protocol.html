@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -279,7 +280,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -309,7 +310,7 @@
         <header class="article-header">
             <span class="article-cat-tag">27.6万件ログの実測から</span>
             <h1 class="article-title">相席ラウンジで席替え（チェンジ）を頼むには？言い出し方と、27.6万件のログで見る「席替えしやすい店の女性人数」</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月31日・更新：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年10月31日・更新：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -377,7 +378,7 @@
 
             <div class="highlight-box">
                 <strong style="color:#dfc496;font-size:1.02rem;">スタッフ側から見ると、早めの席替えはむしろ助かる</strong>
-                <p style="margin:8px 0 0;font-size:0.9rem;line-height:1.75;color:#e2e8f0;">
+                <p style="margin:8px 0 0;font-size:0.9rem;line-height:1.75;color:var(--text-main);">
                     「スタッフに席替えを頼むと迷惑がられるのでは？」と心配する男性は多いですが、実際はそうでもありません。<br>
                     店舗運営の立場から見ると、盛り上がっていないテーブルがそのまま続く方が困ります。女性陣が「もう疲れたから出よう」と退店してしまえば店内の女性客が減り、男性も不満を抱えて足が遠のいてしまいます。適度なタイミング（30〜45分）で回転させ、相性の良い組み合わせを見つけてもらう方がお店にとっても望ましい流れです。
                 </p>
@@ -391,19 +392,19 @@
 
             <div class="stat-grid">
                 <div class="stat-box">
-                    <div style="font-size:0.75rem;color:#94a3b8;">女性10名未満（少人数店）</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">女性10名未満（少人数店）</div>
                     <div class="stat-num pink">24.3%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">即スライド成功率（5分以内）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">即スライド成功率（5分以内）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.75rem;color:#94a3b8;">女性20名以上（大型店）</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">女性20名以上（大型店）</div>
                     <div class="stat-num">91.2%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">即スライド成功率（平均3.8分）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">即スライド成功率（平均3.8分）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.75rem;color:#94a3b8;">切り替えの目安時間</div>
+                    <div style="font-size:0.75rem;color:var(--text-sub);">切り替えの目安時間</div>
                     <div class="stat-num">35〜40分</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">双方の疲れが出る前の区切り</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">双方の疲れが出る前の区切り</div>
                 </div>
             </div>
 
@@ -541,8 +542,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <h3 style="margin:0 0 8px;color:#f8fafc;font-size:1.15rem;">いま席替え候補が揃っている店舗を確認する</h3>
-                <p style="margin:0;font-size:0.88rem;color:#94a3b8;">
+                <h3 style="margin:0 0 8px;color:var(--text-main);font-size:1.15rem;">いま席替え候補が揃っている店舗を確認する</h3>
+                <p style="margin:0;font-size:0.88rem;color:var(--text-sub);">
                     女性10名以上の基準を満たし、待ち時間が出にくい全国店舗の現在の人数を更新しています。
                 </p>
                 <a href="/" class="cta-btn">全国ラウンジのリアルタイム人数を見る ›</a>

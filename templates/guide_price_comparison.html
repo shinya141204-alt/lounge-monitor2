@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -273,7 +274,7 @@
             color: #f1e3cb;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -304,10 +305,10 @@
         <header class="article-header">
             <span class="article-cat-tag">料金構造の読み方</span>
             <h1 class="article-title">相席ラウンジの10分課金と待機料の仕組み｜4時間帯の料金階段と「女性比80%でも座れない店」を見抜く母数ライン</h1>
-            <p style="font-size:0.8rem;color:#9b978f;margin:0;">公開日：2026年10月26日・更新：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年10月26日・更新：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
-        <figure style="margin: 0 0 26px 0; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.10); background: #16171c;">
+        <figure style="margin: 0 0 26px 0; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.10); background: var(--card-bg-2);">
             <picture>
                 <source srcset="/static/eyecatch-price-comparison.webp?v=3" type="image/webp">
                 <img src="/static/eyecatch-price-comparison.jpg?v=3" alt="国内61店舗の料金・開催中イベント・現在人数を横並びにした比較ボードの画面" width="1280" height="720" fetchpriority="high" decoding="async" style="width: 100%; height: auto; display: block;">
@@ -466,7 +467,7 @@
                 オリエンタルラウンジ・ag・JISや地場ラウンジでは、「全国17店舗限定の北海道フェア」「店舗別の男性定額割・早割」「女性向けスイーツ・ギフト企画」などのイベントが頻繁に開催されます。<br>
                 ただ、同じブランドでも「渋谷本店はやっているけれど近隣店は対象外」というケースが少なくありません。比較ボードでは<strong>各イベントの対象店舗リストを1店舗単位で照合</strong>し、対象外の店舗に紛らわしい表示が出ないよう整理したうえで、<strong>「そのイベントで今女性が何人集まっているか」</strong>をあわせて確認できるようにしています。イベントで女性が増えれば母数ラインを越えやすくなり、待機メーターが回る時間が短くなる。料金とイベントを同じ画面に並べているのはそのためです。
             </p>
-            <p style="font-size:0.86rem;color:#9b978f;background:#16171c;padding:14px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+            <p style="font-size:0.86rem;color:var(--text-sub);background:var(--card-bg-2);padding:14px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
                 ※ご注意：掲載している料金システム・営業時間・1名入店条件・イベント開催有無は公開データをもとに集計していますが、繁忙期・祝前日・特別営業期間や店舗都合により予告なく変更・終了となる場合があります。ご来店の際は、比較ボード内の「公式サイトで最新条件を確認 ↗」リンクから必ず各店舗の公式ホームページ・公式アプリをご確認ください。
             </p>
 
@@ -482,8 +483,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.08rem;font-weight:800;color:#ebe8e3;">国内61店舗の料金枠・開催中イベント・現在人数をいま見る</div>
-                <p style="font-size:0.85rem;color:#9b978f;margin:8px 0 0 0;">
+                <div style="font-size:1.08rem;font-weight:800;color:var(--text-main);">国内61店舗の料金枠・開催中イベント・現在人数をいま見る</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     新宿・渋谷・梅田・難波・名古屋・福岡・広島・岡山・札幌・仙台など全国主要エリアをワンタップ切り替え＆毎分自動更新。
                 </p>
                 <a href="/price-comparison" data-cushion="1" class="cta-btn">ライブ比較ボードを開く ›</a>

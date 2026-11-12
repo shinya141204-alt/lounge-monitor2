@@ -49,31 +49,67 @@ def _score_article_opportunities(signals: dict) -> list[dict]:
             "target_files": ["templates/guide_<slug>.html", "routes/portal_bp.py", "templates/columns.html"],
         })
 
-    # 2. 直近ドーム・アリーナ公演 × 終演サージ特集
+    # 2. 直近ドーム・アリーナ公演 × 終演サージ特集（音楽ライブ・ドームツアーを優先ランク付け）
     if arenas:
-        ev = arenas[0]
+        def _arena_priority(item: dict) -> tuple:
+            cat = str(item.get("category") or item.get("event_type") or "").lower()
+            t_str = str(item.get("title") or item.get("event_title") or "")
+            is_music = (
+                cat in ("music", "concert", "live")
+                or any(kw in t_str.upper() for kw in ("LIVE", "TOUR", "DOME", "CONCERT", "ARENA", "FES"))
+                or any(kw in t_str for kw in ("ドーム", "ライブ", "ツアー", "コンサート", "公演"))
+            ) and not any(sp in t_str for sp in ("ラグビー", "サッカー", "野球", "プロレス", "ボクシング"))
+            att = int(item.get("expected_attendance") or item.get("capacity") or 0)
+            return (1 if is_music else 0, att)
+
+        ranked_arenas = sorted(arenas, key=_arena_priority, reverse=True)
+        ev = ranked_arenas[0]
         vname = ev.get("venue_name") or ev.get("venue") or "主要ドーム"
         etitle = ev.get("title") or ev.get("event_title") or "大型ライブ"
         edate = ev.get("event_date") or ev.get("date") or ""
+        is_top_music = _arena_priority(ev)[0] == 1
         candidates.append({
             "type": "event_surge_article",
             "skill": "/article",
-            "score": 135.0,
+            "score": 135.0 if is_top_music else 95.0,
             "title": f"ドーム・アリーナ終演21時台のターミナル相席サージ検証（直近注目: {edate} {vname}）",
-            "rationale": f"直近30日以内に {len(arenas)} 件の大型公演予定あり（直近: {vname}『{etitle}』）。競合サイトが持たない独自イベント相関モートを検索流入へ転換可能。",
+            "rationale": f"直近30日以内に {len(arenas)} 件の大型公演予定あり（最優先音楽公演: {vname}『{etitle}』）。競合サイトが持たない独自イベント相関モートを検索流入へ転換可能。",
             "target_files": ["templates/guide_<slug>.html", "arena_calendar.py"],
         })
 
-    # 3. Search Console 高表示・低順位クエリ（任意投入時）
-    for q in gsc[:5]:
-        if q["impressions"] >= 50 and 4.0 <= q["position"] <= 20.0:
+    # 3. Search Console クエリ＆ページ（表示10回以上・3〜30位圏内、特にクリック0件や『レビュー・評判』系検索意図を優先抽出）
+    for q in gsc[:15]:
+        impr = float(q.get("impressions") or 0)
+        pos = float(q.get("position") or 0)
+        clicks = float(q.get("clicks") or 0)
+        q_text = str(q.get("query") or "")
+        if impr >= 10 and 3.0 <= pos <= 30.0:
+            is_review_intent = any(w in q_text for w in ("レビュー", "評判", "口コミ", "客層"))
+            zero_click_bonus = 1.35 if clicks == 0 else 1.0
+            intent_mult = 2.6 if is_review_intent else 1.6
             candidates.append({
                 "type": "seo_rewrite_or_new",
-                "skill": "/article",
-                "score": round(q["impressions"] * 0.8, 1),
-                "title": f"検索クエリ『{q['query']}』特化のデータ検証セクション強化",
-                "rationale": f"GSC表示 {int(q['impressions'])}回・平均順位 {q['position']:.1f}位（あと少しでTOP3圏内）。",
-                "target_files": ["templates/columns.html", "routes/portal_bp.py"],
+                "skill": "/ui" if is_review_intent else "/article",
+                "score": round(impr * intent_mult * zero_click_bonus, 1),
+                "title": f"検索クエリ『{q_text}』のSERPタイトル＆一次データ検証セクション強化",
+                "rationale": f"GSC表示 {int(impr)}回・クリック {int(clicks)}件・平均順位 {pos:.1f}位（{'『レビュー/評判』検索意図に対する実測データ提示で即CTR改善可能' if is_review_intent else 'あと少しで上位流入圏内'}）。",
+                "target_files": ["templates/store_detail.html", "templates/columns.html", "routes/portal_bp.py"],
+            })
+
+    gsc_pages = signals.get("gsc_top_pages") or []
+    for pg in gsc_pages[:10]:
+        p_impr = float(pg.get("impressions") or 0)
+        p_clicks = float(pg.get("clicks") or 0)
+        p_pos = float(pg.get("position") or 0)
+        p_url = str(pg.get("page") or "")
+        if p_impr >= 10 and p_clicks == 0 and 3.0 <= p_pos <= 25.0:
+            candidates.append({
+                "type": "seo_page_ctr_rewrite",
+                "skill": "/ui",
+                "score": round(p_impr * 2.2, 1),
+                "title": f"GSCゼロクリック上位ページ（`{p_url}`）のメタディスクリプション＆初出カナ・構造化見出し改善",
+                "rationale": f"GSCページ別で表示 {int(p_impr)}回・クリック 0件・平均順位 {p_pos:.1f}位。タイトルと冒頭サマリーの検索意図整合で即クリック獲得が見込める。",
+                "target_files": ["templates/store_detail.html", "routes/portal_bp.py"],
             })
 
     candidates.sort(key=lambda x: -x["score"])

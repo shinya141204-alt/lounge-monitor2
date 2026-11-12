@@ -60,6 +60,7 @@ REEL_TEMPLATE_KEYS = (
     "area_battle",
     "tiktok_gap_shock",
     "ladies_zero_wait",
+    "tiktok_ladies_real",
     "tiktok_midnight_cliff",
 )
 
@@ -68,6 +69,7 @@ REEL_TEMPLATE_LABELS: Dict[str, str] = {
     "area_battle": "3大エリア徹底対決 (area_battle)",
     "tiktok_gap_shock": "同駅徒歩4分ギャップ実証 (tiktok_gap_shock)",
     "ladies_zero_wait": "女子得・受付待ちゼロ速報 (ladies_zero_wait)",
+    "tiktok_ladies_real": "女子組の2軒目リアル男性先行 (tiktok_ladies_real)",
     "tiktok_midnight_cliff": "23時20分・終電後の真実 (tiktok_midnight_cliff)",
 }
 
@@ -253,6 +255,8 @@ def infer_reel_type_from_caption(caption: str) -> str:
         return "tiktok_midnight_cliff"
     if any(w in c for w in ("新宿 vs 梅田", "徹底対決", "激戦区", "3大激戦区")):
         return "area_battle"
+    if any(w in c for w in ("女性70%超え", "女子2人組がいま受付待ちゼロ", "夜カフェ代わり", "女子会の2軒目メモ")):
+        return "tiktok_ladies_real"
     if any(w in c for w in ("女子ペア", "待ち0", "待ちほぼ0", "男性先行", "女子得")):
         return "ladies_zero_wait"
     return "live_top5"
@@ -1401,7 +1405,7 @@ def compute_loop_feedback(days: int = 28, allow_blocking: bool = False) -> Dict[
     reel_bandit_table: List[Dict[str, Any]] = []
     reel_template_boosts: Dict[str, float] = {}
 
-    if total_scored_reels >= 2:
+    if total_scored_reels >= 6:
         all_q = [s for vals in tpl_scores_raw.values() for s in vals]
         prior_mean = sum(all_q) / float(len(all_q))
         ucb_by_tpl: Dict[str, float] = {}

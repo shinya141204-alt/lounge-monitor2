@@ -1504,16 +1504,22 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     sns_style_boosts = {}
     if scored_candidates:
         top_st = max(scored_candidates, key=lambda k: style_inflow_score[k])
+        top_pts = style_inflow_score.get(top_st, 0)
         for st in candidate_styles:
             pts = style_inflow_score.get(st, 0)
-            if st == top_st and pts > 0:
+            if st == top_st and pts >= 3:
                 sns_style_boosts[st] = 4
+            elif st == top_st and pts >= 2:
+                sns_style_boosts[st] = 2
             elif pts >= 3:
                 sns_style_boosts[st] = 2
             elif pts >= 1:
                 sns_style_boosts[st] = 1
             elif style_usage_counts.get(st, 0) >= 4 and pts == 0:
                 sns_style_boosts[st] = -2
+        if top_pts < 3:
+            # Blend cold-start exploration when total inflow evidence is below 3 weighted points (e.g. 1 accidental visit)
+            sns_style_boosts.setdefault("ai_live_adlib", 2)
     else:
         # Cold-start smart rotation: encourage under-used high-humanity styles & AI live ad-lib
         sns_style_boosts["ai_live_adlib"] = 3

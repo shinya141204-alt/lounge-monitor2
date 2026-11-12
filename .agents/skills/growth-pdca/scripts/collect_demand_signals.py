@@ -61,12 +61,44 @@ def _parse_gsc_csv(csv_path: str) -> list[dict]:
                 pos = row.get("掲載順位") or row.get("Position") or row.get("position") or "0"
                 if not q:
                     continue
-                out.append({
-                    "query": q.strip(),
-                    "clicks": float(str(clicks).replace(",", "") or 0),
-                    "impressions": float(str(impr).replace(",", "") or 0),
-                    "position": float(str(pos).replace(",", "") or 0),
-                })
+                try:
+                    out.append({
+                        "query": q.strip(),
+                        "clicks": float(str(clicks).replace(",", "") or 0),
+                        "impressions": float(str(impr).replace(",", "") or 0),
+                        "position": float(str(pos).replace(",", "") or 0),
+                    })
+                except (ValueError, TypeError):
+                    continue
+        out.sort(key=lambda x: (-x["impressions"], -x["clicks"]))
+    except Exception:
+        return []
+    return out[:50]
+
+
+def _parse_gsc_pages_csv(csv_path: str) -> list[dict]:
+    if not csv_path or not os.path.exists(csv_path):
+        return []
+    out = []
+    try:
+        with open(csv_path, "r", encoding="utf-8-sig") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                page = row.get("上位のページ") or row.get("Top pages") or row.get("page") or ""
+                clicks = row.get("クリック数") or row.get("Clicks") or row.get("clicks") or "0"
+                impr = row.get("表示回数") or row.get("Impressions") or row.get("impressions") or "0"
+                pos = row.get("掲載順位") or row.get("Position") or row.get("position") or "0"
+                if not page:
+                    continue
+                try:
+                    out.append({
+                        "page": page.strip(),
+                        "clicks": float(str(clicks).replace(",", "") or 0),
+                        "impressions": float(str(impr).replace(",", "") or 0),
+                        "position": float(str(pos).replace(",", "") or 0),
+                    })
+                except (ValueError, TypeError):
+                    continue
         out.sort(key=lambda x: (-x["impressions"], -x["clicks"]))
     except Exception:
         return []
@@ -191,7 +223,8 @@ def main() -> int:
             "recommended_actions": (pdca_diag.get("weekly_actions") or pdca_diag.get("actions") or [])[:5],
             "monetization_gaps": (pdca_diag.get("monetization_gaps") or [])[:5],
         },
-        "gsc_top_queries": _parse_gsc_csv(args.gsc_csv) or None,
+        "gsc_top_queries": _parse_gsc_csv(args.gsc_csv or str(reports_dir / "gsc_queries_latest.csv")) or None,
+        "gsc_top_pages": _parse_gsc_pages_csv(str(reports_dir / "gsc_pages_latest.csv")) or None,
     }
 
     dated_path = reports_dir / f"signals_{now_jst.strftime('%Y%m%d')}.json"

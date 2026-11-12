@@ -193,7 +193,31 @@ def seo_name(store_name: str) -> str:
     if m_yata:
         rest = (m_yata.group(1) or "").strip()
         return f"ヤタコイ {rest}" if rest else "ヤタコイ"
+    m_xix = re.match(r"^XIX(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_xix:
+        rest = (m_xix.group(1) or "").strip()
+        return f"相席ラウンジXIX {rest}" if rest else "相席ラウンジXIX"
+    m_clovers = re.match(r"^CLOVERS(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_clovers:
+        rest = (m_clovers.group(1) or "").strip()
+        return f"相席CLOVERS {rest}" if rest else "相席CLOVERS"
+    m_alfa = re.match(r"^ALFA(?:\s+(.*))?$", s, flags=re.IGNORECASE)
+    if m_alfa:
+        rest = (m_alfa.group(1) or "").strip()
+        return f"相席ラウンジALFA {rest}" if rest else "相席ラウンジALFA"
     return s
+
+
+def seo_name_with_kana(raw_name: str) -> str:
+    """Return canonical Japanese store name ensuring first-mention katakana reading for Latin sub-brands (`AGENTS.md §3`)."""
+    base = seo_name(raw_name)
+    if "XIX" in base and "ジックス" not in base:
+        return base.replace("相席ラウンジXIX", "相席ラウンジXIX（ジックス）", 1)
+    if "CLOVERS" in base and "クローバーズ" not in base:
+        return base.replace("相席CLOVERS", "相席CLOVERS（クローバーズ）", 1)
+    if "ALFA" in base and "アルファ" not in base:
+        return base.replace("相席ラウンジALFA", "相席ラウンジALFA（アルファ）", 1)
+    return base
 
 
 _seo_reverse_cache = {"master_id": None, "map": {}}
@@ -250,13 +274,22 @@ def _resolve_alias_without_slug_lookup(name_str: str) -> str:
     if s_clean in ("ヤタコイ", "YATAKOI") or (s_clean.startswith("ヤタコイ") and ("梅田" in s_clean or "UMEDA" in s_clean.upper())):
         if not master or "YATAKOI UMEDA" in master:
             return "YATAKOI UMEDA"
-    if s_clean in ("相席CLOVERS", "CLOVERS") or (s_clean.startswith("相席CLOVERS") and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())):
+    if s_clean in ("相席CLOVERS", "相席CLOVERS（クローバーズ）", "CLOVERS", "クローバーズ", "クローバー") or (
+        (s_clean.startswith(("相席CLOVERS", "CLOVERS", "クローバーズ", "クローバー")) or "クローバー" in s_clean)
+        and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())
+    ):
         if not master or "CLOVERS HIROSHIMA" in master:
             return "CLOVERS HIROSHIMA"
-    if s_clean in ("相席ラウンジALFA", "ALFA") or (s_clean.startswith("相席ラウンジALFA") and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())):
+    if s_clean in ("相席ラウンジALFA", "相席ラウンジALFA（アルファ）", "ALFA", "アルファ") or (
+        s_clean.startswith(("相席ラウンジALFA", "ALFA", "アルファ"))
+        and ("広島" in s_clean or "HIROSHIMA" in s_clean.upper())
+    ):
         if not master or "ALFA HIROSHIMA" in master:
             return "ALFA HIROSHIMA"
-    if s_clean in ("相席ラウンジXIX", "XIX") or (s_clean.startswith("相席ラウンジXIX") and ("岡山" in s_clean or "OKAYAMA" in s_clean.upper())):
+    if s_clean in ("相席ラウンジXIX", "相席ラウンジXIX（ジックス）", "XIX", "ジックス") or (
+        s_clean.startswith(("相席ラウンジXIX", "XIX", "ジックス"))
+        and ("岡山" in s_clean or "OKAYAMA" in s_clean.upper())
+    ):
         if not master or "XIX OKAYAMA" in master:
             return "XIX OKAYAMA"
     return s_clean

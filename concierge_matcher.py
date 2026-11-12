@@ -435,13 +435,13 @@ def _brand_display_label(sname: str, info: dict) -> str:
     if brand == "JIS":
         return "JIS（ジス）"
     if brand == "XIX":
-        return "相席ラウンジXIX"
+        return "相席ラウンジXIX（ジックス）"
     if brand == "ヤタコイ":
         return "ヤタコイ"
     if brand == "CLOVERS":
-        return "相席CLOVERS"
+        return "相席CLOVERS（クローバーズ）"
     if brand == "ALFA":
-        return "相席ラウンジALFA"
+        return "相席ラウンジALFA（アルファ）"
     if brand == "ASOBIBAR":
         return "ASOBIBAR（アソビバー）"
     return "オリエンタルラウンジ" if sname.startswith("OLG ") else (brand or "相席ラウンジ")

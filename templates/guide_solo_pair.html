@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <title>相席ラウンジは1人で入れる？ソロと友達2人、どっちで行くかの決め方｜相席ナビ</title>
@@ -227,7 +228,7 @@
             margin-top: 10px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -388,7 +389,7 @@
             </p>
 
             <div class="cta-box">
-                <h3 style="margin: 0; color: #fff;">今夜入りやすい店舗をリアルタイムで確認する</h3>
+                <h3 style="margin: 0; color: var(--text-main);">今夜入りやすい店舗をリアルタイムで確認する</h3>
                 <p style="font-size: 0.86rem; margin: 8px 0 0;">女性の割合が高くて待ち時間の少ない店舗を一覧で確認できます</p>
                 <a href="/" class="cta-btn">リアルタイム人数ランキングを見る ›</a>
             </div>

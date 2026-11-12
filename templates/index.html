@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=42" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261110_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=43" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261112_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -794,19 +794,20 @@
                         <!-- Card Actions -->
                         <div class="card-actions">
                             <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定">
-                                <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                     stroke-linecap="round" stroke-linejoin="round">
                                     <polygon
                                         points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
                                     </polygon>
                                 </svg>
                             </button>
-                            <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析">
-                                <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <button class="analysis-btn" aria-label="分析（曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析">
+                                <svg class="chart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="20" x2="18" y2="10"></line>
                                     <line x1="12" y1="20" x2="12" y2="4"></line>
                                     <line x1="6" y1="20" x2="6" y2="14"></line>
                                 </svg>
+                                <span class="analysis-btn-label">分析</span>
                             </button>
                         </div>
                         <div class="stats-group">
@@ -911,17 +912,18 @@
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
-                                        <svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <button class="pin-btn" aria-label="お気に入り（{{ s.ssr_title }}）" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                        <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                         </svg>
                                     </button>
-                                    <button class="analysis-btn" aria-label="詳細分析" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
-                                        <svg class="chart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <button class="analysis-btn" aria-label="分析（{{ s.ssr_title }}の曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                        <svg class="chart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                             <line x1="18" y1="20" x2="18" y2="10"></line>
                                             <line x1="12" y1="20" x2="12" y2="4"></line>
                                             <line x1="6" y1="20" x2="6" y2="14"></line>
                                         </svg>
+                                        <span class="analysis-btn-label">分析</span>
                                     </button>
                                 </div>
                                 <div class="stats-group">
@@ -1187,6 +1189,7 @@
                             var pb = item.querySelector('.pin-btn');
                             if (pb) {
                                 pb.classList.add('active');
+                                if (d.t || d.n) pb.setAttribute('aria-label', 'お気に入り（' + (d.t || d.n) + '）');
                                 pb.onclick = function (ev) {
                                     ev.stopPropagation();
                                     if (window.togglePin) window.togglePin(d.n);
@@ -1194,6 +1197,7 @@
                             }
                             var ab = item.querySelector('.analysis-btn');
                             if (ab) {
+                                if (d.t || d.n) ab.setAttribute('aria-label', '分析（' + (d.t || d.n) + 'の曜日・時間帯別データ）');
                                 ab.onclick = function (ev) {
                                     ev.stopPropagation();
                                     if (window.openModal) window.openModal(d.n);
@@ -2893,7 +2897,7 @@
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261110_1" defer></script>
+    <script src="/static/app.js?v=20261112_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2909,7 +2913,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=109', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=110', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {
@@ -2932,7 +2936,7 @@
         }
     </script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=4"></script>
+    <script defer src="/static/cta_tracker.js?v=5"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

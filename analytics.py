@@ -26,6 +26,7 @@ _JST = datetime.timezone(datetime.timedelta(hours=9))
 
 ALLOWED_EVENTS = {
     'page_view',             # 記事・ポータルページの閲覧（サーバー側で記録）
+    'human_pv',              # JS実行済みの実ブラウザページ閲覧（非JSクローラ分離用ベースライン）
     'affiliate_click',       # /link/<id> 経由のアフィリエイトクリック（サーバー側で記録）
     'affiliate_impression',  # 画面内（IntersectionObserver）に表示されたPR枠インプレッション
     'cushion_click',         # コラム・診断等から2ステップ内部クッション（/grooming・/for-women）への遷移
@@ -346,6 +347,20 @@ def normalize_sister_bridge_label(raw_label: str) -> str:
     return f"{raw_area}:{trig}:{aud}"
 
 
+def normalize_human_pv_label(raw_label: str) -> str:
+    """Normalize JS-verified human pageview path (`/...`, max 80 chars, stripping query/hash)."""
+    import re
+    s = sanitize_generic_track_label(raw_label)
+    p = s.split('?', 1)[0].split('#', 1)[0].strip() or '/'
+    if not p.startswith('/'):
+        p = '/' + p
+    if len(p) > 1:
+        p = p.rstrip('/')
+    if '..' in p or '\\' in p or not re.fullmatch(r'/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?', p):
+        return ''
+    return p[:80]
+
+
 _STORE_TRACK_EVENTS = ('store_open', 'map_cafe', 'map_bar', 'official_click', 'vote', 'vote_wait', 'watch_intent')
 _STORE_SUFFIX_EVENTS = ('vote', 'vote_wait', 'watch_intent')
 
@@ -500,13 +515,20 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
         return 'sister_bridge_imp'
     if ev == 'sister_bridge_click':
         return 'sister_bridge_clk'
+    if ev == 'human_pv':
+        return 'human_pv'
     return ''
 
 
 def track(event, label='', _now_jst=None):
     if event not in ALLOWED_EVENTS:
         return False
-    if event == 'affiliate_impression':
+    if event == 'human_pv':
+        norm_lbl = normalize_human_pv_label(label)
+        if not norm_lbl:
+            return False
+        label = norm_lbl
+    elif event == 'affiliate_impression':
         norm_lbl = normalize_affiliate_impression_label(label)
         if not norm_lbl:
             return False
@@ -1008,7 +1030,7 @@ def describe_inflow_tag(tag: str) -> str:
 def describe_label(event, raw_label):
     """プログラム用のパスやIDを直感的な日本語名称に変換する。"""
     label = (raw_label or '').strip()
-    if event == 'page_view':
+    if event in ('page_view', 'human_pv'):
         if label in _PAGE_TITLES:
             return {'title': _PAGE_TITLES[label], 'sub': label, 'href': label}
         if label.startswith('/guide/'):
@@ -1356,6 +1378,7 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
         sub_pv_by_h[h] = max(0, pv_h - hb.get('pv_top', 0))
 
     pv_total = sum(pv_by_h.values())
+    human_pv_total = sum(by_h[h].get('human_pv', 0) for h in range(24))
     sub_pv_total = sum(sub_pv_by_h.values())
     store_open_total = sum(by_h[h].get('store_open', 0) for h in range(24))
     cushion_total = sum(by_h[h].get('cushion_click', 0) for h in range(24))
@@ -1395,8 +1418,8 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
         else:
             lead_surface = '-'
 
-        slot_ctr_h = min(100.0, round((m_clk_h / imp_h) * 100, 2)) if imp_h > 0 else None
-        pv_ctr_h = min(100.0, round((clk_h / pv_h) * 100, 2)) if pv_h > 0 else None
+        slot_ctr_h = round((m_clk_h / imp_h) * 100, 2) if imp_h > 0 else None
+        pv_ctr_h = round((clk_h / pv_h) * 100, 2) if pv_h > 0 else None
 
         hours_list.append({
             'hour': h,
@@ -1405,6 +1428,7 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
             'time_range': f"{h:02d}:00-{h:02d}:59",
             'zone_key': _hour_zone_key(h),
             'pv': pv_h,
+            'human_pv': hb.get('human_pv', 0),
             'pv_top': hb.get('pv_top', 0),
             'sub_pv': sub_h,
             'pv_guide': hb.get('pv_guide', 0),
@@ -1412,6 +1436,9 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
             'pv_concierge': hb.get('pv_concierge', 0),
             'pv_women': hb.get('pv_women', 0),
             'pv_grooming': hb.get('pv_grooming', 0),
+            'pv_price': hb.get('pv_price', 0),
+            'pv_stats': hb.get('pv_stats', 0),
+            'pv_other': hb.get('pv_other', 0),
             'store_open': hb.get('store_open', 0),
             'cushion_click': hb.get('cushion_click', 0),
             'aff_imp': imp_h,
@@ -1475,8 +1502,8 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
             'aff_imp': z_imp,
             'aff_click': z_clk,
             'click_share_pct': round((z_clk / aff_clk_total) * 100, 1) if aff_clk_total > 0 else 0.0,
-            'slot_ctr_pct': min(100.0, round((z_mclk / z_imp) * 100, 2)) if z_imp > 0 else None,
-            'pv_ctr_pct': min(100.0, round((z_clk / z_pv) * 100, 2)) if z_pv > 0 else None,
+            'slot_ctr_pct': round((z_mclk / z_imp) * 100, 2) if z_imp > 0 else None,
+            'pv_ctr_pct': round((z_clk / z_pv) * 100, 2) if z_pv > 0 else None,
             'top_slot_title': z_top_slot,
             'lead_surface': z_lead_surface,
         })
@@ -1513,6 +1540,7 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
         'label': seg_label,
         'active_days_count': active_count,
         'pv_total': pv_total,
+        'human_pv_total': human_pv_total,
         'sub_pv_total': sub_pv_total,
         'store_open_total': store_open_total,
         'cushion_click_total': cushion_total,
@@ -1523,8 +1551,8 @@ def _build_hourly_segment(seg_key: str, seg_label: str, entries: list, imp_days_
         'sns_inflow_total': sns_inflow_total,
         'vote_total': vote_total,
         'action_total': action_total,
-        'slot_ctr_pct': min(100.0, round((measurable_clk_total / aff_imp_total) * 100, 2)) if aff_imp_total > 0 else None,
-        'pv_ctr_pct': min(100.0, round((aff_clk_total / pv_total) * 100, 2)) if pv_total > 0 else None,
+        'slot_ctr_pct': round((measurable_clk_total / aff_imp_total) * 100, 2) if aff_imp_total > 0 else None,
+        'pv_ctr_pct': round((aff_clk_total / pv_total) * 100, 2) if pv_total > 0 else None,
         'hours': hours_list,
         'zones': zones_list,
         'peak_pv_hours': peak_pv_hours,
@@ -1714,6 +1742,7 @@ def summary(days=7, allow_blocking=True):
         by_label_pretty[e] = pretty_list
 
     pv_total = by_event.get('page_view', 0)
+    human_pv_total = by_event.get('human_pv', 0)
     store_open_total = by_event.get('store_open', 0)
     aff_total = by_event.get('affiliate_click', 0)
     aff_impressions_total = by_event.get('affiliate_impression', 0)
@@ -1735,35 +1764,11 @@ def summary(days=7, allow_blocking=True):
                 cushion_by_source[src_p] += int(cnt or 0)
 
     imp_days = {d for (d, e, _l), c in totals.items() if e == 'affiliate_impression' and c > 0 and d >= start}
-    aff_clicks_measurable = sum(
-        c for (d, e, _l), c in totals.items()
-        if e == 'affiliate_click' and d >= start and d in imp_days
-    )
-
-    funnel = {
-        'pv_total': pv_total,
-        'article_views': article_views,
-        'store_open_total': store_open_total,
-        'engagement_total': engagement_total,
-        'engagement_rate_pct': min(100.0, round((engagement_total / pv_total) * 100, 1)) if pv_total > 0 else 0.0,
-        'action_total': action_total,
-        'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
-        'aff_total': aff_total,
-        'aff_impressions_total': aff_impressions_total,
-        'aff_clicks_measurable': aff_clicks_measurable,
-        'cushion_clicks_total': cushion_clicks_total,
-        'aff_ctr_pct': round((aff_total / pv_total) * 100, 2) if pv_total > 0 else 0.0,
-        'aff_slot_ctr_pct': min(100.0, round((aff_clicks_measurable / aff_impressions_total) * 100, 2)) if aff_impressions_total > 0 else 0.0,
-        'map_total': map_total,
-        'official_total': official_total,
-        'sns_total': sns_total,
-        'share_total': share_total,
-        'vote_total': vote_total,
-    }
 
     # Build Slot x Surface CTR breakdown joining `affiliate_impression` and `affiliate_click`
     surface_imp = defaultdict(int)
     surface_clk = defaultdict(int)
+    measurable_aff_clicks_by_slot = defaultdict(int)
     try:
         import affiliate_manager as _am_ctr
     except Exception:
@@ -1791,7 +1796,36 @@ def summary(days=7, allow_blocking=True):
         cid = _am_ctr.canonical_slot_id(s_part) if _am_ctr else s_part.lower()
         surf = normalize_cta_surface(p_part)
         if cid and surf != '/stats':
-            surface_clk[(cid, surf)] += int(cnt or 0)
+            c_int = int(cnt or 0)
+            surface_clk[(cid, surf)] += c_int
+            if imp_days:
+                measurable_aff_clicks_by_slot[cid] += c_int
+
+    aff_clicks_measurable = sum(measurable_aff_clicks_by_slot.values()) if imp_days else 0
+    aff_impressions_measurable = sum(surface_imp.values())
+
+    funnel = {
+        'pv_total': pv_total,
+        'human_pv_total': human_pv_total,
+        'article_views': article_views,
+        'store_open_total': store_open_total,
+        'engagement_total': engagement_total,
+        'engagement_rate_pct': min(100.0, round((engagement_total / pv_total) * 100, 1)) if pv_total > 0 else 0.0,
+        'action_total': action_total,
+        'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
+        'aff_total': aff_total,
+        'aff_impressions_total': aff_impressions_total,
+        'aff_clicks_measurable': aff_clicks_measurable,
+        'cushion_clicks_total': cushion_clicks_total,
+        'aff_ctr_pct': round((aff_total / pv_total) * 100, 2) if pv_total > 0 else 0.0,
+        'aff_slot_ctr_pct': round((aff_clicks_measurable / aff_impressions_measurable) * 100, 2) if aff_impressions_measurable > 0 else 0.0,
+        'aff_slot_ctr_anomaly': bool(aff_impressions_measurable > 0 and aff_clicks_measurable > aff_impressions_measurable),
+        'map_total': map_total,
+        'official_total': official_total,
+        'sns_total': sns_total,
+        'share_total': share_total,
+        'vote_total': vote_total,
+    }
 
     cta_surface_ctr = []
     all_pairs = {
@@ -1812,7 +1846,8 @@ def summary(days=7, allow_blocking=True):
             'title': desc['title'],
             'impressions': imp_c,
             'clicks': clk_c,
-            'ctr_pct': min(100.0, round((clk_c / imp_c) * 100, 2)) if imp_c > 0 else 0.0,
+            'ctr_pct': round((clk_c / imp_c) * 100, 2) if imp_c > 0 else 0.0,
+            'ctr_anomaly': bool(imp_c > 0 and clk_c > imp_c),
         })
 
     # Estimated revenue simulation:
@@ -1868,6 +1903,7 @@ def summary(days=7, allow_blocking=True):
     for d in sorted_days:
         evs = by_day.get(d, {})
         dpv = evs.get('page_view', 0)
+        dhpv = evs.get('human_pv', 0)
         dopen = evs.get('store_open', 0)
         daff = evs.get('affiliate_click', 0)
         dmap = evs.get('map_cafe', 0) + evs.get('map_bar', 0)
@@ -1890,6 +1926,7 @@ def summary(days=7, allow_blocking=True):
             'is_fri_sat': is_fri_sat,
             'is_weekend': is_weekend,
             'pv': dpv,
+            'human_pv': dhpv,
             'store_open': dopen,
             'affiliate': daff,
             'map': dmap,
@@ -1905,6 +1942,7 @@ def summary(days=7, allow_blocking=True):
         'by_label': by_label_sorted,
         'all_by_label': {e: dict(v) for e, v in by_label.items()},
         'by_label_pretty': by_label_pretty,
+        'measurable_aff_clicks_by_slot': dict(measurable_aff_clicks_by_slot),
         'by_day': {d: dict(v) for d, v in sorted(by_day.items(), reverse=True)},
         'daily_series': daily_series,
         'funnel': funnel,
@@ -2026,6 +2064,8 @@ def reset_for_tests():
         turbo_store.clear_rate_limit('aff_clk_ip')
         turbo_store.clear_rate_limit('api_track')
         turbo_store.clear_rate_limit('api_track_ip')
+        turbo_store.clear_rate_limit('pv_ip_hp')
+        turbo_store.clear_rate_limit('pv_ip_nohp')
         turbo_store.clear_rate_limit('hashigo_intent_ip')
         turbo_store.clear_rate_limit('push_sub_ip')
         turbo_store.clear_rate_limit('push_unsub_ip')

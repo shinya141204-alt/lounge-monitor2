@@ -47,6 +47,23 @@
     --cm-ok-text: #6ee7b7;
     --cm-wait-bg: rgba(251, 191, 36, 0.14);
     --cm-wait-text: #fcd34d;
+
+    /* 記事・統計・ポータルページ共通セマンティックエイリアス（style.css 非読み込みページでも :root で解決保証） */
+    --bg-color: var(--calm-bg);
+    --bg-dark: var(--calm-bg);
+    --card-bg: var(--calm-surface);
+    --card-bg-2: var(--calm-surface-2);
+    --border-subtle: var(--calm-border);
+    --border-strong: var(--calm-border-strong);
+    --text-primary: var(--calm-text);
+    --text-main: var(--calm-text);
+    --text-secondary: var(--calm-sub);
+    --text-sub: var(--calm-sub);
+    --accent: var(--calm-accent);
+    --accent-gold: var(--calm-accent);
+    --accent-text: var(--calm-accent-text);
+    --women: var(--calm-women);
+    --men: var(--calm-men);
 }
 
 /* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
@@ -9165,5 +9182,145 @@ html.is-pwa-standalone .pwa-install-banner {
     body:not(.theme-light) .pwa-install-banner,
     body.theme-light .pwa-install-banner {
         display: none !important;
+    }
+}
+
+/* ==========================================================================
+   2026-11 Carbon Code Review Remediation:
+   - コラム全テンプレートのライトモード高コントラスト保証（.role-card / .editorial-table / .related-article-card）
+   - 店舗カードの「分析」ボタン可視ラベル＆WCAG 2.5.3 / 1.4.10 Reflow 対応
+   ========================================================================== */
+html.theme-light {
+    --bg-color: var(--calm-light-bg);
+    --bg-dark: var(--calm-light-bg);
+    --card-bg: var(--calm-light-surface);
+    --card-bg-2: var(--calm-light-surface-2);
+    --border-subtle: var(--calm-light-border);
+    --border-strong: var(--calm-light-border-strong);
+    --text-primary: var(--calm-light-text);
+    --text-main: var(--calm-light-text);
+    --text-secondary: var(--calm-light-sub);
+    --text-sub: var(--calm-light-sub);
+    --accent: var(--calm-light-accent);
+    --accent-gold: var(--calm-light-accent);
+    --accent-text: var(--calm-light-accent);
+    --women: var(--calm-light-women);
+    --men: var(--calm-light-men);
+}
+
+body.theme-light .role-card,
+body.theme-light .related-article-card {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .role-card strong,
+body.theme-light .related-article-card h4 {
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .role-card a {
+    color: var(--calm-light-accent) !important;
+}
+
+body.theme-light .table-wrap,
+body.theme-light .editorial-table {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light .editorial-table th {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-text) !important;
+    border-bottom-color: var(--calm-light-border-strong) !important;
+}
+
+body.theme-light .editorial-table td {
+    color: var(--calm-light-text) !important;
+    border-bottom-color: var(--calm-light-border) !important;
+}
+
+body.theme-light [style*="color: #34d399"],
+body.theme-light [style*="color:#34d399"],
+body.theme-light [style*="color: #22c55e"],
+body.theme-light [style*="color:#22c55e"] {
+    color: #166534 !important;
+}
+
+body.theme-light [style*="color: #ef4444"],
+body.theme-light [style*="color:#ef4444"] {
+    color: #b91c1c !important;
+}
+
+body.theme-light [style*="color: #a855f7"],
+body.theme-light [style*="color:#a855f7"] {
+    color: #6b21a8 !important;
+}
+
+body:not(.theme-list):not(.compact-mode) .analysis-btn {
+    width: auto !important;
+    min-width: 50px;
+    height: 28px;
+    padding: 0 9px;
+    border-radius: 999px !important;
+    gap: 4px;
+    font-size: 0.69rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.analysis-btn .chart-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.analysis-btn-label {
+    font-size: 0.69rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.01em;
+}
+
+@media (max-width: 768px) {
+    body:not(.theme-list):not(.compact-mode) .analysis-btn {
+        min-block-size: 36px;
+        min-height: 36px;
+        padding: 0 9px;
+    }
+}
+
+body.theme-list .analysis-btn-label,
+body.compact-mode .analysis-btn-label {
+    position: absolute !important;
+    clip-path: inset(50%) !important;
+    overflow: hidden !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    white-space: nowrap !important;
+}
+
+@media (max-width: 374px) {
+    body:not(.theme-list):not(.compact-mode) .analysis-btn {
+        min-width: 36px;
+        padding: 0;
+    }
+    body:not(.theme-list):not(.compact-mode) .analysis-btn-label {
+        position: absolute !important;
+        clip-path: inset(50%) !important;
+        overflow: hidden !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        white-space: nowrap !important;
     }
 }

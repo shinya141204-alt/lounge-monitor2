@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <title>相席ラウンジから2軒目に誘うタイミングと声かけ例｜断られにくい店選び・45分目の出口戦略｜相席ナビ</title>
@@ -218,7 +219,7 @@
             margin-top: 10px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -376,7 +377,7 @@
             </ul>
 
             <div class="cta-box">
-                <h3 style="margin: 0; color: #fff;">街ごとの2軒目エリアと現在人数</h3>
+                <h3 style="margin: 0; color: var(--text-main);">街ごとの2軒目エリアと現在人数</h3>
                 <p style="font-size: 0.86rem; margin: 8px 0 0;">新宿・渋谷・梅田・栄・天神など、各エリアの現在人数と2軒目に向く方角をまとめています</p>
                 <a href="/areas" class="cta-btn">全国エリア別ガイドを見る ›</a>
             </div>

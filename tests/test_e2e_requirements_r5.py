@@ -20,6 +20,8 @@ import io
 import json
 import os
 import re
+import shutil
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -38,6 +40,31 @@ import arena_calendar
 import local_db
 import moat_intelligence
 import monitor
+
+_TMP_DB_DIR = None
+_ORIG_DB_PATH = None
+_ORIG_DATABASE_URL = None
+
+
+def setUpModule():
+    global _TMP_DB_DIR, _ORIG_DB_PATH, _ORIG_DATABASE_URL
+    _TMP_DB_DIR = tempfile.mkdtemp(prefix="aiseki_e2e_r5_")
+    _ORIG_DB_PATH = local_db.DB_PATH
+    _ORIG_DATABASE_URL = os.environ.pop("DATABASE_URL", None)
+    local_db.DB_PATH = os.path.join(_TMP_DB_DIR, "test_lounge.db")
+    local_db.reset_caches_for_tests()
+    local_db.init_db()
+
+
+def tearDownModule():
+    local_db.reset_caches_for_tests()
+    if _ORIG_DB_PATH is not None:
+        local_db.DB_PATH = _ORIG_DB_PATH
+    if _ORIG_DATABASE_URL is not None:
+        os.environ["DATABASE_URL"] = _ORIG_DATABASE_URL
+    local_db.reset_caches_for_tests()
+    if _TMP_DB_DIR:
+        shutil.rmtree(_TMP_DB_DIR, ignore_errors=True)
 
 
 def mock_monitor_http(html_text="", json_data=None, status_code=200):

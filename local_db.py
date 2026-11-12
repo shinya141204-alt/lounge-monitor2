@@ -205,6 +205,7 @@ def reset_caches_for_tests():
         _read_tls.conn = None
         _read_tls.db_path = None
         _read_tls.db_inode = None
+        _read_tls.last_check = 0.0
 
 
 def refresh_live_benchmarks_async():
@@ -305,6 +306,7 @@ def _get_read_connection():
         _read_tls.conn = None
         _read_tls.db_path = None
         _read_tls.db_inode = None
+        _read_tls.last_check = 0.0
     conn = get_connection()
     try:
         cur_inode = os.stat(DB_PATH).st_ino if os.path.exists(DB_PATH) else None

@@ -152,8 +152,34 @@
         }
     }
 
+    function markHumanSessionAndTrackPv() {
+        if (document.body && document.body.classList.contains('staff-mode')) return;
+        try {
+            var secureAttr = (window.location && window.location.protocol === 'https:') ? '; Secure' : '';
+            document.cookie = 'an_hp=1; Path=/; Max-Age=2592000; SameSite=Lax' + secureAttr;
+        } catch (e) {}
+        var pathname = (window.location && window.location.pathname) ? window.location.pathname : '/';
+        var isTrackedPvPath = (pathname === '/');
+        if (!isTrackedPvPath && pathname.slice(-4) !== '.csv') {
+            var prefixes = ['/guide', '/columns', '/areas', '/area/', '/concierge', '/grooming', '/for-women', '/stats', '/price-comparison', '/oriental-lounge', '/ag', '/jis', '/asobibar', '/store/'];
+            for (var pi = 0; pi < prefixes.length; pi++) {
+                if (pathname.indexOf(prefixes[pi]) === 0) {
+                    isTrackedPvPath = true;
+                    break;
+                }
+            }
+        }
+        if (!isTrackedPvPath) return;
+        var hpvKey = 'hpv:' + pathname;
+        if (!seenKeys.has(hpvKey)) {
+            seenKeys.add(hpvKey);
+            postTrackPayload('human_pv', pathname);
+        }
+    }
+
     function boot() {
         if (document.body && document.body.classList.contains('staff-mode')) return;
+        markHumanSessionAndTrackPv();
         document.addEventListener('click', onDocumentClick, { capture: true, passive: true });
         if (!('IntersectionObserver' in window)) return;
 

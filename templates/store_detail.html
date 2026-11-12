@@ -11,19 +11,19 @@
     <title>{{ store.seo_name }} 現在人数・男女比｜営業時間・客層・韓国ソウルの入店条件｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業時間・定休日・客層（年齢層）・パスポート等の入店条件やソウル2拠点の比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のリアルタイム男女人数・男女比を毎分更新。営業時間・定休日・客層（年齢層）・パスポート等の顔写真付き身分証ルールや、江南・弘大2店舗の使い分けも実測データで解説。{% endif %}">
     {% elif store.slug == 'oriental-lounge-oita' %}
-    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・待ち時間｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。実測ログから見た曜日・時間帯別の混み方傾向、料金システム、男性1人入店の可否、待ち時間の目安まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新。過去実測データから見た曜日・時間帯別の集客傾向、時間帯別料金・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・客層・評判データ｜料金・1人入店・現地待ち時間｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。現場ワンタップ状況レポート（待ち時間・盛り上がり実測）や客層・評判傾向、時間帯別の料金システム、男性1人入店の可否まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を毎分更新。現場ワンタップ状況レポートや実測データから見た客層・評判傾向、曜日・時間帯別の料金・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
     {% elif store.slug == 'oriental-lounge-fukuoka' %}
-    <title>{{ store.seo_name }} 現在人数・男女比｜JIS（ジス）比較・料金・客層｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神とのリアルタイム人数・料金・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新。徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・男女比｜JIS（ジス）比較・料金・客層・評判データ｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との料金・客層・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を毎分更新。現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
     {% elif store.slug == 'asobibar-shinjuku' %}
     <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・新宿店比較｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。カラーバンド制スタンディングバーの料金システム、男性1人入店のしやすさ、新宿エリア他店舗との比較も掲載。{% else %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を毎分更新。10分課金なしのカラーバンド制料金システム、男性1人（ソロ）入店のしやすさ、オリエンタルラウンジ新宿・JIS（ジス）新宿との使い分けを解説します。{% endif %}">
     {% else %}
-    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・待ち時間検証｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。時間帯別の料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。料金・待機料・1人入店可否・客層・待ち時間や近隣店比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・曜日別の待ち時間傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
+    <title>{{ store.seo_name }}{% if store.slug == 'xix-okayama' %}（ジックス）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ）{% elif store.slug == 'alfa-hiroshima' %}（アルファ）{% endif %} 現在人数・客層・評判データ｜料金・1人入店・待ち時間検証｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}{% if store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。現場ワンタップ状況レポートや時間帯別の料金・待機料・1人入店可否・客層・評判傾向・近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}{% if store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。現場状況レポート・料金・1人入店可否・客層・評判傾向も掲載。{% else %}{{ store.seo_name }}{% if store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を毎分更新。現場ワンタップ状況レポート・時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・評判傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
     {% endif %}
-    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.seo_name }} 待ち時間,{{ store.brand_label }},相席ラウンジ,相席ナビ">
+    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} レビュー,{{ store.seo_name }} 口コミ,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.seo_name }} 待ち時間,{{ store.brand_label }}{% if store.slug == 'clovers-hiroshima' %},クローバーズ 広島,広島 相席 クローバー{% elif store.slug == 'xix-okayama' %},ジックス 岡山{% elif store.slug == 'alfa-hiroshima' %},アルファ 広島{% endif %},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
     {% include '_head_llmo.html' %}
     {% if has_sufficient_store_data %}
@@ -917,7 +917,7 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -1536,7 +1536,7 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px;">
                 <div>
                     <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
-                        <h2 style="margin: 0; font-size: 0.96rem;">現場ワンタップ状況レポート</h2>
+                        <h2 style="margin: 0; font-size: 0.96rem;">現場ワンタップ状況レポート（いまの体感・待ち実測）</h2>
                         <span style="font-size: 0.72rem; color: var(--text-sub);">直近4時間</span>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -1804,7 +1804,7 @@
         <section class="section-card store-dossier-card cv-defer-section" id="store-editorial-dossier" aria-labelledby="store-dossier-heading">
             <div class="store-dossier-head">
                 <p class="store-dossier-eyebrow">編集長カルテ｜街の客層カラーと男女別の立ち回り</p>
-                <h2 id="store-dossier-heading" class="store-dossier-title">{{ store.seo_name }}の現地空気感・時間帯と立ち回りメモ</h2>
+                <h2 id="store-dossier-heading" class="store-dossier-title">{{ store.seo_name }}の客層・評判傾向と時間帯別の立ち回りメモ</h2>
                 <p class="store-dossier-catch">{{ store_dossier.catch }}</p>
             </div>
 
@@ -2967,7 +2967,7 @@
             }
 
             function createFallbackVenues(sName, sAnchor) {
-                const clean = String(sName || '').replace(/^(?:オリエンタルラウンジ|ag（アグ）|JIS（ジス）|ASOBIBAR（アソビバー）|ヤタコイ|相席CLOVERS|相席ラウンジALFA|相席ラウンジXIX)\s*/i, '').trim();
+                const clean = String(sName || '').replace(/^(?:オリエンタルラウンジ|ag（アグ）|JIS（ジス）|ASOBIBAR（アソビバー）|ヤタコイ|相席CLOVERS(?:（クローバーズ）)?|相席ラウンジALFA(?:（アルファ）)?|相席ラウンジXIX(?:（ジックス）)?)\s*/i, '').trim();
                 return [
                     {
                         name: `${clean}周辺の夜カフェ・スイーツ`,
@@ -3386,7 +3386,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=109', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=110', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

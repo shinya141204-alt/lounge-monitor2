@@ -114,6 +114,28 @@ def check_undefined_css_vars() -> list:
     return issues
 
 
+def check_guide_light_mode_inline_colors() -> list:
+    """Block hardcoded dark-only light text colors (#fff/#f8fafc/#e2e8f0/#cbd5e1/#ebe8e3) inside inline style= attributes of guide_*.html."""
+    issues = []
+    style_attr_re = re.compile(r'style="([^"]*)"', re.I)
+    forbidden_color_re = re.compile(
+        r"(?:^|;)\s*color\s*:\s*(#fff(?:fff)?|#f8fafc|#e2e8f0|#cbd5e1|#ebe8e3)\b",
+        re.I,
+    )
+    for tpath in sorted(glob.glob(os.path.join(REPO_ROOT, "templates", "guide_*.html"))):
+        fname = os.path.basename(tpath)
+        with open(tpath, "r", encoding="utf-8") as fp:
+            lines = fp.readlines()
+        for idx, line in enumerate(lines, start=1):
+            for sm in style_attr_re.finditer(line):
+                cm = forbidden_color_re.search(sm.group(1))
+                if cm:
+                    issues.append(
+                        f"templates/{fname}:{idx}: インライン style にダーク専用文字色 {cm.group(1)} が直書きされています（var(--text-main) / var(--text-sub) を使用してください）"
+                    )
+    return issues
+
+
 def check_cache_version_sync() -> list:
     """Verify cache-busting query versions match across sw.js, index.html, _nav_loader.html, all templates, and test suite."""
     issues = []
@@ -154,6 +176,12 @@ def check_cache_version_sync() -> list:
         if f"CACHE_NAME = '{expected_cache}'" not in sw_txt and f'CACHE_NAME = "{expected_cache}"' not in sw_txt:
             issues.append(f"static/sw.js の CACHE_NAME が {expected_cache} と不一致です")
 
+    cta_url_m = re.search(r"/static/cta_tracker\.js\?v=[^\"'\s>)]+", idx_txt)
+    if cta_url_m:
+        canonical_cta = cta_url_m.group(0)
+    else:
+        canonical_cta = ""
+
     if os.path.exists(nav_path) and "sw.js" in canonical:
         with open(nav_path, "r", encoding="utf-8") as fp:
             nav_txt = fp.read()
@@ -175,6 +203,10 @@ def check_cache_version_sync() -> list:
             for ref in re.findall(r"/sw\.js(?:\?v=[^\"'\s>)]+)?", txt):
                 if ref != canonical["sw.js"]:
                     issues.append(f"templates/{fname}: {ref} != 正本 {canonical['sw.js']}")
+        if canonical_cta:
+            for ref in re.findall(r"/static/cta_tracker\.js(?:\?v=[^\"'\s>)]+)?", txt):
+                if ref != canonical_cta:
+                    issues.append(f"templates/{fname}: {ref} != 正本 {canonical_cta}")
 
     if os.path.exists(test_path):
         with open(test_path, "r", encoding="utf-8") as fp:
@@ -214,7 +246,7 @@ def main():
     else:
         print("  ✅ 全CSS・テンプレート内のフォールバックなし var(--...) 定義整合 OK")
 
-    print("\n=== [3/5] キャッシュバスティング完全同期チェック（sw.js / index / _nav_loader / 全HTML / テスト） ===")
+    print("\n=== [3/6] キャッシュバスティング完全同期チェック（sw.js / index / _nav_loader / 全HTML / テスト） ===")
     cache_issues = check_cache_version_sync()
     if cache_issues:
         for iss in cache_issues[:25]:
@@ -223,7 +255,16 @@ def main():
     else:
         print("  ✅ 全アセットクエリ文字列・Service Worker・テスト期待値 完全一致 OK")
 
-    print("\n=== [4/5] 脱AIっぽさ（見出し・ボタン内の絵文字密度／派手グラデ）ホットスポット診断 ===")
+    print("\n=== [4/6] コラムテンプレート（guide_*.html）ライトモード直書き白系文字色チェック ===")
+    guide_color_issues = check_guide_light_mode_inline_colors()
+    if guide_color_issues:
+        for iss in guide_color_issues[:25]:
+            print(f"  ❌ {iss}")
+        has_error = True
+    else:
+        print("  ✅ 全 guide_*.html のインライン style にライトモード白飛び文字色なし OK")
+
+    print("\n=== [5/6] 脱AIっぽさ（見出し・ボタン内の絵文字密度／派手グラデ）ホットスポット診断 ===")
     targets = []
     if args.target:
         tpath = os.path.join(REPO_ROOT, args.target) if not os.path.isabs(args.target) else args.target

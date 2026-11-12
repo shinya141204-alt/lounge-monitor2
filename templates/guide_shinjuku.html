@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <title>新宿の相席ラウンジ・回遊バー4店舗比較｜歌舞伎町東口3店と西新宿の時間波形・ソロ境界｜相席ナビ</title>
@@ -265,7 +266,7 @@
             .data-table th, .data-table td { padding: 7px 4px; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -323,25 +324,25 @@
             <div class="store-compare-grid">
                 <div class="store-card">
                     <div class="store-meta">歌舞伎町入口・新宿最大の人数規模</div>
-                    <h3><a href="/store/jis-shinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）新宿 ›</a></h3>
+                    <h3><a href="/store/jis-shinjuku" style="color:var(--text-main);text-decoration:none;">JIS（ジス）新宿 ›</a></h3>
                     <p>バーカウンターのある大箱。直近30日の平均女性人数は4店で最多の59.3名、最大では126名を記録した。19時から翌6時まで営業し、0〜1時台にも21〜22時台の8割の女性が残っている。</p>
                     <p class="store-figures">30日計測1,043回 ／ 平均女性59.3名・男性37.3名 ／ 女性比66.2%</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">靖国通り沿い・女性比が最も高い</div>
-                    <h3><a href="/store/oriental-lounge-shinjuku" style="color:#fff;text-decoration:none;">オリエンタルラウンジ 新宿 ›</a></h3>
+                    <h3><a href="/store/oriental-lounge-shinjuku" style="color:var(--text-main);text-decoration:none;">オリエンタルラウンジ 新宿 ›</a></h3>
                     <p>ホテルラウンジ調のソファ席。平均女性比は4店で最も高い72.2%で、深夜維持率も85%と粘り強い。ただし男性は2名以上でないと入れない。1人で来てしまった夜は隣の2店へ回ることになる。</p>
                     <p class="store-figures">30日計測969回 ／ 平均女性28.4名・男性14.8名 ／ 女性比72.2%</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">西口・平日は翌1時までの1軒目型</div>
-                    <h3><a href="/store/jis-nishishinjuku" style="color:#fff;text-decoration:none;">JIS（ジス）西新宿 ›</a></h3>
+                    <h3><a href="/store/jis-nishishinjuku" style="color:var(--text-main);text-decoration:none;">JIS（ジス）西新宿 ›</a></h3>
                     <p>線路の西側に1店だけある落ち着いた店。月〜木は翌1時閉店で、深夜維持率は37%。終電前にきれいに終わる店だ。男性1名でも入れるうえ、20代男性には終日の特別料金がある。</p>
                     <p class="store-figures">30日計測781回 ／ 平均女性25.7名・男性18.5名 ／ 女性比63.6%</p>
                 </div>
                 <div class="store-card">
                     <div class="store-meta">歌舞伎町・カラーバンド制の回遊バー</div>
-                    <h3><a href="/store/asobibar-shinjuku" style="color:#fff;text-decoration:none;">ASOBIBAR（アソビバー）新宿 ›</a></h3>
+                    <h3><a href="/store/asobibar-shinjuku" style="color:var(--text-main);text-decoration:none;">ASOBIBAR（アソビバー）新宿 ›</a></h3>
                     <p>席に着いて待つ「相席」ではなく、手首のカラーバンドを目印に自分で声をかけて回るスタンディングバー。10分ごとの待機課金はなく、男性1名で入れる。平均では男性のほうが多い。</p>
                     <p class="store-figures">30日計測108回 ／ 平均女性8.5名・男性13.6名 ／ 女性比37.7%</p>
                 </div>
@@ -530,7 +531,7 @@
             <p>
                 歌舞伎町側から西新宿へは、靖国通りを西へ進んで大ガードの下をくぐるか、駅の地下道を抜けるのが早い。徒歩7〜8分ほどで、歌舞伎町の喧騒が嘘のように消える。平日なら翌1時のラストまでに1時間半は座れる計算で、動くなら22時台前半までに決めたい。金土祝前は西新宿も翌5時まで開くので、東口が入れない夜の受け皿になる。
             </p>
-            <ol style="color: #cbd5e1; font-size: 0.92rem; line-height: 1.8;">
+            <ol style="color: var(--text-sub); font-size: 0.92rem; line-height: 1.8;">
                 <li><strong>週末は20時〜21時のうちに東口の1店目へ入る。</strong>21時30分を過ぎると1次会帰りの男性ペアが歌舞伎町側へ集まり始め、男性待ちが出やすくなる。</li>
                 <li><strong>受付で待ち時間が出たら、まず隣の2店の人数を見る。</strong>東口3店は徒歩2〜3分。40分待つより3分歩くほうが、単価の安い時間帯に座れる。</li>
                 <li><strong>東口3店がすべて男性過多なら、大ガードを渡って西新宿へ。</strong>22時台前半までの判断なら、平日でもラストまで十分に話せる。</li>
@@ -538,7 +539,7 @@
             </ol>
 
             <div class="cta-box">
-                <h3 style="margin: 0; color: #fff;">今夜の新宿4店舗の人数を見比べる</h3>
+                <h3 style="margin: 0; color: var(--text-main);">今夜の新宿4店舗の人数を見比べる</h3>
                 <p style="font-size: 0.86rem; margin: 8px 0 0;">現在の女性人数・男性人数・女性比率と直近15分の増減を更新中</p>
                 <a href="/area/shinjuku" class="cta-btn">新宿エリアの現在人数を見る ›</a>
             </div>

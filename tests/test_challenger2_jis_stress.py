@@ -6,6 +6,7 @@ DBスキーマ・ロールアップ集計および画面レンダリングの実
 import concurrent.futures
 import json
 import os
+import shutil
 import sqlite3
 import tempfile
 import unittest
@@ -17,6 +18,31 @@ import monitor
 import store_master
 import store_hours
 import app as app_module
+
+_TMP_DB_DIR = None
+_ORIG_DB_PATH = None
+_ORIG_DATABASE_URL = None
+
+
+def setUpModule():
+    global _TMP_DB_DIR, _ORIG_DB_PATH, _ORIG_DATABASE_URL
+    _TMP_DB_DIR = tempfile.mkdtemp(prefix="aiseki_jis_stress_")
+    _ORIG_DB_PATH = local_db.DB_PATH
+    _ORIG_DATABASE_URL = os.environ.pop("DATABASE_URL", None)
+    local_db.DB_PATH = os.path.join(_TMP_DB_DIR, "test_lounge.db")
+    local_db.reset_caches_for_tests()
+    local_db.init_db()
+
+
+def tearDownModule():
+    local_db.reset_caches_for_tests()
+    if _ORIG_DB_PATH is not None:
+        local_db.DB_PATH = _ORIG_DB_PATH
+    if _ORIG_DATABASE_URL is not None:
+        os.environ["DATABASE_URL"] = _ORIG_DATABASE_URL
+    local_db.reset_caches_for_tests()
+    if _TMP_DB_DIR:
+        shutil.rmtree(_TMP_DB_DIR, ignore_errors=True)
 
 
 class TestDbMigrationStress(unittest.TestCase):

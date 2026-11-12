@@ -1984,8 +1984,10 @@
                         handleStoreCardClick(store.name);
                     }
                 };
+                const a11yStoreLabel = String(store.seo_name || store.name || '').trim();
                 if (pinBtn) {
                     pinBtn.removeAttribute('onclick');
+                    if (a11yStoreLabel) pinBtn.setAttribute('aria-label', 'お気に入り（' + a11yStoreLabel + '）');
                     pinBtn.onclick = (e) => {
                         e.stopPropagation();
                         togglePin(store.name);
@@ -1993,6 +1995,7 @@
                 }
                 if (analysisBtn) {
                     analysisBtn.removeAttribute('onclick');
+                    if (a11yStoreLabel) analysisBtn.setAttribute('aria-label', '分析（' + a11yStoreLabel + 'の曜日・時間帯別データ）');
                     analysisBtn.onclick = (e) => {
                         e.stopPropagation();
                         openModal(store.name);

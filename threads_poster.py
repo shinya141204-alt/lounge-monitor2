@@ -188,7 +188,7 @@ def build_threads_live_post(stores: list, slot_label: str = "20:00", now_jst: da
         cta_line = f"▼ 全国60店舗超の現在人数＆料金・イベント比較\n{SITE_URL}/price-comparison?s=th{slot_hh}_live"
         tag_line = "#相席ナビ"
     else:
-        cta_line = "🔍 全国60店舗超の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見れます"
+        cta_line = "🔍 全国60店舗超の現在人数＆料金・イベント比較はプロフィールのリンク（相席ナビ）から見られます"
         tag_line = "#相席ナビ #相席ラウンジ"
 
     lines.extend([

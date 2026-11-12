@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
 os.chdir(str(REPO_ROOT))
 
 import local_db
+import store_master
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 
@@ -144,6 +145,57 @@ def run_integrity_checks(days: int = 90) -> dict:
         )
     except Exception as exc:
         _record("forecast_verification", "warn", f"予測精度レポート取得例外: {exc}")
+
+    # 5. 未来タイムスタンプ汚染・マスタ未登録テスト店舗混入チェック（単体テスト未隔離防止ゲート）
+    try:
+        future_cutoff_ts = (now_jst + datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+        future_cutoff_date = (now_jst + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        future_counts = {}
+        for tbl, col, cutoff in (
+            ("monitor_logs", "timestamp", future_cutoff_ts),
+            ("store_pos_telemetry_logs", "timestamp", future_cutoff_ts),
+            ("forecast_accuracy_logs", "predicted_at", future_cutoff_ts),
+            ("store_hourly_rollups", "date_jst", future_cutoff_date),
+        ):
+            r_fut = local_db._fetch_all_rows(f"SELECT COUNT(*) FROM {tbl} WHERE {col} > ?", (cutoff,))
+            cnt_fut = int(r_fut[0][0] or 0) if r_fut and r_fut[0] else 0
+            if cnt_fut > 0:
+                future_counts[tbl] = cnt_fut
+        if future_counts:
+            _record(
+                "future_timestamp_pollution",
+                "error",
+                f"未来日時の異常レコードを検出しました（単体テスト汚染の疑い）: {future_counts}",
+                {"future_counts": future_counts},
+            )
+        else:
+            _record("future_timestamp_pollution", "ok", "未来日時レコード混入ゼロ")
+    except Exception as exc:
+        _record("future_timestamp_pollution", "warn", f"未来日時チェック例外: {exc}")
+
+    try:
+        valid_stores = set(store_master.STORE_SLUGS.keys())
+        unregistered_by_table = {}
+        for tbl in ("monitor_logs", "store_hourly_rollups", "crowd_votes", "store_watch_intents", "forecast_accuracy_logs"):
+            r_st = local_db._fetch_all_rows(f"SELECT DISTINCT store_name FROM {tbl}")
+            bad = sorted(
+                str(r[0])
+                for r in (r_st or [])
+                if r and r[0] and str(r[0]) not in valid_stores and store_master.to_internal_store_name(str(r[0])) not in valid_stores
+            )
+            if bad:
+                unregistered_by_table[tbl] = bad[:10]
+        if unregistered_by_table:
+            _record(
+                "unregistered_store_pollution",
+                "error",
+                f"store_master 未登録の不正店舗名を検出しました: {unregistered_by_table}",
+                {"unregistered_by_table": unregistered_by_table},
+            )
+        else:
+            _record("unregistered_store_pollution", "ok", "store_master 未登録レコード混入ゼロ")
+    except Exception as exc:
+        _record("unregistered_store_pollution", "warn", f"未登録店舗名チェック例外: {exc}")
 
     return {
         "checked_at": now_jst.strftime("%Y-%m-%d %H:%M:%S JST"),

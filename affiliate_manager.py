@@ -10,14 +10,23 @@ Priority order for `/link/<item_id>`:
   3. Built-in fallback URLs
 """
 
+import hashlib
+import hmac
+import html
 import json
 import os
+import re
 import threading
+import time
 import urllib.parse
 
 import job_state
 
 AFFILIATE_OVERRIDES_STATE_KEY = "aff_slot_overrides"
+CLICK_TOKEN_TTL_SEC = 1800
+_BARE_INTERNAL_FROM_SLUGS = frozenset({
+    "concierge", "grooming", "for-women", "guide", "stats", "columns", "areas", "price-comparison",
+})
 
 _lock = threading.Lock()
 _mem_overrides = None  # dict[slot_id, {"url": str, "memo": str, "updated_at": str}]
@@ -814,6 +823,218 @@ def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -
     }
 
 
+def resolve_safe_ref_path(raw_from: str = "", referrer: str = "", req_host: str = "") -> str:
+    """Resolve a sanitized internal path (`/...` or `-`) for `/link/<item_id>` attribution."""
+    parsed_ref = urllib.parse.urlparse(referrer or "")
+    raw_f = (raw_from or "").strip()
+    unquoted_from = urllib.parse.unquote(raw_f).strip()
+    if unquoted_from in _BARE_INTERNAL_FROM_SLUGS:
+        unquoted_from = "/" + unquoted_from
+    ref_path = ""
+    if (
+        unquoted_from.startswith("/")
+        and not unquoted_from.startswith("//")
+        and "\\" not in raw_f
+        and "\\" not in unquoted_from
+    ):
+        parsed_from = urllib.parse.urlparse(unquoted_from)
+        clean_from = (parsed_from.path or "").strip()
+        if (
+            not parsed_from.scheme
+            and not parsed_from.netloc
+            and ".." not in clean_from
+            and re.fullmatch(r"/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*/?)?", clean_from)
+        ):
+            ref_path = clean_from[:80]
+    if not ref_path:
+        ref_host = (parsed_ref.hostname or "").lower()
+        host_only = (req_host or "").split(":", 1)[0].lower()
+        same_host = (
+            (not parsed_ref.netloc)
+            or (ref_host == host_only)
+            or (ref_host in ("aiseki-navi.com", "www.aiseki-navi.com", "aiseki-navi-tokyo.fly.dev"))
+        )
+        fallback_ref = re.sub(r"[\r\n\x00@\\]", "", (parsed_ref.path or "").strip())[:80] if same_host else ""
+        ref_path = fallback_ref if (fallback_ref.startswith("/") and not fallback_ref.startswith("//")) else "-"
+    return ref_path
+
+
+def issue_click_confirm_token(secret_key: str, item_id: str, now_ts: int = None) -> str:
+    """Issue an HMAC-SHA256 POST confirmation token preventing non-JS crawler & CSRF click inflation."""
+    clean_id = (item_id or "").strip().lower()[:64]
+    ts = int(time.time()) if now_ts is None else int(now_ts)
+    msg = f"aff_clk_v1:{clean_id}:{ts}".encode("utf-8")
+    sig = hmac.new((secret_key or "aiseki-fallback-key").encode("utf-8"), msg, hashlib.sha256).hexdigest()[:32]
+    return f"{ts}.{sig}"
+
+
+def verify_click_confirm_token(
+    secret_key: str,
+    item_id: str,
+    token: str,
+    max_age_sec: int = CLICK_TOKEN_TTL_SEC,
+    now_ts: int = None,
+) -> bool:
+    """Verify HMAC-SHA256 POST confirmation token in constant time with bounded TTL."""
+    raw_tok = str(token or "").strip()
+    if "." not in raw_tok or len(raw_tok) > 80:
+        return False
+    ts_str, sig_str = raw_tok.split(".", 1)
+    if not ts_str.isdigit() or not re.fullmatch(r"[0-9a-f]{32}", sig_str):
+        return False
+    ts = int(ts_str)
+    cur = int(time.time()) if now_ts is None else int(now_ts)
+    if (cur - ts) < -5 or (cur - ts) > max(60, int(max_age_sec)):
+        return False
+    expected = issue_click_confirm_token(secret_key, item_id, now_ts=ts)
+    return hmac.compare_digest(raw_tok, expected)
+
+
+def render_click_interstitial_html(
+    item_id: str,
+    action_url: str,
+    csrf_token: str,
+    back_href: str = "/",
+) -> str:
+    """
+    Render an accessible, CSP-clean HTML5 POST confirmation page for cookieless `/link/<item_id>` hits.
+    Contains zero `<a href="/link/...">` links and zero inline JS so non-JS spiders stop dead without
+    polluting `affiliate_click` or ASP partner analytics, while real users without prior JS cookies proceed in 1 tap.
+    """
+    cid = canonical_slot_id(item_id)
+    slot_meta = _SLOT_BY_ID.get(cid) or {}
+    raw_cat = re.sub(r"^[^\w\u3040-\u30FF\u4E00-\u9FFF]+", "", str(slot_meta.get("category_label") or "公式サービス詳細")).strip()
+    raw_title = str(slot_meta.get("title") or "提携サービスの公式サイトへ移動します").strip()
+    safe_cat = html.escape(raw_cat or "公式サービス詳細")
+    safe_title = html.escape(raw_title)
+    safe_action = html.escape(action_url or "/", quote=True)
+    safe_tok = html.escape(csrf_token or "", quote=True)
+    clean_back = back_href if (isinstance(back_href, str) and back_href.startswith("/") and not back_href.startswith("//") and not back_href.startswith("/link/")) else "/"
+    safe_back = html.escape(clean_back, quote=True)
+    return f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>{safe_cat}｜公式サイトへ移動｜相席ナビ</title>
+<style>
+:root {{
+  color-scheme: light dark;
+  --bg: #f6f6f7;
+  --card: #ffffff;
+  --text: #141417;
+  --sub: #52525b;
+  --border: #71717a;
+  --card-border: #d4d4d8;
+  --btn-bg: #141417;
+  --btn-fg: #ffffff;
+  --focus: #0b57d0;
+  --badge-bg: #e4e4e7;
+}}
+@media (prefers-color-scheme: dark) {{
+  :root {{
+    --bg: #111113;
+    --card: #18181b;
+    --text: #f4f4f5;
+    --sub: #a1a1aa;
+    --border: #71717a;
+    --card-border: #27272a;
+    --btn-bg: #d4af37;
+    --btn-fg: #111113;
+    --focus: #fbbf24;
+    --badge-bg: #27272a;
+  }}
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  min-block-size: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.6;
+}}
+main {{
+  inline-size: min(100%, 28rem);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 1.5rem;
+}}
+.pr-pill {{
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: var(--badge-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}}
+h1 {{
+  font-size: 1.125rem;
+  line-height: 1.45;
+  margin: 0.75rem 0 0.5rem;
+  text-wrap: balance;
+}}
+p {{
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: var(--sub);
+}}
+.btn-proceed {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding: 0.75rem 1.25rem;
+  font: inherit;
+  font-size: max(1rem, 1em);
+  font-weight: 700;
+  color: var(--btn-fg);
+  background: var(--btn-bg);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}}
+.btn-back {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 44px;
+  margin-block-start: 0.65rem;
+  font-size: 0.875rem;
+  color: var(--sub);
+  text-decoration: underline;
+}}
+:where(button, a):focus-visible {{
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}}
+</style>
+</head>
+<body>
+<main>
+  <span class="pr-pill">PR・提携サービス案内｜{safe_cat}</span>
+  <h1>{safe_title}</h1>
+  <p>下のボタンを押すと提携サービスの公式サイトへ移動します。料金・最新キャンペーン条件は移動先の公式ページでご確認ください。</p>
+  <form method="post" action="{safe_action}">
+    <input type="hidden" name="csrf_clk" value="{safe_tok}">
+    <button type="submit" class="btn-proceed">公式サイトへ進む</button>
+  </form>
+  <a href="{safe_back}" class="btn-back">相席ナビに戻る</a>
+</main>
+</body>
+</html>"""
+
+
 def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool = False) -> dict:
     """
     Build complete status table for `/staff/analytics`:
@@ -825,7 +1046,9 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
 
     # Aggregate clicks & impressions per canonical slot from `analytics.summary()` (`all_by_label` preferred)
     slot_clicks = {s["slot_id"]: 0 for s in AFFILIATE_SLOTS}
+    slot_measurable_clicks = {s["slot_id"]: 0 for s in AFFILIATE_SLOTS}
     slot_impressions = {s["slot_id"]: 0 for s in AFFILIATE_SLOTS}
+    has_explicit_measurable = False
     if isinstance(analytics_data, dict):
         all_labels = analytics_data.get("all_by_label") or {}
         by_label = analytics_data.get("by_label") or {}
@@ -837,6 +1060,14 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
             cid = canonical_slot_id(item_part)
             if cid in slot_clicks:
                 slot_clicks[cid] += int(cnt or 0)
+
+        raw_measurable_by_slot = analytics_data.get("measurable_aff_clicks_by_slot")
+        if isinstance(raw_measurable_by_slot, dict):
+            has_explicit_measurable = True
+            for raw_sid, cnt in raw_measurable_by_slot.items():
+                cid = canonical_slot_id(str(raw_sid)) or str(raw_sid).strip().lower()
+                if cid in slot_measurable_clicks:
+                    slot_measurable_clicks[cid] += int(cnt or 0)
 
         raw_imp_pairs = all_labels.get("affiliate_impression") or by_label.get("affiliate_impression") or []
         imp_iter = raw_imp_pairs.items() if isinstance(raw_imp_pairs, dict) else raw_imp_pairs
@@ -860,6 +1091,7 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
     duplicate_pair_count = 0
     unmonetized_slot_count = 0
     total_clicks = 0
+    total_measurable_clicks = 0
     total_impressions = 0
     for s in AFFILIATE_SLOTS:
         sid = s["slot_id"]
@@ -873,10 +1105,12 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         if is_unmonetized:
             unmonetized_slot_count += 1
         clk = slot_clicks.get(sid, 0)
+        m_clk = slot_measurable_clicks.get(sid, 0) if has_explicit_measurable else clk
         imp = slot_impressions.get(sid, 0)
         total_clicks += clk
+        total_measurable_clicks += m_clk
         total_impressions += imp
-        ctr_pct = min(100.0, round((clk / imp) * 100, 2)) if imp > 0 else 0.0
+        ctr_pct = round((m_clk / imp) * 100, 2) if imp > 0 else 0.0
         shared_labels = [_SLOT_BY_ID[o]["category_label"] for o in shared_with]
         slots_out.append({
             "slot_id": sid,
@@ -896,8 +1130,10 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
             "memo": rinfo["memo"],
             "updated_at": rinfo["updated_at"],
             "clicks": clk,
+            "measurable_clicks": m_clk,
             "impressions": imp,
             "ctr_pct": ctr_pct,
+            "ctr_anomaly": bool(imp > 0 and m_clk > imp),
             "is_duplicate_url": is_dup,
             "is_unmonetized_url": is_unmonetized,
             "shared_with_labels": shared_labels,
@@ -911,6 +1147,8 @@ def get_affiliate_slots_status(analytics_data: dict = None, allow_blocking: bool
         "has_unmonetized": unmonetized_slot_count > 0,
         "unmonetized_slot_count": unmonetized_slot_count,
         "total_clicks": total_clicks,
+        "total_measurable_clicks": total_measurable_clicks,
         "total_impressions": total_impressions,
-        "overall_ctr_pct": min(100.0, round((total_clicks / total_impressions) * 100, 2)) if total_impressions > 0 else 0.0,
+        "overall_ctr_pct": round((total_measurable_clicks / total_impressions) * 100, 2) if total_impressions > 0 else 0.0,
+        "overall_ctr_anomaly": bool(total_impressions > 0 and total_measurable_clicks > total_impressions),
     }

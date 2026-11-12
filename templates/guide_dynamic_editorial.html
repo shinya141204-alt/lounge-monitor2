@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -329,7 +330,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -490,8 +491,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">全国63店舗の現在の男女人数を確認する</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">全国63店舗の現在の男女人数を確認する</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     入店前に確認しておくと、男性待ちを避けやすくなります。オリエンタルラウンジ・ag（アグ）・JIS（ジス）の現在人数と過去7日間のピーク時間を毎分更新しています。
                 </p>
                 <a href="/" class="cta-btn">全国リアルタイム人数ランキングを見る →</a>

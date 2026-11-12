@@ -815,7 +815,7 @@ def build_threads_cta_footer(
         return f"▼ 全国60店舗超の現在人数＆料金・イベント比較\n{site_url}/price-comparison?s=th{slot_hh}_{style_key}"
     variants = (
         "細かいリアルタイム人数と料金比較はプロフィールのリンク（相席ナビ）に置いてます。",
-        "🔍 全国の現在人数・男女比はプロフのリンク（相席ナビ）から見れます\n#相席ラウンジ",
+        "🔍 全国の現在人数・男女比はプロフのリンク（相席ナビ）から見られます\n#相席ラウンジ",
         "気になる街のリアルタイム推移はプロフィールの『相席ナビ』からどうぞ。",
         "#相席ラウンジ",
     )
@@ -2935,7 +2935,7 @@ def _write_instagram_candidates(
         f"💡 男女で『正解の店』は逆になります\n"
         f"・男性組：見栄で激混み店に並ばず「女性10名以上×女性比55%以上」の余裕ある店へ\n"
         f"・女性組：女余りで放置される店より「男性先行で盛り上がっている大型店」の方が待ち0分で即乾杯できます🥂\n\n"
-        f"いま現在のリアルタイム男女人数と料金比較はプロフィールのリンク（aiseki-navi.com）から3秒で見れます🔍\n\n"
+        f"いま現在のリアルタイム男女人数と料金比較はプロフィールのリンク（aiseki-navi.com）から3秒で見られます🔍\n\n"
         f"{tags_1}"
     )
     candidates.append({
@@ -4360,7 +4360,7 @@ def _is_requests_post_mocked() -> bool:
 
 def _mark_model_unhealthy(model_name: str):
     low = (model_name or "").lower()
-    if low not in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+    if low not in ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash-lite"):
         _unhealthy_models[model_name] = time.monotonic() + _UNHEALTHY_COOLDOWN_SEC
 
 
@@ -4723,36 +4723,41 @@ def call_editorial_ai_json(
                         m for m in g_models
                         if m not in _unhealthy_models and "lite" in m.lower()
                     ]
-                    g_models = healthy_primary + cooled_down + healthy_lite
+                    g_models = healthy_primary + healthy_lite + cooled_down
+
+            def _is_healthy_for_trial(m_cand):
+                return bool(m_cand) and (is_mocked_post or m_cand not in _unhealthy_models)
 
             if prefer_fast:
                 trial_models = list(g_models[:3])
                 if prefer_carbon:
                     top_carbon = next((m for m in g_models if "carbon" in m.lower()), None)
-                    if top_carbon and top_carbon in trial_models:
-                        trial_models.remove(top_carbon)
-                        trial_models.insert(0, top_carbon)
-                    elif top_carbon:
+                    if _is_healthy_for_trial(top_carbon):
+                        if top_carbon in trial_models:
+                            trial_models.remove(top_carbon)
                         trial_models.insert(0, top_carbon)
                 elif prefer_argon:
                     top_argon = next((m for m in g_models if "argon" in m.lower()), None)
-                    if top_argon and top_argon in trial_models:
-                        trial_models.remove(top_argon)
-                        trial_models.insert(0, top_argon)
-                    elif top_argon:
+                    if _is_healthy_for_trial(top_argon):
+                        if top_argon in trial_models:
+                            trial_models.remove(top_argon)
                         trial_models.insert(0, top_argon)
             else:
                 # Prioritize gemini-4-carbon first, then gemini-4-argon for deep math/reasoning & research,
                 # then top healthy Pro (gemini-3.1-pro-preview / gemini-2.5-pro),
                 # then GA Flash (gemini-2.5-flash), then Flash-Lite emergency fallback.
+                # Respect `_unhealthy_models` 10-min cooldown even when `prefer_carbon` / `prefer_argon` is set.
                 trial_models = []
                 top_carbon = next((m for m in g_models if "carbon" in m.lower()), None)
-                if top_carbon and (top_carbon not in _unhealthy_models or prefer_carbon):
+                if _is_healthy_for_trial(top_carbon):
                     trial_models.append(top_carbon)
                 top_argon = next((m for m in g_models if "argon" in m.lower() and m not in trial_models), None)
-                if top_argon and (top_argon not in _unhealthy_models or prefer_argon):
+                if _is_healthy_for_trial(top_argon):
                     trial_models.append(top_argon)
-                top_pro = next((m for m in g_models if "pro" in m.lower() and m not in trial_models), None)
+                top_pro = next(
+                    (m for m in g_models if "pro" in m.lower() and m not in trial_models and _is_healthy_for_trial(m)),
+                    None,
+                )
                 if top_pro:
                     trial_models.append(top_pro)
                 ga_flash = next(
@@ -4764,14 +4769,18 @@ def call_editorial_ai_json(
                 )
                 if ga_flash not in trial_models:
                     trial_models.append(ga_flash)
+                # Keep cooled-down flagship models as secondary fallback before emergency Lite
+                for cooled_m in (top_carbon, top_argon):
+                    if cooled_m and cooled_m not in trial_models:
+                        trial_models.append(cooled_m)
                 lite_fb = next((m for m in g_models if "lite" in m.lower()), "gemini-2.5-flash-lite")
                 if lite_fb not in trial_models:
                     trial_models.append(lite_fb)
-                if prefer_carbon and top_carbon and trial_models and trial_models[0] != top_carbon:
+                if prefer_carbon and _is_healthy_for_trial(top_carbon) and trial_models and trial_models[0] != top_carbon:
                     if top_carbon in trial_models:
                         trial_models.remove(top_carbon)
                     trial_models.insert(0, top_carbon)
-                elif prefer_argon and top_argon and trial_models and trial_models[0] != top_argon and not prefer_carbon:
+                elif prefer_argon and _is_healthy_for_trial(top_argon) and trial_models and trial_models[0] != top_argon and not prefer_carbon:
                     if top_argon in trial_models:
                         trial_models.remove(top_argon)
                     trial_models.insert(0, top_argon)
@@ -5032,7 +5041,7 @@ def polish_draft_to_human_voice(
             r"|細かいリアルタイム人数と料金比較はプロフィールのリンク[\s\S]*"
             r"|気になる街のリアルタイム推移はプロフィールの『相席ナビ』からどうぞ。?"
             r"|今の各店舗の男女人数や女子向け特典はプロフのリンク[\s\S]*"
-            r"|各店舗のリアルタイム人数はプロフィールの『相席ナビ』から見れます[\s\S]*"
+            r"|各店舗のリアルタイム人数はプロフィールの『相席ナビ』から(?:見れます|見られます)[\s\S]*"
             r"|#相席ラウンジ(?:\s+#\S+)*"
             r"))$",
             base_text,

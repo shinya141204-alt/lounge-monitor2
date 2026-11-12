@@ -148,6 +148,26 @@ def brand_asobibar():
     return _render_brand_page('asobibar')
 
 
+@portal_bp.route('/xix')
+def brand_xix_redirect():
+    return core._redirect_preserving_query('/store/xix-okayama', code=301)
+
+
+@portal_bp.route('/yatakoi')
+def brand_yatakoi_redirect():
+    return core._redirect_preserving_query('/store/yatakoi-umeda', code=301)
+
+
+@portal_bp.route('/clovers')
+def brand_clovers_redirect():
+    return core._redirect_preserving_query('/store/clovers-hiroshima', code=301)
+
+
+@portal_bp.route('/alfa')
+def brand_alfa_redirect():
+    return core._redirect_preserving_query('/store/alfa-hiroshima', code=301)
+
+
 def _render_brand_page(brand_slug):
     import ops_governance
     import store_hours
@@ -324,7 +344,13 @@ def store_detail_page(store_slug):
             brand_slug = 'asobibar'
             official_url = 'https://asobibar.net/'
         else:
-            brand_label = raw_brand or '相席ラウンジ'
+            brand_label = {
+                'ALFA': '相席ラウンジALFA（アルファ）',
+                'CLOVERS': '相席CLOVERS（クローバーズ）',
+                'XIX': '相席ラウンジXIX（ジックス）',
+                'YATAKOI': 'ヤタコイ',
+                'ヤタコイ': 'ヤタコイ',
+            }.get(raw_brand, raw_brand or '相席ラウンジ')
             brand_slug = ''
             official_url = {
                 'ALFA': 'https://aiseki-hiroshima.com/',

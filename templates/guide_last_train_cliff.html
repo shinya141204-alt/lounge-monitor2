@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -247,7 +248,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -271,7 +272,7 @@
         <header class="article-header">
             <span class="article-cat-tag">9.6万件の人数ログ分析</span>
             <h1 class="article-title">「23時20分、店内の空気が変わる」——全国9.6万件の人数記録で見る、終電前に女性が減る40分間と、23時前後で入れ替わる街別の店選び</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月27日 ・ 更新日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年10月27日 ・ 更新日：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -321,19 +322,19 @@
 
             <div class="stat-grid">
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">① 23:10 → 23:30の20分間</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">① 23:10 → 23:30の20分間</div>
                     <div class="stat-num pink">-16.0%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">終電組のお会計で<strong>女性が一斉減少</strong><br>（平均 31.3名 → 26.5名）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">終電組のお会計で<strong>女性が一斉減少</strong><br>（平均 31.3名 → 26.5名）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">② 23:50の店内女性比率</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">② 23:50の店内女性比率</div>
                     <div class="stat-num">50.2%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">2軒目男性の流入で<strong>1日最低水準へ</strong><br>（23時台後半の底）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">2軒目男性の流入で<strong>1日最低水準へ</strong><br>（23時台後半の底）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">③ 00:10 → 00:30の回復波</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">③ 00:10 → 00:30の回復波</div>
                     <div class="stat-num">+14.3%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">終電通過後に<strong>「第2波」が再流入</strong><br>（平均 22.4名 → 25.6名）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">終電通過後に<strong>「第2波」が再流入</strong><br>（平均 22.4名 → 25.6名）</div>
                 </div>
             </div>
 
@@ -544,8 +545,8 @@
             </p>
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">全店舗の「普段比（平比±）」＆「終電後維持率％」をリアルタイム表示中</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">全店舗の「普段比（平比±）」＆「終電後維持率％」をリアルタイム表示中</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     いまどの店舗が普段より盛り上がっているか、終電後に女性が残りやすい「深夜増加型」はどこか、トップ画面で1分ごとに自動更新しています。
                 </p>
                 <a href="/" class="cta-btn">全国リアルタイム人数＆終電後維持率を見る ›</a>

@@ -2377,6 +2377,10 @@ def _generate_gemini_column_candidate(
     )
     if not isinstance(parsed, dict) or not parsed.get("title") or not parsed.get("sections"):
         return None
+    low_mn = str(mn or "").lower()
+    if low_mn and ("lite" in low_mn or "haiku" in low_mn):
+        logger.warning(f"[column_editorial] Rejecting emergency lightweight model ({mn}) for long-form flagship column cache.")
+        return None
 
     ai_slug = _normalize_slug(parsed.get("slug") or plan["suggested_slug"])
     if ai_slug in RESERVED_STATIC_SLUGS:

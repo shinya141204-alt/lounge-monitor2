@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
@@ -285,7 +286,7 @@
             font-size: 0.92rem;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=42">
+    <link rel="stylesheet" href="/static/calm.css?v=43">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -309,7 +310,7 @@
         <header class="article-header">
             <span class="article-cat-tag">27万件の時系列ログ検証</span>
             <h1 class="article-title">「男性が先に入っている店ほど女性が増える」は本当か｜27万件の時系列ログで見た30分後の男女比</h1>
-            <p style="font-size:0.8rem;color:#94a3b8;margin:0;">公開日：2026年10月24日・更新：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
+            <p style="font-size:0.8rem;color:var(--text-sub);margin:0;">公開日：2026年10月24日・更新：2026年11月5日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
         </header>
 
         <figure class="article-eyecatch">
@@ -338,19 +339,19 @@
 
             <div class="stat-grid">
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">① 19〜21時に「男性先行」の店</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">① 19〜21時に「男性先行」の店</div>
                     <div class="stat-num">66.5%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">30分後に<strong>女性が増加する確率</strong><br>（平均 +2.89名増加）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">30分後に<strong>女性が増加する確率</strong><br>（平均 +2.89名増加）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">② 女余りなのに男性が来ない店</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">② 女余りなのに男性が来ない店</div>
                     <div class="stat-num pink">55.3%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">30分以内に<strong>女性が退店・減少する確率</strong><br>（平均 -4.88名流出）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">30分以内に<strong>女性が退店・減少する確率</strong><br>（平均 -4.88名流出）</div>
                 </div>
                 <div class="stat-box">
-                    <div style="font-size:0.78rem;color:#94a3b8;">③ 女余りに男性6名以上が合流した店</div>
+                    <div style="font-size:0.78rem;color:var(--text-sub);">③ 女余りに男性6名以上が合流した店</div>
                     <div class="stat-num">75.5%</div>
-                    <div style="font-size:0.8rem;color:#cbd5e1;">30分後も<strong>女性が維持・さらに増える確率</strong><br>（平均 +4.45名増加）</div>
+                    <div style="font-size:0.8rem;color:var(--text-sub);">30分後も<strong>女性が維持・さらに増える確率</strong><br>（平均 +4.45名増加）</div>
                 </div>
             </div>
 
@@ -471,8 +472,8 @@
             {% endif %}
 
             <div class="cta-box">
-                <div style="font-size:1.05rem;font-weight:800;color:#fff;">直近15分で女性が増えている店舗を確認する</div>
-                <p style="font-size:0.85rem;color:#cbd5e1;margin:8px 0 0 0;">
+                <div style="font-size:1.05rem;font-weight:800;color:var(--text-main);">直近15分で女性が増えている店舗を確認する</div>
+                <p style="font-size:0.85rem;color:var(--text-sub);margin:8px 0 0 0;">
                     『相席ナビ』では、現在の人数だけでなく<strong>「直近15分で女性が何人増減したか（↗ +数字）」</strong>もあわせて表示しています。入店前に確認してみてください。
                 </p>
                 <a href="/" class="cta-btn">全国63店舗リアルタイムランキングを見る →</a>
