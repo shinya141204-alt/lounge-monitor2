@@ -48,7 +48,9 @@ Webサイト（`https://aiseki-navi.com`）のSEOコラムが「検索意図に�
 
 ## 4. note 投稿・有料ライン設定時の実務チェックリスト
 
-1. **見出し画像の添付**：`相席ナビ` のクリーンミニマルトーン（ニュートラルブラック基調）に合わせた16:9アイキャッチを設定すると、タイムライン上での信頼感が統一されます。
+1. **見出し画像の添付**：`相席ナビ` のクリーンミニマルトーン（ニュートラルブラック基調・note公式推奨 `1280 × 670 px`）に合わせた見出し画像を `docs/note_stock/images/` に保存しています。
+   - **第1弾（`01`）**：[`images/note_01_eyecatch_plan_a.png`](./images/note_01_eyecatch_plan_a.png)（推奨・ハイブリッド型）／[`images/note_01_eyecatch_plan_b.png`](./images/note_01_eyecatch_plan_b.png)（3場面カード型）
+   - **第2弾（`02`）**：[`images/note_02_eyecatch_plan_a.png`](./images/note_02_eyecatch_plan_a.png)（推奨・ハイブリッド型）／[`images/note_02_eyecatch_plan_b.png`](./images/note_02_eyecatch_plan_b.png)（3逆説カード型）
 2. **有料記事（`05`・`06`）の価格と設定**：
    - 販売価格：**300円**（note 最低価格帯かつ「単独待機10分＝220〜330円」との比較アンカリングが最も効く価格）
    - 返金機能：**ON（返金可）推奨**（購入ハードルが下がり、初期CVR計測に有利です）
