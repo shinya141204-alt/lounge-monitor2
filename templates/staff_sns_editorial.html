@@ -1628,10 +1628,13 @@
                                       name="narration_text"
                                       class="vn-field-control"
                                       maxlength="220"
-                                      aria-describedby="vn-phonetic-preview"
+                                      aria-describedby="vn-phonetic-preview vn-reading-tip"
                                       placeholder="選択中のテンプレートと現在の実測人数から、8.5秒に収まる読み上げ台本を自動生成します">{{ _vn_init_script }}</textarea>
                             <div id="vn-phonetic-preview" class="vn-phonetic-line">
-                                発音変換プレビュー：{{ _vn_init_phonetic or '台本を入力するとブランド名・地名の読み仮名変換が表示されます' }}
+                                発音変換プレビュー：{{ _vn_init_phonetic or '台本を入力するとブランド名・地名・数字の読み仮名変換が表示されます' }}
+                            </div>
+                            <div id="vn-reading-tip" class="vn-hint">
+                                ※ 数字・単位（24名→にじゅうよんめい）・全61店舗の地名・ブランド名は自動で読み仮名へ変換されます。特定の単語のイントネーションを微調整したい場合は、台本欄にそのまま「ひらがな・カタカナ」で書くと確実にその通り発音します。
                             </div>
                         </div>
 
@@ -1709,8 +1712,8 @@
                                     <div class="vn-field">
                                         <label for="vn-model-select">音声合成モデル</label>
                                         <select id="vn-model-select" name="model_id" class="vn-field-control">
-                                            {% for m in (_vn_init.get('supported_models') or [{'id': 'eleven_multilingual_v2', 'label': 'Multilingual v2（日本語の抑揚・自然さ最優先／推奨）'}, {'id': 'eleven_flash_v2_5', 'label': 'Flash v2.5（高速・クレジット50%節約）'}, {'id': 'eleven_v3', 'label': 'Eleven v3（感情・表現力重視）'}]) %}
-                                            <option value="{{ m.id }}" {{ 'selected' if (_vn_init.get('model_id') or 'eleven_multilingual_v2') == m.id else '' }}>{{ m.label }}</option>
+                                            {% for m in (_vn_init.get('supported_models') or [{'id': 'eleven_v4', 'label': 'Eleven v4（最新・日本語の漢字と抑揚が最も正確／推奨）'}, {'id': 'eleven_v4_turbo', 'label': 'Eleven v4 Turbo（高速・自然な日本語読み上げ）'}, {'id': 'eleven_v3', 'label': 'Eleven v3（感情・表現力重視）'}, {'id': 'eleven_flash_v2_5', 'label': 'Flash v2.5（超高速・クレジット50%節約）'}, {'id': 'eleven_multilingual_v2', 'label': 'Multilingual v2（従来モデル）'}]) %}
+                                            <option value="{{ m.id }}" {{ 'selected' if (_vn_init.get('model_id') or 'eleven_v4') == m.id else '' }}>{{ m.label }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -2981,13 +2984,16 @@
             var videoEl = document.getElementById("reel-video-player");
             var srcEl = document.getElementById("reel-video-source");
             var dlEl = document.getElementById("reel-download-link");
+            var narEl = document.getElementById("reel-narration-input");
+            var phoEl = document.getElementById("vn-phonetic-preview");
+            var capEl = document.getElementById("reel-caption-input");
             var customNar = forceCustomPin
-                ? ((document.getElementById("reel-narration-input") || {}).value || "").trim()
+                ? ((narEl && narEl.value) || "").trim()
                 : _getEffectiveCustomNarrationText();
 
             if (msgEl) {
                 msgEl.style.color = "var(--green-ink)";
-                msgEl.textContent = "最新データで9:16ショート動画（MP4）を生成・読み込み中です（約2〜5秒）...";
+                msgEl.textContent = "最新データで9:16ショート動画（MP4）と読み上げ音声を同期生成しています（約2〜6秒）...";
             }
             if (genBtn) genBtn.disabled = true;
             if (renderVnBtn) renderVnBtn.disabled = true;
@@ -2998,7 +3004,7 @@
                     if (renderVnBtn) renderVnBtn.disabled = false;
                     if (msgEl) {
                         msgEl.style.color = "var(--green-ink)";
-                        msgEl.textContent = "リール動画の生成・プレビュー準備が完了しました（そのまま再生またはMP4保存できます）。";
+                        msgEl.textContent = "リール動画の生成・プレビュー準備が完了しました（画面表示と読み上げ台本が完全同期しています）。";
                     }
                 };
                 videoEl.onerror = function() {
@@ -3011,41 +3017,56 @@
                 };
             }
 
-            if (customNar) {
-                try {
-                    var pinRes = await fetchJsonSafe("/api/staff/voice-narration/pin-preview", {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json", "Accept": "application/json"},
-                        body: JSON.stringify({
-                            reel_type: _currentReelType,
-                            narration_text: customNar
-                        })
-                    }, 45000);
-                    if (pinRes && pinRes.ok && pinRes.mp4_url) {
-                        if (pinRes.phonetic_text) {
-                            var phoEl = document.getElementById("vn-phonetic-preview");
-                            if (phoEl) phoEl.textContent = "発音変換プレビュー：" + pinRes.phonetic_text;
+            try {
+                var pinRes = await fetchJsonSafe("/api/staff/voice-narration/pin-preview", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                    body: JSON.stringify({
+                        reel_type: _currentReelType,
+                        narration_text: customNar
+                    })
+                }, 45000);
+                if (pinRes && pinRes.ok && pinRes.mp4_url) {
+                    if (!customNar && typeof pinRes.narration_script === "string" && pinRes.narration_script) {
+                        _vnAutoScript = pinRes.narration_script;
+                        _vnAutoPhonetic = pinRes.phonetic_text || "";
+                        if (narEl) {
+                            narEl.value = pinRes.narration_script;
+                            _vnScriptDirty = false;
+                            _updateVnCharCounter();
                         }
-                        if (dlEl && pinRes.download_url) {
-                            dlEl.href = pinRes.download_url;
-                            dlEl.setAttribute("download", "aiseki_navi_" + _currentReelType + "_" + (pinRes.preview_token || Date.now()) + ".mp4");
-                        }
-                        if (videoEl) {
-                            try { videoEl.pause(); } catch (e) {}
-                            videoEl.preload = "auto";
-                            if (pinRes.jpg_url) videoEl.setAttribute("poster", pinRes.jpg_url);
-                            if (srcEl) {
-                                srcEl.src = pinRes.mp4_url;
-                            } else {
-                                videoEl.src = pinRes.mp4_url;
-                            }
-                            videoEl.load();
-                            var pProm = videoEl.play();
-                            if (pProm && typeof pProm.catch === "function") pProm.catch(function() {});
-                        }
-                        return;
                     }
-                } catch (pinErr) {
+                    if (pinRes.phonetic_text && phoEl) {
+                        phoEl.textContent = "発音変換プレビュー：" + pinRes.phonetic_text;
+                    }
+                    if (!customNar && capEl && typeof pinRes.caption === "string" && pinRes.caption && !capEl.value.trim()) {
+                        capEl.value = pinRes.caption;
+                    }
+                    if (dlEl && pinRes.download_url) {
+                        dlEl.href = pinRes.download_url;
+                        dlEl.setAttribute("download", "aiseki_navi_" + _currentReelType + "_" + (pinRes.preview_token || Date.now()) + ".mp4");
+                    }
+                    if (videoEl) {
+                        try { videoEl.pause(); } catch (e) {}
+                        videoEl.preload = "auto";
+                        if (pinRes.jpg_url) videoEl.setAttribute("poster", pinRes.jpg_url);
+                        if (srcEl) {
+                            srcEl.src = pinRes.mp4_url;
+                        } else {
+                            videoEl.src = pinRes.mp4_url;
+                        }
+                        videoEl.load();
+                        var pProm = videoEl.play();
+                        if (pProm && typeof pProm.catch === "function") pProm.catch(function() {});
+                    }
+                    setTimeout(function() {
+                        if (genBtn) genBtn.disabled = false;
+                        if (renderVnBtn) renderVnBtn.disabled = false;
+                    }, 5500);
+                    return;
+                }
+            } catch (pinErr) {
+                if (forceCustomPin) {
                     if (msgEl) {
                         msgEl.style.color = "var(--err-ink)";
                         msgEl.textContent = "カスタム台本レンダリングエラー: " + ((pinErr && pinErr.message) || "通信エラー");
@@ -3410,7 +3431,7 @@
                         text: scriptText,
                         api_key: keyIn ? keyIn.value.trim() : "",
                         voice_id: vidIn ? vidIn.value.trim() : "",
-                        model_id: modelSel ? modelSel.value : "eleven_multilingual_v2"
+                        model_id: modelSel ? modelSel.value : "eleven_v4"
                     })
                 }, 30000);
                 if (res && res.phonetic_text && phoEl) {
@@ -3440,12 +3461,37 @@
             }
         }
 
+        var _vnPhoneticDebounceTimer = null;
+
+        function _scheduleLivePhoneticPreview(rawText) {
+            if (_vnPhoneticDebounceTimer) clearTimeout(_vnPhoneticDebounceTimer);
+            var trimmed = (rawText || "").trim();
+            var phoEl = document.getElementById("vn-phonetic-preview");
+            if (!trimmed) {
+                if (phoEl) phoEl.textContent = "発音変換プレビュー：台本を入力するとブランド名・地名・数字の読み仮名変換が表示されます";
+                return;
+            }
+            _vnPhoneticDebounceTimer = setTimeout(async function() {
+                try {
+                    var res = await fetchJsonSafe("/api/staff/voice-narration/phonetic", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                        body: JSON.stringify({text: trimmed})
+                    }, 8000);
+                    if (res && res.ok && typeof res.phonetic_text === "string" && phoEl) {
+                        phoEl.textContent = "発音変換プレビュー：" + res.phonetic_text;
+                    }
+                } catch (e) {}
+            }, 260);
+        }
+
         function _bindVoiceNarrationStudioEvents() {
             var narEl = document.getElementById("reel-narration-input");
             if (narEl) {
                 narEl.addEventListener("input", function() {
                     _vnScriptDirty = ((narEl.value || "").trim() !== (_vnAutoScript || "").trim());
                     _updateVnCharCounter();
+                    _scheduleLivePhoneticPreview(narEl.value);
                 });
             }
             var chk = document.getElementById("vn-enabled-toggle");
@@ -3475,7 +3521,7 @@
                     var payload = {
                         voice_id: vidVal,
                         voice_name: vnameIn ? vnameIn.value.trim() : "",
-                        model_id: modelSel ? modelSel.value : "eleven_multilingual_v2",
+                        model_id: modelSel ? modelSel.value : "eleven_v4",
                         enabled: enChk ? !!enChk.checked : true
                     };
                     if (keyVal) payload.api_key = keyVal;

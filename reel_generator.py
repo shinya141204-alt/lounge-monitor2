@@ -3042,9 +3042,10 @@ def _compute_reel_cache_key(
 ) -> str:
     dom = [s for s in (stores or []) if _is_domestic_store(s)]
     dom.sort(key=lambda x: (str(x.get("name") or ""), int(x.get("women") or 0), int(x.get("men") or 0)))
+    # Include ALL domestic stores so headcount changes in any brand (`オリエンタルラウンジ`, `ag`, `JIS`, `XIX`, `ヤタコイ`, etc.) invalidate stale MP4s
     top_sig = "|".join(
-        f"{s.get('name')}:{int(s.get('women') or 0)}:{int(s.get('men') or 0)}"
-        for s in dom[:15]
+        f"{s.get('name')}:{int(s.get('women') or 0)}:{int(s.get('men') or 0)}:{s.get('midnight_retention_pct') or ''}"
+        for s in dom
     )
     bg_sig = (
         f"{bg_info.get('active_mode')}:{bg_info.get('active_file')}:"
@@ -3058,7 +3059,7 @@ def _compute_reel_cache_key(
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         if abs((chk - real_now).total_seconds()) > 180:
             custom_ts = chk.strftime("%Y%m%d%H%M")
-    raw = f"v4|{rt}|{bg_sig}|{custom_ts}|{voice_sig}|{top_sig}"
+    raw = f"v5|{rt}|{bg_sig}|{custom_ts}|{voice_sig}|{top_sig}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{rt}_{digest}"
 
@@ -3563,22 +3564,9 @@ def render_reel_mp4_bytes(
         )
     cache_key = _compute_reel_cache_key(stores, rt, bg_info, now_jst=now_jst, voice_sig=voice_sig)
     now_ts = time.time()
-    is_live_clock = True
-    if now_jst is not None:
-        real_now = datetime.datetime.now(JST)
-        chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
-        is_live_clock = abs((chk - real_now).total_seconds()) <= 180
-    use_latest_shortcut = bool(
-        is_live_clock
-        and not cleaned_custom_narration
-        and not narration_audio_path_override
-        and narration_override is None
-    )
-    latest_vtag = "bgm" if voice_sig == "bgm_only" else hashlib.sha256(voice_sig.encode("utf-8")).hexdigest()[:8]
 
     os.makedirs(REEL_TMP_CACHE_DIR, exist_ok=True)
     disk_exact_path = os.path.join(REEL_TMP_CACHE_DIR, f"reel_{cache_key}.mp4")
-    disk_latest_path = os.path.join(REEL_TMP_CACHE_DIR, f"latest_{rt}_{latest_vtag}.mp4")
 
     if not force_refresh:
         with _MEM_CACHE_LOCK:
@@ -3587,24 +3575,21 @@ def render_reel_mp4_bytes(
                 _MEM_MP4_CACHE.move_to_end(cache_key)
                 return mem_entry["bytes"]
 
-        for cand_path in (disk_exact_path, disk_latest_path if use_latest_shortcut else ""):
-            if cand_path and os.path.isfile(cand_path):
-                try:
-                    if (now_ts - os.path.getmtime(cand_path)) < REEL_CACHE_TTL_SEC and os.path.getsize(cand_path) > 1024:
-                        with open(cand_path, "rb") as f:
-                            mp4_data = f.read()
-                        with _MEM_CACHE_LOCK:
-                            _MEM_MP4_CACHE[cache_key] = {"ts": now_ts, "bytes": mp4_data, "reel_type": rt}
-                            while len(_MEM_MP4_CACHE) > _MEM_MP4_MAX:
-                                _MEM_MP4_CACHE.popitem(last=False)
-                        return mp4_data
-                except Exception:
-                    pass
+        if os.path.isfile(disk_exact_path):
+            try:
+                if (now_ts - os.path.getmtime(disk_exact_path)) < REEL_CACHE_TTL_SEC and os.path.getsize(disk_exact_path) > 1024:
+                    with open(disk_exact_path, "rb") as f:
+                        mp4_data = f.read()
+                    with _MEM_CACHE_LOCK:
+                        _MEM_MP4_CACHE[cache_key] = {"ts": now_ts, "bytes": mp4_data, "reel_type": rt}
+                        while len(_MEM_MP4_CACHE) > _MEM_MP4_MAX:
+                            _MEM_MP4_CACHE.popitem(last=False)
+                    return mp4_data
+            except Exception:
+                pass
 
         try:
             shared_exact = turbo_store.get_media_blob(f"reel_mp4:{rt}:{cache_key}")
-            if not shared_exact and use_latest_shortcut:
-                shared_exact = turbo_store.get_media_blob(f"reel_mp4_latest:{rt}:{latest_vtag}")
             if shared_exact and shared_exact[0] and len(shared_exact[0]) > 1024:
                 mp4_data = shared_exact[0]
                 with _MEM_CACHE_LOCK:
@@ -3681,11 +3666,6 @@ def render_reel_mp4_bytes(
                 os.replace(tmp_mp4_path, disk_exact_path)
             except Exception:
                 pass
-            if use_latest_shortcut:
-                try:
-                    shutil.copyfile(disk_exact_path, disk_latest_path)
-                except Exception:
-                    pass
         finally:
             renderer.close()
             if os.path.exists(tmp_mp4_path):
@@ -3707,13 +3687,6 @@ def render_reel_mp4_bytes(
                 mime_type="video/mp4",
                 ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
             )
-            if use_latest_shortcut:
-                turbo_store.set_media_blob(
-                    f"reel_mp4_latest:{rt}:{latest_vtag}",
-                    mp4_bytes,
-                    mime_type="video/mp4",
-                    ttl_sec=REEL_SHARED_CACHE_TTL_SEC,
-                )
         except Exception:
             pass
 

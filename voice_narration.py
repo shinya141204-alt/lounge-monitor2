@@ -46,19 +46,34 @@ ELEVENLABS_KEY_STORAGE_PREFIX = "token:elevenlabs_api_key"
 ELEVENLABS_VOICE_ID_KEY = "elevenlabs_voice_id"
 ELEVENLABS_VOICE_NAME_KEY = "elevenlabs_voice_name"
 ELEVENLABS_NARRATION_ENABLED_KEY = "elevenlabs_narration_enabled"
-ELEVENLABS_MODEL_ID_KEY = "elevenlabs_model_id"
+ELEVENLABS_MODEL_ID_KEY = "elevenlabs_model_id_v2"
+_LEGACY_ELEVENLABS_MODEL_ID_KEY = "elevenlabs_model_id"
 
-DEFAULT_ELEVENLABS_MODEL = "eleven_multilingual_v2"
+DEFAULT_ELEVENLABS_MODEL = "eleven_v4"
 SUPPORTED_ELEVENLABS_MODELS = collections.OrderedDict([
-    ("eleven_multilingual_v2", "Multilingual v2（日本語の抑揚・自然さ最優先／推奨）"),
-    ("eleven_flash_v2_5", "Flash v2.5（高速・クレジット50%節約）"),
+    ("eleven_v4", "Eleven v4（最新・日本語の漢字と抑揚が最も正確／推奨）"),
+    ("eleven_v4_turbo", "Eleven v4 Turbo（高速・自然な日本語読み上げ）"),
     ("eleven_v3", "Eleven v3（感情・表現力重視）"),
+    ("eleven_flash_v2_5", "Flash v2.5（超高速・クレジット50%節約）"),
+    ("eleven_multilingual_v2", "Multilingual v2（従来モデル）"),
 ])
+_LANGUAGE_CODE_MODELS = frozenset({
+    "eleven_v4",
+    "eleven_v4_turbo",
+    "eleven_v3",
+    "eleven_flash_v2_5",
+    "eleven_turbo_v2_5",
+})
 
 _VOICE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
 _FULL_BRAND_OLG = "オリエンタルラウンジ"
 _STANDALONE_OLG_RE = re.compile(_FULL_BRAND_OLG[:6] + r"(?!ラウンジ)")
 _DURATION_STDERR_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
+_REDUNDANT_BRAND_RUBY_RE = re.compile(
+    r"(?:ORIENTAL\s*LOUNGE|オリエンタルラウンジ|ASOBIBAR|アソビバー|CLOVERS|クローバーズ|YATAKOI|ヤタコイ|ALFA|アルファ|XIX|JIS|ag)\s*[（(]\s*"
+    r"(?:ORIENTAL\s*LOUNGE|オリエンタルラウンジ|アソビバー|クローバーズ|ヤタコイ|アルファ|ジックス|シックス|キックス|ジス|アグ)\s*[）)]",
+    re.IGNORECASE,
+)
 
 # Strip emojis, variation selectors, and decorative box/bullet glyphs before TTS synthesis
 _EMOJI_STRIP_RE = re.compile(
@@ -67,12 +82,24 @@ _EMOJI_STRIP_RE = re.compile(
     "\U00002600-\U000027BF"
     "\U0000FE00-\U0000FE0F"
     "\U0000200D"
-    "👑⚡🔥💄🎵🥂✨📍🟢🔴📌🔍📋🎬🔄⬇️⬆️▶⏸"
+    "👑⚡🔥💄🎵🥂✨📍🟢🔴📌🔍📋🎬🔄⬇️⬆️▶⏸◎△"
     "]+"
+)
+
+# Collapse brand + parenthetical reading into single spoken brand before general replacements
+_BRAND_RUBY_COLLAPSE_RULES = (
+    (re.compile(r"オリエンタルラウンジ\s*[（(]\s*ORIENTAL\s*LOUNGE\s*[）)]", re.IGNORECASE), "オリエンタルラウンジ"),
+    (re.compile(r"(?<![A-Za-z0-9])ASOBIBAR\s*[（(]\s*アソビバー\s*[）)]", re.IGNORECASE), "アソビバー"),
+    (re.compile(r"(?<![A-Za-z0-9])CLOVERS\s*[（(]\s*クローバーズ\s*[）)]", re.IGNORECASE), "クローバーズ"),
+    (re.compile(r"(?<![A-Za-z0-9])ALFA\s*[（(]\s*アルファ\s*[）)]", re.IGNORECASE), "アルファ"),
+    (re.compile(r"(?<![A-Za-z0-9])XIX\s*[（(]\s*(?:ジックス|シックス|キックス)\s*[）)]", re.IGNORECASE), "ジックス"),
+    (re.compile(r"(?<![A-Za-z0-9])JIS\s*[（(]\s*ジス\s*[）)]", re.IGNORECASE), "ジス"),
+    (re.compile(r"(?<![A-Za-z0-9])ag\s*[（(]\s*アグ\s*[）)]", re.IGNORECASE), "アグ"),
 )
 
 # Brand & Latin token phonetic replacements (applied only to TTS input, never to visual captions)
 _BRAND_PHONETIC_RULES = (
+    (re.compile(r"(?<![A-Za-z0-9])ORIENTAL\s*LOUNGE(?![A-Za-z0-9])", re.IGNORECASE), "オリエンタルラウンジ"),
     (re.compile(r"(?<![A-Za-z0-9])OLG(?![A-Za-z0-9])", re.IGNORECASE), "オリエンタルラウンジ"),
     (re.compile(r"オリラジ"), "オリエンタルラウンジ"),
     (re.compile(r"(?<![A-Za-z0-9])YATAKOI(?![A-Za-z0-9])", re.IGNORECASE), "ヤタコイ"),
@@ -84,47 +111,403 @@ _BRAND_PHONETIC_RULES = (
     (re.compile(r"(?<![A-Za-z0-9])ag(?![A-Za-z0-9])", re.IGNORECASE), "アグ"),
 )
 
-# Nightlife station / district readings that TTS engines occasionally misread in kanji
-_PLACE_PHONETIC_RULES = (
-    ("茶屋町", "ちゃやまち"),
-    ("心斎橋", "しんさいばし"),
-    ("道頓堀", "どうとんぼり"),
-    ("難波", "なんば"),
-    ("三宮", "さんのみや"),
-    ("名駅", "めいえき"),
-    ("名古屋錦", "なごやにしき"),
-    ("錦店", "にしきてん"),
-    ("河原町", "かわらまち"),
-    ("木屋町", "きやまち"),
-    ("歌舞伎町", "かぶきちょう"),
-    ("宇田川", "うだがわ"),
-    ("道玄坂", "どうげんざか"),
-    ("恵比寿", "えびす"),
-    ("六本木", "ろっぽんぎ"),
-    ("小倉", "こくら"),
-    ("天神", "てんじん"),
-    ("中洲", "なかす"),
-    ("大宮", "おおみや"),
-    ("町田", "まちだ"),
-    ("柏", "かしわ"),
-    ("船橋", "ふなばし"),
-    ("宇都宮", "うつのみや"),
-    ("高崎", "たかさき"),
+# Space-separated compound store locations (applied before general place rules so spaces inside `名古屋 栄` or `名古屋 錦` never leave single kanji `栄`/`錦` misread as `えい`/`きん`)
+_SPACE_COMPOUND_PLACE_RULES = (
+    (re.compile(r"梅田\s*茶屋町"), "うめだちゃやまち"),
+    (re.compile(r"名古屋\s*住吉"), "なごやすみよし"),
+    (re.compile(r"名古屋\s*栄"), "なごやさかえ"),
+    (re.compile(r"名古屋\s*錦"), "なごやにしき"),
+    (re.compile(r"神戸\s*三宮"), "こうべさんのみや"),
+    (re.compile(r"福岡\s*天神"), "ふくおかてんじん"),
+    (re.compile(r"大阪\s*駅前"), "おおさかえきまえ"),
+    (re.compile(r"渋谷\s*本店"), "しぶやほんてん"),
 )
 
-_COUNTER_PHONETIC_RULES = (
+# Complete domestic 61-store & nightlife district readings (longest-match-first so compound names never split wrongly)
+_PLACE_PHONETIC_RULES = (
+    ("梅田茶屋町", "うめだちゃやまち"),
+    ("名古屋住吉", "なごやすみよし"),
+    ("名古屋栄", "なごやさかえ"),
+    ("名古屋錦", "なごやにしき"),
+    ("神戸三宮", "こうべさんのみや"),
+    ("福岡天神", "ふくおかてんじん"),
+    ("大阪駅前", "おおさかえきまえ"),
+    ("渋谷本店", "しぶやほんてん"),
+    ("西新宿", "にししんじゅく"),
+    ("歌舞伎町", "かぶきちょう"),
+    ("心斎橋", "しんさいばし"),
+    ("道頓堀", "どうとんぼり"),
+    ("茶屋町", "ちゃやまち"),
+    ("河原町", "かわらまち"),
+    ("木屋町", "きやまち"),
+    ("錦糸町", "きんしちょう"),
+    ("宇都宮", "うつのみや"),
+    ("宇田川", "うだがわ"),
+    ("道玄坂", "どうげんざか"),
+    ("六本木", "ろっぽんぎ"),
+    ("恵比寿", "えびす"),
+    ("名古屋", "なごや"),
+    ("鹿児島", "かごしま"),
+    ("三宮", "さんのみや"),
+    ("名駅", "めいえき"),
+    ("錦店", "にしきてん"),
+    ("住吉", "すみよし"),
+    ("栄店", "さかえてん"),
+    ("新宿", "しんじゅく"),
+    ("渋谷", "しぶや"),
+    ("上野", "うえの"),
+    ("町田", "まちだ"),
+    ("横浜", "よこはま"),
+    ("大宮", "おおみや"),
+    ("船橋", "ふなばし"),
+    ("高崎", "たかさき"),
+    ("札幌", "さっぽろ"),
+    ("仙台", "せんだい"),
+    ("静岡", "しずおか"),
+    ("浜松", "はままつ"),
+    ("金沢", "かなざわ"),
+    ("梅田", "うめだ"),
+    ("難波", "なんば"),
+    ("天満", "てんま"),
+    ("京都", "きょうと"),
+    ("神戸", "こうべ"),
+    ("岡山", "おかやま"),
+    ("広島", "ひろしま"),
+    ("松山", "まつやま"),
+    ("福岡", "ふくおか"),
+    ("天神", "てんじん"),
+    ("中洲", "なかす"),
+    ("小倉", "こくら"),
+    ("長崎", "ながさき"),
+    ("大分", "おおいた"),
+    ("熊本", "くまもと"),
+    ("宮崎", "みやざき"),
+    ("沖縄", "おきなわ"),
+    ("那覇", "なは"),
+    ("柏", "かしわ"),
+)
+
+# High-frequency multi-reading kanji compounds in Aiseki Navi scripts (prevents on/kun misreadings while preserving word boundaries)
+_DOMAIN_KANJI_PHONETIC_RULES = (
+    ("相席ナビ", "あいせきナビ"),
+    ("相席ラウンジ", "あいせきラウンジ"),
+    ("相席バー", "あいせきバー"),
+    ("相席速報", "あいせき速報"),
+    ("相席率", "あいせきりつ"),
+    ("相席", "あいせき"),
+    ("営業時間外", "えいぎょうじかんがい"),
+    ("営業時間", "えいぎょうじかん"),
+    ("集計準備中", "しゅうけいじゅんびちゅう"),
+    ("現在人数", "げんざいにんずう"),
+    ("合計人数", "ごうけいにんずう"),
+    ("人数トップ", "にんずうトップ"),
+    ("人数", "にんずう"),
+    ("女性比率", "じょせいひりつ"),
+    ("男性比率", "だんせいひりつ"),
+    ("女性比", "じょせいひ"),
+    ("男性比", "だんせいひ"),
+    ("男女比", "だんじょひ"),
+    ("比率差", "ひりつさ"),
+    ("深夜維持率", "しんやいじりつ"),
+    ("男性先行店", "だんせいせんこうてん"),
+    ("女性先行店", "じょせいせんこうてん"),
+    ("男性先行", "だんせいせんこう"),
+    ("女性先行", "じょせいせんこう"),
+    ("先行店", "せんこうてん"),
+    ("混雑店", "こんざつてん"),
+    ("狙い目店", "ねらいめてん"),
+    ("穴場店", "あなばてん"),
+    ("上位店", "じょういてん"),
+    ("注目店舗", "ちゅうもくてんぽ"),
+    ("全店舗", "ぜんてんぽ"),
+    ("全店", "ぜんてん"),
+    ("本店", "ほんてん"),
+    ("お店選び", "おみせえらび"),
+    ("店選び", "みせえらび"),
+    ("お店", "おみせ"),
+    ("受付待ちゼロ圏", "うけつけまちゼロけん"),
+    ("待ちゼロ圏", "まちゼロけん"),
+    ("受付待ち", "うけつけまち"),
+    ("待ち時間", "まちじかん"),
+    ("即案内圏", "そくあんないけん"),
+    ("即案内", "そくあんない"),
+    ("即乾杯圏", "そくかんぱいけん"),
+    ("即乾杯", "そくかんぱい"),
+    ("ゼロ圏", "ゼロけん"),
+    ("終電崖", "しゅうでんがけ"),
+    ("終電後", "しゅうでんご"),
+    ("終電前", "しゅうでんまえ"),
+    ("終電", "しゅうでん"),
+    ("今夜", "こんや"),
+    ("今すぐ", "いますぐ"),
+    ("今いちばん", "いまいちばん"),
+    ("今一番", "いまいちばん"),
+    ("今の", "いまの"),
+    ("今日", "きょう"),
+    ("本日", "ほんじつ"),
+    ("明日", "あした"),
+    ("祝前日", "しゅくぜんじつ"),
+    ("平日", "へいじつ"),
+    ("週末", "しゅうまつ"),
+    ("狙い目", "ねらいめ"),
+    ("穴場", "あなば"),
+    ("同じ駅", "おなじえき"),
+    ("同じ時間", "おなじじかん"),
+    ("同じ夜", "おなじよる"),
+    ("同じ", "おなじ"),
+    ("行く前", "いくまえ"),
+    ("行くなら", "いくなら"),
+    ("向かう直前", "むかうちょくぜん"),
+    ("向かう前", "むかうまえ"),
+    ("入る前", "はいるまえ"),
+    ("入りやすい", "はいりやすい"),
+    ("入れる", "はいれる"),
+    ("見れます", "みれます"),
+    ("見比べると", "みくらべると"),
+    ("見比べて", "みくらべて"),
+    ("見返して", "みかえして"),
+    ("見つかります", "みつかります"),
+    ("活況中", "かっきょうちゅう"),
+    ("活況", "かっきょう"),
+    ("最優勢", "さいゆうせい"),
+    ("毎分更新", "まいふんこうしん"),
+    ("毎分", "まいふん"),
+    ("席替え", "せきがえ"),
+    ("飲み放題", "のみほうだい"),
+    ("夜カフェ", "よるカフェ"),
+    ("激戦区", "げきせんく"),
+    ("対決", "たいけつ"),
+    ("以降", "いこう"),
+    ("続いて", "つづいて"),
+    ("過ぎ", "すぎ"),
+    ("避ける", "さける"),
+)
+
+_PRE_COUNTER_RULES = (
     (re.compile(r"aiseki-navi\.com", re.IGNORECASE), "あいせきナビドットコム"),
-    (re.compile(r"1軒目"), "いっけんめ"),
-    (re.compile(r"2軒目"), "にけんめ"),
-    (re.compile(r"3軒目"), "さんげんめ"),
-    (re.compile(r"2人組"), "ふたりぐみ"),
-    (re.compile(r"2人"), "ふたり"),
-    (re.compile(r"1人"), "ひとり"),
+    (re.compile(r"プロフ(?!ィール)"), "プロフィール"),
+    (re.compile(r"待ち0圏"), "まちゼロけん"),
     (re.compile(r"待ち0"), "まちゼロ"),
-    (re.compile(r"(\d+)\s*pt(?![A-Za-z])", re.IGNORECASE), r"\1ポイント"),
-    (re.compile(r"[%％]"), "パーセント"),
     (re.compile(r"(?<![A-Za-z])vs(?![A-Za-z])", re.IGNORECASE), "対"),
 )
+
+_UNIT_DIGITS_KANA = ("ゼロ", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう")
+_TENS_KANA = ("", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう")
+_HUNDREDS_KANA = ("", "ひゃく", "にひゃく", "さんびゃく", "よんひゃく", "ごひゃく", "ろっぴゃく", "ななひゃく", "はっぴゃく", "きゅうひゃく")
+_THOUSANDS_KANA = ("", "せん", "にせん", "さんぜん", "よんせん", "ごせん", "ろくせん", "ななせん", "はっせん", "きゅうせん")
+
+
+def _int_to_ja_kana(n: int) -> str:
+    """Convert non-negative integer (`0..99999999`) to standard spoken Japanese Hiragana."""
+    if n < 0:
+        return "マイナス" + _int_to_ja_kana(-n)
+    if n == 0:
+        return "ゼロ"
+    parts = []
+    if n >= 10000:
+        man = n // 10000
+        parts.append(_int_to_ja_kana(man) + "まん")
+        n %= 10000
+    if n >= 1000:
+        parts.append(_THOUSANDS_KANA[n // 1000])
+        n %= 1000
+    if n >= 100:
+        parts.append(_HUNDREDS_KANA[n // 100])
+        n %= 100
+    if n >= 10:
+        parts.append(_TENS_KANA[n // 10])
+        n %= 10
+    if n > 0:
+        parts.append(_UNIT_DIGITS_KANA[n])
+    return "".join(parts)
+
+
+def _int_prefix_without_last_digit(n: int) -> str:
+    hi = (n // 10) * 10
+    return "" if hi == 0 else _int_to_ja_kana(hi)
+
+
+def _spoken_counter_phrase(n: int, unit: str) -> str:
+    """Render exact Japanese counter euphony (促音便・撥音便・連濁) for numbers + units."""
+    u_low = unit.lower()
+    if unit in ("%", "％", "パーセント"):
+        if n > 0 and n % 100 == 0 and n < 1000:
+            return _int_to_ja_kana(n) + "パーセント"
+        return _int_to_ja_kana(n) + "パーセント"
+    if u_low == "pt" or unit == "ポイント":
+        return _int_to_ja_kana(n) + "ポイント"
+    if unit == "名":
+        return _int_to_ja_kana(n) + "めい"
+    if unit == "位":
+        return _int_to_ja_kana(n) + "い"
+    if unit == "秒":
+        return _int_to_ja_kana(n) + "びょう"
+    if unit == "円":
+        return _int_to_ja_kana(n) + "えん"
+    if unit == "倍":
+        return _int_to_ja_kana(n) + "ばい"
+    if unit == "代":
+        return _int_to_ja_kana(n) + "だい"
+    if unit == "時間":
+        if n % 10 == 4:
+            return _int_prefix_without_last_digit(n) + "よじかん"
+        if n % 10 == 9:
+            return _int_prefix_without_last_digit(n) + "くじかん"
+        return _int_to_ja_kana(n) + "じかん"
+    if unit == "時":
+        d = n % 10
+        if d == 4:
+            return _int_prefix_without_last_digit(n) + "よじ"
+        if d == 7:
+            return _int_prefix_without_last_digit(n) + "しちじ"
+        if d == 9:
+            return _int_prefix_without_last_digit(n) + "くじ"
+        return _int_to_ja_kana(n) + "じ"
+    if unit == "分":
+        if n == 0:
+            return "ゼロふん"
+        if n % 10 == 0:
+            if n == 100:
+                return "ひゃっぷん"
+            tens_prefix = _int_to_ja_kana(n)
+            if tens_prefix.endswith("じゅう"):
+                return tens_prefix[:-3] + "じゅっぷん"
+            return tens_prefix + "ふん"
+        d = n % 10
+        pfx = _int_prefix_without_last_digit(n)
+        if d == 1:
+            return pfx + "いっぷん"
+        if d == 3:
+            return pfx + "さんぷん"
+        if d == 4:
+            return pfx + "よんぷん"
+        if d == 6:
+            return pfx + "ろっぷん"
+        if d == 8:
+            return pfx + "はっぷん"
+        return _int_to_ja_kana(n) + "ふん"
+    if unit in ("人", "人組"):
+        sfx = "ぐみ" if unit == "人組" else ""
+        if n == 1:
+            return "ひとり" + sfx
+        if n == 2:
+            return "ふたり" + sfx
+        if n % 10 == 4:
+            return _int_prefix_without_last_digit(n) + "よにん" + sfx
+        if n % 10 == 7:
+            return _int_prefix_without_last_digit(n) + "ななにん" + sfx
+        return _int_to_ja_kana(n) + "にん" + sfx
+    if unit in ("店舗", "店"):
+        tail = "ぽ" if unit == "店舗" else ""
+        if n == 0:
+            return "ゼロてん" + tail
+        if n % 10 == 0:
+            base = _int_to_ja_kana(n)
+            if base.endswith("じゅう"):
+                return base[:-3] + "じゅってん" + tail
+            if n == 100:
+                return "ひゃってん" + tail
+            return base + "てん" + tail
+        d = n % 10
+        pfx = _int_prefix_without_last_digit(n)
+        if d == 1:
+            return pfx + "いってん" + tail
+        if d == 8:
+            return pfx + "はってん" + tail
+        return _int_to_ja_kana(n) + "てん" + tail
+    if unit in ("軒", "軒目"):
+        tail = "め" if unit == "軒目" else ""
+        if n % 10 == 0 and n > 0:
+            base = _int_to_ja_kana(n)
+            if base.endswith("じゅう"):
+                return base[:-3] + "じゅっけん" + tail
+        d = n % 10
+        pfx = _int_prefix_without_last_digit(n)
+        if d == 1:
+            return pfx + "いっけん" + tail
+        if d == 3:
+            return pfx + "さんげん" + tail
+        if d == 6:
+            return pfx + "ろっけん" + tail
+        if d == 8:
+            return pfx + "はっけん" + tail
+        return _int_to_ja_kana(n) + "けん" + tail
+    if unit in ("歳", "才"):
+        if n == 20:
+            return "はたち"
+        if n % 10 == 0 and n > 0:
+            base = _int_to_ja_kana(n)
+            if base.endswith("じゅう"):
+                return base[:-3] + "じゅっさい"
+        d = n % 10
+        pfx = _int_prefix_without_last_digit(n)
+        if d == 1:
+            return pfx + "いっさい"
+        if d == 8:
+            return pfx + "はっさい"
+        return _int_to_ja_kana(n) + "さい"
+    if unit == "組":
+        return _int_to_ja_kana(n) + "くみ"
+    return _int_to_ja_kana(n) + unit
+
+
+_FULLWIDTH_DIGIT_TRANS = str.maketrans("０１２３４５６７８９％", "0123456789%")
+_DECIMAL_COUNTER_RE = re.compile(
+    r"(?<![A-Za-z0-9])(\d{1,4})\.(\d{1,2})\s*(パーセント|[%％]|ポイント|pt(?![A-Za-z])|秒|分|時間|倍)?",
+    re.IGNORECASE,
+)
+_INT_COUNTER_RE = re.compile(
+    r"(?<![A-Za-z0-9])(\d{1,6})\s*(パーセント|[%％]|ポイント|pt(?![A-Za-z])|人組|店舗|軒目|時間|名|人|位|時|分|秒|店|軒|組|歳|才|代|円|倍)",
+    re.IGNORECASE,
+)
+_BARE_INT_RE = re.compile(r"(?<![A-Za-z0-9])(\d{1,5})(?![A-Za-z0-9])")
+
+
+def _expand_japanese_numbers_and_counters(text: str) -> str:
+    """Convert numeric expressions and Japanese counters into unambiguous Hiragana/Katakana readings."""
+    if not text:
+        return ""
+    s = text.translate(_FULLWIDTH_DIGIT_TRANS)
+    s = re.sub(r"(?<=\d),(?=\d{3}\b)", "", s)
+
+    def _repl_dec(m: re.Match) -> str:
+        whole = int(m.group(1))
+        frac_str = m.group(2)
+        unit = m.group(3) or ""
+        whole_k = "れい" if whole == 0 else _int_to_ja_kana(whole)
+        frac_k = "".join("れい" if ch == "0" else _UNIT_DIGITS_KANA[int(ch)] for ch in frac_str)
+        base = f"{whole_k}てん{frac_k}"
+        if not unit:
+            return base
+        u_low = unit.lower()
+        if unit in ("%", "％", "パーセント"):
+            return base + "パーセント"
+        if u_low == "pt" or unit == "ポイント":
+            return base + "ポイント"
+        if unit == "秒":
+            return base + "びょう"
+        if unit == "分":
+            return base + "ふん"
+        if unit == "時間":
+            return base + "じかん"
+        if unit == "倍":
+            return base + "ばい"
+        return base + unit
+
+    s = _DECIMAL_COUNTER_RE.sub(_repl_dec, s)
+
+    def _repl_int_counter(m: re.Match) -> str:
+        n = int(m.group(1))
+        unit = m.group(2)
+        return _spoken_counter_phrase(n, unit)
+
+    s = _INT_COUNTER_RE.sub(_repl_int_counter, s)
+    # Catch standalone `%` or `pt` left after kana numbers (e.g. `五十%`)
+    s = re.sub(r"[%％]", "パーセント", s)
+    s = re.sub(r"(?<![A-Za-z])pt(?![A-Za-z])", "ポイント", s, flags=re.IGNORECASE)
+    s = s.replace("ポイント差", "ポイントさ").replace("パーセント差", "パーセントさ")
+    s = _BARE_INT_RE.sub(lambda m: _int_to_ja_kana(int(m.group(1))), s)
+    return s
 
 VOICE_CLONE_SAMPLE_SCRIPT = (
     "こんばんは、相席ナビのリアルタイム速報です。\n"
@@ -174,11 +557,43 @@ def _sanitize_error_text(err_msg: str, api_key: str = "") -> str:
     return txt[:220]
 
 
+_ROMAN_CITY_RULES = (
+    (re.compile(r"(?<![A-Za-z])NISHISHINJUKU(?![A-Za-z])", re.IGNORECASE), "西新宿"),
+    (re.compile(r"(?<![A-Za-z])CHAYAMACHI(?![A-Za-z])", re.IGNORECASE), "茶屋町"),
+    (re.compile(r"(?<![A-Za-z])SHINSAIBASHI(?![A-Za-z])", re.IGNORECASE), "心斎橋"),
+    (re.compile(r"(?<![A-Za-z])SHINJUKU(?![A-Za-z])", re.IGNORECASE), "新宿"),
+    (re.compile(r"(?<![A-Za-z])SHIBUYA(?![A-Za-z])", re.IGNORECASE), "渋谷"),
+    (re.compile(r"(?<![A-Za-z])UMEDA(?![A-Za-z])", re.IGNORECASE), "梅田"),
+    (re.compile(r"(?<![A-Za-z])NAMBA(?![A-Za-z])", re.IGNORECASE), "難波"),
+    (re.compile(r"(?<![A-Za-z])FUKUOKA(?![A-Za-z])", re.IGNORECASE), "福岡"),
+    (re.compile(r"(?<![A-Za-z])SAPPORO(?![A-Za-z])", re.IGNORECASE), "札幌"),
+    (re.compile(r"(?<![A-Za-z])MATSUYAMA(?![A-Za-z])", re.IGNORECASE), "松山"),
+    (re.compile(r"(?<![A-Za-z])KUMAMOTO(?![A-Za-z])", re.IGNORECASE), "熊本"),
+    (re.compile(r"(?<![A-Za-z])HIROSHIMA(?![A-Za-z])", re.IGNORECASE), "広島"),
+    (re.compile(r"(?<![A-Za-z])KANAZAWA(?![A-Za-z])", re.IGNORECASE), "金沢"),
+    (re.compile(r"(?<![A-Za-z])NAGASAKI(?![A-Za-z])", re.IGNORECASE), "長崎"),
+    (re.compile(r"(?<![A-Za-z])OKAYAMA(?![A-Za-z])", re.IGNORECASE), "岡山"),
+    (re.compile(r"(?<![A-Za-z])OKINAWA(?![A-Za-z])", re.IGNORECASE), "沖縄"),
+    (re.compile(r"(?<![A-Za-z])NAGOYA(?![A-Za-z])", re.IGNORECASE), "名古屋"),
+    (re.compile(r"(?<![A-Za-z])SENDAI(?![A-Za-z])", re.IGNORECASE), "仙台"),
+    (re.compile(r"(?<![A-Za-z])KOKURA(?![A-Za-z])", re.IGNORECASE), "小倉"),
+    (re.compile(r"(?<![A-Za-z])OMIYA(?![A-Za-z])", re.IGNORECASE), "大宮"),
+    (re.compile(r"(?<![A-Za-z])EBISU(?![A-Za-z])", re.IGNORECASE), "恵比寿"),
+    (re.compile(r"(?<![A-Za-z])KYOTO(?![A-Za-z])", re.IGNORECASE), "京都"),
+    (re.compile(r"(?<![A-Za-z])TENMA(?![A-Za-z])", re.IGNORECASE), "天満"),
+    (re.compile(r"(?<![A-Za-z])KOBE(?![A-Za-z])", re.IGNORECASE), "神戸"),
+    (re.compile(r"(?<![A-Za-z])UENO(?![A-Za-z])", re.IGNORECASE), "上野"),
+    (re.compile(r"(?<![A-Za-z])OITA(?![A-Za-z])", re.IGNORECASE), "大分"),
+)
+
+
 def enforce_spoken_brand_rule(text: str) -> str:
     """Guarantee official brand names in spoken narration scripts (`オリエンタルラウンジ`, `ヤタコイ`)."""
     if not text:
         return ""
-    cleaned = _STANDALONE_OLG_RE.sub(_FULL_BRAND_OLG, str(text))
+    cleaned = str(text)
+    cleaned = re.sub(r"(?:ORIENTAL|オリエンタルラウンジ|オリエンタル)\s*LOUNGE", _FULL_BRAND_OLG, cleaned, flags=re.IGNORECASE)
+    cleaned = _STANDALONE_OLG_RE.sub(_FULL_BRAND_OLG, cleaned)
     cleaned = re.sub(r"(?<![A-Za-z0-9])OLG(?![A-Za-z0-9])", _FULL_BRAND_OLG, cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.replace("オリラジ", _FULL_BRAND_OLG)
     cleaned = re.sub(r"(?<![A-Za-z0-9])YATAKOI(?![A-Za-z0-9])", "ヤタコイ", cleaned, flags=re.IGNORECASE)
@@ -226,6 +641,13 @@ def get_elevenlabs_model_id(allow_blocking: bool = False) -> str:
         stored = (job_state.get_value(ELEVENLABS_MODEL_ID_KEY, allow_blocking=allow_blocking) or "").strip()
         if stored in SUPPORTED_ELEVENLABS_MODELS:
             return stored
+    except Exception:
+        pass
+    try:
+        legacy = (job_state.get_value(_LEGACY_ELEVENLABS_MODEL_ID_KEY, allow_blocking=allow_blocking) or "").strip()
+        # Preserve intentional Flash/v3 selections; auto-upgrade legacy `eleven_multilingual_v2` default to `eleven_v4`
+        if legacy in ("eleven_v3", "eleven_flash_v2_5", "eleven_v4", "eleven_v4_turbo"):
+            return legacy
     except Exception:
         pass
     env_m = (os.environ.get("ELEVENLABS_MODEL_ID") or "").strip()
@@ -373,7 +795,7 @@ def get_reel_cache_voice_signature(
         if cleaned_custom
         else "auto"
     )
-    return f"el:{vid}:{mid}:{custom_sig}"
+    return f"el2:{vid}:{mid}:{custom_sig}"
 
 
 def normalize_narration_script_input(raw_text: str) -> str:
@@ -388,28 +810,57 @@ def normalize_narration_script_input(raw_text: str) -> str:
 def to_tts_phonetic_japanese(script_text: str) -> str:
     """
     Convert a display narration script into natural spoken Japanese for ElevenLabs TTS
-    without altering visual captions.
+    without altering visual captions:
+      1. Collapse duplicate brand rubies (`JIS（ジス）` -> `ジス`, `ag（アグ）` -> `アグ`, `XIX（ジックス）` -> `ジックス`).
+      2. Convert Latin brand tokens (`ag`, `JIS`, `XIX`, `ASOBIBAR`, `CLOVERS`, `ALFA`).
+      3. Strip `[` and `]` so `eleven_v4`/`eleven_v3` never interpret square brackets as inline audio tags.
+      4. Convert ambiguous domain kanji (`相席`->`あいせき`, `今夜`->`こんや`, `現在人数`->`げんざいにんずう`) and all 61 store place names.
+      5. Expand digits + Japanese counters (`24名`->`にじゅうよんめい`, `1位`->`いちい`, `23時20分`->`にじゅうさんじにじゅっぷん`).
     """
     if not script_text:
         return ""
     txt = enforce_spoken_brand_rule(str(script_text))
     txt = _EMOJI_STRIP_RE.sub("", txt)
-    # Remove markdown brackets/quotes that cause unnatural TTS pauses while keeping Japanese punctuation
-    txt = txt.replace("『", "").replace("』", "").replace("【", "").replace("】", " ")
+    # Remove markdown/quote brackets and `[` `]` (inline audio-tag delimiters in Eleven v3/v4)
+    for ch in ("『", "』", "「", "」"):
+        txt = txt.replace(ch, "")
+    for ch in ("【", "】", "[", "]", "［", "］"):
+        txt = txt.replace(ch, " ")
+
+    for pattern, repl in _BRAND_RUBY_COLLAPSE_RULES:
+        txt = pattern.sub(repl, txt)
 
     for pattern, repl in _BRAND_PHONETIC_RULES:
         txt = pattern.sub(repl, txt)
 
+    for pattern, repl in _ROMAN_CITY_RULES:
+        txt = pattern.sub(repl, txt)
+
+    for pattern, repl in _PRE_COUNTER_RULES:
+        txt = pattern.sub(repl, txt)
+
+    for pattern, repl in _SPACE_COMPOUND_PLACE_RULES:
+        txt = pattern.sub(repl, txt)
+
+    for src, kana in _DOMAIN_KANJI_PHONETIC_RULES:
+        txt = txt.replace(src, kana)
+
     for src, kana in _PLACE_PHONETIC_RULES:
         txt = txt.replace(src, kana)
 
-    for pattern, repl in _COUNTER_PHONETIC_RULES:
-        txt = pattern.sub(repl, txt)
+    txt = _expand_japanese_numbers_and_counters(txt)
 
-    # Collapse extra spaces around Japanese text while keeping natural comma pauses
+    # Clean empty parentheses left after ruby collapse and collapse extra spaces around Japanese text
+    txt = re.sub(r"[（(]\s*[）)]", "", txt)
     txt = re.sub(r"[ \t\u3000]+", " ", txt).strip()
     txt = re.sub(r"(?<=[\u3040-\u30ff\u4e00-\u9fff])\s+(?=[\u3040-\u30ff\u4e00-\u9fff])", "", txt)
     return txt
+
+
+_PAREN_BRAND_RUBY_STRIP_RE = re.compile(
+    r"\s*[（(]\s*(?:ORIENTAL\s*LOUNGE|オリエンタルラウンジ|アソビバー|クローバーズ|ヤタコイ|アルファ|ジックス|シックス|キックス|ジス|アグ)\s*[）)]",
+    re.IGNORECASE,
+)
 
 
 def _spoken_store_name(store_entry: dict) -> str:
@@ -417,6 +868,9 @@ def _spoken_store_name(store_entry: dict) -> str:
         return "注目店舗"
     base = str(store_entry.get("ja_name") or store_entry.get("casual_name") or store_entry.get("raw_name") or "").strip()
     base = enforce_spoken_brand_rule(base)
+    base = _PAREN_BRAND_RUBY_STRIP_RE.sub("", base)
+    for pattern, repl in _ROMAN_CITY_RULES:
+        base = pattern.sub(repl, base)
     base = re.sub(r"\s+", "", base)
     return base or "注目店舗"
 
@@ -428,8 +882,9 @@ def _short_zone_name(label: str) -> str:
 
 def build_reel_narration_script(ctx: dict) -> str:
     """
-    Build a concise (~44–62 chars, ~6.6–7.8s spoken) live-fact narration script matching the 8.5s Reel timeline:
-      - 0.1s Hook -> Verified No.1 / Ratio-Gap Store Headcount -> Profile Link CTA (`相席ナビ`).
+    Build a concise (~44–64 chars, ~6.4–7.7s spoken) live-fact narration script strictly synchronized
+    with the stores and numbers drawn on Scene 1 & Scene 2 cards of the 8.5s 9:16 video:
+      - 0.1s Hook -> Exact on-screen #1/#2 Store & Headcount -> Profile Link CTA (`相席ナビ`).
       - Strictly zero fabricated metrics (`data_status == 'insufficient'` returns honest off-hours guidance).
     """
     if not isinstance(ctx, dict) or ctx.get("data_status") == "insufficient" or ctx.get("is_fallback"):
@@ -442,22 +897,21 @@ def build_reel_narration_script(ctx: dict) -> str:
     if rt == "area_battle":
         zones = ctx.get("area_battles") or []
         leader = next((z for z in zones if z.get("is_leader")), zones[0] if zones else None)
-        ratio_win = ctx.get("best_ratio_zone") or leader
         if leader and int(leader.get("total") or 0) > 0:
             lead_n = _short_zone_name(leader.get("label"))
             lead_w = int(leader.get("women") or 0)
-            if ratio_win and ratio_win.get("key") != leader.get("key") and int(ratio_win.get("total") or 0) > 0:
-                rw_n = _short_zone_name(ratio_win.get("label"))
-                rw_pct = int(ratio_win.get("wpct") or 0)
+            lead_m = int(leader.get("men") or 0)
+            bs = leader.get("best_store")
+            if isinstance(bs, dict) and (bs.get("ja_name") or bs.get("raw_name")):
+                bs_name = _spoken_store_name(bs)
                 script = (
-                    f"新宿・梅田・渋谷の今夜対決。人数トップは{lead_n}で女性{lead_w}名、"
-                    f"比率狙い目は女性{rw_pct}%の{rw_n}。詳細はプロフの相席ナビへ。"
+                    f"新宿・梅田・渋谷の今夜対決。1位は{lead_n}で女性{lead_w}名、"
+                    f"狙い目は{bs_name}。全店はプロフの相席ナビへ。"
                 )
             else:
-                lead_pct = int(leader.get("wpct") or 0)
                 script = (
-                    f"新宿・梅田・渋谷のリアルタイム対決。いま最優勢は{lead_n}、"
-                    f"女性{lead_w}名で比率{lead_pct}%。全店はプロフの相席ナビへ。"
+                    f"新宿・梅田・渋谷の今夜対決。1位は{lead_n}で女性{lead_w}名、"
+                    f"男性{lead_m}名。全店はプロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
@@ -467,8 +921,8 @@ def build_reel_narration_script(ctx: dict) -> str:
             s1 = l_top[0]
             s1_name = _spoken_store_name(s1)
             script = (
-                f"女子2人組の今夜おすすめ。{s1_name}がいま男性{int(s1.get('men') or 0)}名、"
-                f"女性{int(s1.get('women') or 0)}名で受付待ちゼロ圏。特典はプロフの相席ナビへ。"
+                f"女子2人組の今夜おすすめ。1位は{s1_name}で男性{int(s1.get('men') or 0)}名、"
+                f"女性{int(s1.get('women') or 0)}名。特典はプロフの相席ナビへ。"
             )
             return enforce_spoken_brand_rule(script)
 
@@ -479,16 +933,17 @@ def build_reel_narration_script(ctx: dict) -> str:
             hi = gp.get("heaven_store") or {}
             hi_name = _spoken_store_name(hi)
             gap_pt = int(gp.get("gap_pt") or 0)
+            hi_w = int(hi.get("women") or 0)
             hi_pct = int(hi.get("wpct") or 0)
             if gp.get("is_same_hub"):
                 script = (
-                    f"同じ駅でも男女比が{gap_pt}pt差。{hi_name}は女性比{hi_pct}%で今すぐ狙い目。"
-                    f"行く前の現在人数はプロフの相席ナビへ。"
+                    f"同じ駅でも男女比が{gap_pt}pt差。狙い目は{hi_name}で女性{hi_w}名、"
+                    f"女性比{hi_pct}%。プロフの相席ナビへ。"
                 )
             else:
                 script = (
-                    f"同じ時間でも店舗で男女比{gap_pt}pt差。{hi_name}は女性比{hi_pct}%の狙い目。"
-                    f"全国の現在人数はプロフの相席ナビへ。"
+                    f"同じ時間でも男女比が{gap_pt}pt差。狙い目は{hi_name}で女性{hi_w}名、"
+                    f"女性比{hi_pct}%。プロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
@@ -498,13 +953,13 @@ def build_reel_narration_script(ctx: dict) -> str:
             s1 = l_top[0]
             s1_name = _spoken_store_name(s1)
             script = (
-                f"女子ペアで受付待ちを避けるなら男性先行店。いま{s1_name}が"
-                f"男性{int(s1.get('men') or 0)}名、女性{int(s1.get('women') or 0)}名で即案内圏。プロフの相席ナビへ。"
+                f"女子ペアで受付待ちを避けるなら男性先行店。1位は{s1_name}で"
+                f"男性{int(s1.get('men') or 0)}名、女性{int(s1.get('women') or 0)}名。プロフの相席ナビへ。"
             )
             return enforce_spoken_brand_rule(script)
 
     if rt == "tiktok_midnight_cliff":
-        m_top = ctx.get("midnight_top4") or []
+        m_top = ctx.get("midnight_top4") or ctx.get("top5_volume") or []
         if m_top:
             s1 = m_top[0]
             s1_name = _spoken_store_name(s1)
@@ -513,35 +968,34 @@ def build_reel_narration_script(ctx: dict) -> str:
             ret = s1.get("midnight_retention_pct")
             if ret is not None and int(ret) > 0:
                 script = (
-                    f"23時過ぎの2軒目速報。深夜維持率{int(ret)}%の{s1_name}にいま女性{w_cnt}名。"
-                    f"終電後の穴場はプロフの相席ナビへ。"
+                    f"23時過ぎの2軒目速報。1位は深夜維持率{int(ret)}%の{s1_name}で女性{w_cnt}名。"
+                    f"プロフの相席ナビへ。"
                 )
             else:
                 script = (
-                    f"23時過ぎの2軒目速報。いま{s1_name}は女性{w_cnt}名、男性{m_cnt}名で活況中。"
-                    f"深夜の現在人数はプロフの相席ナビへ。"
+                    f"23時過ぎの2軒目速報。1位は{s1_name}で女性{w_cnt}名、男性{m_cnt}名。"
+                    f"プロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
-    # Default: `live_top5`
+    # Default: `live_top5` — strictly speak #1 (and #2) from `top5_volume` rendered on Scene 1 & Scene 2 cards
     top5 = ctx.get("top5_volume") or []
-    anaba = ctx.get("anaba_pickups") or []
     if top5:
         s1 = top5[0]
         s1_name = _spoken_store_name(s1)
         w1 = int(s1.get("women") or 0)
         m1 = int(s1.get("men") or 0)
-        ab = anaba[0] if anaba else None
-        if ab and ab.get("raw_name") != s1.get("raw_name") and int(ab.get("wpct") or 0) >= 55:
-            ab_name = _spoken_store_name(ab)
-            ab_pct = int(ab.get("wpct") or 0)
+        if len(top5) >= 2 and top5[1].get("raw_name") != s1.get("raw_name"):
+            s2 = top5[1]
+            s2_name = _spoken_store_name(s2)
+            w2 = int(s2.get("women") or 0)
             script = (
-                f"今夜の相席速報。1位は{s1_name}で女性{w1}名。"
-                f"狙い目は女性比{ab_pct}%の{ab_name}。現在人数はプロフの相席ナビへ。"
+                f"今夜の全国速報。1位は{s1_name}で女性{w1}名、"
+                f"続いて{s2_name}が女性{w2}名。現在人数はプロフの相席ナビへ。"
             )
         else:
             script = (
-                f"今夜の全国速報。1位は{s1_name}、女性{w1}名、男性{m1}名。"
+                f"今夜の全国速報。1位は{s1_name}で女性{w1}名、男性{m1}名。"
                 f"全店の現在人数はプロフの相席ナビから3秒で見れます。"
             )
         return enforce_spoken_brand_rule(script)
@@ -726,7 +1180,7 @@ def synthesize_narration_audio(
             "phonetic_text": "",
         }
 
-    cache_raw = f"v1|{eff_vid}|{eff_model}|{phonetic_text}"
+    cache_raw = f"v2|{eff_vid}|{eff_model}|{phonetic_text}"
     tts_hash = hashlib.sha256(cache_raw.encode("utf-8")).hexdigest()[:24]
     os.makedirs(TTS_TMP_CACHE_DIR, exist_ok=True)
     disk_mp3_path = os.path.join(TTS_TMP_CACHE_DIR, f"tts_{tts_hash}.mp3")
@@ -782,24 +1236,28 @@ def synthesize_narration_audio(
 
     safe_vid = urllib.parse.quote(eff_vid, safe="")
     url = f"{ELEVENLABS_API_BASE}/text-to-speech/{safe_vid}?output_format=mp3_44100_128"
-    if eff_model == "eleven_v3":
-        voice_settings = {
-            "stability": 0.50,
-            "similarity_boost": 0.80,
-        }
-    else:
-        voice_settings = {
-            "stability": 0.50,
-            "similarity_boost": 0.82,
-            "style": 0.14,
-            "use_speaker_boost": True,
-        }
 
-    req_body = {
-        "text": phonetic_text,
-        "model_id": eff_model,
-        "voice_settings": voice_settings,
-    }
+    def _build_tts_body(m_id: str, minimal: bool = False) -> dict:
+        if minimal or m_id in ("eleven_v4", "eleven_v4_turbo", "eleven_v3"):
+            v_settings = {"stability": 0.50, "similarity_boost": 0.80}
+        else:
+            v_settings = {
+                "stability": 0.50,
+                "similarity_boost": 0.82,
+                "style": 0.12,
+                "use_speaker_boost": True,
+            }
+        body = {
+            "text": phonetic_text,
+            "model_id": m_id,
+            "voice_settings": v_settings,
+        }
+        if m_id in _LANGUAGE_CODE_MODELS:
+            body["language_code"] = "ja"
+            if not minimal:
+                body["apply_text_normalization"] = "on"
+        return body
+
     headers = {
         "xi-api-key": eff_key,
         "Content-Type": "application/json",
@@ -807,15 +1265,21 @@ def synthesize_narration_audio(
     }
 
     try:
-        resp = requests.post(url, json=req_body, headers=headers, timeout=timeout)
-        if resp.status_code in (400, 422) and len(voice_settings) > 2:
-            # Compatibility fallback if a specific voice/model rejects `style` or `use_speaker_boost`
-            fallback_body = {
-                "text": phonetic_text,
-                "model_id": eff_model,
-                "voice_settings": {"stability": 0.50, "similarity_boost": 0.80},
-            }
-            resp = requests.post(url, json=fallback_body, headers=headers, timeout=timeout)
+        used_model = eff_model
+        resp = requests.post(url, json=_build_tts_body(used_model, minimal=False), headers=headers, timeout=timeout)
+        if resp.status_code in (400, 404, 422):
+            # Fallback 1: minimal payload for same model (drops `apply_text_normalization` / `style` if rejected)
+            resp = requests.post(url, json=_build_tts_body(used_model, minimal=True), headers=headers, timeout=timeout)
+        if resp.status_code in (400, 404, 422):
+            # Fallback 2: if a specific Voice Library / plan rejects `eleven_v4`, fall back cleanly to `eleven_v3` or `eleven_flash_v2_5`
+            for alt_model in ("eleven_v3", "eleven_flash_v2_5", "eleven_multilingual_v2"):
+                if alt_model == used_model:
+                    continue
+                alt_resp = requests.post(url, json=_build_tts_body(alt_model, minimal=True), headers=headers, timeout=timeout)
+                if alt_resp.status_code == 200 and alt_resp.content and len(alt_resp.content) >= 512:
+                    resp = alt_resp
+                    used_model = alt_model
+                    break
 
         if resp.status_code != 200 or not resp.content or len(resp.content) < 512:
             err_detail = _sanitize_error_text(resp.text if resp.status_code != 200 else "empty audio payload", eff_key)
@@ -829,7 +1293,7 @@ def synthesize_narration_audio(
                 "script_text": clean_script,
                 "phonetic_text": phonetic_text,
                 "voice_id": eff_vid,
-                "model_id": eff_model,
+                "model_id": used_model,
             }
 
         audio_bytes = bytes(resp.content)
@@ -861,7 +1325,7 @@ def synthesize_narration_audio(
             "script_text": clean_script,
             "phonetic_text": phonetic_text,
             "voice_id": eff_vid,
-            "model_id": eff_model,
+            "model_id": used_model,
         }
     except Exception as exc:
         msg = f"ElevenLabs通信タイムアウトまたは接続失敗: {_sanitize_error_text(str(exc), eff_key)}"

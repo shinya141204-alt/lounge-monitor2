@@ -107,7 +107,7 @@ class VoiceNarrationReelsTests(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def test_phonetic_japanese_and_brand_enforcement(self):
-        raw = "🔥 オリエンタル新宿とag渋谷、JIS茶屋町・心斎橋・XIX・ASOBIBAR・YATAKOIで2軒目！女性比64%（22pt差）女子2人組も待ち0"
+        raw = "🔥 オリエンタル新宿とag（アグ）渋谷、JIS（ジス）茶屋町・心斎橋・XIX（ジックス）岡山・ASOBIBAR（アソビバー）名古屋 栄・YATAKOIで2軒目！女性比64%（22pt差）女子2人組も待ち0 [テスト]"
         enforced = voice_narration.enforce_spoken_brand_rule(raw)
         self.assertIn("オリエンタルラウンジ新宿", enforced)
         self.assertIn("ヤタコイ", enforced)
@@ -115,19 +115,36 @@ class VoiceNarrationReelsTests(unittest.TestCase):
 
         phonetic = voice_narration.to_tts_phonetic_japanese(raw)
         self.assertNotIn("🔥", phonetic)
-        self.assertIn("オリエンタルラウンジ新宿", phonetic)
-        self.assertIn("アグ渋谷", phonetic)
+        self.assertNotIn("[", phonetic)
+        self.assertNotIn("]", phonetic)
+        self.assertIn("オリエンタルラウンジしんじゅく", phonetic)
+        self.assertIn("アグしぶや", phonetic)
+        self.assertNotIn("アグ（アグ）", phonetic)
+        self.assertNotIn("アグアグ", phonetic)
         self.assertIn("ジスちゃやまち", phonetic)
+        self.assertNotIn("ジス（ジス）", phonetic)
+        self.assertNotIn("ジスジス", phonetic)
         self.assertIn("しんさいばし", phonetic)
-        self.assertIn("ジックス", phonetic)
+        self.assertIn("ジックスおかやま", phonetic)
+        self.assertNotIn("ジックスジックス", phonetic)
         self.assertNotIn("ナインティーン", phonetic)
-        self.assertIn("アソビバー", phonetic)
+        self.assertIn("アソビバーなごやさかえ", phonetic)
+        self.assertNotIn("アソビバーアソビバー", phonetic)
         self.assertIn("ヤタコイ", phonetic)
         self.assertIn("にけんめ", phonetic)
-        self.assertIn("64パーセント", phonetic)
-        self.assertIn("22ポイント差", phonetic)
+        self.assertIn("ろくじゅうよんパーセント", phonetic)
+        self.assertIn("にじゅうにポイントさ", phonetic)
         self.assertIn("ふたりぐみ", phonetic)
         self.assertIn("まちゼロ", phonetic)
+
+        # Verify Japanese counter euphony & tricky city names across Japan
+        tricky = "今夜の相席ナビ速報。1位はオリエンタルラウンジ大分で女性24名、続いてオリエンタルラウンジ天満が23時20分に60店舗中3秒で100%更新。小倉と金沢も活況。"
+        tricky_pho = voice_narration.to_tts_phonetic_japanese(tricky)
+        self.assertIn("こんやのあいせきナビ速報", tricky_pho)
+        self.assertIn("いちいはオリエンタルラウンジおおいたで女性にじゅうよんめい", tricky_pho)
+        self.assertIn("オリエンタルラウンジてんまがにじゅうさんじにじゅっぷんにろくじゅってんぽ", tricky_pho)
+        self.assertIn("さんびょうでひゃくパーセント", tricky_pho)
+        self.assertIn("こくらとかなざわもかっきょう", tricky_pho)
 
     def test_all_six_templates_and_offhours_narration_scripts(self):
         ref_dt = datetime.datetime(2026, 11, 13, 21, 15, tzinfo=JST)
@@ -156,12 +173,17 @@ class VoiceNarrationReelsTests(unittest.TestCase):
             voice_id=vid,
             voice_name="My Own Voice",
             enabled=True,
-            model_id="eleven_multilingual_v2",
         )
         self.assertTrue(st["configured"])
         self.assertTrue(st["active"])
         self.assertEqual(st["voice_id"], vid)
+        self.assertEqual(st["model_id"], "eleven_v4")
         self.assertNotIn(raw_secret, json.dumps(st, ensure_ascii=False))
+
+        # Verify legacy `eleven_multilingual_v2` in old key auto-upgrades to `eleven_v4` when v2 key is unset
+        job_state.set_value(voice_narration.ELEVENLABS_MODEL_ID_KEY, "")
+        job_state.set_value(voice_narration._LEGACY_ELEVENLABS_MODEL_ID_KEY, "eleven_multilingual_v2")
+        self.assertEqual(voice_narration.get_elevenlabs_model_id(), "eleven_v4")
 
         # Verify raw secret is obfuscated (`obf1:`) on disk, never stored in plaintext
         with open(job_state._LOCAL_FILE, "r", encoding="utf-8") as f:
@@ -186,7 +208,11 @@ class VoiceNarrationReelsTests(unittest.TestCase):
             called_headers = m_post.call_args.kwargs.get("headers") or {}
             self.assertEqual(called_headers.get("xi-api-key"), raw_secret)
             sent_body = m_post.call_args.kwargs.get("json") or {}
-            self.assertIn("アグ渋谷", sent_body.get("text", ""))
+            self.assertEqual(sent_body.get("model_id"), "eleven_v4")
+            self.assertEqual(sent_body.get("language_code"), "ja")
+            self.assertEqual(sent_body.get("apply_text_normalization"), "on")
+            self.assertIn("アグしぶや", sent_body.get("text", ""))
+            self.assertIn("じゅうきゅうめい", sent_body.get("text", ""))
 
             # Second identical synthesis hits disk cache with ZERO API credit usage
             res2 = voice_narration.synthesize_narration_audio("今夜の相席速報。1位はag渋谷で女性19名。プロフの相席ナビへ。")
@@ -194,14 +220,26 @@ class VoiceNarrationReelsTests(unittest.TestCase):
             self.assertTrue(res2["cached"])
             self.assertEqual(m_post.call_count, 1)
 
-        # Simulate HTTP 429 quota exceeded -> fail-open dict without leaking API key
+        # Simulate HTTP 422 on `eleven_v4` -> auto-fallback succeeds cleanly on `eleven_v3`
+        mock_resp_422 = mock.Mock()
+        mock_resp_422.status_code = 422
+        mock_resp_422.content = b""
+        mock_resp_422.text = "Model not available for this voice"
+        with mock.patch("voice_narration.requests.post", side_effect=[mock_resp_422, mock_resp_422, mock_resp_ok]) as m_fb:
+            res_fb = voice_narration.synthesize_narration_audio("フォールバック検証用の新規テスト台本です。")
+            self.assertTrue(res_fb["ok"])
+            self.assertEqual(res_fb["model_id"], "eleven_v3")
+            self.assertEqual(m_fb.call_count, 3)
+
+        # Simulate HTTP 429 quota exceeded -> immediate single-shot fail-open dict without leaking API key
         mock_resp_429 = mock.Mock()
         mock_resp_429.status_code = 429
         mock_resp_429.content = b""
         mock_resp_429.text = f"Quota exceeded for key {raw_secret}"
-        with mock.patch("voice_narration.requests.post", return_value=mock_resp_429):
+        with mock.patch("voice_narration.requests.post", return_value=mock_resp_429) as m_429:
             res_err = voice_narration.synthesize_narration_audio("別パターンの新規テスト文面です。")
             self.assertFalse(res_err["ok"])
+            self.assertEqual(m_429.call_count, 1)
             self.assertNotIn(raw_secret, res_err.get("error", ""))
 
     def test_audio_filter_graph_cache_key_and_pipeline_orchestration(self):
@@ -235,6 +273,15 @@ class VoiceNarrationReelsTests(unittest.TestCase):
         k_auto = reel_generator._compute_reel_cache_key(self.sample_stores, "live_top5", bg_info, now_jst=ref_dt, voice_sig=sig_auto)
         k_cust = reel_generator._compute_reel_cache_key(self.sample_stores, "live_top5", bg_info, now_jst=ref_dt, voice_sig=sig_custom)
         self.assertEqual(len({k_bgm, k_auto, k_cust}), 3)
+
+        # Verify cache key hashes ALL domestic stores (not just alphabetical top 15!)
+        many_stores = [{"name": f"ASOBIBAR_{i:02d}", "women": 5, "men": 5} for i in range(20)]
+        many_stores.append({"name": "オリエンタルラウンジ 新宿", "women": 30, "men": 20})
+        k_all_1 = reel_generator._compute_reel_cache_key(many_stores, "live_top5", bg_info, now_jst=ref_dt, voice_sig=sig_auto)
+        many_stores_updated = [dict(s) for s in many_stores]
+        many_stores_updated[-1]["women"] = 35
+        k_all_2 = reel_generator._compute_reel_cache_key(many_stores_updated, "live_top5", bg_info, now_jst=ref_dt, voice_sig=sig_auto)
+        self.assertNotEqual(k_all_1, k_all_2)
 
         # 4. Verify `render_reel_mp4_bytes` fail-open fallback when ElevenLabs fails -> still renders BGM MP4
         def _fake_encode(ffmpeg_bin, renderer, bg_i, out_path, use_video_bg=False, narration_audio_path=None, narration_duration_sec=0.0):
@@ -397,8 +444,20 @@ class VoiceNarrationReelsTests(unittest.TestCase):
             t_body = t_res.get_json()
             self.assertTrue(t_body["ok"])
             self.assertTrue(t_body["audio_data_url"].startswith("data:audio/mpeg;base64,"))
-            self.assertIn("オリエンタルラウンジ新宿", t_body["phonetic_text"])
-            self.assertIn("アグ新宿", t_body["phonetic_text"])
+            self.assertIn("オリエンタルラウンジしんじゅく", t_body["phonetic_text"])
+            self.assertIn("アグしんじゅく", t_body["phonetic_text"])
+            self.assertIn("にじゅうはちパーセントさ", t_body["phonetic_text"])
+
+        # Instant zero-credit phonetic preview endpoint
+        p_res = client.post(
+            "/api/staff/voice-narration/phonetic",
+            json={"text": "JIS（ジス）梅田で女性24名"},
+            headers={"Origin": "http://localhost"},
+        )
+        self.assertEqual(p_res.status_code, 200)
+        p_body = p_res.get_json()
+        self.assertTrue(p_body["ok"])
+        self.assertEqual(p_body["phonetic_text"], "ジスうめだで女性にじゅうよんめい")
 
         # Render `/staff/sns-editorial?channel=instagram` and verify Studio UI elements
         page = client.get(

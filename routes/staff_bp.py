@@ -720,9 +720,26 @@ def api_staff_voice_narration_test():
     })
 
 
+@staff_bp.route('/api/staff/voice-narration/phonetic', methods=['POST'])
+def api_staff_voice_narration_phonetic():
+    """Master-only instant phonetic preview endpoint (zero ElevenLabs credit usage)."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import voice_narration
+    payload = request.get_json(silent=True) or {}
+    raw_text = (payload.get('text') or '').strip()
+    clean_script = voice_narration.normalize_narration_script_input(raw_text)
+    return jsonify({
+        'ok': True,
+        'script_text': clean_script,
+        'phonetic_text': voice_narration.to_tts_phonetic_japanese(clean_script),
+    })
+
+
 @staff_bp.route('/api/staff/voice-narration/pin-preview', methods=['POST'])
 def api_staff_voice_narration_pin_preview():
-    """Master-only endpoint to render & pin a custom-script narrated 9:16 MP4 slot for `<video>` preview & download."""
+    """Master-only endpoint to render & pin a snapshot-locked narrated 9:16 MP4 slot for `<video>` preview & download."""
     guard = _check_master_api_csrf()
     if guard is not None:
         return guard
@@ -739,23 +756,32 @@ def api_staff_voice_narration_pin_preview():
 
     live_s = _get_visible_live_stores()
     try:
+        ctx = reel_generator.build_reel_context(live_s, reel_type=rt)
+        eff_script = (
+            voice_narration.normalize_narration_script_input(narration_text)
+            or ctx.get('narration_script')
+            or ''
+        )
         mp4_bytes = reel_generator.render_reel_mp4_bytes(
             live_s,
             reel_type=rt,
             force_refresh=True,
             narration_override=voice_on,
-            custom_narration_text=narration_text or None,
+            custom_narration_text=eff_script or None,
         )
         tok = str(int(_time.time() * 1000))
-        reel_generator.pin_shared_reel_mp4_slot(rt, f"prev_{tok}", mp4_bytes, ttl_sec=600)
+        slot_id = f"prev_{tok}"
+        reel_generator.pin_shared_reel_mp4_slot(rt, slot_id, mp4_bytes, ttl_sec=600)
         return jsonify({
             'ok': True,
             'reel_type': rt,
             'preview_token': tok,
-            'mp4_url': f"/ogp/reel/{rt}.mp4?refresh=1&t={tok}",
+            'mp4_url': f"/ogp/reel/{rt}.mp4?s={slot_id}&t={tok}",
             'jpg_url': f"/ogp/reel/{rt}.jpg?refresh=1&t={tok}",
-            'download_url': f"/ogp/reel/{rt}.mp4?refresh=1&t={tok}&download=1",
-            'phonetic_text': voice_narration.to_tts_phonetic_japanese(narration_text) if narration_text else '',
+            'download_url': f"/ogp/reel/{rt}.mp4?s={slot_id}&t={tok}&download=1",
+            'narration_script': eff_script,
+            'phonetic_text': voice_narration.to_tts_phonetic_japanese(eff_script) if eff_script else '',
+            'caption': ctx.get('caption') or '',
             'voice_active': voice_narration.is_voice_narration_active(allow_blocking=False) if voice_on is None else bool(voice_on),
         })
     except Exception as exc:
