@@ -466,60 +466,32 @@ def _ensure_scheduler_started_async():
                 with data_lock:
                     cur_copy, cur_seed = list(latest_data.get('full_data') or []), bool(latest_data.get('is_seed'))
                 return ops_governance.filter_visible_stores(cur_copy), cur_seed
-            def _x_sched_wrap(slot_lbl="20:00"):
-                if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
+            def _x_data_law_wrap(slot_lbl="19:15"):
+                if not sns_editorial.should_fire_scheduled_slot_now("x_data_law", slot_lbl):
                     return
-                cur_stores, _ = _visible_live_stores()
-                skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x", slot_lbl, stores=cur_stores)
-                if skip_pace:
-                    logging.info(f"Skipping X {slot_lbl} for human pacing: {pace_reason}")
+                run_scheduled_x_data_law_post(slot_lbl)
+            def _x_search_wrap(slot_lbl="22:00"):
+                if not sns_editorial.should_fire_scheduled_slot_now("x_search", slot_lbl):
                     return
-                run_scheduled_x_post(slot_lbl)
-            scheduler.add_job(func=_x_sched_wrap, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
-            scheduler.add_job(func=_x_sched_wrap, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
-            scheduler.add_job(func=_x_sched_wrap, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
-            def _tip_18():
-                if not sns_editorial.should_fire_scheduled_slot_now("x_tip", "18:00"):
-                    return
-                skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x_tip", "18:00")
-                if skip_pace:
-                    logging.info(f"Skipping X tip 18:00 for human pacing: {pace_reason}")
-                    return
-                tips_poster.run_scheduled_tip_post(slot_label="18:00")
-            scheduler.add_job(func=_tip_18, trigger="cron", hour=9, minute="2,6,10,14,18,23,28", jitter=75, executor="sns_ai")
+                run_scheduled_x_search_catcher_post(slot_lbl)
+            scheduler.add_job(func=_x_data_law_wrap, trigger="cron", day_of_week="mon,tue,wed,thu,fri", hour=10, minute="17,21,25,29,33,38,42", jitter=60, args=["19:15"], executor="sns_ai")
+            scheduler.add_job(func=_x_search_wrap, trigger="cron", day_of_week="fri,sat", hour=13, minute="2,6,10,14,18,22,27", jitter=60, args=["22:00"], executor="sns_ai")
             def _note_check_job():
                 try:
                     note_poster.check_and_post_new_note()
                 except Exception as err:
                     logging.error(f"Scheduled note promotion check failed: {err}")
-            # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows, well clear of 18:00 Tips & 20:00-22:00 X rush
+            # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows
             scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
-            def _threads_daily_job():
+            def _threads_conv_job():
                 try:
-                    if not sns_editorial.should_fire_scheduled_slot_now("threads", "22:00"):
+                    if not sns_editorial.should_fire_scheduled_slot_now("threads_conv", "21:15"):
                         return
-                    cur_stores, is_seed = _visible_live_stores()
-                    if cur_stores and not is_seed:
-                        skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("threads", "22:00", stores=cur_stores)
-                        if skip_pace:
-                            logging.info(f"Skipping Threads 22:00 for human pacing: {pace_reason}")
-                            return
-                        threads_poster.execute_scheduled_threads_post(cur_stores, slot_label="22:00", image_url=threads_poster.select_scheduled_threads_image_url())
+                    cur_stores, _ = _visible_live_stores()
+                    threads_poster.execute_scheduled_conversational_threads_post(cur_stores, slot_label="21:15")
                 except Exception as err:
-                    logging.error(f"Scheduled Threads post failed: {err}")
-            scheduler.add_job(func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
-            # Plan E: Women-perspective 'Tonight's Zero-Wait & Ladies Perks' alerts on Threads (Wed/Fri/Sat 19:30 JST)
-            # Note: IG Carousel and IG Ladies single-image feed are disabled in favor of Plan B IG Reels (daily 20:00 + active-night 22:50 JST).
-            def _threads_ladies_job():
-                try:
-                    if not sns_editorial.should_fire_scheduled_slot_now("threads_ladies", "19:30"):
-                        return
-                    cur_stores, is_seed = _visible_live_stores()
-                    if cur_stores and not is_seed:
-                        threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
-                except Exception as err:
-                    logging.error(f"Scheduled Threads ladies post failed: {err}")
-            scheduler.add_job(func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
+                    logging.error(f"Scheduled conversational Threads post failed: {err}")
+            scheduler.add_job(func=_threads_conv_job, trigger="cron", day_of_week="tue,thu,fri,sun", hour=12, minute="18,22,26,30,34,39,43", jitter=60, executor="sns_ai")
             def _ig_reel_scheduled_job(slot_lbl="20:00"):
                 try:
                     if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl) or not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
@@ -556,14 +528,6 @@ def _ensure_scheduler_started_async():
                 except Exception as err:
                     logging.error(f"Scheduled articles release check failed: {err}")
             scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
-            def _bonus_alert_check_job():
-                try:
-                    cur_stores, is_seed = _visible_live_stores()
-                    if cur_stores and not is_seed:
-                        bonus_alert.check_and_post_bonus_alert(cur_stores)
-                except Exception as err:
-                    logging.error(f"Bonus alert check failed: {err}")
-            scheduler.add_job(func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
             def _x_weekly_sun_fallback_job():
                 try:
                     if sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
@@ -2763,7 +2727,9 @@ from routes.sns_jobs_bp import (
     execute_sns_job_payload,
     precompute_editorial_and_media_bundle,
     run_scheduled_weekly_x_post,
+    run_scheduled_x_data_law_post,
     run_scheduled_x_post,
+    run_scheduled_x_search_catcher_post,
 )
 from routes.staff_bp import (
     _get_sns_kit_context,

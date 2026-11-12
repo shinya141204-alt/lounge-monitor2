@@ -45,6 +45,34 @@ def build_sns_post_payload(post_type, base_url, latest_data):
             'timestamp': ts,
             'text': threads_text,
         }
+    elif post_type == 'threads_conv':
+        import threads_poster
+        conv_text, seed_key = threads_poster.build_threads_conversational_post(stores=stores, use_ai=False)
+        return {
+            'status': 'success',
+            'type': post_type,
+            'timestamp': ts,
+            'seed_key': seed_key,
+            'text': conv_text,
+        }
+    elif post_type == 'x_data_law':
+        law_bundle = x_poster.build_x_data_law_post(attach_eyecatch=False)
+        return {
+            'status': 'success',
+            'type': post_type,
+            'timestamp': ts,
+            'law_key': law_bundle['law_key'],
+            'text': law_bundle['text'],
+        }
+    elif post_type == 'x_search':
+        main_txt, rep_txt = x_poster.build_x_search_catcher_post(stores, app_url=base_url)
+        return {
+            'status': 'success',
+            'type': post_type,
+            'timestamp': ts,
+            'text': main_txt,
+            'reply_text': rep_txt,
+        }
     elif post_type == 'price':
         announce_lines = [
             "【新機能】相席ラウンジ全国60店舗超「料金・イベント・現在人数」横並び比較ボードを公開しました📊",
@@ -382,4 +410,240 @@ def execute_scheduled_weekly_x_post(force=False):
             x_poster.record_x_auto_post_timestamp(now_jst)
     result["tweet_text"] = main_text
     result["reply_text"] = reply_text
+    return result
+
+
+# ==============================================================================
+# Option-1 Pivot (2026-11):
+#   - `execute_scheduled_x_data_law_post`: Standalone 1-Tweet Data-Law / Insight
+#     (`mon,tue,wed,thu,fri` ~19:15 JST, zero URL, zero self-reply, zero `リプ欄`)
+#   - `execute_scheduled_x_search_catcher_post`: Weekend Peak Store-Search Catcher
+#     (`fri,sat` ~22:00 JST ONLY, searchable store names, zero `👇` bait)
+# ==============================================================================
+
+
+def execute_scheduled_x_data_law_post(slot_label: str = "19:15", force: bool = False, now_jst=None) -> dict:
+    """Execute Pillar A standalone 1-tweet Data-Law / Counter-Intuitive Nightlife Insight on X."""
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    biz_date = biz_dt.strftime("%Y-%m-%d")
+    dedup_key = f"x_data_law:{biz_date}_{slot_label}"
+
+    if not force and job_state.is_done(dedup_key):
+        logging.info(f"X data-law post already sent for {dedup_key}, skipping.")
+        return {"status": "skipped", "reason": "Already posted data-law for this slot"}
+
+    if not force:
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+        if in_cd:
+            logging.info(f"Deferring X data-law post ({slot_label}): {cd_reason}")
+            return {"status": "skipped", "reason": cd_reason}
+        over_b, b_reason = x_poster.check_x_daily_post_budget(max_daily=2, now_jst=now_jst)
+        if over_b:
+            logging.info(f"Skipping X data-law post ({slot_label}): {b_reason}")
+            return {"status": "skipped", "reason": b_reason}
+
+    bundle = x_poster.build_x_data_law_post(now_jst=now_jst, attach_eyecatch=True)
+    text = bundle.get("text") or ""
+    law_key = bundle.get("law_key") or ""
+    if not text:
+        return {"status": "error", "detail": "Empty X data-law text"}
+
+    result = x_poster.post_to_x(
+        text,
+        reply_text=None,
+        media_bytes=bundle.get("media_bytes"),
+        media_mime_type=bundle.get("media_mime_type") or "image/jpeg",
+    )
+    if result.get("status") == "success":
+        tweet_id = ((result.get("data") or {}).get("data") or {}).get("id") or ""
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "success",
+                slot_label=slot_label,
+                post_id=tweet_id,
+                now_jst=now_jst,
+            )
+            sns_editorial.record_recent_x_text(text)
+            try:
+                import sns_insights_loop
+                sns_insights_loop.register_published_post(
+                    channel="x",
+                    post_id=str(tweet_id or ""),
+                    text=text,
+                    style=f"x_data_law:{law_key}",
+                    slot_label=slot_label,
+                    s_param="",
+                    now_jst=now_jst,
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
+        if not force:
+            job_state.mark_done(dedup_key)
+            x_poster.record_x_auto_post_timestamp(now_jst)
+            x_poster.record_x_data_law_key(law_key)
+    elif result.get("status") == "error":
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "error",
+                slot_label=slot_label,
+                detail=str(result.get("detail") or result)[:220],
+                now_jst=now_jst,
+            )
+        except Exception:
+            pass
+    elif result.get("status") == "skipped":
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "skipped",
+                slot_label=slot_label,
+                detail=str(result.get("reason") or ""),
+                now_jst=now_jst,
+            )
+        except Exception:
+            pass
+
+    result["tweet_text"] = text
+    result["reply_text"] = ""
+    result["law_key"] = law_key
+    result["standalone_no_reply"] = True
+    result["editorial_style"] = f"x_data_law:{law_key}"
+    return result
+
+
+def execute_scheduled_x_search_catcher_post(
+    latest_data,
+    slot_label: str = "22:00",
+    force: bool = False,
+    now_jst=None,
+) -> dict:
+    """Execute Pillar B Fri/Sat 22:00 Weekend Peak Store-Search Catcher on X."""
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    biz_dt = now_jst - datetime.timedelta(hours=7)
+    biz_date = biz_dt.strftime("%Y-%m-%d")
+    dedup_key = f"x_search:{biz_date}_{slot_label}"
+
+    if not force and job_state.is_done(dedup_key):
+        logging.info(f"X search-catcher post already sent for {dedup_key}, skipping.")
+        return {"status": "skipped", "reason": "Already posted search-catcher for this slot"}
+
+    if not force:
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+        if in_cd:
+            logging.info(f"Deferring X search-catcher post ({slot_label}): {cd_reason}")
+            return {"status": "skipped", "reason": cd_reason}
+        over_b, b_reason = x_poster.check_x_daily_post_budget(max_daily=3, now_jst=now_jst)
+        if over_b:
+            logging.info(f"Skipping X search-catcher post ({slot_label}): {b_reason}")
+            return {"status": "skipped", "reason": b_reason}
+
+    latest_data = latest_data or {}
+    is_seed = bool(latest_data.get("is_seed"))
+    stores = [] if is_seed else (latest_data.get("full_data") or [])
+    if not stores:
+        try:
+            stores = monitor.get_all_data() or []
+        except Exception as e:
+            logging.error(f"Failed to fetch stores for X search-catcher post: {e}")
+            return {"status": "error", "detail": str(e)}
+
+    korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom_stores = [
+        s for s in (stores or [])
+        if s.get("region") != "Korea"
+        and not any(k in (s.get("name") or "").upper() for k in korea_keywords)
+    ]
+    if not force:
+        total_dom_women = sum(int(s.get("women") or 0) for s in dom_stores)
+        top1_dom_women = max((int(s.get("women") or 0) for s in dom_stores), default=0)
+        if total_dom_women < 15 or top1_dom_women < 5:
+            logging.info(
+                f"Skipping X search-catcher ({slot_label}): insufficient live headcount "
+                f"(total_women={total_dom_women}, top1_women={top1_dom_women})."
+            )
+            return {"status": "skipped", "reason": "Insufficient live headcount"}
+
+    main_text, reply_text = x_poster.build_x_search_catcher_post(
+        dom_stores,
+        slot_label=slot_label,
+        now_jst=now_jst,
+    )
+    if not main_text:
+        return {"status": "error", "detail": "Empty search-catcher tweet text"}
+
+    png_bytes = None
+    try:
+        import inspect
+        import ogp_generator
+        ogp_kwargs = {
+            "s_param": f"x22_search_{biz_dt.strftime('%Y%m%d')}",
+            "now_jst": now_jst,
+        }
+        if "focus_text" in inspect.signature(ogp_generator.generate_live_ogp_png).parameters:
+            ogp_kwargs["focus_text"] = main_text
+        png_bytes = ogp_generator.generate_live_ogp_png(dom_stores, **ogp_kwargs)
+    except Exception as e:
+        logging.warning(f"Failed to generate live OGP PNG for X search-catcher ({slot_label}): {e}")
+
+    result = x_poster.post_to_x(
+        main_text,
+        reply_text=reply_text,
+        media_bytes=png_bytes,
+        media_mime_type="image/png",
+    )
+    if result.get("status") == "success":
+        tweet_id = ((result.get("data") or {}).get("data") or {}).get("id") or ""
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "success",
+                slot_label=slot_label,
+                post_id=tweet_id,
+                now_jst=now_jst,
+            )
+            sns_editorial.record_recent_x_text(main_text)
+            try:
+                import sns_insights_loop
+                sns_insights_loop.register_published_post(
+                    channel="x",
+                    post_id=str(tweet_id or ""),
+                    text=main_text,
+                    style="x_search_catcher",
+                    slot_label=slot_label,
+                    s_param=sns_insights_loop._extract_s_param_from_text(reply_text or ""),
+                    now_jst=now_jst,
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
+        if not force:
+            job_state.mark_done(dedup_key)
+            x_poster.record_x_auto_post_timestamp(now_jst)
+    elif result.get("status") == "error":
+        try:
+            import sns_editorial
+            sns_editorial.record_sns_delivery_status(
+                "x",
+                "error",
+                slot_label=slot_label,
+                detail=str(result.get("detail") or result)[:220],
+                now_jst=now_jst,
+            )
+        except Exception:
+            pass
+
+    result["tweet_text"] = main_text
+    result["reply_text"] = reply_text or ""
+    result["standalone_no_reply"] = False
+    result["editorial_style"] = "x_search_catcher"
     return result

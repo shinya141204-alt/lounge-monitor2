@@ -661,9 +661,12 @@ def extract_sentence_endings(texts: list) -> list:
 
 HUMAN_JITTER_WINDOWS = {
     "x": (2, 21),              # e.g., 20:03 one night, 20:19 the next, 22:07 vs 22:20
+    "x_data_law": (2, 21),     # 19:17 .. 19:36 standalone 1-tweet Data-Law (Mon-Fri)
+    "x_search": (2, 19),       # 22:02 .. 22:19 Fri/Sat store-search catcher
     "x_tip": (2, 22),          # e.g., 18:04, 18:18, 18:11
     "x_weekly": (2, 18),
     "threads": (5, 25),        # distinct seed & window from X so X and Threads never fire together
+    "threads_conv": (3, 21),   # 21:18 .. 21:36 conversational empathy + open question (Tue/Thu/Fri/Sun)
     "threads_ladies": (1, 14), # 19:31 .. 19:44
     "instagram": (1, 12),      # 18:46 .. 18:57 / 21:46 .. 21:57
     "ig_ladies": (1, 12),      # 19:46 .. 19:57
@@ -911,10 +914,10 @@ def get_sns_human_pacing_summary(now_jst: datetime.datetime = None) -> dict:
     return {
         "ig_reels_weekly": 14,
         "ig_reels_days_ja": "毎日20:00枠＋活況夜22:50枠（1日最大2本・深夜第2便は活況自動判定＆リールタブ専用・5テンプレ＆背景非重複ローテ）",
-        "x_cadence_ja": "最低48分間隔＋日次上限（月〜木4件・金〜日5件／主戦場枠リザーブ付）＋月/日休養ゆらぎ＋単独ポスト混在",
-        "threads_cadence_ja": "週6日稼働（週1自然休養）＋最低90分間隔＋URL添付1/3以下＋画像1/3混在",
+        "x_cadence_ja": "1日1〜2本厳選運用（月〜金19:15単独1ツイート『データ法則』URL・リプなし＋金土22:00『店舗名検索受け皿』＋日曜19:00週間集計／速報ボット連投・ボーナス通知停止）",
+        "threads_cadence_ja": "火・木・金・日（週4回・21:15帯）『初対面の席・2軒目・男女の本音あるある＋末尾の問いかけ』（URL・プロフ誘導・タグ完全ゼロの会話特化）",
         "tiktok_cadence_ja": "水・金・土（週3回・20:39〜20:55人間ゆらぎ・3テンプレ自動ローテInbox送信）",
-        "col_release_ja": "コラム1日最大1本（深夜〜午前23:26〜11:29自動保留）＋note検知は日中12:20/15:20帯に分離（18時Tips近接回避）",
+        "col_release_ja": "コラム1日最大1本（深夜〜午前23:26〜11:29自動保留）＋note検知は日中12:20/15:20帯に分離",
     }
 
 
@@ -1075,7 +1078,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             "configured": x_configured,
             "source": x_source,
             "masked_token": x_masked,
-            "latest_slot_key": _latest_matching_key(("x_post:", "x_tip:", "bonus_alert:", "col_release:")),
+            "latest_slot_key": _latest_matching_key(("x_data_law:", "x_search:", "x_post:", "x_tip:", "bonus_alert:", "col_release:")),
             "refresh_key": "",
         },
         "threads": {
@@ -1083,7 +1086,7 @@ def get_sns_delivery_health(allow_blocking: bool = False) -> dict:
             "configured": th_configured,
             "source": th_source,
             "masked_token": th_masked,
-            "latest_slot_key": _latest_matching_key(("threads_post:", "threads_ladies:")),
+            "latest_slot_key": _latest_matching_key(("threads_conv:", "threads_post:", "threads_ladies:")),
             "refresh_key": _latest_matching_key(("token_refresh:threads:",)),
         },
         "instagram": {

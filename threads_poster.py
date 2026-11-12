@@ -826,3 +826,371 @@ def execute_scheduled_ladies_threads_post(
         return res
     finally:
         _threads_post_lock.release()
+
+
+# ==============================================================================
+# Option-1 Pivot (2026-11): Conversational & Empathy-First Threads Engine
+#   - Zero external URLs, zero promo lines ("プロフのリンク..."), zero hashtags
+#   - Relatable 1st-meeting / 2nd-venue / male-vs-female psychology scenes
+#   - Always ends with a low-social-cost open question ("？") anyone can reply to
+# ==============================================================================
+
+THREADS_CONV_RECENT_KEY = "threads_conv_recent_seeds"
+
+THREADS_CONVERSATION_SEEDS = (
+    {
+        "key": "powder_room_15m",
+        "text": (
+            "初対面の飲み会で開始15分くらい経ったころ、女性2人が同時に「ちょっとお手洗い行ってくるね」って席を立つ瞬間。\n\n"
+            "あれ、本当にただのお手洗いのときと、無言の作戦会議のときで空気が全然違いますよね。\n\n"
+            "戻ってきたあと急に会話が弾む席と、そのままお会計に向かう席、何が一番の分かれ目だと思いますか？"
+        ),
+    },
+    {
+        "key": "second_venue_parfait",
+        "text": (
+            "1軒目でいい感じに話が弾んだあと、「もう1軒飲み直そう」って誘うより「甘いものか夜カフェ寄らない？」って聞いた方がすっと頷いてもらえることが多い気がする。\n\n"
+            "夜22時半すぎの2軒目なら、静かなバーと夜パフェ・カフェ、どっちに誘われる方が嬉しいですか？"
+        ),
+    },
+    {
+        "key": "first_10m_questions",
+        "text": (
+            "初めましての席で「お仕事は？」「どこ住み？」「何歳？」って面接みたいに順番に聞かれるより、最初に頼んだ一杯とか今日その街にいた理由からゆるく話せる人の方が、帰り道になぜか印象に残ってる。\n\n"
+            "初対面の最初の10分、どんな話題から入る人が一番話しやすいですか？"
+        ),
+    },
+    {
+        "key": "cut_at_40m_kindness",
+        "text": (
+            "正直ちょっと噛み合わないなって空気になった飲み会で、気まずくて遠慮しながら90分粘るより、40分くらいで「明日早いからこのへんで！」って明るく切り上げられる人の方がお互い救われる気がする。\n\n"
+            "微妙な空気の席、どのタイミングで切り上げるのが一番スマートだと思いますか？"
+        ),
+    },
+    {
+        "key": "line_30m_vs_next_day",
+        "text": (
+            "その場ではすごく盛り上がって連絡先交換したのに、翌日の昼にお礼LINEが来ると「あれ、どんな話したっけ…」って急に温度が戻っちゃう現象。\n\n"
+            "解散して帰りの電車に乗ってる30分以内に一言届くのと、翌日の落ち着いた時間に届くの、ぶっちゃけどっちが返しやすいですか？"
+        ),
+    },
+    {
+        "key": "last_train_2320_split",
+        "text": (
+            "夜の街って23時20分を過ぎたあたりで、「終電あるから帰るね」ってピタッと切り上げる組と、「あと1杯だけ行こう」って急に本音モードになる組にきれいに入れ替わる。\n\n"
+            "金曜の夜でもきっちり終電で帰る派ですか、それとも楽しい席なら1本見送っちゃう派ですか？"
+        ),
+    },
+    {
+        "key": "distance_70cm_lighting",
+        "text": (
+            "照明が少し暗めのソファ席っていろいろ誤魔化せると思いきや、距離70cmで真上から暖色のライトが当たると、服のブランドより肌とか髪とか口元の清潔感の方が昼間よりくっきり目に入る。\n\n"
+            "初対面の席で向かい合ったとき、無意識に一番最初に目が行くパーツってどこですか？"
+        ),
+    },
+    {
+        "key": "app_1on1_vs_2on2",
+        "text": (
+            "アプリで2週間メッセージやり取りしてから1対1でカフェに会いにいく緊張感と、気心の知れた友達と2人組で最初から乾杯する気楽さ。\n\n"
+            "最近「1対1の面接っぽさに疲れた」って声をよく聞くんだけど、素の自分で話しやすいのって1対1と2対2どっちですか？"
+        ),
+    },
+    {
+        "key": "rainy_night_bangs",
+        "text": (
+            "雨が降ってる日の夜、どれだけ評判がいい路面店でも「傘さして駅から5分歩く」って聞いた瞬間にちょっとテンション下がって、結局駅直結のビルの中で完結したくなる。\n\n"
+            "雨の夜の店選び、味や雰囲気と「駅から濡れずに入れるか」、どっちを優先しますか？"
+        ),
+    },
+    {
+        "key": "gender_gap_good_store",
+        "text": (
+            "お店選びで面白いなと思うのが、男性側は「女性がたくさん入ってる店」を当たりだと思って向かうのに、女性側は「待たずにすぐ乾杯できて落ち着いて話せる店」の方を当たりだと感じてるところ。\n\n"
+            "飲みに行くお店で「ここ当たりだな」って思う一番の基準って何ですか？"
+        ),
+    },
+    {
+        "key": "solo_vs_buddy_night",
+        "text": (
+            "ふらっと1人で身軽に飲みに出て自分のペースで帰れる夜と、気心の知れた友達と2人で役割分担しながらワイワイ飲む夜。\n\n"
+            "どっちにも良さがあるけど、仕事終わりに気分転換したい夜は1人行動と友達と2人、どっちが多いですか？"
+        ),
+    },
+    {
+        "key": "sunday_20_early_drink",
+        "text": (
+            "金曜・土曜のガヤガヤした22時台より、日曜の19時〜21時くらいにサクッと飲んで早めに帰る夜の方が、相手も肩の力が抜けていて意外と深い話ができたりする。\n\n"
+            "週末に誰かと飲みに行くなら、華金の夜更かし派ですか、日曜の早め解散派ですか？"
+        ),
+    },
+    {
+        "key": "salon_day_evening",
+        "text": (
+            "土日の夕方に美容院が終わって、鏡見て「今日ちょっと髪いい感じかも」ってなった日ほど、このまま真っ直ぐ家に帰ってメイク落とすのがなんだかもったいなくなる。\n\n"
+            "美容院やネイル帰りの夕方、予定なくても誰か誘って外でご飯食べたくなりませんか？"
+        ),
+    },
+    {
+        "key": "thirties_calm_table",
+        "text": (
+            "20代前半のころは音楽が大きくて賑やかなお店が楽しかったのに、ある時期から「声を張らなくても普通のトーンで会話が聞こえる店」が一番ありがたくなる。\n\n"
+            "お店選びで賑やかさより落ち着きを重視するようになったのって、何歳くらいからでしたか？"
+        ),
+    },
+    {
+        "key": "group_line_silence",
+        "text": (
+            "2対2で楽しく飲んだ帰り際に「4人のグループLINE作ろう！」ってなると、その晩にお礼スタンプが並んだっきり誰も次に発言しづらくなって自然消滅しがち説。\n\n"
+            "みんなで飲んだあとの連絡先交換、グループLINEと個別、どっちが次に繋がりやすいと思いますか？"
+        ),
+    },
+    {
+        "key": "local_vs_metro_clock",
+        "text": (
+            "東京や大阪だと20時くらいから1軒目として人が集まり始めるのに、地方の繁華街だと1軒目は地元の居酒屋で、23時を過ぎてから急に夜の店が賑わい始めるあの時間差が好き。\n\n"
+            "あなたの住んでる街だと、夜の飲み会が一番盛り上がるピークって何時ごろですか？"
+        ),
+    },
+)
+
+_THREADS_PROMO_OR_BOT_RE = re.compile(
+    r"(?:プロフ|プロフィール|リンク|リプ欄|相席ナビ|比較ボード|詳細は|👇|🔗)",
+    re.IGNORECASE,
+)
+_THREADS_URL_STRIP_RE = re.compile(
+    r"https?://\S+|(?<![A-Za-z0-9_@./-])aiseki-navi\.com\S*",
+    re.IGNORECASE,
+)
+_THREADS_BANNED_BRAND_RE = re.compile(
+    r"オリエンタル(?!ラウンジ)|(?<![A-Za-z])OLG(?![A-Za-z])|(?<![A-Za-z])YATAKOI(?![A-Za-z])|オリラジ",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_threads_conversational_text(raw_text: str) -> str:
+    """
+    Enforce Threads Option-1 Pivot invariants:
+      - Strip any URLs, `#hashtags`, promo/link-bait lines, and banned brand shorthand.
+      - Normalize spacing and guarantee the final line ends with `？`.
+    """
+    if not raw_text:
+        return ""
+    cleaned_lines = []
+    for raw_ln in str(raw_text).splitlines():
+        ln = _THREADS_URL_STRIP_RE.sub("", raw_ln)
+        ln = re.sub(r"#[^\s#]+", "", ln)
+        ln = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", ln)
+        ln = re.sub(r"(?<![A-Za-z])OLG(?![A-Za-z])", "オリエンタルラウンジ", ln, flags=re.IGNORECASE)
+        ln = re.sub(r"(?<![A-Za-z])YATAKOI(?![A-Za-z])", "ヤタコイ", ln, flags=re.IGNORECASE)
+        ln = ln.replace("オリラジ", "オリエンタルラウンジ").replace("👇", "").strip()
+        if not ln:
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+        if _THREADS_PROMO_OR_BOT_RE.search(ln):
+            continue
+        cleaned_lines.append(ln)
+
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
+    if not cleaned_lines:
+        return ""
+
+    last_ln = cleaned_lines[-1]
+    last_ln = last_ln.replace("?", "？")
+    if not last_ln.endswith("？"):
+        last_ln = re.sub(r"[。！!…]+$", "", last_ln).strip()
+        last_ln = f"{last_ln}？"
+    cleaned_lines[-1] = last_ln
+
+    out = "\n".join(cleaned_lines).strip()
+    if len(out) > 420:
+        out = out[:418].rstrip("。、 \n") + "？"
+    return out
+
+
+def _get_recent_threads_conv_keys() -> list:
+    try:
+        raw = (job_state.get_value(THREADS_CONV_RECENT_KEY, allow_blocking=False) or "").strip()
+        if not raw:
+            return []
+        return [x.strip() for x in raw.split(",") if x.strip()]
+    except Exception:
+        return []
+
+
+def _record_threads_conv_key(seed_key: str) -> None:
+    if not seed_key:
+        return
+    try:
+        cur = [k for k in _get_recent_threads_conv_keys() if k != seed_key]
+        cur.insert(0, seed_key)
+        job_state.set_value(THREADS_CONV_RECENT_KEY, ",".join(cur[:10]))
+    except Exception as e:
+        logging.warning(f"Failed to record Threads conversational seed key: {e}")
+
+
+def select_threads_conversation_seed(now_jst: datetime.datetime = None, recent_keys: list = None) -> dict:
+    """Deterministically pick a non-repeating conversational seed for `biz_date`."""
+    now_jst = now_jst or datetime.datetime.now(_JST_TH)
+    biz_dt = _coerce_threads_jst_naive(now_jst) - datetime.timedelta(hours=7)
+    recent = set(recent_keys if recent_keys is not None else _get_recent_threads_conv_keys())
+    available = [s for s in THREADS_CONVERSATION_SEEDS if s["key"] not in recent]
+    pool = available if available else list(THREADS_CONVERSATION_SEEDS)
+    idx = (biz_dt.date().toordinal() * 7 + biz_dt.weekday()) % len(pool)
+    return dict(pool[idx])
+
+
+def build_threads_conversational_post(
+    stores: list = None,
+    slot_label: str = "21:15",
+    now_jst: datetime.datetime = None,
+    use_ai: bool = True,
+) -> tuple:
+    """
+    Build a link-free, hashtag-free, promo-free conversational Threads post (`(text, seed_key)`).
+    Uses AI phrasing variation when available while strictly rejecting fabricated numbers or promo bait,
+    falling back deterministically to `THREADS_CONVERSATION_SEEDS`.
+    """
+    now_jst = now_jst or datetime.datetime.now(_JST_TH)
+    seed = select_threads_conversation_seed(now_jst=now_jst)
+    base_text = _sanitize_threads_conversational_text(seed["text"])
+
+    if use_ai:
+        try:
+            import json as _json
+            import sns_editorial
+            if sns_editorial.has_any_ai_key(allow_blocking=True):
+                weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+                wd_ja = weekdays_ja[_coerce_threads_jst_naive(now_jst).weekday()]
+                prompt = (
+                    "あなたは夜の街の人間模様や男女の温度差を観察している、落ち着いた語り口のコラムニストです。\n"
+                    f"今夜（{wd_ja}曜の夜）のThreads向けに、下の【種テーマ】をベースに、タイムラインで思わず自分の意見をリプライしたくなる自然な独り言＋問いかけ投稿（130〜260文字）を1本書いてください。\n\n"
+                    "【絶対ルール】\n"
+                    "1. URL・外部リンク誘導（「プロフ見て」「リンクは〜」「相席ナビ」等）・ハッシュタグ（#）・👇絵文字は一切入れないこと。\n"
+                    "2. 「相席ラウンジに行っている人」と白状しなくても誰でも気軽にリプライできるよう、初対面の飲み会・2軒目・男女の本音として普遍的に書くこと。\n"
+                    "3. 架空の統計数値や未検証の%は絶対に作らないこと（種テーマにある時間・距離などの日常表現のみ可）。\n"
+                    "4. 最後の1行は必ず読者が2択または一言で答えやすい自然な疑問文（「〜ですか？」「〜どっち派ですか？」等、『？』終わり）で締めること。\n\n"
+                    f"【種テーマ】\n{base_text}\n\n"
+                    '出力はJSON形式のみ：{"main_text": "投稿本文"}'
+                )
+                parsed, _, _ = sns_editorial.call_editorial_ai_json(
+                    prompt=prompt,
+                    max_output_tokens=1200,
+                    thinking_budget=768,
+                    total_deadline_sec=22.0,
+                    per_call_timeout_sec=16.0,
+                    now_jst=now_jst,
+                )
+                if isinstance(parsed, dict) and parsed.get("main_text"):
+                    cand = _sanitize_threads_conversational_text(parsed["main_text"])
+                    # Reject if AI invented fake percentages/sample counts not in base_text
+                    base_nums = set(re.findall(r"\d+", base_text))
+                    cand_nums = set(re.findall(r"\d+", cand))
+                    if (
+                        95 <= len(cand) <= 340
+                        and cand.endswith("？")
+                        and not _THREADS_BANNED_BRAND_RE.search(cand)
+                        and cand_nums.issubset(base_nums | {"1", "2", "3", "10", "15", "20", "30", "40"})
+                    ):
+                        return cand, seed["key"]
+        except Exception as e:
+            logging.debug(f"Threads conversational AI variation fallback ({seed['key']}): {e}")
+
+    return base_text, seed["key"]
+
+
+def execute_scheduled_conversational_threads_post(
+    stores: list = None,
+    slot_label: str = "21:15",
+    force: bool = False,
+    now_jst: datetime.datetime = None,
+    use_ai: bool = True,
+) -> dict:
+    """
+    Execute Option-1 Pivot conversational Threads post (`tue,thu,fri,sun` evening, 4x/week).
+    Pure TEXT post (no OGP promo card, no external URL, no hashtags) designed to maximize replies & algorithmic reach.
+    """
+    if not _threads_post_lock.acquire(blocking=False):
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": "already_running"}
+
+    try:
+        now_jst = now_jst or datetime.datetime.now(_JST_TH)
+        biz_date = (_coerce_threads_jst_naive(now_jst) - datetime.timedelta(hours=7)).strftime("%Y-%m-%d")
+        dedup_key = f"threads_conv:{biz_date}_{slot_label}"
+
+        if not force and job_state.is_done(dedup_key):
+            return {"status": "skipped", "reason": "Already posted conversational Threads for this slot"}
+
+        if not force:
+            in_cd, cd_reason = check_threads_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+            if in_cd:
+                return {"status": "skipped", "reason": cd_reason}
+
+        refresh_threads_token_if_needed(force=False)
+        text, seed_key = build_threads_conversational_post(
+            stores=stores,
+            slot_label=slot_label,
+            now_jst=now_jst,
+            use_ai=use_ai,
+        )
+        if not text:
+            return {"status": "error", "detail": "Empty conversational Threads text"}
+
+        res = post_to_threads(text, image_url=None)
+        try:
+            import sns_editorial
+            if res.get("status") == "success":
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    "success",
+                    slot_label=slot_label,
+                    post_id=res.get("id") or "",
+                    now_jst=now_jst,
+                )
+                try:
+                    import sns_insights_loop
+                    sns_insights_loop.register_published_post(
+                        channel="threads",
+                        post_id=str(res.get("id") or ""),
+                        text=text,
+                        style=f"threads_conv:{seed_key}",
+                        slot_label=slot_label,
+                        now_jst=now_jst,
+                    )
+                except Exception:
+                    pass
+                if not force:
+                    sns_editorial.persist_editorial_session_record(
+                        "threads",
+                        {
+                            "post_id": str(res.get("id") or ""),
+                            "slot_label": slot_label,
+                            "style": f"threads_conv:{seed_key}",
+                            "selected_text": text[:360],
+                            "opener": (text.splitlines() or [""])[0][:80],
+                            "timestamp": _coerce_threads_jst_naive(now_jst).strftime("%Y-%m-%d %H:%M:%S"),
+                        },
+                    )
+            else:
+                sns_editorial.record_sns_delivery_status(
+                    "threads",
+                    res.get("status") or "error",
+                    slot_label=slot_label,
+                    detail=res.get("detail") or res.get("reason") or "",
+                    now_jst=now_jst,
+                )
+        except Exception as e:
+            logging.warning(f"Conversational Threads state persistence warning: {e}")
+
+        if res.get("status") == "success" and not force:
+            job_state.mark_done(dedup_key)
+            record_threads_auto_post_timestamp(now_jst)
+            _record_threads_conv_key(seed_key)
+
+        res["threads_text"] = text
+        res["seed_key"] = seed_key
+        res["editorial_style"] = f"threads_conv:{seed_key}"
+        return res
+    finally:
+        _threads_post_lock.release()

@@ -47,6 +47,50 @@ def _flush_analytics_safe():
         logger.error(f"[worker] analytics flush failed: {err}")
 
 
+def _x_data_law_job(slot_lbl="19:15"):
+    """Option-1 Pivot Pillar A: Mon–Fri standalone 1-tweet Data-Law / Counter-Intuitive Nightlife Insight."""
+    if not turbo_store.acquire_distributed_lock(f"cron:x_data_law:{slot_lbl}", ttl_sec=55, fail_open=False):
+        return
+    try:
+        import sns_editorial
+        import sns_workflows
+        if not sns_editorial.should_fire_scheduled_slot_now("x_data_law", slot_lbl):
+            return
+        sns_workflows.execute_scheduled_x_data_law_post(slot_label=slot_lbl)
+    except Exception as err:
+        logger.error(f"[worker] Scheduled X data-law post ({slot_lbl}) failed: {err}")
+
+
+def _x_search_catcher_job(slot_lbl="22:00"):
+    """Option-1 Pivot Pillar B: Fri & Sat 22:00 Weekend Peak Store-Search Catcher."""
+    if not turbo_store.acquire_distributed_lock(f"cron:x_search:{slot_lbl}", ttl_sec=55, fail_open=False):
+        return
+    try:
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("x_search", slot_lbl):
+            return
+        app_module.run_scheduled_x_search_catcher_post(slot_label=slot_lbl)
+    except Exception as err:
+        logger.error(f"[worker] Scheduled X search-catcher post ({slot_lbl}) failed: {err}")
+
+
+def _threads_conv_job(slot_lbl="21:15"):
+    """Option-1 Pivot Threads: Tue/Thu/Fri/Sun conversational empathy + open question (zero URL, zero hashtag)."""
+    if not turbo_store.acquire_distributed_lock(f"cron:threads_conv:{slot_lbl}", ttl_sec=55, fail_open=False):
+        return
+    try:
+        import ops_governance
+        import sns_editorial
+        if not sns_editorial.should_fire_scheduled_slot_now("threads_conv", slot_lbl):
+            return
+        import threads_poster
+        with app_module.data_lock:
+            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+        threads_poster.execute_scheduled_conversational_threads_post(cur_stores, slot_label=slot_lbl)
+    except Exception as err:
+        logger.error(f"[worker] Scheduled conversational Threads post ({slot_lbl}) failed: {err}")
+
+
 def _x_scheduled_job(slot_lbl="20:00"):
     if not turbo_store.acquire_distributed_lock(f"cron:x:{slot_lbl}", ttl_sec=55, fail_open=False):
         return
@@ -340,17 +384,46 @@ def build_worker_scheduler() -> BackgroundScheduler:
         hours=2,
     )
 
-    # 2. Scheduled X / Threads / Instagram Reel (Plan B: daily 20:00 + active-night 22:50) / Note / Bonus / PDCA / Maintenance jobs
-    #    Note: Unconditional background AI prewarm jobs (`prewarm_rolling_30m` etc.) and IG Carousel/Feed cron jobs
-    #    are intentionally disabled so Claude Opus runs ONLY on actual live post dispatches.
-    scheduler.add_job(id="x_post_2000", func=_x_scheduled_job, trigger="cron", hour=11, minute="2,6,10,14,18,22,27", jitter=75, args=["20:00"], executor="sns_ai")
-    scheduler.add_job(id="x_post_2200", func=_x_scheduled_job, trigger="cron", hour=13, minute="2,6,10,14,18,22,27", jitter=75, args=["22:00"], executor="sns_ai")
-    scheduler.add_job(id="x_post_0000", func=_x_scheduled_job, trigger="cron", day_of_week="fri,sat", hour=15, minute="2,6,10,14,18,22,27", jitter=75, args=["00:00"], executor="sns_ai")
-    scheduler.add_job(id="x_tip_1800", func=_tip_18_job, trigger="cron", hour=9, minute="2,6,10,14,18,23,28", jitter=75, executor="sns_ai")
-    # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows, well clear of 18:00 Tips & 20:00-22:00 rush
+    # 2. Scheduled X & Threads (Option-1 Pivot 2026-11) / Instagram Reel (Plan B: daily 20:00 + active-night 22:50) / Note / PDCA / Maintenance
+    #    - X Pivot: retired daily 18:00 tip spam, 20:00/00:00 live headcount bots, and 10m bonus alerts.
+    #      Replaced with Mon–Fri 19:15 standalone 1-tweet Data-Law (`x_data_law_1915`) + Fri/Sat 22:00 Search Catcher (`x_search_2200`).
+    #    - Threads Pivot: retired daily 22:00 headcount bulletins & 19:30 ladies promo alerts.
+    #      Replaced with Tue/Thu/Fri/Sun 21:15 link-free conversational empathy + open question (`threads_conv_2115`).
+    scheduler.add_job(
+        id="x_data_law_1915",
+        func=_x_data_law_job,
+        trigger="cron",
+        day_of_week="mon,tue,wed,thu,fri",
+        hour=10,
+        minute="17,21,25,29,33,38,42",
+        jitter=60,
+        args=["19:15"],
+        executor="sns_ai",
+    )
+    scheduler.add_job(
+        id="x_search_2200",
+        func=_x_search_catcher_job,
+        trigger="cron",
+        day_of_week="fri,sat",
+        hour=13,
+        minute="2,6,10,14,18,22,27",
+        jitter=60,
+        args=["22:00"],
+        executor="sns_ai",
+    )
+    # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows
     scheduler.add_job(id="note_rss_check", func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
-    scheduler.add_job(id="threads_daily_2200", func=_threads_daily_job, trigger="cron", hour=13, minute="5,9,13,17,21,26,32", jitter=75, executor="sns_ai")
-    scheduler.add_job(id="threads_ladies_1930", func=_threads_ladies_job, trigger="cron", day_of_week="wed,fri,sat", hour=10, minute="31,35,39,44,49", jitter=60, executor="sns_ai")
+    scheduler.add_job(
+        id="threads_conv_2115",
+        func=_threads_conv_job,
+        trigger="cron",
+        day_of_week="tue,thu,fri,sun",
+        hour=12,
+        minute="18,22,26,30,34,39,43",
+        jitter=60,
+        args=["21:15"],
+        executor="sns_ai",
+    )
     scheduler.add_job(id="ig_reel_2000", func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
     scheduler.add_job(
         id="ig_reel_2250",
@@ -365,7 +438,6 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="tiktok_inbox_2035", func=_tiktok_inbox_scheduled_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
     scheduler.add_job(id="events_crawl", func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
     scheduler.add_job(id="scheduled_articles_15m", func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
-    scheduler.add_job(id="bonus_alert_10m", func=_bonus_alert_check_job, trigger="interval", minutes=10, executor="sns_ai")
     scheduler.add_job(id="web_push_watch_2m", func=_web_push_watch_job, trigger="interval", minutes=2)
     scheduler.add_job(id="x_weekly_sun", func=_x_weekly_sun_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
     scheduler.add_job(id="sns_insights_sync", func=_sns_insights_sync_job, trigger="cron", hour="8,18", minute=25, jitter=90, executor="sns_ai")

@@ -4371,14 +4371,14 @@ class TurboArchitectureTests(unittest.TestCase):
         self.assertGreaterEqual(sum_data['by_event'].get('page_view', 0), 2)
         self.assertGreaterEqual(sum_data['by_event'].get('affiliate_click', 0), 1)
 
-        # 4. Dedicated `worker.py` scheduler contains scraping and active SNS cron jobs, with zero wasteful prewarm or IG carousel jobs
+        # 4. Dedicated `worker.py` scheduler contains scraping and Option-1 Pivot SNS cron jobs, with zero retired bot/prewarm/carousel jobs
         sched = worker_module.build_worker_scheduler()
         job_ids = {j.id for j in sched.get_jobs()}
         for expected_id in (
             'live_scrape_1m',
-            'x_post_2000',
-            'x_post_2200',
-            'threads_daily_2200',
+            'x_data_law_1915',
+            'x_search_2200',
+            'threads_conv_2115',
             'ig_reel_2000',
             'ig_reel_2250',
             'daily_token_db_maint',
@@ -4395,6 +4395,13 @@ class TurboArchitectureTests(unittest.TestCase):
             'ig_tuesun_2145',
             'ig_ladies_1945',
             'ig_reel_2115',
+            'x_post_2000',
+            'x_post_2200',
+            'x_post_0000',
+            'x_tip_1800',
+            'bonus_alert_10m',
+            'threads_daily_2200',
+            'threads_ladies_1930',
         ):
             self.assertNotIn(retired_id, job_ids)
 

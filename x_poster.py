@@ -1214,3 +1214,373 @@ def check_x_auto_post_cooldown(min_interval_minutes: int = 48, now_jst: datetime
     except Exception:
         pass
     return False, "ok"
+
+
+# ==============================================================================
+# Option-1 Pivot (2026-11):
+#   1. `format_official_searchable_store_name` — Official brand names + readings
+#   2. Pillar A (`build_x_data_law_post`) — Standalone 1-Tweet Data-Law / Insight
+#      (zero URL, zero self-reply, zero "リプ欄へ👇", zero hashtags)
+#   3. Pillar B (`build_x_search_catcher_post`) — Fri/Sat 22:00 Store-Search Catcher
+#      (clean searchable hub store counts, zero "👇" bait, quiet source reply)
+# ==============================================================================
+
+X_DATA_LAW_RECENT_KEY = "x_data_law_recent_keys"
+
+
+def format_official_searchable_store_name(raw_name: str) -> str:
+    """
+    Format raw store name with official brand readings (`AGENTS.md §3`) while keeping
+    Japanese area names searchable on X:
+      - 'OLG 新宿' -> 'オリエンタルラウンジ 新宿'
+      - 'OLG ag渋谷' -> 'ag（アグ）渋谷'
+      - 'JIS SHINJUKU' -> 'JIS（ジス）新宿'
+      - 'ASOBIBAR 心斎橋' -> 'ASOBIBAR（アソビバー）心斎橋'
+      - 'YATAKOI UMEDA' -> 'ヤタコイ梅田'
+      - 'XIX OKAYAMA' -> 'XIX（ジックス）岡山'
+      - 'ALFA HIROSHIMA' -> 'ALFA（アルファ）広島'
+      - 'CLOVERS HIROSHIMA' -> 'CLOVERS（クローバーズ）広島'
+    """
+    base = format_ja_store_name(raw_name)
+    if not base:
+        return ""
+    if base.startswith("ag（アグ）") or base.startswith("JIS（ジス）") or base.startswith("ASOBIBAR（アソビバー）"):
+        return base
+    if base.startswith("ag"):
+        rest = base[2:].strip()
+        return f"ag（アグ）{rest}" if rest else "ag（アグ）"
+    if base.upper().startswith("JIS"):
+        rest = re.sub(r"^JIS\s*", "", base, flags=re.IGNORECASE).strip()
+        return f"JIS（ジス）{rest}" if rest else "JIS（ジス）"
+    if base.startswith("アソビバー"):
+        rest = base[len("アソビバー"):].strip()
+        return f"ASOBIBAR（アソビバー）{rest}" if rest else "ASOBIBAR（アソビバー）"
+    if base.upper().startswith("ASOBIBAR"):
+        rest = re.sub(r"^ASOBIBAR\s*", "", base, flags=re.IGNORECASE).strip()
+        return f"ASOBIBAR（アソビバー）{rest}" if rest else "ASOBIBAR（アソビバー）"
+    if base.upper().startswith("XIX") and "（ジックス）" not in base:
+        rest = re.sub(r"^XIX\s*", "", base, flags=re.IGNORECASE).strip()
+        return f"XIX（ジックス）{rest}" if rest else "XIX（ジックス）"
+    if base.upper().startswith("ALFA") and "（アルファ）" not in base:
+        rest = re.sub(r"^ALFA\s*", "", base, flags=re.IGNORECASE).strip()
+        return f"ALFA（アルファ）{rest}" if rest else "ALFA（アルファ）"
+    if base.upper().startswith("CLOVERS") and "（クローバーズ）" not in base:
+        rest = re.sub(r"^CLOVERS\s*", "", base, flags=re.IGNORECASE).strip()
+        return f"CLOVERS（クローバーズ）{rest}" if rest else "CLOVERS（クローバーズ）"
+    return re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", base)
+
+
+X_DATA_LAW_POSTS = (
+    {
+        "key": "crowd_rush_paradox",
+        "eyecatch": "/static/eyecatch-crowd-rush-paradox.jpg",
+        "text": (
+            "金曜22時に「女性比60%」の表示を見て急いで向かうと、着いた頃には3回に1回（29.8%）が男性余りにひっくり返っている。\n\n"
+            "逆に70%を超えている店は60分後も97.7%が崩れない。画面の数字だけ見て全員が同じ店へ走ると、到着した瞬間が一番混む。"
+        ),
+    },
+    {
+        "key": "male_lead_30m",
+        "eyecatch": "/static/eyecatch-male-lead.jpg",
+        "text": (
+            "「女性25人・男性2人」の店を見つけて走ったのに、着いたら女性が減っていた夜。\n\n"
+            "女性側からすると「20分待たされるならすぐ乾杯できる隣の店へ移る」が本音なので、実は男性が先行して入っている店の方が30分後に女性が増えやすい。"
+        ),
+    },
+    {
+        "key": "last_train_2320",
+        "eyecatch": "/static/eyecatch-last-train-cliff.jpg",
+        "text": (
+            "夜のラウンジは23時20分を境に店内の空気が一度リセットされる。\n\n"
+            "23時半に入って乾杯から10分で終電組が一斉に席を立つあの切なさを避けるなら、22時台前半に入るか、最初から第2波が戻ってくる深夜0時半以降に絞る方がずっと話しやすい。"
+        ),
+    },
+    {
+        "key": "line_3_groups_memory",
+        "eyecatch": "/static/eyecatch-line-exchange-reality.jpg",
+        "text": (
+            "その場では盛り上がったのに翌日の昼にお礼LINEを送ると既読スルーされる理由、意外とシンプルで、男性は1組しか話していなくても女性は1晩で平均3組（6名）と話しているから。\n\n"
+            "翌朝には顔の記憶が混ざるので、帰りの電車に乗る30分以内の短い一言が一番残る。"
+        ),
+    },
+    {
+        "key": "payday_before_anaba",
+        "eyecatch": "/static/eyecatch-rain-payday.jpg",
+        "text": (
+            "25日の給料日直後の週末はスーツ姿の男性待ちが伸びやすいのに、15〜24日の給料日前になるとライバルが減って平均女性比が62.1%（+7.4pt）まで上がる。\n\n"
+            "みんなが財布の紐を締める週ほど、実は待たずに落ち着いて話せる。"
+        ),
+    },
+    {
+        "key": "cut_at_40m_rule",
+        "eyecatch": "/static/eyecatch-cost-break-even.jpg",
+        "text": (
+            "少し噛み合わない席で「すぐ出るのも悪いかな」と90分粘っても、向かいの女性も化粧室のLINEで「いつ出る？」と時計を見ていることが多い。\n\n"
+            "40分で明るく切り上げて徒歩3分の別店舗へ移る方が、お財布も空気もすり減らない。"
+        ),
+    },
+    {
+        "key": "local_midnight_121",
+        "eyecatch": "/static/eyecatch-local-vs-urban.jpg",
+        "text": (
+            "東京の感覚で地方都市のラウンジに20時に行くとまだ静かなのに、地元の居酒屋が終わる23時半を過ぎると急に席が埋まり始める。\n\n"
+            "地方18店舗のログを見ると、深夜0〜2時の方が20時台より女性が121.1%まで増えていた。街によって夜の時計がまるで違う。"
+        ),
+    },
+    {
+        "key": "sunday_2130_switch",
+        "eyecatch": "/static/eyecatch-sunday-lounge-strategy.jpg",
+        "text": (
+            "日曜夜のラウンジは土曜より人数が落ち着くぶん平均女性比は61.2%と高いけれど、「21時半」を境に翌朝仕事の会社員が一斉に帰途につく。\n\n"
+            "日曜に行くなら19時台の早めサク飲みか、22時以降の月曜休み組（美容・アパレル）に合わせる二択になる。"
+        ),
+    },
+    {
+        "key": "thirties_brand_split",
+        "eyecatch": "/static/eyecatch-thirties-lounge-guide.jpg",
+        "text": (
+            "「30代で行くと浮くかな」と迷う人は、年齢よりもブランドと時間帯の選び方でほぼ決まる。\n\n"
+            "ag（アグ）は20代前半が中心で賑やかだけれど、オリエンタルラウンジやJIS（ジス）の水曜・木曜20時台は仕事帰りの社会人が6割を超えて空気が落ち着く。"
+        ),
+    },
+    {
+        "key": "table_change_10_women",
+        "eyecatch": "/static/eyecatch-table-change-protocol.jpg",
+        "text": (
+            "席替え（チェンジ）を頼むとき、店内の女性が10名未満（5組未満）の状態でお願いすると、次の案内まで1人席で待機メーターだけが回りやすい。\n\n"
+            "席替えが自然に回るのは「女性10名以上」が入っている夜だけ、というのは覚えておいて損がない基準。"
+        ),
+    },
+    {
+        "key": "distance_70cm_spot",
+        "eyecatch": "/static/eyecatch-dress-code-cleanliness.jpg",
+        "text": (
+            "暗いソファ席なら夕方の青ヒゲやテカリも目立たないと思いがちだけれど、テーブル真上の暖色ピンスポットと距離70cmの近さは、昼のオフィスより陰影がくっきり出る。\n\n"
+            "入店3分前に洗面所で鏡を一度見るだけで、最初の10分の印象がまるで変わる。"
+        ),
+    },
+    {
+        "key": "shibuya_to_ebisu_3min",
+        "eyecatch": "/static/eyecatch-shibuya-ebisu-comparison.jpg",
+        "text": (
+            "金曜の渋谷で男性50分待ちだった夜、山手線で1駅3分の恵比寿へ移動したら待ち時間ゼロで案内されたことがある。\n\n"
+            "同じ22時台でも渋谷とオリエンタルラウンジ 恵比寿では客層も混み方の波も別世界なので、1店舗目で並ばない判断が一番効く。"
+        ),
+    },
+    {
+        "key": "osaka_kita_to_minami",
+        "eyecatch": "/static/eyecatch-osaka-kita-vs-minami.jpg",
+        "text": (
+            "大阪の夜は時間帯で主役の街が北から南へ動く。\n\n"
+            "20時台は梅田・茶屋町に仕事帰りの女性が先に集まり、深夜0時を過ぎるとJIS（ジス）梅田や難波・心斎橋へ第2波が移る。梅田で待ちが出たら御堂筋線で9分降りるだけで流れが変わる。"
+        ),
+    },
+    {
+        "key": "club_radius_midnight",
+        "eyecatch": "/static/eyecatch-club-midnight.jpg",
+        "text": (
+            "終電を過ぎた深夜0時〜2時にそのまま静かになる街と、もう一度女性が増える街の分かれ目を調べたら、徒歩3分圏内に大型ダンスクラブがあるかどうかだった。\n\n"
+            "渋谷・新宿・梅田・心斎橋だけは、終電後にクラブ前後の回遊で第2波がやってくる。"
+        ),
+    },
+    {
+        "key": "second_venue_parfait_call",
+        "eyecatch": "/static/eyecatch-second-venue.jpg",
+        "text": (
+            "会話が弾んだ席の終盤、「もう1軒飲みに行こう」と誘うより「夜カフェかパフェ寄らない？」と声をかけた方が警戒心が下がって頷いてもらいやすい。\n\n"
+            "切り出すタイミングは終電の30分前（22時45分ごろ）、お会計に立つ少し前が一番自然。"
+        ),
+    },
+)
+
+_X_PIVOT_BANNED_RE = re.compile(
+    r"(?:リプ欄|詳細は|プロフ|👇|https?://|aiseki-navi\.com|#[^\s#]+)",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_x_standalone_text(raw_text: str) -> str:
+    """Guarantee standalone X post has zero URLs, zero hashtags, zero 'リプ欄/👇', official brands, and <= 272 weight."""
+    if not raw_text:
+        return ""
+    lines = []
+    for raw_ln in str(raw_text).splitlines():
+        ln = _TWITTER_URL_RE.sub("", raw_ln)
+        ln = re.sub(r"#[^\s#]+", "", ln)
+        ln = re.sub(r"オリエンタル(?!ラウンジ)", "オリエンタルラウンジ", ln)
+        ln = re.sub(r"(?<![A-Za-z])OLG(?![A-Za-z])", "オリエンタルラウンジ", ln, flags=re.IGNORECASE)
+        ln = re.sub(r"(?<![A-Za-z])YATAKOI(?![A-Za-z])", "ヤタコイ", ln, flags=re.IGNORECASE)
+        ln = ln.replace("オリラジ", "オリエンタルラウンジ").replace("👇", "").strip()
+        if not ln:
+            if lines and lines[-1] != "":
+                lines.append("")
+            continue
+        if _X_PIVOT_BANNED_RE.search(ln):
+            continue
+        lines.append(ln)
+    while lines and lines[-1] == "":
+        lines.pop()
+    text = "\n".join(lines).strip()
+    while compute_twitter_weight(text) > 272 and len(text) > 30:
+        text = text[:-1].rstrip()
+    return text
+
+
+def _get_recent_x_data_law_keys() -> list:
+    try:
+        import job_state
+        raw = (job_state.get_value(X_DATA_LAW_RECENT_KEY, allow_blocking=False) or "").strip()
+        if not raw:
+            return []
+        return [x.strip() for x in raw.split(",") if x.strip()]
+    except Exception:
+        return []
+
+
+def record_x_data_law_key(law_key: str) -> None:
+    if not law_key:
+        return
+    try:
+        import job_state
+        cur = [k for k in _get_recent_x_data_law_keys() if k != law_key]
+        cur.insert(0, law_key)
+        job_state.set_value(X_DATA_LAW_RECENT_KEY, ",".join(cur[:10]))
+    except Exception as e:
+        logger.warning(f"Failed to record X data-law key: {e}")
+
+
+def build_x_data_law_post(now_jst: datetime.datetime = None, attach_eyecatch: bool = True) -> dict:
+    """
+    Build Pillar A standalone 1-tweet Data-Law / Counter-Intuitive Nightlife Insight:
+      - Strictly 1 standalone tweet (`reply_text=None`, zero URLs, zero `リプ欄へ👇`, zero hashtags)
+      - Uses verified empirical column metrics only (zero fabricated numbers)
+      - Optionally attaches the clean column infographic image on even business days for visual dwell
+    """
+    now_jst = now_jst or datetime.datetime.now(_JST)
+    biz_dt = _coerce_jst_naive(now_jst) - datetime.timedelta(hours=7)
+    recent = set(_get_recent_x_data_law_keys())
+    available = [item for item in X_DATA_LAW_POSTS if item["key"] not in recent]
+    pool = available if available else list(X_DATA_LAW_POSTS)
+    idx = (biz_dt.date().toordinal() * 5 + biz_dt.weekday()) % len(pool)
+    chosen = dict(pool[idx])
+    text = _sanitize_x_standalone_text(chosen["text"])
+
+    media_bytes, media_mime = None, "image/jpeg"
+    # Attach visual infographic on ~half of posts so timeline mixes crisp text-only observations with visual cards
+    if attach_eyecatch and (biz_dt.date().toordinal() % 2 == 0) and chosen.get("eyecatch"):
+        media_bytes, media_mime = load_column_eyecatch_bytes(chosen)
+
+    return {
+        "law_key": chosen["key"],
+        "text": text,
+        "reply_text": None,
+        "media_bytes": media_bytes,
+        "media_mime_type": media_mime,
+    }
+
+
+def build_x_search_catcher_post(
+    stores: list,
+    slot_label: str = "22:00",
+    app_url: str = "",
+    now_jst: datetime.datetime = None,
+) -> tuple:
+    """
+    Build Pillar B Fri/Sat 22:00 Weekend Peak Store-Search Catcher (`(main_text, reply_text)`):
+      - Captures high-intent X keyword searches (`新宿`, `渋谷`, `恵比寿`, `梅田`, `難波`, `JIS`, `ag`, `オリエンタルラウンジ`)
+      - Zero `詳細はリプ欄へ👇` / `👇` bait and zero `#hashtags` in `main_text`
+      - Quiet `reply_text` provides clean source URL (`?s=x22_search_YYYYMMDD`)
+    """
+    site_url = (app_url or os.environ.get("PUBLIC_SITE_URL") or "https://aiseki-navi.com").rstrip("/")
+    now_jst = now_jst or datetime.datetime.now(_JST)
+    ts_naive = _coerce_jst_naive(now_jst)
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd_ja = weekdays_ja[ts_naive.weekday()]
+    hhmm = ts_naive.strftime("%H:%M")
+
+    korea_keywords = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom = [
+        s for s in (stores or [])
+        if s.get("region") != "Korea"
+        and not any(k in (s.get("name") or "").upper() for k in korea_keywords)
+    ]
+    if not dom:
+        return "", ""
+
+    hub_defs = (
+        ("新宿", ("新宿", "西新宿", "SHINJUKU")),
+        ("渋谷・恵比寿", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
+        ("梅田", ("梅田", "茶屋町", "天満", "UMEDA", "CHAYAMACHI")),
+        ("難波・心斎橋", ("難波", "なんば", "心斎橋", "NAMBA", "SHINSAIBASHI")),
+        ("名古屋", ("名古屋", "栄", "錦", "NAGOYA")),
+        ("福岡", ("福岡", "天神", "FUKUOKA")),
+        ("札幌", ("札幌", "SAPPORO")),
+    )
+
+    picked = []
+    used_names = set()
+    for hub_label, kws in hub_defs:
+        candidates = [
+            s for s in dom
+            if s.get("name") not in used_names
+            and any(k in (s.get("name") or "").upper() or k in format_ja_store_name(s.get("name", "")) for k in kws)
+            and (int(s.get("women") or 0) + int(s.get("men") or 0)) >= 8
+        ]
+        if not candidates:
+            continue
+        candidates.sort(key=lambda s: (int(s.get("women") or 0), int(s.get("men") or 0)), reverse=True)
+        top_s = candidates[0]
+        used_names.add(top_s.get("name"))
+        picked.append((hub_label, top_s))
+        if len(picked) >= 3:
+            break
+
+    if not picked:
+        ranked = sorted(dom, key=lambda s: (int(s.get("women") or 0), int(s.get("men") or 0)), reverse=True)
+        for s in ranked[:3]:
+            if (int(s.get("women") or 0) + int(s.get("men") or 0)) > 0:
+                picked.append(("", s))
+    if not picked:
+        return "", ""
+
+    header = f"{ts_naive.month}/{ts_naive.day}({wd_ja}) {hhmm}時点 主要エリアの店内人数メモ"
+    body_lines = [header, ""]
+    for _, s in picked:
+        w = int(s.get("women") or 0)
+        m = int(s.get("men") or 0)
+        official_name = format_official_searchable_store_name(s.get("name", ""))
+        body_lines.append(f"・{official_name}：女性{w}名 / 男性{m}名")
+
+    # Add 1 short asymmetric observation line without any link bait
+    top_female = max(picked, key=lambda pair: int(pair[1].get("women") or 0) - int(pair[1].get("men") or 0))[1]
+    tf_w = int(top_female.get("women") or 0)
+    tf_m = int(top_female.get("men") or 0)
+    male_lead = [
+        s for s in dom
+        if int(s.get("men") or 0) >= 12 and int(s.get("men") or 0) >= int(s.get("women") or 0) + 4
+    ]
+    if tf_w >= tf_m + 5:
+        obs = "同じ街でも店舗間で男女比が割れているので、男性待ちが出ている店は徒歩圏の別店舗へ回る方が早いです。"
+    elif male_lead:
+        ml_name = format_official_searchable_store_name(male_lead[0].get("name", ""))
+        obs = f"女性グループなら男性先行の{ml_name}あたりが待ち時間なしで座りやすい時間帯。"
+    else:
+        obs = "22時台は15分単位で男女比が動くので、1店舗目で並ばず空き席のある店舗を選ぶのが確実です。"
+
+    candidate_full = "\n".join(body_lines + ["", obs])
+    if compute_twitter_weight(candidate_full) <= 272:
+        main_text = candidate_full
+    else:
+        short_obs = "同じ駅でも店舗ごとに男女比が割れている時間帯です。"
+        cand_short = "\n".join(body_lines + ["", short_obs])
+        main_text = cand_short if compute_twitter_weight(cand_short) <= 272 else "\n".join(body_lines)
+        while compute_twitter_weight(main_text) > 272 and len(body_lines) > 3:
+            body_lines.pop()
+            main_text = "\n".join(body_lines)
+
+    biz_ymd = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y%m%d")
+    reply_text = (
+        f"出典・全国60店舗超のリアルタイム人数推移\n"
+        f"{site_url}/?s=x22_search_{biz_ymd}"
+    )
+    return main_text, reply_text

@@ -284,6 +284,22 @@ def run_scheduled_x_post(slot_label="20:00", force=False):
     return sns_workflows.execute_scheduled_x_post(_get_visible_latest_data_snapshot(), slot_label=slot_label, force=force)
 
 
+def run_scheduled_x_data_law_post(slot_label="19:15", force=False):
+    """Execute Pillar A standalone 1-tweet Data-Law X post (zero URL, zero self-reply)."""
+    import sns_workflows
+    return sns_workflows.execute_scheduled_x_data_law_post(slot_label=slot_label, force=force)
+
+
+def run_scheduled_x_search_catcher_post(slot_label="22:00", force=False):
+    """Execute Pillar B Fri/Sat 22:00 Weekend Peak Store-Search Catcher X post."""
+    import sns_workflows
+    return sns_workflows.execute_scheduled_x_search_catcher_post(
+        _get_visible_latest_data_snapshot(),
+        slot_label=slot_label,
+        force=force,
+    )
+
+
 def run_scheduled_weekly_x_post(force=False):
     """Execute weekly summary X auto-post (with dynamic /ogp/weekly.png card attached to 1st post)."""
     import sns_workflows
@@ -418,6 +434,8 @@ def precompute_editorial_and_media_bundle(
 
 SUPPORTED_SNS_JOB_TYPES = (
     'x_post',
+    'x_data_law',
+    'x_search',
     'x_tip',
     'note_share',
     'x_pinned',
@@ -425,6 +443,7 @@ SUPPORTED_SNS_JOB_TYPES = (
     'x_weekly',
     'x_bonus',
     'threads_post',
+    'threads_conv',
     'ig_post',
     'ig_reel',
     'tiktok_inbox',
@@ -443,6 +462,14 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
     if jtype == 'x_post':
         slot = str(p.get('slot') or '20:00').strip()
         return core.run_scheduled_x_post(slot_label=slot, force=force)
+
+    if jtype == 'x_data_law':
+        slot = str(p.get('slot') or '19:15').strip()
+        return core.run_scheduled_x_data_law_post(slot_label=slot, force=force)
+
+    if jtype == 'x_search':
+        slot = str(p.get('slot') or '22:00').strip()
+        return core.run_scheduled_x_search_catcher_post(slot_label=slot, force=force)
 
     if jtype == 'x_tip':
         import tips_poster
@@ -502,6 +529,12 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         slot = str(p.get('slot') or '20:00').strip()
         stores = _get_visible_live_stores()
         return threads_poster.execute_scheduled_threads_post(stores, slot_label=slot, force=force)
+
+    if jtype == 'threads_conv':
+        import threads_poster
+        slot = str(p.get('slot') or '21:15').strip()
+        stores = _get_visible_live_stores()
+        return threads_poster.execute_scheduled_conversational_threads_post(stores, slot_label=slot, force=force)
 
     if jtype == 'ig_post':
         import instagram_poster
@@ -748,8 +781,21 @@ def trigger_x_post_endpoint():
     guard_err = _require_master_post_csrf()
     if guard_err is not None:
         return guard_err
-    slot = request.args.get('slot', '20:00')
+    mode = (request.args.get('mode') or '').strip().lower()
     force = request.args.get('force', '0') == '1'
+    if mode == 'data_law':
+        slot = request.args.get('slot', '19:15')
+        queued_resp = _maybe_enqueue_async_sns_trigger('x_data_law', {'slot': slot, 'force': force})
+        if queued_resp is not None:
+            return queued_resp
+        return jsonify(core.run_scheduled_x_data_law_post(slot_label=slot, force=force))
+    if mode == 'search_catcher':
+        slot = request.args.get('slot', '22:00')
+        queued_resp = _maybe_enqueue_async_sns_trigger('x_search', {'slot': slot, 'force': force})
+        if queued_resp is not None:
+            return queued_resp
+        return jsonify(core.run_scheduled_x_search_catcher_post(slot_label=slot, force=force))
+    slot = request.args.get('slot', '20:00')
     queued_resp = _maybe_enqueue_async_sns_trigger('x_post', {'slot': slot, 'force': force})
     if queued_resp is not None:
         return queued_resp
@@ -868,8 +914,17 @@ def trigger_threads_post_endpoint():
     guard_err = _require_master_post_csrf()
     if guard_err is not None:
         return guard_err
-    slot = request.args.get('slot', '20:00')
+    mode = (request.args.get('mode') or '').strip().lower()
     force = request.args.get('force', '0') == '1'
+    if mode in ('conversational', 'conv'):
+        slot = request.args.get('slot', '21:15')
+        queued_resp = _maybe_enqueue_async_sns_trigger('threads_conv', {'slot': slot, 'force': force})
+        if queued_resp is not None:
+            return queued_resp
+        import threads_poster
+        stores = _get_visible_live_stores()
+        return jsonify(threads_poster.execute_scheduled_conversational_threads_post(stores, slot_label=slot, force=force))
+    slot = request.args.get('slot', '20:00')
     queued_resp = _maybe_enqueue_async_sns_trigger('threads_post', {'slot': slot, 'force': force})
     if queued_resp is not None:
         return queued_resp
