@@ -123,6 +123,41 @@ class AboutContactPageTests(unittest.TestCase):
         self.assertEqual(r.status_code, 303)
         st.assert_not_called()
 
+    def test_contact_silent_spam_filter_drops_seo_scam_and_keeps_legitimate_inquiries(self):
+        scam_msg = (
+            "Feature aiseki-navi.com in Google's Search Index and have it show up in web search results!\n\n"
+            "Submit aiseki-navi.com today: domainindex.live"
+        )
+        backlink_spam = (
+            "Hi team, we offer high DA backlinks to help you rank #1 on Google within 30 days."
+        )
+        cyrillic_spam = "Привет! Заходите на наш сайт example-bonus.ru прямо сейчас"
+        with mock.patch.object(contact_form, 'store_inquiry') as st:
+            for msg in (scam_msg, backlink_spam, cyrillic_spam):
+                contact_form.reset_rate_limits_for_tests()
+                r = self.client.post(
+                    '/contact',
+                    data=self._valid_form(category='other', message=msg),
+                    headers={'Origin': 'http://localhost'},
+                )
+                self.assertEqual(r.status_code, 303)
+                self.assertIn('/contact?sent=1', r.headers['Location'])
+            st.assert_not_called()
+
+        # 正規の日本語問い合わせ（Googleに言及していても誤遮断ゼロ）＋正規の英語問い合わせは通常保存されること
+        legit_jp = 'Google検索の時間表記と公式サイトの営業時間が異なっているため訂正をお願いします。'
+        legit_en = 'Hello, I visited Oriental Lounge Shibuya last night and noticed a small typo on the map.'
+        with mock.patch.object(contact_form, 'store_inquiry', return_value={'sheets': True, 'webhook': True}) as st_ok:
+            for msg in (legit_jp, legit_en):
+                contact_form.reset_rate_limits_for_tests()
+                r = self.client.post(
+                    '/contact',
+                    data=self._valid_form(category='correction', message=msg),
+                    headers={'Origin': 'http://localhost'},
+                )
+                self.assertEqual(r.status_code, 303)
+            self.assertEqual(st_ok.call_count, 2)
+
     def test_contact_length_limits_and_validation(self):
         with mock.patch.object(contact_form, 'store_inquiry') as st:
             r_long = self.client.post('/contact', data=self._valid_form(message='あ' * 2001))

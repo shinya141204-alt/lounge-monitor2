@@ -45,6 +45,45 @@ PRIORITY_CATEGORIES = ('removal', 'correction')
 
 _EMAIL_RE = re.compile(r'^[^@\s<>"]+@[^@\s<>"]+\.[^@\s<>"]+$')
 _CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+_JP_KANA_RE = re.compile(r'[\u3040-\u309F\u30A0-\u30FF]')
+_CYRILLIC_RUN_RE = re.compile(r'[\u0400-\u04FF]{6,}')
+_DOMAIN_LIKE_RE = re.compile(r'\b[a-z0-9][a-z0-9-]{1,61}\.(?:com|net|org|live|online|info|io|co|ru|xyz|top|site|shop|biz)\b', re.I)
+
+# 海外ボットによる有料インデックス登録詐欺・スパム送信元ドメイン断片（言語を問わず即サイレント破棄）
+_SCAM_DOMAIN_MARKERS = (
+    'domainindex.',
+    'searchregister.',
+    'search-index.',
+    'submitdomain.',
+    'indexsubmit.',
+    'googlesubmit.',
+    'addurlgoogle.',
+    'domainlisting.',
+)
+
+# 日本語（ひらがな・カタカナ）を1文字も含まない海外ボット定型営業スパム句
+_NON_JP_BOT_PHRASES = (
+    'buy backlinks',
+    'high da backlinks',
+    'dofollow backlinks',
+    'guest post on your',
+    'sponsored post on your',
+    'rank #1 on google',
+    'first page of google',
+    'boost your domain authority',
+    'increase your domain rating',
+    'seo audit for your website',
+    'submit your website to search engines',
+    'add your site to google',
+    'crypto recovery',
+    'stolen bitcoin',
+    'binary options',
+    'online casino',
+    'buy viagra',
+    'buy cialis',
+    'whatsapp: +',
+    'telegram: @',
+)
 
 _rl_lock = threading.Lock()
 _ip_hits = defaultdict(deque)
@@ -171,6 +210,46 @@ def validate(form) -> tuple:
     elif len(re.findall(r'https?://', data['message'])) > 3:
         errors.append('URL は3件までにしてください。')
     return data, errors
+
+
+def detect_spam_reason(data: dict) -> str:
+    """既知の海外SEO登録詐欺ボット・英語定型営業スパムを検知し、該当時は理由コード（非該当時は ''）を返す。
+
+    日本語（ひらがな・カタカナ）を含む正規ユーザーや店舗関係者からの問い合わせを誤遮断しないよう、
+    汎用ボット句の判定は「日本語かな文字ゼロ」の場合にのみ適用する。
+    """
+    if not isinstance(data, dict):
+        return ''
+    msg = str(data.get('message') or '')
+    name = str(data.get('name') or '')
+    email = str(data.get('email') or '')
+    combined_low = f'{name}\n{email}\n{msg}'.lower()
+    msg_low = msg.lower()
+
+    # 1. 言語不問で確定スパムの詐欺ドメイン（domainindex.live 等）
+    for marker in _SCAM_DOMAIN_MARKERS:
+        if marker in combined_low:
+            return f'scam_domain:{marker.rstrip(".")}'
+
+    # 2. Google Search Index 登録勧誘ボットの定番英語テンプレート
+    if ("google's search index" in msg_low or 'googles search index' in msg_low) and any(
+        kw in msg_low for kw in ('submit ', 'feature ', 'show up in web search')
+    ):
+        return 'seo_index_scam_template'
+    if 'submit ' in msg_low and ' today:' in msg_low and (
+        'search index' in msg_low or 'search results' in msg_low
+    ):
+        return 'seo_submit_today_template'
+
+    # 3. 日本語かな文字を含まない海外ボット定型スパム（日本語の正規問い合わせは100%通過）
+    if not _JP_KANA_RE.search(msg):
+        for phrase in _NON_JP_BOT_PHRASES:
+            if phrase in msg_low:
+                return 'foreign_bot_pitch'
+        if _CYRILLIC_RUN_RE.search(msg) and ('http' in msg_low or _DOMAIN_LIKE_RE.search(msg_low)):
+            return 'cyrillic_link_spam'
+
+    return ''
 
 
 def hash_ip(secret: str, ip_addr: str) -> str:

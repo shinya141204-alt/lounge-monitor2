@@ -1443,6 +1443,14 @@ def contact_page():
             errors=['短時間に送信が集中しています。10分ほど時間をおいてから再度お試しください。'],
             status=429,
         )
+    spam_reason = contact_form.detect_spam_reason(data)
+    if spam_reason:
+        logging.info(
+            "[contact] silently dropped automated spam reason=%s ip_hash=%s",
+            spam_reason,
+            contact_form.hash_ip(core.app.secret_key, client_ip)[:12],
+        )
+        return redirect('/contact?sent=1', code=303)
     contact_form.store_inquiry(
         data,
         contact_form.hash_ip(core.app.secret_key, client_ip),
