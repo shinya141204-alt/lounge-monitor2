@@ -162,9 +162,9 @@ class TestCrossSiteBridgeAndFableStrategy(unittest.TestCase):
         import reel_generator
         import sns_editorial
 
-        # 1. Reels 8.5s timeline + Scene 1 animated bar + Scene 2 fly-in before 2.0s
-        self.assertEqual(reel_generator.REEL_DURATION_SEC, 8.5)
-        self.assertEqual(reel_generator.REEL_TOTAL_FRAMES, 204)
+        # 1. Reels 10.0s timeline + Scene 1 animated bar + Scene 2 fly-in before 2.0s + Scene 3 DM Share/Save hold
+        self.assertEqual(reel_generator.REEL_DURATION_SEC, 10.0)
+        self.assertEqual(reel_generator.REEL_TOTAL_FRAMES, 240)
         stores = [
             {"name": "OLG 名古屋 栄", "women": 55, "men": 20, "region": "Chubu", "area": "栄"},
             {"name": "OLG 新宿", "women": 46, "men": 22, "region": "Kanto", "area": "新宿"},

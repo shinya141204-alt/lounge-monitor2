@@ -4,7 +4,7 @@ voice_narration.py - ElevenLabs Custom Voice Clone Narration Engine for Aiseki N
 Features:
 1. Secure Master configuration via `job_state` (`token:elevenlabs_api_key` encrypted/obfuscated via `obf1:`)
    with seamless fallback to `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` environment variables.
-2. Live fact-grounded 8.5s narration script builder across all 6 Reel/TikTok templates (`live_top5`,
+2. Live fact-grounded 10.0s narration script builder across all 6 Reel/TikTok templates (`live_top5`,
    `area_battle`, `ladies_zero_wait`, `tiktok_gap_shock`, `tiktok_ladies_real`, `tiktok_midnight_cliff`)
    with zero fabricated metrics and strict official brand naming (`オリエンタルラウンジ`, `ag`, `JIS`, `ASOBIBAR`, `ヤタコイ`).
 3. Dedicated Japanese TTS phonetic sanitizer (`to_tts_phonetic_japanese`) so Latin brand names (`ag`->`アグ`,
@@ -903,9 +903,9 @@ def _short_zone_name(label: str) -> str:
 
 def build_reel_narration_script(ctx: dict) -> str:
     """
-    Build a concise (~44–64 chars, ~6.4–7.7s spoken) live-fact narration script strictly synchronized
-    with the stores and numbers drawn on Scene 1 & Scene 2 cards of the 8.5s 9:16 video:
-      - 0.1s Hook -> Exact on-screen #1/#2 Store & Headcount -> Profile Link CTA (`相席ナビ`).
+    Build a concise (~54–74 chars, ~7.4–9.1s spoken) live-fact narration script strictly synchronized
+    with the stores and numbers drawn on Scene 1 & Scene 2 cards of the 10.0s 9:16 video:
+      - 0.1s Hook -> Exact on-screen #1/#2 Store & Headcount -> DM Share / Save & Profile Link CTA (`相席ナビ`).
       - Strictly zero fabricated metrics (`data_status == 'insufficient'` returns honest off-hours guidance).
     """
     if not isinstance(ctx, dict) or ctx.get("data_status") == "insufficient" or ctx.get("is_fallback"):
@@ -927,12 +927,12 @@ def build_reel_narration_script(ctx: dict) -> str:
                 bs_name = _spoken_store_name(bs)
                 script = (
                     f"新宿・梅田・渋谷の今夜対決。1位は{lead_n}で女性{lead_w}名、"
-                    f"狙い目は{bs_name}。全店はプロフの相席ナビへ。"
+                    f"狙い目は{bs_name}。相方への共有や保存、全店はプロフの相席ナビへ。"
                 )
             else:
                 script = (
                     f"新宿・梅田・渋谷の今夜対決。1位は{lead_n}で女性{lead_w}名、"
-                    f"男性{lead_m}名。全店はプロフの相席ナビへ。"
+                    f"男性{lead_m}名。相方への共有や保存、全店はプロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
@@ -943,7 +943,7 @@ def build_reel_narration_script(ctx: dict) -> str:
             s1_name = _spoken_store_name(s1)
             script = (
                 f"女子2人組の今夜おすすめ。1位は{s1_name}で男性{int(s1.get('men') or 0)}名、"
-                f"女性{int(s1.get('women') or 0)}名。特典はプロフの相席ナビへ。"
+                f"女性{int(s1.get('women') or 0)}名。友達への共有や保存、特典はプロフの相席ナビへ。"
             )
             return enforce_spoken_brand_rule(script)
 
@@ -959,12 +959,12 @@ def build_reel_narration_script(ctx: dict) -> str:
             if gp.get("is_same_hub"):
                 script = (
                     f"同じ駅でも男女比が{gap_pt}pt差。狙い目は{hi_name}で女性{hi_w}名、"
-                    f"女性比{hi_pct}%。プロフの相席ナビへ。"
+                    f"女性比{hi_pct}%。相方への共有や保存、全店はプロフの相席ナビへ。"
                 )
             else:
                 script = (
                     f"同じ時間でも男女比が{gap_pt}pt差。狙い目は{hi_name}で女性{hi_w}名、"
-                    f"女性比{hi_pct}%。プロフの相席ナビへ。"
+                    f"女性比{hi_pct}%。相方への共有や保存、全店はプロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
@@ -975,7 +975,7 @@ def build_reel_narration_script(ctx: dict) -> str:
             s1_name = _spoken_store_name(s1)
             script = (
                 f"女子ペアで受付待ちを避けるなら男性先行店。1位は{s1_name}で"
-                f"男性{int(s1.get('men') or 0)}名、女性{int(s1.get('women') or 0)}名。プロフの相席ナビへ。"
+                f"男性{int(s1.get('men') or 0)}名、女性{int(s1.get('women') or 0)}名。友達への共有や保存、プロフの相席ナビへ。"
             )
             return enforce_spoken_brand_rule(script)
 
@@ -990,12 +990,12 @@ def build_reel_narration_script(ctx: dict) -> str:
             if ret is not None and int(ret) > 0:
                 script = (
                     f"23時過ぎの2軒目速報。1位は深夜維持率{int(ret)}%の{s1_name}で女性{w_cnt}名。"
-                    f"プロフの相席ナビへ。"
+                    f"相方への共有や保存、プロフの相席ナビへ。"
                 )
             else:
                 script = (
                     f"23時過ぎの2軒目速報。1位は{s1_name}で女性{w_cnt}名、男性{m_cnt}名。"
-                    f"プロフの相席ナビへ。"
+                    f"相方への共有や保存、プロフの相席ナビへ。"
                 )
             return enforce_spoken_brand_rule(script)
 
@@ -1012,12 +1012,12 @@ def build_reel_narration_script(ctx: dict) -> str:
             w2 = int(s2.get("women") or 0)
             script = (
                 f"今夜の全国速報。1位は{s1_name}で女性{w1}名、"
-                f"続いて{s2_name}が女性{w2}名。現在人数はプロフの相席ナビへ。"
+                f"続いて{s2_name}が女性{w2}名。相方への共有や保存、全店はプロフの相席ナビへ。"
             )
         else:
             script = (
                 f"今夜の全国速報。1位は{s1_name}で女性{w1}名、男性{m1}名。"
-                f"全店の現在人数はプロフの相席ナビからすぐ見られます。"
+                f"相方への共有や保存もぜひ。全店の現在人数はプロフの相席ナビからすぐ見られます。"
             )
         return enforce_spoken_brand_rule(script)
 

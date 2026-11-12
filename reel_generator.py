@@ -50,8 +50,8 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 REEL_WIDTH = 720
 REEL_HEIGHT = 1280
 REEL_FPS = 24
-REEL_DURATION_SEC = 8.5
-REEL_TOTAL_FRAMES = int(round(REEL_DURATION_SEC * REEL_FPS))  # 204 frames
+REEL_DURATION_SEC = 10.0
+REEL_TOTAL_FRAMES = int(round(REEL_DURATION_SEC * REEL_FPS))  # 240 frames
 REEL_CACHE_TTL_SEC = 120.0
 REEL_SHARED_CACHE_TTL_SEC = 900
 
@@ -1168,9 +1168,9 @@ def build_reel_caption(
             f"今夜の3大激戦区、人数ボリュームと入りやすさで綺麗に割れてます{mode_note}",
         )
         closers = (
-            "お店に向かう直前の現在人数と男女比は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒で見られます。\n📌 いいね不要・誰にもバレない【保存】で2軒目探しのメモ代わりにどうぞ（フォローで毎晩20時の穴場速報を通知）。",
-            "全国60店舗超のいま現在の人数と料金比較はプロフの『相席ナビ』（aiseki-navi.com）に置いてます🔍\n📌 週末の作戦会議用に【保存】＆毎晩の穴場時間を逃さないようフォローもぜひ。",
-            "改札を出る前に『相席ナビ』（aiseki-navi.com）で近くの別ブランドを見比べるだけで受付待ちを回避できます。\n📌 入店3分前に見返せるよう【右下の保存】がおすすめです。",
+            "お店に向かう直前の現在人数と男女比は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から3秒で見られます。\n✈️ 一緒に行く相方へ「今日どこ行く？」のDM送信 ＆ 📌 誰にもバレない【保存】で2軒目メモにどうぞ。",
+            "全国60店舗超のいま現在の人数と料金比較はプロフの『相席ナビ』（aiseki-navi.com）に置いてます🔍\n✈️ 相方との作戦会議にDMで共有 ＆ 📌 入店3分前に見返す用の【保存】もぜひ。",
+            "改札を出る前に『相席ナビ』（aiseki-navi.com）で近くの別ブランドを見比べるだけで受付待ちを回避できます。\n✈️ 今日・週末一緒に行く友達へDM送信 ＆ 📌【右下の保存】がおすすめです。",
         )
         caption = (
             f"{openers[seed_num % len(openers)]}\n\n"
@@ -1198,9 +1198,9 @@ def build_reel_caption(
             f"いま受付待ちほぼゼロでそのまま乾杯しやすそうな狙い目ラウンジ上位です✨{mode_note}",
         )
         closers = (
-            "いま女子待ちゼロ圏の店舗一覧と限定フード・特典は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から見られます🔍\n📌 誰にもバレない【保存】で友達との2軒目メモにどうぞ（フォローで毎晩の女子得速報を通知）🥂",
-            "角が立たない席替えのコツや全国の現在人数はプロフの『相席ナビ』（aiseki-navi.com）にまとめてあります📌\n行く直前に見返せるよう【保存】＆フォローもぜひ。",
-            "お店に入る3分前にプロフィールの『相席ナビ』（aiseki-navi.com）を覗いてから動くのが一番ラクです✨\n📌 週末の女子会用に【右下の保存】をどうぞ。",
+            "いま女子待ちゼロ圏の店舗一覧と限定フード・特典は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から見られます🔍\n✈️ 一緒に行く友達へ「ここ寄る？」とDM送信 ＆ 📌 誰にもバレない【保存】で2軒目メモにどうぞ🥂",
+            "角が立たない席替えのコツや全国の現在人数はプロフの『相席ナビ』（aiseki-navi.com）にまとめてあります📌\n✈️ 友達へのDM共有 ＆ 行く直前に見返せる【保存】もぜひ。",
+            "お店に入る3分前にプロフィールの『相席ナビ』（aiseki-navi.com）を覗いてから動くのが一番ラクです✨\n✈️ 週末一緒に行く友達へDM送信 ＆ 📌 女子会用に【右下の保存】をどうぞ。",
         )
         caption = (
             f"{openers[seed_num % len(openers)]}\n\n"
@@ -1243,7 +1243,7 @@ def build_reel_caption(
             f"{joined_gp}\n\n"
             f"{mid_tip}\n\n"
             f"全国60店舗超の現在人数と料金シミュレーターはプロフの『相席ナビ』（aiseki-navi.com）から無料で見られます🔍\n"
-            f"今夜・週末に使う用に保存しておいてください📌\n\n"
+            f"✈️ 今夜・週末一緒に行く相方にDMで送っておく用 ＆ 📌 入店3分前の見返し用に【保存】どうぞ\n\n"
             f"{tags_line}"
         )
         return enforce_brand_rule(caption)
@@ -1264,7 +1264,7 @@ def build_reel_caption(
             f"{openers[seed_num % len(openers)]}\n\n"
             f"{l_lines}\n\n"
             f"現在人数と今夜の女子向け特典はプロフの『相席ナビ』（aiseki-navi.com）から3秒でチェックできます🔍\n"
-            f"女子会の2軒目メモ用に保存どうぞ🥂\n\n"
+            f"✈️ 一緒に行く友達へDMで送る用 ＆ 📌 女子会の2軒目メモに【保存】どうぞ🥂\n\n"
             f"{tags_line}"
         )
         return enforce_brand_rule(caption)
@@ -1288,7 +1288,7 @@ def build_reel_caption(
             f"{openers[seed_num % len(openers)]}\n\n"
             f"{m_lines}\n\n"
             f"全国60店舗超の現在人数と深夜維持率はプロフの『相席ナビ』（aiseki-navi.com）で公開中🔍\n"
-            f"終電後の2軒目・3軒目用に保存しておくと役立ちます📌\n\n"
+            f"✈️ 1軒目で一緒の相方へDM送信 ＆ 📌 終電後の2軒目用に【保存】しておくと役立ちます\n\n"
             f"{tags_line}"
         )
         return enforce_brand_rule(caption)
@@ -1311,9 +1311,9 @@ def build_reel_caption(
         f"1軒目終わりの移動前にサクッと見比べたい、全国の現在人数上位＆好バランス穴場メモ{mode_note}",
     )
     closers = (
-        "全国60店舗超のいま現在の男女人数・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要で見られます🔍\n📌 いいね不要・誰にもバレない【保存】でお店に入る3分前の確認用にどうぞ（フォローで毎晩の穴場時間を通知）。",
-        "男性は「女性10名以上×女性比55%以上」、女性ペアは「男性先行中」のお店を選ぶとスムーズです🥂\n📌 行く直前に見返せるよう【保存】＆リアルタイム検索はプロフの『相席ナビ』（aiseki-navi.com）から。",
-        "近くのお店の現在人数と2軒目候補はプロフィールの『相席ナビ』（aiseki-navi.com）にまとめてあります🔍\n📌 週末のハシゴ用に【右下の保存】とフォローをぜひ。",
+        "全国60店舗超のいま現在の男女人数・料金比較は、プロフィールのリンク『相席ナビ』（aiseki-navi.com）から登録不要で見られます🔍\n✈️ 一緒に行く相方へDM送信 ＆ 📌 誰にもバレない【保存】でお店に入る3分前の確認用にどうぞ。",
+        "男性は「女性10名以上×女性比55%以上」、女性ペアは「男性先行中」のお店を選ぶとスムーズです🥂\n✈️ 相方へのDM共有 ＆ 📌 行く直前に見返せる【保存】もぜひ（現在人数はプロフ『相席ナビ』から）。",
+        "近くのお店の現在人数と2軒目候補はプロフィールの『相席ナビ』（aiseki-navi.com）にまとめてあります🔍\n✈️ 週末一緒に行く友達へDM送信 ＆ 📌 ハシゴ用に【右下の保存】をぜひ。",
     )
     anaba_block = f"\n\n🎯 いま比率が良くて入りやすい穴場\n{a_lines}" if a_lines else ""
     caption = (
@@ -1782,9 +1782,9 @@ class _ReelSceneRenderer:
         py = self.prog_y
         draw.rounded_rectangle((lx, py, rx_end, py + 6), radius=3, fill=(255, 255, 255, 46))
         foot_txt = (
-            "『相席ナビ』(aiseki-navi.com) 全国60店舗超の現在人数を無料公開中"
+            "相方へDM共有・入店前用に保存 ｜ 全店人数は『相席ナビ』で公開中"
             if self.is_tiktok
-            else "全国60店舗超の現在人数は『相席ナビ』(aiseki-navi.com) で無料公開中"
+            else "相方へDM送信・行く前に保存推奨 ｜ 全店人数は『相席ナビ』(aiseki-navi.com)"
         )
         foot_fit, f_foot_fit, _ = ogp_generator.fit_text_and_font(draw, foot_txt, self.safe_w, 15, 12)
         fw = int(draw.textlength(foot_fit, font=f_foot_fit))
@@ -2052,7 +2052,7 @@ class _ReelSceneRenderer:
 
         # Bottom teaser pill (inside safe zone)
         ty_pill = 832 if self.is_tiktok else 906
-        next_txt = "【保存】推奨｜すぐ下にリアル比較＆狙い目店を公開 >>>" if self.is_tiktok else "行く前に見返せる【保存】推奨｜上位TOP5をすぐ公開 >>>"
+        next_txt = "【相方へDM送信・保存推奨】すぐ下にリアル比較を公開 >>>" if self.is_tiktok else "【相方へDM共有・保存推奨】上位TOP5をすぐ公開 >>>"
         nt_fit, f_nt, _ = ogp_generator.fit_text_and_font(draw, next_txt, sw - 36, 19, 14)
         nw = int(draw.textlength(nt_fit, font=f_nt)) + 36
         nx = lx + max(0, (sw - nw) // 2)
@@ -2711,7 +2711,7 @@ class _ReelSceneRenderer:
         f_url = _get_reel_font(25 if self.is_tiktok else 28)
         f_note = _get_reel_font(16 if self.is_tiktok else 18)
 
-        k_txt = "★ 誰にもバレない【右下の保存】で入店3分前に見返す！"
+        k_txt = "★ 一緒に行く相方へ【DM送信】＆【右下の保存】で見返す！"
         k_fit, f_k_fit, _ = ogp_generator.fit_text_and_font(draw, k_txt, sw - 40, 21, 15)
         kw = int(draw.textlength(k_fit, font=f_k_fit))
         draw.text((lx + max(0, (sw - kw) // 2), cta_y1 + (28 if self.is_tiktok else 40)), k_fit, font=f_k_fit, fill=acc)
@@ -2734,7 +2734,7 @@ class _ReelSceneRenderer:
         draw.rounded_rectangle((ux, uy, ux + uw, uy + uh), radius=16, fill=(12, 18, 34, 248), outline=acc2, width=2)
         draw.text((ux + 24, uy + (17 if self.is_tiktok else 20)), u_fit, font=f_u_fit, fill=acc2)
 
-        n1 = "フォローで最新の人数速報＆「待ち時間回避の穴場法則」をチェック"
+        n1 = "いいね不要！作戦会議に【相方へDM送信】・入店3分前に【保存】"
         n2 = "オリエンタルラウンジ・ag・JIS ほか全国60店舗超対応"
         n1_fit, f_n1, _ = ogp_generator.fit_text_and_font(draw, n1, sw - 36, 16 if self.is_tiktok else 18, 13)
         n2_fit, f_n2, _ = ogp_generator.fit_text_and_font(draw, n2, sw - 36, 16 if self.is_tiktok else 18, 13)
@@ -2817,9 +2817,9 @@ class _ReelSceneRenderer:
                 if sp1 is not self.scene1_sprite:
                     sp1.close()
 
-        # Scene 2: Cards + Animated Gender Bars (1.32s .. 6.48s; 100% opaque at t=6.0s for visual QA)
-        s2_out = 1.0 if t < 6.24 else max(0.0, (6.48 - t) / 0.24)
-        if s2_start <= t <= 6.48 and s2_out > 0.01:
+        # Scene 2: Cards + Animated Gender Bars (1.56s .. 6.72s; 100% opaque at t=6.0s for visual QA)
+        s2_out = 1.0 if t < 6.46 else max(0.0, (6.72 - t) / 0.26)
+        if s2_start <= t <= 6.72 and s2_out > 0.01:
             hdr_in = _ease_out_cubic((t - s2_start) / 0.26)
             hdr_alpha = min(hdr_in, s2_out)
             if hdr_alpha > 0.01:
@@ -2867,10 +2867,10 @@ class _ReelSceneRenderer:
                         final_card.close()
                     card_work.close()
 
-        # Scene 3: 6.42 .. 8.5s
-        s3_alpha = _fade_window(t, 6.42, REEL_DURATION_SEC + 0.1, fade_in=0.34, fade_out=0.0)
+        # Scene 3: 6.64 .. 10.0s (~3.02s solid hold for DM Share & Save action)
+        s3_alpha = _fade_window(t, 6.64, REEL_DURATION_SEC + 0.1, fade_in=0.34, fade_out=0.0)
         if s3_alpha > 0.01:
-            dy3 = int(20 * (1.0 - _ease_out_cubic((t - 6.42) / 0.36)))
+            dy3 = int(20 * (1.0 - _ease_out_cubic((t - 6.64) / 0.36)))
             sp3 = _apply_opacity(self.scene3_sprite, s3_alpha)
             canvas.alpha_composite(sp3, dest=(0, dy3))
             if sp3 is not self.scene3_sprite:
@@ -3059,7 +3059,7 @@ def _compute_reel_cache_key(
         chk = now_jst if now_jst.tzinfo else now_jst.replace(tzinfo=JST)
         if abs((chk - real_now).total_seconds()) > 180:
             custom_ts = chk.strftime("%Y%m%d%H%M")
-    raw = f"v5|{rt}|{bg_sig}|{custom_ts}|{voice_sig}|{top_sig}"
+    raw = f"v6|{rt}|{bg_sig}|{custom_ts}|{voice_sig}|{top_sig}"
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return f"{rt}_{digest}"
 
@@ -3159,7 +3159,7 @@ def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: 
         pcm[i * 2] = int(sl * 24000)
         pcm[i * 2 + 1] = int(sr_val * 24000)
 
-    # 4. Overlay synchronized UI transition chimes (Hook 0.04s, Scene 2 1.32s, Card pops, Scene 3 Save CTA 6.42s)
+    # 4. Overlay synchronized UI transition chimes (Hook 0.04s, Scene 2 1.32s, Card pops, Scene 3 Share/Save CTA 6.64s)
     chime_events = [
         (0.04, 880.0, 1318.5, 0.28, 0.22),
         (1.32, 587.33, 1174.66, 0.26, 0.20),
@@ -3167,8 +3167,8 @@ def synthesize_lounge_bgm_wav_bytes(reel_type: str = "live_top5", duration_sec: 
         (1.60, 783.99, 1174.66, 0.16, 0.13),
         (1.82, 880.00, 1318.51, 0.16, 0.13),
         (2.04, 987.77, 1479.98, 0.16, 0.13),
-        (6.42, 659.25, 1318.51, 0.34, 0.24),
-        (6.56, 987.77, 1567.98, 0.36, 0.24),
+        (6.64, 659.25, 1318.51, 0.34, 0.24),
+        (6.78, 987.77, 1567.98, 0.36, 0.24),
     ]
     for start_t, f1, f2, dur_t, amp in chime_events:
         s_idx = int(start_t * sr)
@@ -3541,7 +3541,7 @@ def render_reel_mp4_bytes(
     narration_audio_path_override: str = None,
 ) -> bytes:
     """
-    Render a 720x1280 24fps H.264 + AAC MP4 (~8.5s) with Lounge Chill BGM and optional ElevenLabs
+    Render a 720x1280 24fps H.264 + AAC MP4 (~10.0s) with Lounge Chill BGM and optional ElevenLabs
     cloned-voice narration + auto-ducking, backed by 120s in-memory + `/tmp/aiseki_reels/`
     + 900s shared `turbo_store` cache for cross-process Meta / TikTok async crawlers.
     Raises `RuntimeError("ffmpeg binary not available")` if FFmpeg cannot be resolved.

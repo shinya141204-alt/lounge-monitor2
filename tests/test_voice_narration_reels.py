@@ -320,10 +320,10 @@ class VoiceNarrationReelsTests(unittest.TestCase):
         if not ffmpeg_bin:
             self.skipTest("ffmpeg binary not installed in test environment")
 
-        # Create an intentionally overlong 9.4s voice WAV to verify `atempo` fits cleanly inside 8.5s MP4
-        overlong_wav_path = os.path.join(self._tmpdir.name, "overlong_9_4s.wav")
+        # Create an intentionally overlong 11.2s voice WAV to verify `atempo` fits cleanly inside 10.0s MP4
+        overlong_wav_path = os.path.join(self._tmpdir.name, "overlong_11_2s.wav")
         with open(overlong_wav_path, "wb") as f:
-            f.write(_make_synthetic_speech_wav_bytes(duration_sec=9.4))
+            f.write(_make_synthetic_speech_wav_bytes(duration_sec=11.2))
 
         ref_dt = datetime.datetime(2026, 11, 13, 21, 30, tzinfo=JST)
         bgm_only_mp4 = reel_generator.render_reel_mp4_bytes(
@@ -350,8 +350,8 @@ class VoiceNarrationReelsTests(unittest.TestCase):
             f.write(narrated_mp4)
 
         dur = voice_narration.probe_audio_duration_sec(out_mp4_file, ffmpeg_bin=ffmpeg_bin)
-        self.assertGreaterEqual(dur, 8.2)
-        self.assertLessEqual(dur, 8.7)
+        self.assertGreaterEqual(dur, 9.7)
+        self.assertLessEqual(dur, 10.25)
 
         ffprobe_bin = os.path.join(os.path.dirname(ffmpeg_bin), "ffprobe")
         if os.path.isfile(ffprobe_bin):
