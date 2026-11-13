@@ -853,6 +853,7 @@ _PAGE_TITLES = {
     '/guide/sapporo-sendai-north': '📖 札幌すすきの・仙台国分町比較（JIS札幌・ag仙台の時間波形と曜日ルール）',
     '/guide/sunday-lounge-strategy': '📖 日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目',
     '/guide/line-exchange-reality': '📖 相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線',
+    '/guide/free-food-reality': '📖 相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }

@@ -323,10 +323,15 @@ TIPS_LIST = [
         "相席ラウンジでLINE交換した後の既読スルーを防ぐ鍵は「退店直後30分以内」の個別連絡。\n"
         "女性は1晩に何組もの男性と話しており翌朝には記憶が薄れています。席で話した具体的エピソードや写真・URLを1枚添えることでトーク一覧での埋没を防げます。"
     ),
+    (
+        "相席ラウンジで女性が料理ばかり食べて会話に乗ってこない時は「タダ飯目的」と決めつける前に男性から「美味しそうだね、いっぱい食べて！」と一言添えるのが有効。\n"
+        "女性側の後ろめたさや沈黙の緊張を解くことで、食の好みから普段のエリアや2軒目の話題へと自然に展開できます。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality"),
     ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality"),
     ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy"),
     ("相席ラウンジと審査制1対1デートの使い分け｜実測ログで見る境界線", "/guide/lounge-vs-screened-date"),
@@ -457,6 +462,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         import scheduled_articles
         if scheduled_articles.is_published("line-exchange-reality"):
             return ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality")
+        return ("相席ラウンジ実践コラム・記事一覧", "/columns")
+    if idx == 73:
+        import scheduled_articles
+        if scheduled_articles.is_published("free-food-reality"):
+            return ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality")
         return ("相席ラウンジ実践コラム・記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 

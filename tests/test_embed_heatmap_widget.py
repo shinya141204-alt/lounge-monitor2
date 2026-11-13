@@ -280,7 +280,8 @@ class TestHeatmapAggregation(_HeatmapDbTestBase):
             self.assertEqual(len(embed_widgets._CACHE), 0)
         self.assertIsNone(embed_widgets.peek_cached_total_buckets(90))
 
-        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        recent_d = (datetime.datetime.now(_JST).date() - datetime.timedelta(days=2)).isoformat()
+        self._insert_logs([(f"{recent_d} 22:00:00", STORE, 12, 10)])
         if hasattr(local_db, "reset_caches_for_tests"):
             local_db.reset_caches_for_tests()  # 読取ハンドルのみリセット（集計キャッシュはあえて触らない）
         filled = embed_widgets.get_heatmap_payload(scope="all")
@@ -485,7 +486,8 @@ class TestHeatmapHttpAndSnippets(_HeatmapDbTestBase):
         for raw_in, expected in ((1, 7), (7, 7), (14, 7), (25, 30), (30, 30), (50, 30), (65, 90), (999, 90), ("bad", 90)):
             self.assertEqual(embed_widgets.clamp_days(raw_in), expected)
 
-        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        recent_d = (datetime.datetime.now(_JST).date() - datetime.timedelta(days=2)).isoformat()
+        self._insert_logs([(f"{recent_d} 22:00:00", STORE, 12, 10)])
         self._fresh()
 
         with mock.patch.object(
@@ -506,7 +508,8 @@ class TestHeatmapHttpAndSnippets(_HeatmapDbTestBase):
 
     def test_stale_while_revalidate_serves_stale_when_compute_lock_is_held(self):
         """TTL 失効直後に別スレッドが再計算ロック保持中でも、後続スレッドはブロックせず既存実データを返す。"""
-        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        recent_d = (datetime.datetime.now(_JST).date() - datetime.timedelta(days=2)).isoformat()
+        self._insert_logs([(f"{recent_d} 22:00:00", STORE, 12, 10)])
         self._fresh()
         first = embed_widgets.get_heatmap_payload(scope="all")
         self.assertEqual(first["meta"]["total_buckets"], 1)
@@ -527,7 +530,8 @@ class TestHeatmapHttpAndSnippets(_HeatmapDbTestBase):
 
     def test_embed_html_preserves_public_cache_control_and_never_pollutes_human_pv(self):
         """/embed/heatmap はデータ存在時に public キャッシュを維持し、スタッフ時は private 降格、人間PVも汚染しない。"""
-        self._insert_logs([(f"{_recent_weekday(4, 0).isoformat()} 22:00:00", STORE, 12, 10)])
+        recent_d = (datetime.datetime.now(_JST).date() - datetime.timedelta(days=2)).isoformat()
+        self._insert_logs([(f"{recent_d} 22:00:00", STORE, 12, 10)])
         self._fresh()
 
         ua_headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0"}

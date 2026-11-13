@@ -1680,6 +1680,12 @@ def guide_line_exchange_reality():
     return _render_scheduled_guide('line-exchange-reality')
 
 
+@portal_bp.route('/guide/free-food-reality')
+def guide_free_food_reality():
+    """Scheduled editorial data study on free-food motives vs romantic intent and lounge dining mechanics."""
+    return _render_scheduled_guide('free-food-reality')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
