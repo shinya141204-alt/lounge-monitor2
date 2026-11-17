@@ -455,8 +455,9 @@ class HourlyAnalyticsTests(unittest.TestCase):
         """H1/M5 regression: rewrite mutex defers Sheets append safely; displaced headers never drop row 0; 0-PV click renders cleanly."""
         import app as app_module
 
-        now_dt = datetime.datetime(2026, 11, 7, 23, 15, tzinfo=JST)
-        late_clk_dt = datetime.datetime(2026, 11, 7, 3, 5, tzinfo=JST)
+        base_d = (datetime.datetime.now(JST) - datetime.timedelta(days=1)).date()
+        now_dt = datetime.datetime(base_d.year, base_d.month, base_d.day, 23, 15, tzinfo=JST)
+        late_clk_dt = datetime.datetime(base_d.year, base_d.month, base_d.day, 3, 5, tzinfo=JST)
         sheet_calls = []
 
         def fake_append_hourly(title, header, rows):

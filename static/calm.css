@@ -5128,6 +5128,10 @@ body.theme-light .sns-tab-btn.active {
         padding: 1px 4px !important;
         letter-spacing: -0.015em !important;
         line-height: 1.25 !important;
+        white-space: nowrap !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
 }
 

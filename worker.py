@@ -205,13 +205,12 @@ def _ig_reel_scheduled_job(slot_lbl="20:00"):
         with app_module.data_lock:
             cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
-        if cur_stores and not is_seed:
-            instagram_poster.publish_live_reel_to_instagram(
-                cur_stores,
-                reel_type="auto",
-                slot_label=slot_lbl,
-                force=False,
-            )
+        import moshimo_reel_queue
+        moshimo_reel_queue.dispatch_scheduled_ig_reel(
+            cur_stores,
+            slot_label=slot_lbl,
+            is_seed=is_seed,
+        )
     except Exception as err:
         logger.error(f"[worker] Scheduled Instagram Reel post failed: {err}")
 

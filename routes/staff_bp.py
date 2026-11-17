@@ -2,9 +2,13 @@
 
 from collections import OrderedDict
 import datetime
+import hashlib
+import hmac
 import logging
+import secrets
 import threading
 import time
+from urllib.parse import quote
 
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session, url_for
 
@@ -410,8 +414,10 @@ def staff_sns_editorial():
     reel_auto_enabled = False
     tiktok_auto_enabled = False
     reel_studio = None
+    moshimo_queue = None
     try:
         import instagram_poster
+        import moshimo_reel_queue
         import reel_generator
         import tiktok_poster
         reel_auto_enabled = instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False)
@@ -423,6 +429,7 @@ def staff_sns_editorial():
             auto_schedule_enabled=reel_auto_enabled,
             tiktok_auto_schedule_enabled=tiktok_auto_enabled,
         )
+        moshimo_queue = moshimo_reel_queue.get_moshimo_queue_status(allow_blocking=False)
     except Exception as _re_err:
         logging.debug(f"Reel studio init fallback: {_re_err}")
     return render_template(
@@ -434,6 +441,7 @@ def staff_sns_editorial():
         reel_auto_enabled=reel_auto_enabled,
         tiktok_auto_enabled=tiktok_auto_enabled,
         reel_studio=reel_studio,
+        moshimo_queue=moshimo_queue,
     )
 
 
@@ -1149,7 +1157,9 @@ def staff_pdca():
     )
     if is_json_req:
         return jsonify(pdca_data)
-    return render_template('staff_pdca.html', pdca=pdca_data, days=days)
+    import youtube_analytics_sync
+    yt_oauth = youtube_analytics_sync.get_youtube_sync_status(base_url=request.url_root, allow_blocking=True)
+    return render_template('staff_pdca.html', pdca=pdca_data, days=days, yt_oauth=yt_oauth)
 
 
 @staff_bp.route('/api/pdca')
@@ -1235,7 +1245,7 @@ def api_pdca_sns_insights():
 
 @staff_bp.route('/api/pdca/sns-insights/sync', methods=['POST'])
 def api_pdca_sns_insights_sync():
-    """Master-only endpoint to trigger immediate Meta Graph API (Threads + IG Reels) insight harvest & PDCA directive refresh."""
+    """Master-only endpoint to trigger immediate Meta Graph API (Threads + IG Reels) & YouTube Analytics API insight harvest & PDCA directive refresh."""
     guard = _check_master_api_csrf()
     if guard is not None:
         return guard
@@ -1260,35 +1270,369 @@ def api_pdca_sns_insights_sync():
     })
 
 
-@staff_bp.route('/api/pdca/sns-insights/ingest', methods=['POST'])
-def api_pdca_sns_insights_ingest():
+_MAX_OAUTH_JSON_BYTES = 256 * 1024
+_OAUTH_STATE_TTL_SEC = 900
+_recent_oauth_codes = {}  # code_sha24 -> (unix_ts, synced_cnt)
+_oauth_cb_lock = threading.Lock()
+
+
+@staff_bp.route('/api/pdca/youtube/config', methods=['GET', 'POST'])
+def api_pdca_youtube_config():
+    """Master-only endpoint to inspect or configure Read-Only Google OAuth2 client credentials for YouTube Shorts Auto-Sync."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import youtube_analytics_sync
+
+    if request.method == 'GET':
+        return jsonify({
+            'ok': True,
+            'youtube_oauth': youtube_analytics_sync.get_youtube_sync_status(
+                base_url=request.url_root, allow_blocking=True
+            ),
+        })
+
+    wants_json = 'application/json' in (request.headers.get('Accept') or '').lower()
+    client_json_raw = ''
+    client_id = ''
+    client_secret = ''
+
+    if request.files and ('client_json_file' in request.files or 'file' in request.files):
+        f_obj = request.files.get('client_json_file') or request.files.get('file')
+        if f_obj and f_obj.filename:
+            raw_bytes = f_obj.read(_MAX_OAUTH_JSON_BYTES + 1024)
+            if len(raw_bytes) > _MAX_OAUTH_JSON_BYTES:
+                err_msg = 'JSONファイルサイズは256KB以内にしてください'
+                if wants_json:
+                    return jsonify({'ok': False, 'error': err_msg}), 400
+                return redirect(f"/staff/pdca?yt_error={quote(err_msg)}#yt-oauth-setup")
+            client_json_raw = raw_bytes.decode('utf-8-sig', errors='replace')
+
+    if request.form:
+        client_id = (request.form.get('client_id') or '').strip()
+        client_secret = (request.form.get('client_secret') or '').strip()
+    else:
+        payload = request.get_json(silent=True) or {}
+        if isinstance(payload, dict):
+            client_json_raw = client_json_raw or str(payload.get('client_json') or '').strip()
+            client_id = client_id or str(payload.get('client_id') or '').strip()
+            client_secret = client_secret or str(payload.get('client_secret') or '').strip()
+
+    cid, csec, parse_err = youtube_analytics_sync.parse_oauth_client_credentials(
+        client_json_raw=client_json_raw,
+        client_id=client_id,
+        client_secret=client_secret,
+        allow_stored_secret_fallback=True,
+    )
+    if parse_err:
+        if wants_json:
+            return jsonify({'ok': False, 'error': parse_err}), 400
+        return redirect(f"/staff/pdca?yt_error={quote(parse_err)}#yt-oauth-setup")
+
+    save_res = youtube_analytics_sync.save_oauth_client_credentials(cid, csec)
+    if not save_res.get('ok'):
+        err_msg = str(save_res.get('error') or '設定の保存に失敗しました')
+        if wants_json:
+            return jsonify({'ok': False, 'error': err_msg}), 400
+        return redirect(f"/staff/pdca?yt_error={quote(err_msg)}#yt-oauth-setup")
+
+    state_tok = secrets.token_urlsafe(24)
+    session['yt_oauth_state'] = state_tok
+    session['yt_oauth_state_ts'] = int(time.time())
+    redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
+    auth_url, url_err = youtube_analytics_sync.build_oauth_authorize_url(redirect_uri, state_tok)
+    if url_err or not auth_url:
+        err_msg = url_err or 'Google認可URLの生成に失敗しました'
+        if wants_json:
+            return jsonify({'ok': False, 'error': err_msg}), 400
+        return redirect(f"/staff/pdca?yt_error={quote(err_msg)}#yt-oauth-setup")
+
+    if wants_json:
+        return jsonify({
+            'ok': True,
+            'authorize_url': auth_url,
+            'youtube_oauth': youtube_analytics_sync.get_youtube_sync_status(
+                base_url=request.url_root, allow_blocking=True
+            ),
+        })
+    return redirect(auth_url)
+
+
+@staff_bp.route('/staff/youtube/oauth/start')
+def staff_youtube_oauth_start():
+    """Master-only redirect to Google OAuth2 consent screen (prompts account/Brand Account selection)."""
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
+    if not _is_same_origin_get_action_allowed():
+        return redirect('/staff/pdca?yt_error=' + quote('同一オリジンから操作してください') + '#yt-oauth-setup')
+    import youtube_analytics_sync
+
+    state_tok = secrets.token_urlsafe(24)
+    session['yt_oauth_state'] = state_tok
+    session['yt_oauth_state_ts'] = int(time.time())
+    redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
+    auth_url, err_msg = youtube_analytics_sync.build_oauth_authorize_url(redirect_uri, state_tok)
+    if err_msg or not auth_url:
+        return redirect('/staff/pdca?yt_error=' + quote(err_msg or 'クライアントID・シークレットを設定してください') + '#yt-oauth-setup')
+    return redirect(auth_url)
+
+
+@staff_bp.route('/staff/youtube/oauth/callback')
+def staff_youtube_oauth_callback():
+    """Master-only Google OAuth2 callback verifying cryptographic state and executing initial YouTube Shorts sync."""
+    # Never consume one-time OAuth authorization `code` or session `state` on Chromium Service-Worker Navigation Preload
+    if (
+        request.headers.get('Service-Worker-Navigation-Preload')
+        or 'prefetch' in (request.headers.get('Sec-Purpose') or '').lower()
+        or (request.headers.get('Purpose') or '').lower() == 'prefetch'
+    ):
+        return Response('', status=204, headers={'Cache-Control': 'private, no-store'})
+
+    if not session.get('is_master'):
+        return redirect(url_for('staff_monitor', switch='1'))
+    import pdca_engine
+    import sns_insights_loop
+    import youtube_analytics_sync
+
+    oauth_err = (request.args.get('error') or '').strip()
+    if oauth_err:
+        session.pop('yt_oauth_state', None)
+        session.pop('yt_oauth_state_ts', None)
+        msg = 'Google認証がキャンセルまたは拒否されました（' + oauth_err[:40] + '）'
+        return redirect('/staff/pdca?yt_error=' + quote(msg) + '#yt-oauth-setup')
+
+    code = (request.args.get('code') or '').strip()
+    code_sig = hashlib.sha256(code.encode('utf-8')).hexdigest()[:24] if code else ''
+
+    with _oauth_cb_lock:
+        now_ts = time.time()
+        for k_old, (t_old, _) in list(_recent_oauth_codes.items()):
+            if now_ts - t_old > 120:
+                _recent_oauth_codes.pop(k_old, None)
+        if code_sig and code_sig in _recent_oauth_codes:
+            prev_cnt = _recent_oauth_codes[code_sig][1]
+            return redirect(f"/staff/pdca?yt_connected=1&yt_synced={prev_cnt}#pdca-closed-loop")
+
+        expected_state = str(session.pop('yt_oauth_state', '') or '')
+        state_ts = int(session.pop('yt_oauth_state_ts', 0) or 0)
+        got_state = str(request.args.get('state') or '')
+        if (
+            not expected_state
+            or not got_state
+            or (now_ts - state_ts > _OAUTH_STATE_TTL_SEC)
+            or not hmac.compare_digest(expected_state, got_state)
+        ):
+            return redirect(
+                '/staff/pdca?yt_error='
+                + quote('OAuthセッション検証（state）に失敗しました。もう一度連携ボタンを押してください。')
+                + '#yt-oauth-setup'
+            )
+
+        redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
+        ex_res = youtube_analytics_sync.exchange_code_and_save(code=code, redirect_uri=redirect_uri)
+        if not ex_res.get('ok'):
+            err_msg = str(ex_res.get('error') or 'YouTube連携に失敗しました')
+            # Multi-machine duplicate callback fallback: if the sibling Fly machine already redeemed this code moments ago
+            if 'invalid_grant' in err_msg:
+                cur_st = youtube_analytics_sync.get_youtube_sync_status(allow_blocking=True)
+                if cur_st.get('connected') and cur_st.get('connected_at'):
+                    try:
+                        conn_dt = datetime.datetime.strptime(
+                            cur_st['connected_at'], '%Y-%m-%d %H:%M:%S'
+                        ).replace(tzinfo=datetime.timezone(datetime.timedelta(hours=9)))
+                        if abs(now_ts - conn_dt.timestamp()) <= 45:
+                            return redirect(
+                                f"/staff/pdca?yt_connected=1&yt_synced={int(cur_st.get('last_synced_count') or 0)}#pdca-closed-loop"
+                            )
+                    except Exception:
+                        pass
+            return redirect('/staff/pdca?yt_error=' + quote(err_msg) + '#yt-oauth-setup')
+
+        synced_cnt = 0
+        try:
+            core.restore_latest_data_if_empty()
+            yt_sync = sns_insights_loop.collect_youtube_shorts_insights(limit=25)
+            synced_cnt = int(yt_sync.get('synced') or 0)
+            live_s = _get_visible_live_stores()
+            pdca_engine.run_pdca_cycle(
+                live_stores=live_s,
+                days=14,
+                apply_actions=True,
+                use_ai=False,
+                record_log=False,
+            )
+            core.clear_fast_http_caches()
+        except Exception as exc:
+            logging.warning(f"[staff_bp] Initial YouTube sync after OAuth warning: {exc}")
+
+        if code_sig:
+            _recent_oauth_codes[code_sig] = (time.time(), synced_cnt)
+
+    return redirect(f"/staff/pdca?yt_connected=1&yt_synced={synced_cnt}#pdca-closed-loop")
+
+
+@staff_bp.route('/api/pdca/youtube/disconnect', methods=['POST'])
+def api_pdca_youtube_disconnect():
+    """Master-only endpoint to revoke stored YouTube OAuth refresh token."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import youtube_analytics_sync
+
+    payload = request.get_json(silent=True) or {}
+    clear_client = bool(payload.get('clear_client_credentials')) if isinstance(payload, dict) else False
+    youtube_analytics_sync.disconnect_youtube_oauth(clear_client_credentials=clear_client)
+    return jsonify({
+        'ok': True,
+        'youtube_oauth': youtube_analytics_sync.get_youtube_sync_status(
+            base_url=request.url_root, allow_blocking=True
+        ),
+    })
+
+
+_MAX_INSIGHT_CSV_BYTES = 4 * 1024 * 1024
+
+
+def _decode_uploaded_csv_file(f_obj) -> tuple:
+    """Safely read and decode an uploaded UTF-8/UTF-8-SIG/CP932 CSV file up to 4MB."""
+    raw_bytes = f_obj.read(_MAX_INSIGHT_CSV_BYTES + 1024)
+    if not raw_bytes:
+        return '', 'CSVファイルが空です'
+    if len(raw_bytes) > _MAX_INSIGHT_CSV_BYTES:
+        return '', 'ファイルサイズは4MB以内にしてください'
+    for enc in ('utf-8-sig', 'cp932', 'utf-8'):
+        try:
+            return raw_bytes.decode(enc), ''
+        except UnicodeDecodeError:
+            continue
+    return raw_bytes.decode('utf-8', errors='replace'), ''
+
+
+def _ingest_uploaded_csv_or_zip(f_obj, platform_hint: str = 'auto') -> tuple:
+    """Handle either an exported `.zip` archive (Search Console / YouTube Studio) or a single `.csv` file."""
+    import sns_insights_loop
+    filename = f_obj.filename or ''
+    fname_low = filename.lower()
+    raw_bytes = f_obj.read(_MAX_INSIGHT_CSV_BYTES + 1024)
+    if not raw_bytes:
+        return None, 'ファイルが空です'
+    if len(raw_bytes) > _MAX_INSIGHT_CSV_BYTES:
+        return None, 'ファイルサイズは4MB以内にしてください'
+    if fname_low.endswith('.zip') or raw_bytes[:4] == b'PK\x03\x04':
+        return sns_insights_loop.ingest_zip_insights(raw_bytes, platform_hint=platform_hint, filename=filename), ''
+    csv_text = sns_insights_loop._decode_csv_bytes_best_effort(raw_bytes)
+    return sns_insights_loop.ingest_csv_insights(csv_text, platform_hint=platform_hint, filename=filename), ''
+
+
+def _finalize_insights_ingest_response(ingest_res: dict):
+    import pdca_engine
+    if not ingest_res or not ingest_res.get('ok'):
+        return jsonify(ingest_res or {'ok': False, 'error': 'インサイト取込に失敗しました'}), 400
+    live_s = _get_visible_live_stores()
+    pdca_res = pdca_engine.run_pdca_cycle(
+        live_stores=live_s,
+        days=14,
+        apply_actions=True,
+        use_ai=False,
+        record_log=False,
+    )
+    core.clear_fast_http_caches()
+    return jsonify({
+        'ok': True,
+        'ingest': ingest_res,
+        'active_directives': pdca_res.get('active_directives') or {},
+        'closed_loop_feedback': pdca_res.get('closed_loop_feedback') or ingest_res.get('feedback') or {},
+        'flywheel_status': ((pdca_res.get('diagnostics') or {}).get('flywheel_status')) or {},
+    })
+
+
+@staff_bp.route('/api/pdca/sns-insights/ingest-csv', methods=['POST'])
+def api_pdca_sns_insights_ingest_csv():
     """
-    Master-only endpoint to ingest SNS/note insight screenshots (via Gemini 4 Carbon Vision)
-    or structured JSON records and immediately apply updated directives.
+    Master-only endpoint to ingest exported CSVs from Google Search Console or YouTube Studio
+    with zero API token consumption and zero hallucination.
     """
     guard = _check_master_api_csrf()
     if guard is not None:
         return guard
-    import pdca_engine
+    import sns_insights_loop
+    core.restore_latest_data_if_empty()
+
+    f_obj = None
+    if request.files:
+        f_obj = request.files.get('csv_file') or request.files.get('file')
+
+    if f_obj is not None:
+        platform_hint = request.form.get('platform') or 'auto'
+        ingest_res, err_msg = _ingest_uploaded_csv_or_zip(f_obj, platform_hint=platform_hint)
+        if err_msg:
+            return jsonify({'ok': False, 'error': err_msg}), 400
+        return _finalize_insights_ingest_response(ingest_res)
+    else:
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict) or not payload.get('csv_text'):
+            return jsonify({'ok': False, 'error': 'CSV/ZIPファイルまたはcsv_textを指定してください'}), 400
+        csv_text = str(payload.get('csv_text') or '')
+        if len(csv_text.encode('utf-8', errors='ignore')) > _MAX_INSIGHT_CSV_BYTES:
+            return jsonify({'ok': False, 'error': 'CSVデータサイズは4MB以内にしてください'}), 400
+        platform_hint = str(payload.get('platform') or 'auto')
+        filename = str(payload.get('filename') or '')
+
+    ingest_res = sns_insights_loop.ingest_csv_insights(
+        csv_text,
+        platform_hint=platform_hint,
+        filename=filename,
+    )
+    return _finalize_insights_ingest_response(ingest_res)
+
+
+@staff_bp.route('/api/pdca/sns-insights/ingest', methods=['POST'])
+def api_pdca_sns_insights_ingest():
+    """
+    Master-only endpoint to ingest SNS/YouTube/GSC/note insight screenshots (via Gemini 4 Carbon Vision),
+    exported CSV/ZIP files, or structured JSON records and immediately apply updated directives.
+    """
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
     import sns_insights_loop
     core.restore_latest_data_if_empty()
 
     ingest_res = None
-    if request.files and 'file' in request.files:
-        f_obj = request.files['file']
-        raw_bytes = f_obj.read(sns_insights_loop.MAX_SCREENSHOT_BYTES + 1024)
-        mime_type = f_obj.mimetype or 'image/png'
+    if request.files and ('csv_file' in request.files or 'file' in request.files):
+        f_obj = request.files.get('csv_file') or request.files.get('file')
+        fname = (f_obj.filename or '').lower()
+        mime_type = (f_obj.mimetype or '').lower()
         platform_hint = request.form.get('platform') or 'auto'
-        ingest_res = sns_insights_loop.ingest_insight_screenshot_via_carbon(
-            raw_bytes,
-            mime_type=mime_type,
-            platform_hint=platform_hint,
-        )
+        if (
+            'csv_file' in request.files
+            or fname.endswith(('.csv', '.zip'))
+            or mime_type in ('text/csv', 'application/csv', 'application/vnd.ms-excel', 'application/zip', 'application/x-zip-compressed')
+        ):
+            ingest_res, err_msg = _ingest_uploaded_csv_or_zip(f_obj, platform_hint=platform_hint)
+            if err_msg:
+                return jsonify({'ok': False, 'error': err_msg}), 400
+        else:
+            raw_bytes = f_obj.read(sns_insights_loop.MAX_SCREENSHOT_BYTES + 1024)
+            ingest_res = sns_insights_loop.ingest_insight_screenshot_via_carbon(
+                raw_bytes,
+                mime_type=f_obj.mimetype or 'image/png',
+                platform_hint=platform_hint,
+            )
     else:
         payload = request.get_json(silent=True) or {}
         if not isinstance(payload, dict):
-            return jsonify({'ok': False, 'error': '不正なリクエスト形式です（画像ファイルまたはJSONを指定してください）'}), 400
-        if payload.get('image_base64'):
+            return jsonify({'ok': False, 'error': '不正なリクエスト形式です（画像・CSVファイルまたはJSONを指定してください）'}), 400
+        if payload.get('csv_text'):
+            csv_raw = str(payload.get('csv_text') or '')
+            if len(csv_raw.encode('utf-8', errors='ignore')) > _MAX_INSIGHT_CSV_BYTES:
+                return jsonify({'ok': False, 'error': 'CSVデータサイズは2MB以内にしてください'}), 400
+            ingest_res = sns_insights_loop.ingest_csv_insights(
+                csv_raw,
+                platform_hint=str(payload.get('platform') or 'auto'),
+                filename=str(payload.get('filename') or ''),
+            )
+        elif payload.get('image_base64'):
             import base64
             b64_raw = str(payload.get('image_base64') or '')
             if ',' in b64_raw and b64_raw.lstrip().startswith('data:'):
@@ -1308,24 +1652,7 @@ def api_pdca_sns_insights_ingest():
                 source='master_json_api',
             )
 
-    if not ingest_res or not ingest_res.get('ok'):
-        return jsonify(ingest_res or {'ok': False, 'error': 'インサイト取込に失敗しました'}), 400
-
-    live_s = _get_visible_live_stores()
-    pdca_res = pdca_engine.run_pdca_cycle(
-        live_stores=live_s,
-        days=14,
-        apply_actions=True,
-        use_ai=False,
-        record_log=False,
-    )
-    core.clear_fast_http_caches()
-    return jsonify({
-        'ok': True,
-        'ingest': ingest_res,
-        'active_directives': pdca_res.get('active_directives') or {},
-        'closed_loop_feedback': pdca_res.get('closed_loop_feedback') or ingest_res.get('feedback') or {},
-    })
+    return _finalize_insights_ingest_response(ingest_res)
 
 
 @staff_bp.route('/staff/sns-kit')

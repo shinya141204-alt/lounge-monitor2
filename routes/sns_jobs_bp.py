@@ -448,6 +448,7 @@ SUPPORTED_SNS_JOB_TYPES = (
     'ig_reel',
     'tiktok_inbox',
     'ladies_sns',
+    'ig_moshimo_reel',
     'prewarm_bundle',
 )
 
@@ -589,6 +590,20 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
         import threads_poster
         slot = str(p.get('slot') or '19:30').strip()
         return threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot, force=force)
+
+    if jtype == 'ig_moshimo_reel':
+        import moshimo_reel_queue
+        ep_id = str(p.get('ep_id') or '').strip() or None
+        cap = str(p.get('caption') or '').strip()
+        share_feed = bool(p.get('share_to_feed', True))
+        slot = str(p.get('slot') or '20:00').strip()
+        return moshimo_reel_queue.publish_moshimo_episode_to_instagram(
+            ep_id=ep_id,
+            slot_label=slot,
+            share_to_feed=share_feed,
+            custom_caption=cap,
+            force=force,
+        )
 
     if jtype == 'prewarm_bundle':
         channels = p.get('channels') or ('x', 'threads')
@@ -972,3 +987,41 @@ def trigger_ladies_sns_endpoint():
         import threads_poster
         res = threads_poster.execute_scheduled_ladies_threads_post(stores, slot_label=slot_arg, force=force)
     return jsonify(res)
+
+
+@sns_jobs_bp.route('/api/moshimo-reel-queue', methods=['GET', 'POST'])
+def api_moshimo_reel_queue():
+    """Master-only endpoint to inspect or control the 3D Voxel Moshimo Instagram Reel auto-post queue."""
+    if request.method == 'GET':
+        if not core.is_master_authorized():
+            return jsonify({'error': 'Unauthorized'}), 401
+        import moshimo_reel_queue
+        return jsonify({'ok': True, **moshimo_reel_queue.get_moshimo_queue_status()})
+
+    guard_err = _require_master_post_csrf()
+    if guard_err is not None:
+        return guard_err
+
+    import moshimo_reel_queue
+    payload = request.get_json(silent=True, force=True) or {}
+    action = str(payload.get('action') or request.args.get('action') or '').strip().lower()
+    if action == 'toggle':
+        if 'enabled' in payload or 'enabled' in request.args:
+            raw_en = payload.get('enabled', request.args.get('enabled', '1'))
+            enabled = bool(raw_en) if isinstance(raw_en, bool) else (str(raw_en).strip().lower() in ('1', 'true', 'on', 'yes'))
+            moshimo_reel_queue.set_moshimo_queue_enabled(enabled)
+        if 'evergreen_recycle' in payload or 'evergreen_recycle' in request.args:
+            raw_ev = payload.get('evergreen_recycle', request.args.get('evergreen_recycle', '0'))
+            ev_on = bool(raw_ev) if isinstance(raw_ev, bool) else (str(raw_ev).strip().lower() in ('1', 'true', 'on', 'yes'))
+            moshimo_reel_queue.set_evergreen_recycle_enabled(ev_on)
+        return jsonify({'ok': True, **moshimo_reel_queue.get_moshimo_queue_status()})
+
+    ep_id = str(payload.get('ep_id') or request.args.get('ep_id') or '').strip() or None
+    slot = str(payload.get('slot') or request.args.get('slot') or '20:00').strip()
+    force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '1'))) == '1')
+    queued_resp = _maybe_enqueue_async_sns_trigger('ig_moshimo_reel', {'ep_id': ep_id, 'slot': slot, 'force': force})
+    if queued_resp is not None:
+        return queued_resp
+    res = moshimo_reel_queue.publish_moshimo_episode_to_instagram(ep_id=ep_id, slot_label=slot, force=force)
+    return jsonify(res)
+

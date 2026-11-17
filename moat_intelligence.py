@@ -2739,7 +2739,7 @@ def predict_store_60m_dynamics(
         reason = f"女性{women}名＆女性比{cur_wpct}%の『70%安全バッファ』に入っており、これから男性が増えても60分後に女性優位を維持する確率は{100 - flip_risk}%と極めて安定しています。"
     elif hr in (2, 3, 4) and women >= 10 and pred_wpct >= 54:
         alert_code = "first_train_rebound"
-        badge_men = f"始発待ち女子優位 ({pred_wpct}%予測)"
+        badge_men = f"始発待ち優位 · {pred_wpct}%"
         badge_women = "始発までゆったり滞在可"
         badge_tone = "safe"
         reason = f"深夜2時以降は男性が先に退店し始発待ちの女性ペアが残るため、朝方まで女性比{pred_wpct}%前後の好バランスが続く予測です。"

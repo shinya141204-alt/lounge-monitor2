@@ -484,6 +484,8 @@ def classify_hourly_bucket(event: str, norm_label: str) -> str:
     if ev == 'sns_inflow':
         if lbl.startswith(('cv:', 'cush:', 'cvslot:')):
             return ''
+        if lbl.startswith(('ref_google', 'ref_yahoo_bing', 'ref_ai_search')):
+            return 'search_inflow'
         return 'sns_inflow'
     if ev in ('map_cafe', 'map_bar'):
         return 'map_search'
@@ -854,6 +856,9 @@ _PAGE_TITLES = {
     '/guide/sunday-lounge-strategy': '📖 日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目',
     '/guide/line-exchange-reality': '📖 相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線',
     '/guide/free-food-reality': '📖 相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線',
+    '/guide/dome-live-after-surge': '📖 ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証',
+    '/guide/lounge-vs-aisekiya-bar': '📖 相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較',
+    '/guide/app-fatigue-vs-lounge': '📖 アプリ疲れの夜になぜ相席ラウンジへ人が戻るのか｜2週間往復vs着席0秒検証',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }
@@ -939,18 +944,99 @@ _INFLOW_STYLE_JA = {
     'threads_ladies_zero_wait': '女子得・待ちゼロ＆特典速報型',
     'ig_ladies_night_guide': '女子組・待ちゼロ＆特典保存ガイド型',
     'ladies_night': '女子得・待ちゼロ速報枠',
+    'moshimo_3d': '3Dボクセル『もしもシリーズ』',
+    'short_bio': 'YouTubeショート プロフィール導線',
+    'ig_bio': 'Instagramプロフィール導線',
     'live': 'リアルタイム速報枠',
     'tip': '解説コラム紹介枠',
     'rel': '新着コラム解禁告知',
     'wk': '日曜・週間統計白書',
 }
 
+_EXTERNAL_REFERRER_LABELS_JA = {
+    'ref_google': 'Google自然検索・Discover流入',
+    'ref_yahoo_bing': 'Yahoo!・Bing自然検索流入',
+    'ref_youtube': 'YouTube・ショート外部リンク流入',
+    'ref_instagram': 'Instagram外部リンク流入',
+    'ref_threads': 'Threads外部リンク流入',
+    'ref_tiktok': 'TikTok外部リンク流入',
+    'ref_x': 'X（旧Twitter）外部リンク流入',
+    'ref_note': 'note記事からの外部リンク流入',
+    'ref_ai_search': '生成AI検索流入（ChatGPT・Perplexity等）',
+}
+
 
 _VALID_INFLOW_RE_STR = (
-    r'^(?:(?:x|th|ig|tt|tk)\d{2}_[a-z0-9_\-]{1,32}'
-    r'|(?:x|th|ig|reel|tiktok|short|note|line|push)_[a-z0-9_\-]{1,32}'
-    r'|x|th|ig|note|line|push_watch|line_bot)$'
+    r'^(?:(?:x|th|ig|tt|tk|yt)\d{2}_[a-z0-9_\-]{1,32}'
+    r'|(?:x|th|ig|reel|tiktok|short|yt|moshimo|note|line|push)_[a-z0-9_\-]{1,32}'
+    r'|ref_(?:google|yahoo_bing|youtube|instagram|threads|tiktok|x|note|ai_search)'
+    r'|x|th|ig|yt|note|line|push_watch|line_bot)$'
 )
+
+
+def classify_external_referrer_inflow(referrer_url: str, request_host: str = '') -> str:
+    """
+    Map an external HTTP `Referer` header into one of 9 strictly bounded, zero-PII acquisition cohort tags
+    (`ref_google`, `ref_youtube`, `ref_instagram`, `ref_ai_search`, etc.).
+    Never stores raw URLs, paths, or search queries; ignores internal same-site navigation and unknown hosts.
+    """
+    import re
+    import urllib.parse as _up
+
+    raw = str(referrer_url or '').strip()[:512]
+    if not raw:
+        return ''
+    low = raw.lower()
+    if low.startswith('android-app://com.google.android.googlequicksearchbox'):
+        return 'ref_google'
+    if low.startswith('android-app://com.google.android.youtube'):
+        return 'ref_youtube'
+    try:
+        parsed = _up.urlparse(raw)
+    except Exception:
+        return ''
+    if parsed.scheme not in ('http', 'https'):
+        return ''
+    host = (parsed.hostname or '').strip().lower().rstrip('.')
+    if not host:
+        return ''
+
+    req_h = (request_host or '').split(':', 1)[0].strip().lower().rstrip('.')
+    if req_h.startswith('www.'):
+        req_h = req_h[4:]
+    norm_h = host[4:] if host.startswith('www.') else host
+    if (
+        norm_h in ('localhost', '127.0.0.1', '0.0.0.0', 'aiseki-navi.com')
+        or norm_h.endswith(('.aiseki-navi.com', '.onrender.com', '.fly.dev'))
+        or (req_h and (norm_h == req_h or norm_h.endswith('.' + req_h)))
+    ):
+        return ''
+
+    if any(
+        norm_h == d or norm_h.endswith('.' + d)
+        for d in ('chatgpt.com', 'openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com', 'genspark.ai', 'felo.ai', 'you.com')
+    ):
+        return 'ref_ai_search'
+    if norm_h in ('youtu.be', 'youtube.com') or norm_h.endswith('.youtube.com'):
+        return 'ref_youtube'
+    if norm_h in ('instagram.com', 'ig.me') or norm_h.endswith('.instagram.com'):
+        return 'ref_instagram'
+    if norm_h in ('threads.net', 'threads.com') or norm_h.endswith(('.threads.net', '.threads.com')):
+        return 'ref_threads'
+    if norm_h == 'tiktok.com' or norm_h.endswith('.tiktok.com'):
+        return 'ref_tiktok'
+    if norm_h in ('note.com', 'note.mu') or norm_h.endswith(('.note.com', '.note.mu')):
+        return 'ref_note'
+    if norm_h in ('t.co', 'x.com', 'twitter.com') or norm_h.endswith(('.x.com', '.twitter.com')):
+        return 'ref_x'
+    if re.search(r'(?:^|\.)google\.[a-z]{2,3}(?:\.[a-z]{2})?$', norm_h):
+        return 'ref_google'
+    if any(
+        norm_h == d or norm_h.endswith('.' + d)
+        for d in ('yahoo.co.jp', 'yahoo.com', 'bing.com', 'duckduckgo.com', 'ecosia.org')
+    ):
+        return 'ref_yahoo_bing'
+    return ''
 
 
 def normalize_inflow_source(raw_s: str) -> str:
@@ -1019,6 +1105,22 @@ def describe_inflow_tag(tag: str) -> str:
         return "𝕏 X 新着コラム解禁スレッド"
     if t == 'x_wk':
         return "𝕏 X 日曜・週間データ白書スレッド"
+    if t in _EXTERNAL_REFERRER_LABELS_JA:
+        return _EXTERNAL_REFERRER_LABELS_JA[t]
+    if t in ('short_bio', 'yt_bio', 'yt_short_bio'):
+        return "▶️ YouTubeショート プロフィールリンク流入"
+    if t.startswith(('yt_', 'short_')):
+        return f"▶️ YouTubeショート導線（{t}）"
+    if t == 'ig_bio':
+        return "📸 Instagram プロフィールリンク流入"
+    if t.startswith('moshimo_'):
+        return f"🧊 3D『もしもシリーズ』リール導線（{t}）"
+    if t.startswith('reel_'):
+        return f"🎬 Instagramリール導線（{t}）"
+    if t.startswith('tiktok_'):
+        return f"🎵 TikTok導線（{t}）"
+    if t.startswith('note'):
+        return f"📝 公式note記事導線（{t}）"
     if t == 'push_watch':
         return "🔔 条件ウォッチWebプッシュ通知（リピート再訪）"
     if t == 'line_bot':

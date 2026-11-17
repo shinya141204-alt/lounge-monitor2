@@ -1134,6 +1134,216 @@
                 font-size: 16px;
             }
         }
+        .moshimo-queue-card {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .moshimo-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .moshimo-title {
+            margin: 0 0 4px;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .moshimo-sub {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--sub);
+            line-height: 1.55;
+        }
+        .moshimo-kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .moshimo-kpi-item {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-variant-numeric: tabular-nums;
+        }
+        .moshimo-kpi-label {
+            font-size: 0.72rem;
+            color: var(--sub);
+            margin-bottom: 2px;
+        }
+        .moshimo-kpi-val {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .moshimo-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+            gap: 16px;
+            align-items: start;
+        }
+        .moshimo-ep-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-inline-end: 2px;
+        }
+        .moshimo-ep-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            width: 100%;
+            min-height: 44px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.79rem;
+            text-align: left;
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+        }
+        .moshimo-ep-btn:hover {
+            border-color: var(--border-strong);
+        }
+        .moshimo-ep-btn[aria-selected="true"] {
+            border-color: var(--gold);
+            background: var(--gold-soft);
+        }
+        .moshimo-ep-btn:focus-visible,
+        .moshimo-action-btn:focus-visible,
+        .moshimo-textarea:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        .moshimo-status-tag {
+            flex: none;
+            font-size: 0.71rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border-strong);
+            color: var(--sub);
+        }
+        .moshimo-status-tag.done {
+            background: var(--green-soft);
+            border-color: var(--green);
+            color: var(--green-ink);
+        }
+        .moshimo-status-tag.next {
+            background: var(--blue-soft);
+            border-color: var(--blue);
+            color: var(--blue-ink);
+        }
+        .moshimo-inspector {
+            display: grid;
+            grid-template-columns: 185px minmax(0, 1fr);
+            gap: 14px;
+            padding-inline-start: 16px;
+            border-inline-start: 1px solid var(--border);
+        }
+        .moshimo-video-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .moshimo-video {
+            width: 100%;
+            aspect-ratio: 9 / 16;
+            border-radius: 12px;
+            background: #000;
+            border: 1px solid var(--border-strong);
+            object-fit: cover;
+        }
+        .moshimo-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-block-end: 10px;
+        }
+        .moshimo-field label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .moshimo-textarea {
+            width: 100%;
+            background: var(--input-bg);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font: inherit;
+            font-size: max(0.82rem, 13px);
+            line-height: 1.48;
+            resize: vertical;
+        }
+        .moshimo-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-block-size: 38px;
+            min-inline-size: 44px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.77rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .moshimo-action-btn.primary {
+            background: var(--active-bg);
+            color: var(--active-ink);
+            border-color: var(--active-bg);
+        }
+        .moshimo-copy-tip {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--green-ink);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .moshimo-action-btn[data-copied] + .moshimo-copy-tip,
+        .moshimo-action-btn[data-failed] + .moshimo-copy-tip {
+            opacity: 1;
+        }
+        .moshimo-action-btn[data-failed] + .moshimo-copy-tip {
+            color: var(--err-ink);
+        }
+        @media (max-width: 900px) {
+            .moshimo-grid {
+                grid-template-columns: 1fr;
+            }
+            .moshimo-inspector {
+                grid-template-columns: 1fr;
+                padding-inline-start: 0;
+                border-inline-start: none;
+                padding-top: 12px;
+                border-top: 1px solid var(--border);
+            }
+            .moshimo-video {
+                max-width: 220px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1181,6 +1391,9 @@
             <span class="master-jump-label">セクション移動</span>
             <a href="#sns-delivery-health" class="master-jump-chip">配信ステータス・トークン</a>
             <a href="#sns-ai-engine" class="master-jump-chip">AI執筆エンジン</a>
+            {% if channel == 'instagram' %}
+            <a href="#moshimo-queue-section" class="master-jump-chip">3Dもしも自動キュー</a>
+            {% endif %}
             {% if channel in ('instagram', 'tiktok') %}
             <a href="#reel-studio-section" class="master-jump-chip">ショート動画スタジオ</a>
             {% endif %}
@@ -1395,6 +1608,130 @@
                 <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:var(--green-ink);"></div>
             </div>
         </div>
+
+        {% if channel == 'instagram' and moshimo_queue %}
+        {% set _mq_eps = moshimo_queue.episodes or [] %}
+        {% set _mq_init = moshimo_queue.next_episode or (_mq_eps[0] if _mq_eps else none) %}
+        <section class="moshimo-queue-card" id="moshimo-queue-section" aria-labelledby="moshimo-queue-heading">
+            <div class="moshimo-head">
+                <div>
+                    <h2 class="moshimo-title" id="moshimo-queue-heading">3Dボクセル『もしもシリーズ』自動投稿キュー ＆ YouTubeショート連携パック</h2>
+                    <p class="moshimo-sub">平日（月〜金）20:00 JST に事前レンダリング済3Dリールを自動配信（ElevenLabs音声トークン消費ゼロ）。土曜ピークはリアルタイム速報へ自動切替、全10話一巡後は21日クールダウンで火・木に自動再配信します。</p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:7px; align-items:flex-end;">
+                    <div class="reel-auto-box">
+                        <input type="checkbox" id="moshimo-queue-enabled-toggle" {{ 'checked' if moshimo_queue.enabled else '' }} style="accent-color:var(--green); width:16px; height:16px;">
+                        <label for="moshimo-queue-enabled-toggle" style="cursor:pointer;">
+                            平日20:00 3D自動配信：<strong id="moshimo-enabled-text" style="color:{{ 'var(--green)' if moshimo_queue.enabled else 'var(--sub)' }};">{{ 'ON（稼働中）' if moshimo_queue.enabled else 'OFF' }}</strong>
+                        </label>
+                    </div>
+                    <div class="reel-auto-box">
+                        <input type="checkbox" id="moshimo-evergreen-toggle" {{ 'checked' if moshimo_queue.evergreen_recycle else '' }} style="accent-color:var(--blue); width:16px; height:16px;">
+                        <label for="moshimo-evergreen-toggle" style="cursor:pointer;">
+                            一巡後の火・木21日再配信：<strong id="moshimo-evergreen-text" style="color:{{ 'var(--blue)' if moshimo_queue.evergreen_recycle else 'var(--sub)' }};">{{ 'ON（永続稼働）' if moshimo_queue.evergreen_recycle else 'OFF' }}</strong>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="moshimo-kpi-row">
+                <div class="moshimo-kpi-item">
+                    <div class="moshimo-kpi-label">未投稿ストック / 全エピソード</div>
+                    <div class="moshimo-kpi-val" id="moshimo-runway-val">残り {{ moshimo_queue.remaining_count }} / {{ moshimo_queue.total_episodes }}本（投稿済 {{ moshimo_queue.posted_count }}本）</div>
+                </div>
+                <div class="moshimo-kpi-item">
+                    <div class="moshimo-kpi-label">次回IG自動配信予定</div>
+                    <div class="moshimo-kpi-val">
+                        {% if moshimo_queue.next_episode %}
+                        #{{ moshimo_queue.next_episode.order }}（{{ moshimo_queue.next_episode.scheduled_date }} 20:00）
+                        {% else %}
+                        全話配信済（21日再配信＆Live速報稼働）
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="moshimo-kpi-item" style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                    <div>
+                        <div class="moshimo-kpi-label">YouTube（@aiseki_navi）プロフ計測URL</div>
+                        <code id="moshimo-yt-bio-url" style="font-size:0.77rem; color:var(--text);">{{ moshimo_queue.youtube_bio_url }}</code>
+                    </div>
+                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                        <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-yt-bio-url">URLコピー</button>
+                        <span class="moshimo-copy-tip" role="status"></span>
+                    </span>
+                </div>
+            </div>
+
+            {% if _mq_init %}
+            <div class="moshimo-grid">
+                <div class="moshimo-ep-list" role="listbox" aria-label="もしもシリーズ全10話リスト">
+                    {% for ep in _mq_eps %}
+                    {% set is_next = (moshimo_queue.next_episode and moshimo_queue.next_episode.ep_id == ep.ep_id) %}
+                    <button type="button"
+                            class="moshimo-ep-btn"
+                            role="option"
+                            data-ep-id="{{ ep.ep_id }}"
+                            aria-selected="{{ 'true' if _mq_init.ep_id == ep.ep_id else 'false' }}">
+                        <span style="min-width:0;">
+                            <strong style="display:block;">#{{ ep.order }}｜{{ ep.title }}</strong>
+                            <span style="font-size:0.72rem; color:var(--sub);">予定: {{ ep.scheduled_date }} 20:00 ・ {{ ep.duration_sec|round(1) }}秒 ・ 記事 {{ ep.related_column_path }}</span>
+                        </span>
+                        {% if ep.posted %}
+                        <span class="moshimo-status-tag done">投稿済</span>
+                        {% elif is_next %}
+                        <span class="moshimo-status-tag next">次回配信</span>
+                        {% else %}
+                        <span class="moshimo-status-tag">待機中</span>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <div class="moshimo-inspector">
+                    <div class="moshimo-video-col">
+                        <video id="moshimo-preview-video" class="moshimo-video" controls preload="metadata" playsinline src="{{ _mq_init.static_rel_path }}"></video>
+                        <a id="moshimo-download-link" href="{{ _mq_init.static_rel_path }}" download="{{ _mq_init.ep_id }}.mp4" class="moshimo-action-btn primary">MP4を保存（Shorts用）</a>
+                        <button type="button" id="moshimo-publish-now-btn" class="moshimo-action-btn">この回を今すぐIG公開</button>
+                        <div id="moshimo-op-status" role="status" aria-live="polite" style="font-size:0.75rem; color:var(--sub); line-height:1.45;"></div>
+                    </div>
+                    <div style="min-width:0;">
+                        <div class="moshimo-field">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <label for="moshimo-yt-title-field">YouTubeショート用タイトル（100文字以内）</label>
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-yt-title-field">タイトルをコピー</button>
+                                    <span class="moshimo-copy-tip" role="status"></span>
+                                </span>
+                            </div>
+                            <input type="text" id="moshimo-yt-title-field" class="moshimo-textarea" readonly value="{{ _mq_init.youtube_title }}">
+                        </div>
+
+                        <div class="moshimo-field">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <label for="moshimo-yt-desc-field">YouTube概要欄・固定コメント（@aiseki_navi 誘導済）</label>
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-yt-desc-field">概要欄をコピー</button>
+                                    <span class="moshimo-copy-tip" role="status"></span>
+                                </span>
+                            </div>
+                            <textarea id="moshimo-yt-desc-field" class="moshimo-textarea" rows="5" readonly>{{ _mq_init.youtube_description }}</textarea>
+                        </div>
+
+                        <div class="moshimo-field" style="margin-block-end:0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <label for="moshimo-ig-cap-field">Instagramリール自動投稿キャプション</label>
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-ig-cap-field">IG本文をコピー</button>
+                                    <span class="moshimo-copy-tip" role="status"></span>
+                                </span>
+                            </div>
+                            <textarea id="moshimo-ig-cap-field" class="moshimo-textarea" rows="4" readonly>{{ _mq_init.caption }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <!-- Google AI Ultra Short Video Studio (Reels / Shorts / TikTok) -->
         {% set _reel_studio = reel_studio | default(reel_info | default({})) %}
@@ -3608,11 +3945,198 @@
             _updateVnCharCounter();
         }
 
+        var MOSHIMO_EPISODES_DATA = {{ (moshimo_queue.episodes if moshimo_queue else []) | tojson }};
+        var _selectedMoshimoEpId = {{ ((moshimo_queue.next_episode.ep_id if (moshimo_queue and moshimo_queue.next_episode) else (moshimo_queue.episodes[0].ep_id if (moshimo_queue and moshimo_queue.episodes) else ''))) | tojson }};
+        var _copyFeedbackTimers = new WeakMap();
+        var _lastCopyAnnouncement = "";
+
+        function _reportCopyOutcome(button, ok) {
+            if (!button) return;
+            var tip = button.nextElementSibling;
+            clearTimeout(_copyFeedbackTimers.get(button));
+            button.removeAttribute("data-copied");
+            button.removeAttribute("data-failed");
+            var msg = ok ? "コピー済" : "コピー失敗";
+            if (msg === _lastCopyAnnouncement) msg += "\u00A0";
+            _lastCopyAnnouncement = msg;
+            if (tip) tip.textContent = "";
+            void button.offsetWidth;
+            button.setAttribute(ok ? "data-copied" : "data-failed", "");
+            if (tip) {
+                requestAnimationFrame(function() { tip.textContent = msg; });
+            }
+            _copyFeedbackTimers.set(button, setTimeout(function() {
+                button.removeAttribute("data-copied");
+                button.removeAttribute("data-failed");
+                if (tip) tip.textContent = "";
+            }, 2000));
+        }
+
+        async function _executeCommandCopy(button, target) {
+            if (!button || !target) return;
+            var text = target.matches("input, textarea") ? target.value : (target.innerText || target.textContent || "").trim();
+            if (!text) return;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    var field = Object.assign(document.createElement("textarea"), { value: text });
+                    field.setAttribute("readonly", "");
+                    field.style.cssText = "position:fixed;inset-block-start:0;opacity:0";
+                    document.body.appendChild(field);
+                    field.select();
+                    try {
+                        if (!document.execCommand("copy")) throw new Error("copy_failed");
+                    } finally {
+                        field.remove();
+                    }
+                }
+                _reportCopyOutcome(button, true);
+            } catch (err) {
+                _reportCopyOutcome(button, false);
+            }
+        }
+
+        function _selectMoshimoEpisode(epId) {
+            var ep = (MOSHIMO_EPISODES_DATA || []).find(function(item) { return item.ep_id === epId; });
+            if (!ep) return;
+            _selectedMoshimoEpId = ep.ep_id;
+            document.querySelectorAll(".moshimo-ep-btn").forEach(function(btn) {
+                btn.setAttribute("aria-selected", btn.getAttribute("data-ep-id") === ep.ep_id ? "true" : "false");
+            });
+            var vid = document.getElementById("moshimo-preview-video");
+            if (vid && vid.getAttribute("src") !== ep.static_rel_path) {
+                vid.src = ep.static_rel_path;
+            }
+            var dl = document.getElementById("moshimo-download-link");
+            if (dl) {
+                dl.href = ep.static_rel_path;
+                dl.setAttribute("download", ep.ep_id + ".mp4");
+            }
+            var ytTitle = document.getElementById("moshimo-yt-title-field");
+            if (ytTitle) ytTitle.value = ep.youtube_title || "";
+            var ytDesc = document.getElementById("moshimo-yt-desc-field");
+            if (ytDesc) ytDesc.value = ep.youtube_description || "";
+            var igCap = document.getElementById("moshimo-ig-cap-field");
+            if (igCap) igCap.value = ep.caption || "";
+            var opSt = document.getElementById("moshimo-op-status");
+            if (opSt) {
+                opSt.textContent = ep.posted
+                    ? ("最終IG配信: " + (ep.last_posted_at || "投稿済"))
+                    : ("IG自動配信予定: " + ep.scheduled_date + " 20:00 JST");
+            }
+        }
+
+        async function _saveMoshimoToggle(payload, statusTargetId, onText, offText, keyName, colorVar) {
+            var opSt = document.getElementById("moshimo-op-status");
+            try {
+                var resp = await fetch("/api/moshimo-reel-queue", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                    body: JSON.stringify(Object.assign({ action: "toggle" }, payload))
+                });
+                var data = await resp.json();
+                if (!resp.ok || !data.ok) throw new Error((data && data.error) || "設定更新に失敗しました");
+                var isOn = Boolean(data[keyName]);
+                var lblEl = document.getElementById(statusTargetId);
+                if (lblEl) {
+                    lblEl.textContent = isOn ? onText : offText;
+                    lblEl.style.color = isOn ? colorVar : "var(--sub)";
+                }
+                if (opSt) opSt.textContent = "自動キュー設定を保存しました。";
+            } catch (e) {
+                if (opSt) opSt.textContent = "設定保存エラー: " + (e.message || "通信失敗");
+            }
+        }
+
+        function _bindMoshimoQueueEvents() {
+            if ("CommandEvent" in window) {
+                document.addEventListener("command", function(ev) {
+                    if (ev.command && ev.command.indexOf("--copy") === 0) {
+                        _executeCommandCopy(ev.source, ev.target);
+                    }
+                }, true);
+            } else {
+                document.addEventListener("click", function(ev) {
+                    var btn = ev.target && ev.target.closest ? ev.target.closest('button[command^="--copy"]') : null;
+                    if (!btn) return;
+                    var tgt = document.getElementById(btn.getAttribute("commandfor") || "");
+                    if (tgt) _executeCommandCopy(btn, tgt);
+                });
+            }
+
+            document.querySelectorAll(".moshimo-ep-btn").forEach(function(btn) {
+                btn.addEventListener("click", function() {
+                    _selectMoshimoEpisode(btn.getAttribute("data-ep-id"));
+                });
+            });
+            var enToggle = document.getElementById("moshimo-queue-enabled-toggle");
+            if (enToggle) {
+                enToggle.addEventListener("change", function() {
+                    _saveMoshimoToggle(
+                        { enabled: enToggle.checked },
+                        "moshimo-enabled-text",
+                        "ON（稼働中）",
+                        "OFF",
+                        "enabled",
+                        "var(--green)"
+                    );
+                });
+            }
+            var evToggle = document.getElementById("moshimo-evergreen-toggle");
+            if (evToggle) {
+                evToggle.addEventListener("change", function() {
+                    _saveMoshimoToggle(
+                        { evergreen_recycle: evToggle.checked },
+                        "moshimo-evergreen-text",
+                        "ON（永続稼働）",
+                        "OFF",
+                        "evergreen_recycle",
+                        "var(--blue)"
+                    );
+                });
+            }
+            var pubNowBtn = document.getElementById("moshimo-publish-now-btn");
+            if (pubNowBtn) {
+                pubNowBtn.addEventListener("click", async function() {
+                    if (!_selectedMoshimoEpId) return;
+                    if (!confirm("選択中のエピソード（" + _selectedMoshimoEpId + "）を今すぐInstagramリール（@aiseki_navi1）へ公開しますか？")) return;
+                    pubNowBtn.disabled = true;
+                    var opSt = document.getElementById("moshimo-op-status");
+                    if (opSt) opSt.textContent = "Instagramリール配信ジョブを送信中...";
+                    try {
+                        var resp = await fetch("/api/moshimo-reel-queue", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                            body: JSON.stringify({ ep_id: _selectedMoshimoEpId, force: true })
+                        });
+                        var data = await resp.json();
+                        if (!resp.ok || (data.ok === false && data.status !== "success")) {
+                            throw new Error((data && (data.error || data.reason)) || "公開リクエストに失敗しました");
+                        }
+                        if (opSt) {
+                            opSt.textContent = data.queued
+                                ? ("裏方ワーカーへ配信登録しました（Job: " + data.job_id + "）")
+                                : ("Instagramリール公開が完了しました（" + _selectedMoshimoEpId + "）");
+                        }
+                    } catch (e) {
+                        if (opSt) opSt.textContent = "公開エラー: " + (e.message || "通信失敗");
+                    } finally {
+                        pubNowBtn.disabled = false;
+                    }
+                });
+            }
+            if (_selectedMoshimoEpId) {
+                _selectMoshimoEpisode(_selectedMoshimoEpId);
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             if (INITIAL_FORCE_REFRESH && window.history && window.history.replaceState) {
                 var cleanUrl = "/staff/sns-editorial?channel=" + encodeURIComponent(CURRENT_CHANNEL) + "&slot=" + encodeURIComponent(CURRENT_SLOT);
                 window.history.replaceState(null, "", cleanUrl);
             }
+            _bindMoshimoQueueEvents();
             _bindVoiceNarrationStudioEvents();
             selectReelTextTab(_currentReelType);
             loadReelStudioInfo(_currentReelType, false);

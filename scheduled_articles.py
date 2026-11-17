@@ -234,6 +234,78 @@ SCHEDULED_ARTICLES = [
             "#相席ラウンジ #相席ナビ"
         ),
     },
+    {
+        "slug": "dome-live-after-surge",
+        "path": "/guide/dome-live-after-surge",
+        "template": "guide_dome_live_after_surge.html",
+        "publish_at": "2026-11-18 19:00:00",
+        "publish_at_ja": "2026年11月18日(水) 19:00",
+        "lastmod": "2026-11-18",
+        "eyecatch_jpg": "/static/eyecatch-dome-live-after-surge.jpg",
+        "eyecatch_webp": "/static/eyecatch-dome-live-after-surge.webp",
+        "badge": "大型公演×ターミナル波形",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-cyan", "5大ドーム導線実測"),
+        "tag_secondary": ("tag-pink", "終演60〜90分後の第2波"),
+        "title": "ドーム・アリーナ終演後の相席ラウンジ急増波｜21時梅田・新宿・天神・札幌で起きる「参戦帰り第2波」実測データ検証",
+        "short_title": "ドーム・アリーナ終演後の相席ラウンジ急増波",
+        "desc": "京セラドーム大阪・東京ドーム・みずほPayPayドーム・大和ハウス プレミストドーム・バンテリンドームの終演60〜90分後に、主要ターミナルの相席ラウンジで何が起きるのか。直近30日11.6万時間サンプルの実測データから検証。",
+        "x_title": "ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証",
+        "x_main_text": (
+            "5万人規模のドーム公演が終わった夜、梅田・新宿・天神・すすきのの相席ラウンジで何が起きるか。\n\n"
+            "規制退場＋地下鉄移動を経て、終演60〜90分後にターミナル旗艦店の女性人数が一段跳ね上がります。\n\n"
+            "11.6万時間サンプルで見えた男女別の狙い目と受付待ち回避法はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "lounge-vs-aisekiya-bar",
+        "path": "/guide/lounge-vs-aisekiya-bar",
+        "template": "guide_lounge_vs_aisekiya_bar.html",
+        "publish_at": "2026-11-18 19:00:00",
+        "publish_at_ja": "2026年11月18日(水) 19:00",
+        "lastmod": "2026-11-18",
+        "eyecatch_jpg": "/static/eyecatch-lounge-vs-aisekiya-bar.jpg",
+        "eyecatch_webp": "/static/eyecatch-lounge-vs-aisekiya-bar.webp",
+        "badge": "4業態実測比較",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-pink", "11.5万時間データ検証"),
+        "tag_secondary": ("tag-cyan", "ラウンジ・相席屋・1対1・立ち飲み"),
+        "title": "相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜女性比61%と39%を分ける4業態の実測比較",
+        "short_title": "相席ラウンジ・相席屋・1対1・立ち飲み4業態の実測比較",
+        "desc": "着席ソファ型の相席ラウンジ（オリエンタルラウンジ・JIS・ag）、居酒屋型の相席屋、1対1専門のTHE SINGLE、自由回遊型のASOBIBAR・パブリックスタンド。11.5万時間ログから、女性比率が61〜64%と39%に分かれる理由を比較検証。",
+        "x_title": "相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較",
+        "x_main_text": (
+            "同じ金曜夜の渋谷・新宿・梅田なのに、着席の相席ラウンジは女性比61〜64%、立ち飲みバー（ASOBIBAR）は女性比39.0%と20pt以上の差がつく。\n\n"
+            "理由は「10分従量課金か定額無制限か」という滞在時間の構造。\n\n"
+            "相席屋・THE SINGLEも含めた4業態の使い分けはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "app-fatigue-vs-lounge",
+        "path": "/guide/app-fatigue-vs-lounge",
+        "template": "guide_app_fatigue_vs_lounge.html",
+        "publish_at": "2026-11-21 19:00:00",
+        "publish_at_ja": "2026年11月21日(土) 19:00",
+        "lastmod": "2026-11-21",
+        "eyecatch_jpg": "/static/eyecatch-app-fatigue-vs-lounge.jpg",
+        "eyecatch_webp": "/static/eyecatch-app-fatigue-vs-lounge.webp",
+        "badge": "出会い経路×時間コスト",
+        "read_time": "約6分で読める",
+        "tag_primary": ("tag-amber", "メッセージ往復vs対面0秒"),
+        "tag_secondary": ("tag-cyan", "25.7万件ログ検証"),
+        "title": "「アプリ疲れ」の夜になぜ相席ラウンジへ人が戻るのか｜メッセージ往復2週間 vs 着席0秒のリアル検証",
+        "short_title": "「アプリ疲れ」の夜に相席ラウンジへ人が戻る理由",
+        "desc": "こども家庭庁の調査で結婚のきっかけ首位（25.1%）となったマッチングアプリの裏で広がるメッセージ疲れ。累計25.7万件の混雑ログから、2週間の文面往復と乾杯0秒の対面会話の使い分けを検証。",
+        "x_title": "「アプリ疲れ」の夜になぜ相席ラウンジへ人が戻るのか｜実測ログ検証",
+        "x_main_text": (
+            "2週間メッセージを重ねて会った最初の3秒で「写真の空気感と違うかも」と悟る疲れ。\n\n"
+            "アプリ婚が25.1%を占める一方で、対面の相席ラウンジに社会人が戻り続ける構造的な理由を25.7万件ログから整理しました。\n\n"
+            "疲れの種類別の使い分けはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
 ]
 
 

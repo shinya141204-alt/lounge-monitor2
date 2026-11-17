@@ -327,10 +327,15 @@ TIPS_LIST = [
         "相席ラウンジで女性が料理ばかり食べて会話に乗ってこない時は「タダ飯目的」と決めつける前に男性から「美味しそうだね、いっぱい食べて！」と一言添えるのが有効。\n"
         "女性側の後ろめたさや沈黙の緊張を解くことで、食の好みから普段のエリアや2軒目の話題へと自然に展開できます。"
     ),
+    (
+        "着席の相席ラウンジと立ち飲みバーでは男女比が20pt以上変わる。59店舗の実測ではオリエンタルラウンジ・JIS・agは女性比59〜64%、ASOBIBARは39.0%。\n"
+        "10分課金で自動案内か、定額で自分から声をかけるかで使い分けるのが近道です。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar"),
     ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality"),
     ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality"),
     ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy"),
@@ -468,6 +473,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("free-food-reality"):
             return ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality")
         return ("相席ラウンジ実践コラム・記事一覧", "/columns")
+    if idx == 74:
+        import scheduled_articles
+        if scheduled_articles.is_published("lounge-vs-aisekiya-bar"):
+            return ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar")
+        return ("店舗別料金・開催中イベント比較", "/price-comparison")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
 

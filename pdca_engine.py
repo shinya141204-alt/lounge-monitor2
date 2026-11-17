@@ -53,9 +53,10 @@ def reset_pdca_cache_for_tests():
 
 
 def get_pdca_settings(allow_blocking: bool = True) -> dict:
+    default_replenish = os.environ.get("PDCA_AUTO_REPLENISH_DEFAULT", "0").strip().lower() in ("1", "true", "yes", "on")
     defaults = {
         "auto_optimize_sns": True,
-        "auto_replenish_columns": False,
+        "auto_replenish_columns": default_replenish,
         "updated_at": "",
     }
     raw = job_state.get_value(PDCA_SETTINGS_KEY, allow_blocking=allow_blocking)
@@ -66,7 +67,7 @@ def get_pdca_settings(allow_blocking: bool = True) -> dict:
         if isinstance(parsed, dict):
             defaults.update({
                 "auto_optimize_sns": bool(parsed.get("auto_optimize_sns", True)),
-                "auto_replenish_columns": bool(parsed.get("auto_replenish_columns", False)),
+                "auto_replenish_columns": bool(parsed.get("auto_replenish_columns", default_replenish)),
                 "updated_at": str(parsed.get("updated_at") or ""),
             })
     except Exception:
@@ -657,7 +658,7 @@ def _detect_monetization_gaps(
 
 
 def _classify_sns_tag(tag: str) -> tuple:
-    """Classify a normalized `?s=` inflow tag into `(channel_key, hour_str, style_key)`."""
+    """Classify a normalized `?s=` or `ref_*` inflow tag into `(channel_key, hour_str, style_key)`."""
     t = (tag or "").strip().lower()
     if t.startswith("sns_inflow:"):
         t = t.split(":", 1)[1].strip()
@@ -668,10 +669,21 @@ def _classify_sns_tag(tag: str) -> tuple:
     if not t:
         return "x", "", "live"
 
-    if any(t.startswith(px) for px in ("reel", "ig_reel", "short", "tiktok")):
-        st = re.sub(r"^(?:ig_)?reels?_?|^tiktok_?|^shorts?_?", "", t) or "short_hook"
-        return "reels", "21:30", st
+    if t in ("short_bio", "shorts_bio", "ref_youtube") or t.startswith(("yt_", "youtube")):
+        return "youtube_shorts", "20:00", t
 
+    if t in ("ref_google", "ref_yahoo_bing", "ref_ai_search"):
+        return "search", "21:00", t
+
+    if t.startswith("moshimo"):
+        return "reels", "20:00", t
+
+    if t == "ref_tiktok" or any(t.startswith(px) for px in ("reel", "ig_reel", "short", "tiktok")):
+        st = re.sub(r"^(?:ig_)?reels?_?|^tiktok_?|^shorts?_?", "", t) or "short_hook"
+        return "reels", "20:00" if "moshimo" in t else "21:30", st
+
+    if t == "ref_x":
+        return "x", "21:00", "ref_x"
     m_x = re.match(r"^x(\d{2})_(.+)$", t)
     if m_x:
         return "x", f"{m_x.group(1)}:00", m_x.group(2)
@@ -682,6 +694,8 @@ def _classify_sns_tag(tag: str) -> tuple:
     if t == "x":
         return "x", "20:00", "live"
 
+    if t == "ref_threads":
+        return "threads", "20:30", "ref_threads"
     m_th = re.match(r"^th(\d{2})_(.+)$", t)
     if m_th:
         return "threads", f"{m_th.group(1)}:00", m_th.group(2)
@@ -689,12 +703,17 @@ def _classify_sns_tag(tag: str) -> tuple:
         st = re.sub(r"^th(?:reads)?_?", "", t) or "threads_city_story"
         return "threads", "20:30", st
 
+    if t == "ref_instagram":
+        return "instagram", "20:00", "ref_instagram"
     m_ig = re.match(r"^ig(\d{2})_(.+)$", t)
     if m_ig:
         return "instagram", f"{m_ig.group(1)}:00", m_ig.group(2)
     if t.startswith(("ig", "insta")):
         st = re.sub(r"^insta(?:gram)?_?|^ig_?", "", t) or "ig_empathy_story"
         return "instagram", "19:30", st
+
+    if t == "ref_note" or t.startswith("note"):
+        return "threads", "12:30", t
 
     return "x", "22:00", t
 
@@ -708,18 +727,19 @@ def _build_sns_channel_efficiency(
     demand_gap: dict,
     offer_breakdown: list,
     reels_logged_extra: int = 0,
+    yt_shorts_logged: int = 0,
 ) -> dict:
     """
-    Compare X / Threads / Instagram / Reels inflow efficiency (`sns_channel_efficiency`),
+    Compare X / Threads / Instagram / Reels / YouTube Shorts / Search inflow efficiency,
     surface the #1 channel, best time slot & editorial style, and generate Reels video concepts.
     """
     ig_carousel_logged = sum(
         1 for h in (ig_hist or [])
-        if not str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok"))
+        if not str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok", "moshimo"))
     )
     ig_reels_logged = sum(
         1 for h in (ig_hist or [])
-        if str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok"))
+        if str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok", "moshimo"))
     ) + int(reels_logged_extra or 0)
 
     channel_defs = [
@@ -752,12 +772,30 @@ def _build_sns_channel_efficiency(
         },
         {
             "channel_key": "reels",
-            "label": "🎬 ショート動画（Reels / TikTok）",
-            "default_slot": "21:30（金曜・土曜の縦型回遊ピーク）",
-            "default_style": "3秒ギャップ実証・女子目線減点リアル型",
+            "label": "🎬 IGリール / TikTok（3Dもしも＆ライブ速報）",
+            "default_slot": "20:00（平日『もしもシリーズ』自動配信＋土曜21:30速報）",
+            "default_style": "3Dボクセル『もしもシリーズ』＆3秒ギャップ実証型",
             "posts_logged": ig_reels_logged,
-            "priority": 1,
-            "base_tactic": "9:16ショート動画スタジオ（/staff/sns-editorial?channel=instagram#reel-studio-section）で15秒ギャップ実証動画を生成し、プロフ ?s=reel_hub_gap へ誘導。",
+            "priority": 5,
+            "base_tactic": "月〜金20:00は3D『もしもシリーズ』キューから自動投稿し、土曜ピークはリアルタイムTOP5リールを自動補完してプロフリンクへ誘導。",
+        },
+        {
+            "channel_key": "youtube_shorts",
+            "label": "📺 YouTubeショート (@aiseki_navi)",
+            "default_slot": "20:00（平日『もしもシリーズ』同時展開）",
+            "default_style": "3Dボクセル『もしもシリーズ』35秒検証 (short_bio)",
+            "posts_logged": int(yt_shorts_logged or 0),
+            "priority": 5,
+            "base_tactic": "SNS編集部のYouTubeショート連携パックから1クリックでタイトル・固定コメントをコピー投稿し、プロフ『?s=short_bio』経由のサイト流入を計測。",
+        },
+        {
+            "channel_key": "search",
+            "label": "🔍 自然検索・AI検索 (Google / AI)",
+            "default_slot": "19:00〜23:00（入店前リサーチ・エリア比較帯）",
+            "default_style": "一次統計データ＆予約コラム自動公開 (ref_google)",
+            "posts_logged": 0,
+            "priority": 4,
+            "base_tactic": "Search Consoleのお宝クエリ（高表示・低CTR）をPDCA画面で特定し、週2本の予約コラム自動解禁でロングテール検索とAI引用を継続拡大。",
         },
     ]
 
@@ -796,7 +834,7 @@ def _build_sns_channel_efficiency(
             style_agg[st]["channel_key"] = ck
 
     # Support optional `by_event['sns_inflow:<channel_or_tag>']` without double-counting or dropping sibling tags
-    bare_channel_keys = {"x", "threads", "instagram", "reels", "tiktok", "note"}
+    bare_channel_keys = {"x", "threads", "instagram", "reels", "tiktok", "note", "youtube_shorts", "search"}
     by_event = (stats or {}).get("by_event") or {}
     for ev_k, ev_cnt in by_event.items():
         ev_str = str(ev_k or "").strip()
@@ -830,7 +868,10 @@ def _build_sns_channel_efficiency(
                     ch_styles[ck_v][st_v] += delta_v
                     style_agg[st_v]["visits"] += delta_v
 
-    total_sns_visits = sum(ch_visits.values())
+    total_tracked_inflows = sum(ch_visits.values())
+    total_search_visits = int(ch_visits.get("search", 0))
+    total_sns_visits = max(0, total_tracked_inflows - total_search_visits)
+    share_denom = total_tracked_inflows if total_tracked_inflows > 0 else 0
     channels_out = []
     for cdef in channel_defs:
         ck = cdef["channel_key"]
@@ -842,7 +883,7 @@ def _build_sns_channel_efficiency(
             rev_y = cv * 95
         epc_v = round(rev_y / float(v), 1) if v > 0 else 0.0
         cvr = round((cv / v) * 100, 1) if v > 0 else 0.0
-        share_pct = round((v / total_sns_visits) * 100, 1) if total_sns_visits > 0 else 0.0
+        share_pct = round((v / share_denom) * 100, 1) if share_denom > 0 else 0.0
         eff_score = round(cv * 15.0 + cush_c * 3.0 + (rev_y / 35.0) + v * 2.5 + cvr * 0.3, 1)
 
         if ch_hours.get(ck):
@@ -888,8 +929,8 @@ def _build_sns_channel_efficiency(
             ch["bar_pct"] = 0
         if idx == 1 and (ch["visits"] > 0 or ch["conversions"] > 0):
             ch["status_badge"] = "🥇 サイト誘導効率 No.1"
-        elif ch["channel_key"] == "reels" and ch["visits"] == 0:
-            ch["status_badge"] = "🚀 未開拓・高リーチ枠"
+        elif ch["channel_key"] in ("reels", "youtube_shorts") and ch["visits"] == 0:
+            ch["status_badge"] = "🚀 高リーチ拡大枠"
         elif ch["visits"] > 0:
             ch["status_badge"] = "📈 流入稼働中"
         else:
@@ -965,16 +1006,16 @@ def _build_sns_channel_efficiency(
         },
     ]
 
-    if total_sns_visits > 0:
+    if total_tracked_inflows > 0:
         summary_insight = (
             f"現在の最効率チャネルは『{top_ch['label']}』（流入 {top_ch['visits']}件 / CV {top_ch['conversions']}件）。"
             f"強化すべき時間帯は {top_ch['best_time_slot']}、勝ち切り口は『{rec_style_label}』です。"
-            f"さらに未開拓リーチを広げるなら Reels での『{hub_name}男女比ギャップ15秒動画』投入が最短ルートです。"
+            f"月〜金20:00の3D『もしもシリーズ』自動配信＋YouTubeショート同時展開と検索予約コラムで複利流入を伸ばします。"
         )
     else:
         summary_insight = (
-            f"『?s=』流入ログ蓄積フェーズです。初動のサイト誘導効率が最も高い『{top_ch['label']}』の 22:00枠（{rec_style_label}）を軸にしつつ、"
-            f"木〜土曜 21時台に Reels ショート動画（{hub_name}ギャップ実証）を掛け合わせると新規流入が一気に伸びます。"
+            f"『?s=』・外部Referer流入ログ蓄積フェーズです。『{top_ch['label']}』を軸にしつつ、"
+            f"平日20:00の3D『もしもシリーズ』（IGリール自動＋YouTubeショート `?s=short_bio`）とGoogle検索の連動で新規流入を拡大します。"
         )
 
     return {
@@ -984,11 +1025,131 @@ def _build_sns_channel_efficiency(
         "recommended_style_key": rec_style_key,
         "recommended_style_label": rec_style_label,
         "total_sns_visits": total_sns_visits,
-        "total_sns_conversions": sum(ch_cvs.values()),
+        "total_search_visits": total_search_visits,
+        "total_tracked_inflows": total_tracked_inflows,
+        "total_sns_conversions": sum(v for k, v in ch_cvs.items() if k != "search"),
+        "total_search_conversions": int(ch_cvs.get("search", 0)),
         "summary_insight": summary_insight,
         "channels": channels_out,
         "style_ranking": style_ranking[:8],
         "reels_recommendations": reels_recommendations,
+    }
+
+
+def _build_flywheel_status(
+    closed_loop_feedback: dict,
+    sns_channel_efficiency: dict,
+    upcoming_cols: list,
+    settings: dict,
+    demand_gap: dict,
+    allow_blocking: bool = False,
+) -> dict:
+    """
+    Build unified 4-Gear Growth Flywheel telemetry (`flywheel_status`) for `/staff/pdca`:
+      Gear 1: 3D Moshimo Reel Queue (`ep1`..`ep10` + Evergreen Recycle)
+      Gear 2: YouTube Shorts Retention & `?s=short_bio` / `ref_youtube` Inflows
+      Gear 3: Google Search Console Organic Impressions & `ref_google` / `ref_ai_search` Inflows
+      Gear 4: Autonomous Scheduled Column Pipeline (`upcoming_cols` + `auto_replenish_columns`)
+    """
+    try:
+        import moshimo_reel_queue
+        mq = moshimo_reel_queue.get_moshimo_queue_status(allow_blocking=allow_blocking)
+    except Exception:
+        mq = {
+            "enabled": True,
+            "evergreen_recycle": True,
+            "total_episodes": 0,
+            "posted_count": 0,
+            "remaining_count": 0,
+            "next_episode": None,
+            "last_posted_at": "",
+        }
+
+    ch_map = {c["channel_key"]: c for c in (sns_channel_efficiency.get("channels") or [])}
+    yt_ch = ch_map.get("youtube_shorts") or {}
+    srch_ch = ch_map.get("search") or {}
+    reels_ch = ch_map.get("reels") or {}
+
+    yt_diag = dict((closed_loop_feedback or {}).get("youtube_shorts_diagnostics") or {})
+    gsc_diag = dict((closed_loop_feedback or {}).get("gsc_diagnostics") or {})
+
+    hub_name = ((demand_gap or {}).get("top_hub") or {}).get("cluster_label") or "梅田・新宿"
+    opp_q = ((gsc_diag.get("opportunity_queries") or [{}])[0]).get("query") if gsc_diag.get("opportunity_queries") else ""
+
+    next_moshimo_ideas = [
+        f"もし『{hub_name}の徒歩4分先』の男女比が頭の上に数字で見えたら？（街別ギャップ検証）",
+        "もし相席ラウンジの『19時ディナー帯』と『22時二次会帯』が別の扉だったら？（タダ飯論争の真実）",
+        (
+            f"もし検索急上昇『{opp_q}』の答えを25万件ログで30秒再現したら？"
+            if opp_q
+            else "もしマッチングアプリの『2週間メッセージ』が対面の乾杯3秒に短縮されたら？（アプリ疲れ検証）"
+        ),
+    ]
+
+    try:
+        import youtube_analytics_sync
+        yt_oauth_info = youtube_analytics_sync.get_youtube_sync_status(allow_blocking=False)
+    except Exception:
+        yt_oauth_info = {}
+
+    next_col = upcoming_cols[0] if upcoming_cols else None
+    return {
+        "moshimo_queue": {
+            "enabled": bool(mq.get("enabled", True)),
+            "evergreen_recycle": bool(mq.get("evergreen_recycle", True)),
+            "total_episodes": int(mq.get("total_episodes") or 0),
+            "posted_count": int(mq.get("posted_count") or 0),
+            "remaining_count": int(mq.get("remaining_count") or 0),
+            "next_episode": mq.get("next_episode"),
+            "last_posted_at": str(mq.get("last_posted_at") or ""),
+            "ig_reels_visits": int(reels_ch.get("visits") or 0),
+            "ig_reels_conversions": int(reels_ch.get("conversions") or 0),
+            "next_moshimo_ideas": next_moshimo_ideas,
+        },
+        "youtube_shorts": {
+            "data_status": yt_diag.get("data_status") or "insufficient",
+            "api_connected": bool(yt_oauth_info.get("connected")),
+            "channel_title": str(yt_oauth_info.get("channel_title") or ""),
+            "custom_url": str(yt_oauth_info.get("custom_url") or ""),
+            "last_sync_at": str(yt_oauth_info.get("last_sync_at") or ""),
+            "sample_count": int(yt_diag.get("sample_count") or 0),
+            "total_views": yt_diag.get("total_views"),
+            "avg_stayed_to_watch_pct": yt_diag.get("avg_stayed_to_watch_pct"),
+            "avg_pct_viewed": yt_diag.get("avg_pct_viewed"),
+            "avg_watch_sec": yt_diag.get("avg_watch_sec"),
+            "subscribers_gained": yt_diag.get("subscribers_gained"),
+            "site_visits": int(yt_ch.get("visits") or 0),
+            "site_cushion_clicks": int(yt_ch.get("cushion_clicks") or 0),
+            "site_conversions": int(yt_ch.get("conversions") or 0),
+            "bio_tracking_url": "https://aiseki-navi.com/?s=short_bio",
+        },
+        "search_console": {
+            "data_status": gsc_diag.get("data_status") or "insufficient",
+            "updated_at": str(gsc_diag.get("updated_at") or ""),
+            "total_clicks": gsc_diag.get("total_clicks"),
+            "total_impressions": gsc_diag.get("total_impressions"),
+            "avg_ctr_pct": gsc_diag.get("avg_ctr_pct"),
+            "avg_position": gsc_diag.get("avg_position"),
+            "opportunity_count": len(gsc_diag.get("opportunity_queries") or []),
+            "site_visits": int(srch_ch.get("visits") or 0),
+            "site_cushion_clicks": int(srch_ch.get("cushion_clicks") or 0),
+            "site_conversions": int(srch_ch.get("conversions") or 0),
+        },
+        "column_pipeline": {
+            "upcoming_count": len(upcoming_cols or []),
+            "auto_replenish_columns": bool((settings or {}).get("auto_replenish_columns", False)),
+            "next_publish_at_ja": str(next_col.get("publish_at_ja") or next_col.get("publish_at") or "") if next_col else "",
+            "next_title": str(next_col.get("short_title") or next_col.get("title") or "") if next_col else "",
+            "upcoming_titles": [
+                {
+                    "slug": c.get("slug"),
+                    "path": c.get("path"),
+                    "title": c.get("short_title") or c.get("title"),
+                    "publish_at_ja": c.get("publish_at_ja") or c.get("publish_at"),
+                }
+                for c in (upcoming_cols or [])[:4]
+            ],
+        },
     }
 
 
@@ -1570,6 +1731,7 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         known_cols,
         cushion_by_ref_path=cushion_by_ref_path,
     )
+    yt_shorts_logged = int(((closed_loop_feedback.get("sample_counts") or {}).get("youtube_shorts_with_metrics")) or 0)
     sns_channel_efficiency = _build_sns_channel_efficiency(
         stats=stats,
         inflow_cohorts=inflow_cohorts,
@@ -1579,6 +1741,15 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         demand_gap=demand_gap,
         offer_breakdown=offer_breakdown,
         reels_logged_extra=reels_logged_extra,
+        yt_shorts_logged=yt_shorts_logged,
+    )
+    flywheel_status = _build_flywheel_status(
+        closed_loop_feedback=closed_loop_feedback,
+        sns_channel_efficiency=sns_channel_efficiency,
+        upcoming_cols=upcoming_cols,
+        settings=get_pdca_settings(allow_blocking=allow_blocking),
+        demand_gap=demand_gap,
+        allow_blocking=allow_blocking,
     )
     weekly_growth_actions = _build_weekly_growth_actions(
         demand_gap=demand_gap,
@@ -1757,6 +1928,7 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         "sns_style_boosts": sns_style_boosts,
         "hook_archetype_boosts": dict(closed_loop_feedback.get("hook_archetype_boosts") or {}),
         "sns_prompt_feedback": str(closed_loop_feedback.get("sns_prompt_feedback") or ""),
+        "gsc_seo_directive": str(((closed_loop_feedback.get("gsc_diagnostics") or {}).get("seo_prompt_directive")) or ""),
         "reel_template_boosts": dict(closed_loop_feedback.get("reel_template_boosts") or {}),
         "note_ctr_feedback": dict(closed_loop_feedback.get("note_ctr_feedback") or {}),
         "priority_column_paths": priority_column_paths,
@@ -1809,6 +1981,7 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         "sns_channel_efficiency": sns_channel_efficiency,
         "weekly_growth_actions": weekly_growth_actions,
         "closed_loop_feedback": closed_loop_feedback,
+        "flywheel_status": flywheel_status,
     }
 
 
@@ -2011,9 +2184,16 @@ def run_pdca_cycle(
                 )
                 winner = col_ed.get("winner")
                 if winner and int(winner.get("total_score") or 0) >= 85:
-                    next_pub = (datetime.datetime.now(JST).replace(tzinfo=None) + datetime.timedelta(days=2)).replace(
-                        hour=19, minute=0, second=0, microsecond=0
-                    )
+                    now_naive = datetime.datetime.now(JST).replace(tzinfo=None)
+                    base_dt = now_naive + datetime.timedelta(days=2)
+                    for up_item in (diag.get("upcoming_articles") or []):
+                        try:
+                            up_dt = scheduled_articles.parse_publish_at(up_item.get("publish_at"))
+                            if up_dt.year < 9000 and up_dt + datetime.timedelta(days=3) > base_dt:
+                                base_dt = up_dt + datetime.timedelta(days=3)
+                        except Exception:
+                            pass
+                    next_pub = base_dt.replace(hour=19, minute=0, second=0, microsecond=0)
                     save_res = column_editorial.save_editorial_column(
                         candidate=winner,
                         publish_mode="schedule",
@@ -2054,6 +2234,7 @@ def run_pdca_cycle(
         "sns_channel_efficiency": diag["sns_channel_efficiency"],
         "weekly_growth_actions": diag["weekly_growth_actions"],
         "closed_loop_feedback": diag.get("closed_loop_feedback") or {},
+        "flywheel_status": diag.get("flywheel_status") or {},
     }
 
 

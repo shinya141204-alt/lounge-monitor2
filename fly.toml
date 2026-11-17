@@ -13,6 +13,8 @@ kill_timeout = "25s"
   PORT = "8080"
   PUBLIC_SITE_URL = "https://aiseki-navi.com"
   ENABLE_PUBLIC_EDGE_CACHE = "1"
+  PDCA_AUTO_REPLENISH_DEFAULT = "1"
+  MOSHIMO_EVERGREEN_RECYCLE_DEFAULT = "1"
   PYTHONUNBUFFERED = "1"
   TZ = "UTC"
 

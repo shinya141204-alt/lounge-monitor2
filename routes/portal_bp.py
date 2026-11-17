@@ -1686,6 +1686,24 @@ def guide_free_food_reality():
     return _render_scheduled_guide('free-food-reality')
 
 
+@portal_bp.route('/guide/dome-live-after-surge')
+def guide_dome_live_after_surge():
+    """Scheduled editorial data study on post-dome/arena concert crowd surges at major terminal lounges."""
+    return _render_scheduled_guide('dome-live-after-surge')
+
+
+@portal_bp.route('/guide/lounge-vs-aisekiya-bar')
+def guide_lounge_vs_aisekiya_bar():
+    """Scheduled editorial data study comparing seated lounges, Aisekiya, THE SINGLE, and standing bars."""
+    return _render_scheduled_guide('lounge-vs-aisekiya-bar')
+
+
+@portal_bp.route('/guide/app-fatigue-vs-lounge')
+def guide_app_fatigue_vs_lounge():
+    """Scheduled editorial data study comparing matching-app messaging fatigue with 0-second face-to-face lounge seating."""
+    return _render_scheduled_guide('app-fatigue-vs-lounge')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""

@@ -168,8 +168,9 @@ class TestTemperatureDiffAndColdSurge(unittest.TestCase):
 
     def test_cold_surge_exact_threshold(self):
         """寒暖差境界値: -2.9℃は通常（is_cold_surge=False）、-3.0℃は急冷サージ（True）"""
-        # モックデータで _fetch_open_meteo_all_cities のパースロジックをテスト
-        yday = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        # モックデータで _fetch_open_meteo_all_cities のパースロジックをテスト（0〜4時台は営業日基準で2日前夜と比較）
+        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+        yday = (now_jst - datetime.timedelta(days=2 if now_jst.hour < 5 else 1)).strftime("%Y-%m-%d")
         mock_resp_normal = {
             "current": {"temperature_2m": 12.1, "precipitation": 0.0, "weather_code": 0, "wind_speed_10m": 5.0},
             "hourly": {
@@ -286,11 +287,11 @@ class TestUIAndCachebusterIntegration(unittest.TestCase):
         self.assertIn("イベントサージ", html)
 
     def test_cache_version_108_sync(self):
-        """static/sw.js の CACHE_NAME が aiseki-navi-v110 であること"""
+        """static/sw.js の CACHE_NAME が aiseki-navi-v111 であること"""
         sw_path = os.path.join(os.path.dirname(__file__), "..", "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as f:
             sw_txt = f.read()
-        self.assertIn("const CACHE_NAME = 'aiseki-navi-v110';", sw_txt)
+        self.assertIn("const CACHE_NAME = 'aiseki-navi-v111';", sw_txt)
 
 
 if __name__ == "__main__":

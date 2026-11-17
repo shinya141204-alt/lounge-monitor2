@@ -147,7 +147,7 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=43" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=44" fetchpriority="high">
     <link rel="preload" href="/static/app.js?v=20261112_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2913,7 +2913,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=110', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=111', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

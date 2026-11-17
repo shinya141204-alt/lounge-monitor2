@@ -497,8 +497,8 @@ def _ensure_scheduler_started_async():
                     if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl) or not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
                         return
                     cur_stores, is_seed = _visible_live_stores()
-                    if cur_stores and not is_seed:
-                        instagram_poster.publish_live_reel_to_instagram(cur_stores, reel_type="auto", slot_label=slot_lbl, force=False)
+                    import moshimo_reel_queue
+                    moshimo_reel_queue.dispatch_scheduled_ig_reel(cur_stores, slot_label=slot_lbl, is_seed=is_seed)
                 except Exception as err:
                     logging.error(f"Scheduled Instagram Reel post failed: {err}")
             scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
@@ -2060,15 +2060,16 @@ def track_page_views(response):
             if pv_ok:
                 analytics.track('page_view', request.path)
             raw_s = (request.args.get('s') or '').strip()
-            if raw_s:
-                inflow_tag = analytics.normalize_inflow_source(raw_s)
-                if inflow_tag:
-                    if pv_ok:
-                        analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
-                    response.set_cookie(
-                        'an_src', inflow_tag, max_age=86400, path='/',
-                        samesite='Lax', secure=bool(request.is_secure), httponly=True,
-                    )
+            inflow_tag = analytics.normalize_inflow_source(raw_s) if raw_s else ''
+            if not inflow_tag and not request.cookies.get('an_src') and request.referrer:
+                inflow_tag = analytics.classify_external_referrer_inflow(request.referrer, request.host)
+            if inflow_tag:
+                if pv_ok:
+                    analytics.track('sns_inflow', f"{inflow_tag} @ {request.path}")
+                response.set_cookie(
+                    'an_src', inflow_tag, max_age=86400, path='/',
+                    samesite='Lax', secure=bool(request.is_secure), httponly=True,
+                )
     except Exception:
         pass
     return response

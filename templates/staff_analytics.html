@@ -1819,10 +1819,10 @@
             {% endif %}
         </div>
 
-        <!-- 5. SNS ?s= Cohort Inflows & Attributed Affiliate CVs -->
+        <!-- 5. SNS ?s= & External Referer Cohort Inflows & Attributed Affiliate CVs -->
         <div class="panel">
-            <h2>📡 SNS投稿枠（?s=）からのサイト流入＆CV内訳</h2>
-            <p class="panel-sub">どのSNS投稿枠・切り口から実際にユーザーが訪問・アフィリエイト遷移したか</p>
+            <h2>📡 SNS・ショート動画・自然検索（?s= / Referer）流入＆CV内訳</h2>
+            <p class="panel-sub">Google検索・YouTubeショート・IGリール・X・Threads・AI検索から実際に訪問・クッション遷移・アフィリエイトCVした内訳</p>
             {% set inflow_rows = data.by_label_pretty.get('sns_inflow', []) %}
             {% if inflow_rows %}
             <div class="bar-list">
@@ -1843,7 +1843,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="empty-box">まだ <code>?s=</code> 付きのSNS流入記録はありません（今後の自動投稿から自動計測されます）。</div>
+            <div class="empty-box">まだ流入コホート記録はありません（SNS <code>?s=</code> 付きリンク、または Google検索・YouTube・AI検索からの外部Referer流入が発生すると自動計測されます）。</div>
             {% endif %}
         </div>
     </div>
