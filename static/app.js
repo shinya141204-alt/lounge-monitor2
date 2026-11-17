@@ -5,7 +5,19 @@
 
         const IS_STAFF = (window.APP_CONFIG && window.APP_CONFIG.isStaff) || false;
         const IS_STAFF_SESSION = IS_STAFF || Boolean(window.APP_CONFIG && window.APP_CONFIG.isStaffSession);
+        const VALID_SAVED_REGIONS = new Set([
+            'All', 'City:shinjuku', 'City:shibuya', 'City:umeda', 'City:namba', 'City:nagoya', 'City:fukuoka',
+            'Kanto', 'Kinki', 'Chubu', 'Kyushu', 'Hokkaido', 'Tohoku', 'Chugoku', 'Shikoku', 'Korea'
+        ]);
         let currentFilter = 'All';
+        if (!IS_STAFF) {
+            try {
+                const savedReg = localStorage.getItem('aiseki_selected_region') || 'All';
+                if (VALID_SAVED_REGIONS.has(savedReg)) {
+                    currentFilter = savedReg;
+                }
+            } catch (e) {}
+        }
         let currentSearch = '';
         let currentSort = 'women';
         let currentAudience = 'men';
@@ -574,7 +586,7 @@
 
         function _getBadgeTypeForStoreEvents(matchedEvs) {
             if (!matchedEvs || matchedEvs.length === 0) return '';
-            return matchedEvs.some(e => e.tag === '割引・特典') ? '特典' : 'フェア';
+            return matchedEvs.some(e => e.tag === '割引・特典') ? '公式特典' : '公式フェア';
         }
 
         async function loadEvents() {
@@ -938,15 +950,36 @@
             }
         }
 
+        function syncRegionFilterButtons() {
+            document.querySelectorAll('.filter-btn[data-region]').forEach(b => {
+                b.classList.toggle('active', b.dataset.region === currentFilter);
+            });
+            const moreBtn = document.getElementById('more-areas-btn');
+            const morePop = document.getElementById('more-areas-popover');
+            if (moreBtn) {
+                const activeInMore = morePop ? morePop.querySelector(`.filter-btn[data-region="${currentFilter}"]`) : null;
+                if (activeInMore) {
+                    moreBtn.classList.add('active');
+                    moreBtn.textContent = `${activeInMore.textContent.trim()} ▾`;
+                } else {
+                    moreBtn.classList.remove('active');
+                    moreBtn.textContent = 'その他 ▾';
+                }
+            }
+            const gpsChip = document.getElementById('quick-nearby-chip');
+            if (gpsChip) {
+                gpsChip.classList.toggle('active', currentSort === 'nearby');
+            }
+        }
+
         function resetAllFilters() {
             currentFilter = 'All';
             currentSearch = '';
+            try { localStorage.setItem('aiseki_selected_region', 'All'); } catch (e) {}
             const input = document.getElementById('search-input');
             if (input) input.value = '';
             syncSearchClearBtn();
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.region === 'All');
-            });
+            syncRegionFilterButtons();
             if (window.lastData) {
                 updateUI(window.lastData);
             }
@@ -1106,8 +1139,8 @@
             }
             if (notify && typeof showRefreshToast === 'function') {
                 showRefreshToast(currentAudience === 'women'
-                    ? '女性目線モード（ライト配色・待ち0順）に切り替えました'
-                    : '男性目線モード（女性人数順）に切り替えました');
+                    ? '女性がすぐ入れる順（ライト配色）に切り替えました'
+                    : '女性が多い順に切り替えました');
             }
             if (!IS_STAFF && !IS_STAFF_SESSION && notify && navigator.sendBeacon) {
                 try {
@@ -1134,25 +1167,28 @@
             currentSort = sortType;
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.sort-btn[data-sort="${sortType}"]`)?.classList.add('active');
+            syncRegionFilterButtons();
             if (window.lastData) updateUI(window.lastData);
         }
 
-        // Add filter button listeners
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        // Add filter button listeners (with localStorage persistence + popover auto-close)
+        document.querySelectorAll('.filter-btn[data-region]').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Remove active class from all
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                // Add active to clicked
-                btn.classList.add('active');
-
-                currentFilter = btn.dataset.region;
-
-                // Re-render with cached data if available (or wait for next fetch)
+                currentFilter = btn.dataset.region || 'All';
+                if (!IS_STAFF) {
+                    try { localStorage.setItem('aiseki_selected_region', currentFilter); } catch (e) {}
+                }
+                syncRegionFilterButtons();
+                const morePop = document.getElementById('more-areas-popover');
+                if (morePop && typeof morePop.hidePopover === 'function') {
+                    try { morePop.hidePopover(); } catch (e) {}
+                }
                 if (window.lastData) {
                     updateUI(window.lastData);
                 }
             });
         });
+        syncRegionFilterButtons();
 
         let isInitialLoad = true;
         let _renderedFromSSR = false;
@@ -1307,10 +1343,15 @@
                 rankBadge: item.querySelector('.rank-badge'),
                 badgeEl: item.querySelector('.brand-badge'),
                 areaEl: item.querySelector('.area-tag'),
+                freshnessEl: item.querySelector('.card-freshness-tag'),
                 distTag: item.querySelector('.distance-tag'),
                 momTag: item.querySelector('.momentum-tag'),
                 storeNameEl: item.querySelector('.store-name'),
                 humanLineEl: item.querySelector('.cm-human-line'),
+                specRowEl: item.querySelector('.store-spec-row'),
+                specTextEl: item.querySelector('.store-spec-row .spec-text'),
+                mapLinkEl: item.querySelector('.store-spec-row .card-map-link'),
+                priceLinkEl: item.querySelector('.store-spec-row .card-price-link'),
                 microEl: item.querySelector('.store-micro-metrics'),
                 moatRowEl: item.querySelector('.moat-signals-row'),
                 ladiesCountEl: item.querySelector('.stat.ladies .count'),
@@ -1321,6 +1362,7 @@
                 menUsualEl: item.querySelector('.stat.men .stat-usual'),
                 ladiesBar: item.querySelector('.bar-fill-ladies'),
                 menBar: item.querySelector('.bar-fill-men'),
+                bentoRatioHero: item.querySelector('.bento-ratio-hero'),
                 bentoKickerLabel: item.querySelector('.bento-kicker-label'),
                 bentoVerdictPill: item.querySelector('.bento-verdict-pill'),
                 bentoRatioNum: item.querySelector('.bento-ratio-num'),
@@ -1342,36 +1384,143 @@
             } catch (e) {}
         })();
 
+        function getDataStaleState(data) {
+            if (!data || data.is_seed) return 'live';
+            const ageSec = getStatusAgeSec(data);
+            if (!Number.isFinite(ageSec)) return 'live';
+            if (ageSec >= 600) return 'halted';
+            if (ageSec >= 300) return 'delayed';
+            return 'live';
+        }
+
+        function syncStaleHeaderAndBanner(data) {
+            if (IS_STAFF || !data) return 'live';
+            const staleState = getDataStaleState(data);
+            const rawTs = data.timestamp ? String(data.timestamp) : '';
+            const hm = rawTs.includes(' ') ? rawTs.split(' ')[1].slice(0, 5) : '--:--';
+            const totalStores = Array.isArray(data.ranking) && data.ranking.length >= 50 ? data.ranking.length : 63;
+
+            const lastUpdateEl = document.getElementById('last-update');
+            if (lastUpdateEl && hm !== '--:--') {
+                lastUpdateEl.textContent = hm;
+            }
+            const kickerBar = document.getElementById('live-kicker-bar');
+            const kickerDot = document.getElementById('live-kicker-dot');
+            const kickerText = document.getElementById('live-kicker-text');
+            if (kickerBar && kickerText) {
+                if (staleState === 'live') {
+                    kickerBar.classList.remove('is-stale');
+                    if (kickerDot) kickerDot.classList.remove('hidden');
+                    kickerText.textContent = `全国${totalStores}店舗・1分自動更新`;
+                } else {
+                    kickerBar.classList.add('is-stale');
+                    if (kickerDot) kickerDot.classList.add('hidden');
+                    kickerText.textContent = `${hm}時点のデータ（更新停止中）`;
+                }
+            }
+            const h1El = document.getElementById('main-hero-h1');
+            if (h1El && !IS_STAFF) {
+                h1El.textContent = staleState === 'live'
+                    ? `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を1分更新`
+                    : `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を横断チェック`;
+            }
+            const haltBanner = document.getElementById('stale-halt-banner');
+            const haltHm = document.getElementById('stale-last-hm');
+            if (haltHm && hm !== '--:--') {
+                haltHm.textContent = hm;
+            }
+            if (haltBanner) {
+                haltBanner.classList.toggle('hidden', staleState !== 'halted');
+            }
+            return staleState;
+        }
+
+        function _isPreopenZeroStore(store) {
+            if (!store) return false;
+            const tot = Math.max(0, Number(store.women || 0)) + Math.max(0, Number(store.men || 0));
+            return !store.is_open_now && tot === 0;
+        }
+
         // The server renders only the top ranks (SSR_RANK_LIMIT in index.html). Append the remaining stores
-        // from the embedded payload right after hydration so the full ranking stays available without
-        // shipping ~400KB of card HTML. New cards go to the end of the list (below the fold → no layout shift).
+        // from the embedded payload right after hydration so open stores go to #ranking-list and pre-open 0:0 stores go to #preopen-ranking-list.
         function appendDeferredSsrStores(data) {
             const rankingListEl = document.getElementById('ranking-list');
+            const preopenListEl = document.getElementById('preopen-ranking-list');
+            const preopenDetailsEl = document.getElementById('preopen-stores-details');
+            const preopenCountEl = document.getElementById('preopen-count-num');
             if (!rankingListEl || !data || !Array.isArray(data.ranking)) return 0;
+
+            const domStores = data.ranking.filter(s => s && s.region !== 'Korea' && !String(s.name || '').includes('カンナム') && !String(s.name || '').includes('ホンデ'));
+            const allClosed = !IS_STAFF && domStores.length > 0 && domStores.every(s => _isPreopenZeroStore(s));
+
             const present = new Set();
-            document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store]').forEach(el => {
+            document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store], #preopen-ranking-list .ranking-item[data-store]').forEach(el => {
                 present.add(el.getAttribute('data-store'));
             });
-            const missing = [];
+            const missingOpen = [];
+            const missingPreopen = [];
             data.ranking.forEach((s, idx) => {
-                if (s && s.name && !present.has(s.name) && !pinnedStores.includes(s.name)) missing.push({ store: s, idx });
+                if (!s || !s.name || present.has(s.name) || pinnedStores.includes(s.name)) return;
+                if (!IS_STAFF && !allClosed && _isPreopenZeroStore(s)) {
+                    missingPreopen.push({ store: s, idx });
+                } else {
+                    missingOpen.push({ store: s, idx });
+                }
             });
-            if (missing.length === 0) return 0;
             const cleanNameCounts = {};
             data.ranking.forEach(s => {
                 const bInfo = detectBrandInfo(s);
                 const key = bInfo.cleanName || s.name;
                 cleanNameCounts[key] = (cleanNameCounts[key] || 0) + 1;
             });
+            if (missingOpen.length > 0) {
+                const frag = document.createDocumentFragment();
+                missingOpen.forEach(({ store, idx }) => {
+                    const bInfo = detectBrandInfo(store);
+                    const key = bInfo.cleanName || store.name;
+                    const globalIdx = (typeof store.ssr_rank === 'number' && store.ssr_rank > 0) ? store.ssr_rank - 1 : idx;
+                    renderStore(store, idx, frag, false, globalIdx, (cleanNameCounts[key] || 0) > 1, false);
+                });
+                rankingListEl.appendChild(frag);
+            }
+            if (preopenListEl && missingPreopen.length > 0) {
+                const preFrag = document.createDocumentFragment();
+                missingPreopen.forEach(({ store }) => {
+                    const bInfo = detectBrandInfo(store);
+                    const key = bInfo.cleanName || store.name;
+                    renderStore(store, -1, preFrag, false, null, (cleanNameCounts[key] || 0) > 1, false);
+                });
+                preopenListEl.appendChild(preFrag);
+                if (preopenCountEl) preopenCountEl.textContent = String(preopenListEl.children.length);
+                if (preopenDetailsEl) preopenDetailsEl.classList.remove('hidden');
+            }
+            return missingOpen.length + missingPreopen.length;
+        }
+
+        function syncPrAlternativesSection(topStoreItems) {
+            const sectionEl = document.getElementById('pr-alternatives-section');
+            const gridEl = document.getElementById('pr-alternatives-grid');
+            if (!sectionEl || !gridEl) return;
+            const isStaffView = Boolean(IS_STAFF_SESSION || document.body.classList.contains('staff-mode'));
+            const master = getAffiliateMaster();
+            if (isStaffView || !master || !master.enabled || !Array.isArray(master.infeedSlots) || master.infeedSlots.length === 0) {
+                sectionEl.classList.add('hidden');
+                return;
+            }
+            sectionEl.classList.remove('hidden');
+            const existing = gridEl.querySelectorAll('.context-lead-row.pr-card-item');
+            if (existing.length === master.infeedSlots.length) {
+                master.infeedSlots.forEach((slotCfg, idx) => {
+                    patchInfeedPrElement(existing[idx], slotCfg, topStoreItems);
+                });
+                return;
+            }
             const frag = document.createDocumentFragment();
-            missing.forEach(({ store, idx }) => {
-                const bInfo = detectBrandInfo(store);
-                const key = bInfo.cleanName || store.name;
-                const globalIdx = (typeof store.ssr_rank === 'number' && store.ssr_rank > 0) ? store.ssr_rank - 1 : idx;
-                renderStore(store, idx, frag, false, globalIdx, (cleanNameCounts[key] || 0) > 1, false);
+            master.infeedSlots.forEach(slotCfg => {
+                const el = createInfeedPrElement(slotCfg, topStoreItems);
+                if (el) frag.appendChild(el);
             });
-            rankingListEl.appendChild(frag);
-            return missing.length;
+            gridEl.replaceChildren(frag);
         }
 
         // Instant Load: Render server-embedded INITIAL_STATUS_DATA (0ms, zero network roundtrip) or localStorage cache
@@ -1386,20 +1535,11 @@
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
+                    syncStaleHeaderAndBanner(window.INITIAL_STATUS_DATA);
                     const rankingListEl = document.getElementById('ranking-list');
-                    const hasInfeedAds = !IS_STAFF_SESSION && !document.body.classList.contains('staff-mode') && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots) && AFFILIATE_MASTER.infeedSlots.length > 0;
-                    const ssrPrNodes = rankingListEl ? rankingListEl.querySelectorAll('.pr-card-item') : [];
-                    const rankLen = rankingListEl
-                        ? rankingListEl.querySelectorAll('.ranking-item[data-store]').length
-                        : (Array.isArray(window.INITIAL_STATUS_DATA.ranking) ? window.INITIAL_STATUS_DATA.ranking.length : 0);
-                    const expectedSsrPrCount = hasInfeedAds
-                        ? AFFILIATE_MASTER.infeedSlots.filter(s => rankLen >= Number(s.afterRank || 0)).length
-                        : 0;
-                    const infeedSsrAligned = ssrPrNodes.length === expectedSsrPrCount;
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
-                        infeedSsrAligned &&
                         !staffEventsMismatch &&
                         pinnedAlreadyHydrated &&
                         currentAudience === 'men' &&
@@ -1413,19 +1553,7 @@
                         _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
                         _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
                         _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
-                        if (hasInfeedAds && ssrPrNodes.length > 0 && typeof patchInfeedPrElement === 'function') {
-                            const eligibleSlots = AFFILIATE_MASTER.infeedSlots.filter(s => rankLen >= Number(s.afterRank || 0));
-                            ssrPrNodes.forEach((ssrSlotEl, sIdx) => {
-                                const slotCfg = eligibleSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[sIdx];
-                                if (slotCfg) {
-                                    patchInfeedPrElement(ssrSlotEl, slotCfg, window.INITIAL_STATUS_DATA.ranking);
-                                }
-                            });
-                        }
-                        const lastUpdateEl = document.getElementById('last-update');
-                        if (lastUpdateEl && window.INITIAL_STATUS_DATA.timestamp) {
-                            lastUpdateEl.textContent = window.INITIAL_STATUS_DATA.timestamp.split(' ')[1] || '--:--';
-                        }
+                        syncPrAlternativesSection(window.INITIAL_STATUS_DATA.ranking);
                         appendDeferredSsrStores(window.INITIAL_STATUS_DATA);
                         Promise.resolve().then(() => {
                             if (typeof syncPcInspector === 'function') {
@@ -1435,8 +1563,6 @@
                     } else {
                         updateUI(window.INITIAL_STATUS_DATA);
                     }
-                    // The HTML may come from the Service Worker app-shell cache (instant PWA launch).
-                    // Only skip the first /api/status call after hydration/render succeeded and embedded data is fresh (< 20s).
                     _renderedFromSSR = getStatusAgeSec(window.INITIAL_STATUS_DATA) < 20;
                     const loadingEl = document.getElementById('loading');
                     const contentEl = document.getElementById('content');
@@ -1939,7 +2065,103 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // Allow only absolute http(s) URLs (or same-origin relative paths) from externally crawled data.
+        function formatStoreFreshnessJs(store) {
+            if (!store) return '';
+            const isJis = (store.source_kind === 'jis_pos') || (store.has_jis_pos === true && store.jis_wait_m_grp != null) || Boolean(store.wait_estimate && store.wait_estimate.is_measured);
+            const srcLbl = isJis ? 'JIS公式POS実測' : '公式サイト表示値';
+            let epSec = Number(store.fetched_at || 0);
+            if (!(epSec > 0) && window.lastData && window.lastData.timestamp) {
+                const parsedMs = new Date(String(window.lastData.timestamp).replace(' ', 'T') + '+09:00').getTime();
+                if (Number.isFinite(parsedMs)) epSec = parsedMs / 1000;
+            }
+            if (!(epSec > 0)) {
+                return store.freshness_label || `${srcLbl}・計測待機中`;
+            }
+            const ageSec = Math.max(0, (Date.now() / 1000) - epSec);
+            const ageMin = Math.floor(ageSec / 60);
+            if (ageSec < 60) return `${srcLbl}・1分以内`;
+            if (ageMin < 60) return `${srcLbl}・${ageMin}分前`;
+            const jstDate = new Date((epSec + 9 * 3600) * 1000);
+            const hh = String(jstDate.getUTCHours()).padStart(2, '0');
+            const mm = String(jstDate.getUTCMinutes()).padStart(2, '0');
+            return `${srcLbl}・${hh}:${mm}取得`;
+        }
+
+        function formatMidnightRetentionPlainJs(pct) {
+            if (pct === null || pct === undefined) return '';
+            const n = Number(pct);
+            if (!Number.isFinite(n)) return '';
+            const iv = Math.round(n);
+            if (iv >= 105) return `終電後も女性が増える店（${iv}%）`;
+            if (iv >= 95) return `終電後もほぼ同数が残る（${iv}%）`;
+            if (iv >= 65) {
+                const wari = Math.max(6, Math.min(9, Math.round(iv / 10)));
+                return `終電後も女性の約${wari}割が残る`;
+            }
+            return `終電前に帰る人が多め（終電後${iv}%）`;
+        }
+
+        function formatUsualDiffPlainJs(diffVal, genderLabel) {
+            if (diffVal === null || diffVal === undefined || diffVal === '') return '';
+            const d = Number(diffVal);
+            if (!Number.isFinite(d)) return '';
+            const di = Math.round(d);
+            const p = genderLabel || '';
+            if (di > 0) return `いつもより${p}+${di}人`;
+            if (di < 0) return `いつもより${p}${Math.abs(di)}人少なめ`;
+            return 'いつも並み';
+        }
+
+        function formatWaitPillJs(rawBadge, store) {
+            const clean = stripBadgeEmojiPrefix(rawBadge).replace(/^(?:推定|実測|予測|目安|回遊制)\s*[:：｜|]\s*/, '').trim();
+            if (!clean) return '';
+            if ((store && store.is_flat_rate) || clean.includes('回遊') || clean.includes('定額')) {
+                return `回遊制｜${clean}`;
+            }
+            const isJis = (store && store.source_kind === 'jis_pos') || Boolean(store && store.has_jis_pos) || String((store && store.source) || '').toLowerCase() === 'jis';
+            if (isJis) {
+                return `実測｜${clean.replace(/^JIS実測[:：\s]*/, '').trim()}`;
+            }
+            return `推定｜${clean}`;
+        }
+
+        function formatForecastPillJs(rawBadge) {
+            let clean = stripBadgeEmojiPrefix(rawBadge).replace(/^(?:推定|実測|予測|目安)\s*[:：｜|]\s*/, '').trim();
+            if (!clean) return '';
+            const fcVerified = !(window.TOP_PROVENANCE_META && window.TOP_PROVENANCE_META.forecast_verified === false);
+            if (!fcVerified) {
+                clean = clean.replace(/予測/g, '目安');
+                return `目安｜${clean}`;
+            }
+            return `推定｜${clean}`;
+        }
+
+        function getLocalizedBentoKicker(isWomenBentoView) {
+            const areaLabels = {
+                'City:shinjuku': '新宿',
+                'City:shibuya': '渋谷・恵比寿',
+                'City:umeda': '梅田・茶屋町',
+                'City:namba': '難波・心斎橋',
+                'City:nagoya': '名古屋',
+                'City:fukuoka': '福岡',
+                'Kanto': '関東',
+                'Kinki': '関西',
+                'Chubu': '中部',
+                'Kyushu': '九州・沖縄',
+                'Hokkaido': '北海道',
+                'Tohoku': '東北',
+                'Chugoku': '中国',
+                'Shikoku': '四国',
+            };
+            const areaName = areaLabels[currentFilter] || '';
+            if (isWomenBentoView) {
+                return areaName ? `今夜${areaName}で女性がすぐ入れる1店` : '今夜女性がすぐ入れる注目1店';
+            }
+            if (currentSort === 'nearby') {
+                return '現在地近くでいま入りやすい1店';
+            }
+            return areaName ? `今夜${areaName}ならここ一択` : '今夜全国ならここ一択';
+        }
         // Blocks javascript:/data:/vbscript: etc. Returns '' when unsafe.
         function safeHttpUrl(u) {
             if (u == null) return '';
@@ -2008,15 +2230,17 @@
             }
 
             const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
-            const displayRank = isKoreaStore ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
+            const isPreopenCard = !IS_STAFF && index < 0 && !isPinned;
+            const displayRank = (isKoreaStore || isPreopenCard) ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
+            const staleHalted = !IS_STAFF && getDataStaleState(window.lastData) === 'halted';
 
             item.classList.remove('rank-1', 'rank-2', 'rank-3', 'pinned-item', 'bento-hero-card');
             if (!isPinned) {
-                if (!isKoreaStore) {
+                if (!isKoreaStore && !isPreopenCard) {
                     if (index === 0) item.classList.add('rank-1');
                     else if (index === 1) item.classList.add('rank-2');
                     else if (index === 2) item.classList.add('rank-3');
-                    if (isBentoHero && !IS_STAFF) item.classList.add('bento-hero-card');
+                    if (isBentoHero && !IS_STAFF && !staleHalted) item.classList.add('bento-hero-card');
                 }
             } else {
                 item.classList.add('pinned-item');
@@ -2043,6 +2267,20 @@
                 } else {
                     areaEl.classList.add('hidden');
                     areaEl.textContent = '';
+                }
+            }
+
+            const freshnessEl = refs.freshnessEl;
+            if (freshnessEl) {
+                const fText = formatStoreFreshnessJs(store);
+                if (fText) {
+                    const isJis = (store.source_kind === 'jis_pos') || Boolean(store.has_jis_pos) || String(store.source || '').toLowerCase() === 'jis';
+                    freshnessEl.classList.remove('hidden');
+                    freshnessEl.classList.toggle('is-pos', isJis);
+                    freshnessEl.textContent = fText;
+                } else {
+                    freshnessEl.classList.add('hidden');
+                    freshnessEl.textContent = '';
                 }
             }
 
@@ -2108,7 +2346,7 @@
                 if (_eventsFetched && window.allEvents && window.allEvents.length > 0) {
                     const matchedEvs = getStoreSpecificEvents(store.name);
                     if (matchedEvs && matchedEvs.length > 0) {
-                        badgeLabel = matchedEvs.some(e => e.tag === '割引・特典') ? '特典' : 'フェア';
+                        badgeLabel = matchedEvs.some(e => e.tag === '割引・特典') ? '公式特典' : '公式フェア';
                         badgeTitle = matchedEvs[0].title || '';
                     }
                 } else if (store.ssr_event_badge) {
@@ -2119,7 +2357,7 @@
                     const eventBadge = document.createElement('span');
                     eventBadge.className = 'event-tag-badge';
                     eventBadge.textContent = badgeLabel;
-                    eventBadge.title = badgeTitle;
+                    eventBadge.title = badgeTitle ? `店舗公式発表イベント：${badgeTitle}` : '店舗公式発表イベント';
                     storeNameEl.appendChild(eventBadge);
                 }
             }
@@ -2136,19 +2374,55 @@
                 }
             }
 
+            const specRowEl = refs.specRowEl;
+            if (specRowEl) {
+                const priceShort = store.spec_price_short || '';
+                const hrsShort = store.spec_hours_short || store.today_hours_label || '';
+                const ageShort = store.spec_age_short || '';
+                if (priceShort || hrsShort) {
+                    specRowEl.classList.remove('hidden');
+                    if (refs.specTextEl) {
+                        const segs = [];
+                        if (priceShort) segs.push(priceShort);
+                        if (hrsShort) segs.push(`営業 ${hrsShort}`);
+                        if (ageShort) segs.push(ageShort);
+                        refs.specTextEl.textContent = segs.join(' ｜ ');
+                    }
+                    if (refs.mapLinkEl) {
+                        const mapHref = safeHttpUrl(store.map_url);
+                        if (mapHref) {
+                            refs.mapLinkEl.href = mapHref;
+                            refs.mapLinkEl.classList.remove('hidden');
+                        } else {
+                            refs.mapLinkEl.classList.add('hidden');
+                        }
+                    }
+                    if (refs.priceLinkEl) {
+                        const slug = (!isKoreaStore && getStoreSlug(store.name)) || '';
+                        refs.priceLinkEl.href = slug ? `/store/${encodeURIComponent(slug)}` : '/price-comparison';
+                        refs.priceLinkEl.classList.remove('hidden');
+                        refs.priceLinkEl.classList.toggle('bento-only-link', !item.classList.contains('bento-hero-card'));
+                    }
+                } else {
+                    specRowEl.classList.add('hidden');
+                }
+            }
+
             const microEl = refs.microEl;
             if (microEl) {
+                const midPlain = store.midnight_plain || formatMidnightRetentionPlainJs(store.midnight_retention_pct);
                 if (ladiesEval && ladiesEval.micro) {
                     microEl.classList.remove('hidden');
                     microEl.innerHTML = ladiesEval.micro;
-                } else if (store.core_time_short && store.midnight_retention_pct != null && Number.isFinite(Number(store.midnight_retention_pct))) {
-                    // Only measured values; no fallback label/number fabrication
+                } else if (store.core_time_short && midPlain) {
                     microEl.classList.remove('hidden');
-                    const midLabel = store.midnight_label_short ? `（${escapeHtml(String(store.midnight_label_short))}）` : '';
-                    microEl.innerHTML = `狙い目 ${escapeHtml(String(store.core_time_short))} <span class="micro-sep">｜</span> 終電後 ${Math.round(Number(store.midnight_retention_pct))}%${midLabel}`;
+                    microEl.innerHTML = `狙い目 ${escapeHtml(String(store.core_time_short))} <span class="micro-sep">｜</span> ${escapeHtml(midPlain)}`;
                 } else if (store.core_time_short) {
                     microEl.classList.remove('hidden');
                     microEl.textContent = `狙い目 ${String(store.core_time_short)}`;
+                } else if (midPlain) {
+                    microEl.classList.remove('hidden');
+                    microEl.textContent = midPlain;
                 } else {
                     microEl.classList.add('hidden');
                     microEl.textContent = '';
@@ -2161,33 +2435,33 @@
                 const we = store.wait_estimate || null;
                 const fc = store.forecast_60m || null;
                 const hasActiveGuests = ((store.women || 0) + (store.men || 0)) > 0 || Boolean(we && Number(we.est_men_wait_groups || 0) > 0);
-                const wBadge = (we && hasActiveGuests) ? (isWomenView ? we.wait_badge_women : we.wait_badge_men) : '';
-                const fBadge = fc ? (isWomenView ? fc.badge_women : fc.badge_men) : '';
-                const cleanWBadge = stripBadgeEmojiPrefix(wBadge);
-                const cleanFBadge = stripBadgeEmojiPrefix(fBadge);
+                const prebuiltW = isWomenView ? store.wait_pill_women : store.wait_pill_men;
+                const prebuiltF = isWomenView ? store.forecast_pill_women : store.forecast_pill_men;
+                const cleanWBadge = hasActiveGuests ? (prebuiltW || formatWaitPillJs(we ? (isWomenView ? we.wait_badge_women : we.wait_badge_men) : '', store)) : '';
+                const cleanFBadge = fc ? (prebuiltF || formatForecastPillJs(isWomenView ? fc.badge_women : fc.badge_men)) : '';
                 const tm = store.turnover_momentum || null;
                 const tmHasScore = Boolean(tm && tm.score !== null && tm.score !== undefined && Number.isFinite(Number(tm.score)));
-                const tmLabel = (tmHasScore && tm.label && tm.label !== '判定対象外') ? stripBadgeEmojiPrefix(tm.label) : '';
+                const tmLabel = (tmHasScore && tm.label && tm.label !== '判定対象外') ? stripBadgeEmojiPrefix(tm.label).replace(/滞留ぎみ/g, '入れ替わり少なめ') : '';
                 const wb = store.weather_brief || null;
                 const wbColdValid = Boolean(wb && wb.is_cold_surge && wb.temp_diff_c !== null && wb.temp_diff_c !== undefined && Number.isFinite(Number(wb.temp_diff_c)));
                 if (cleanWBadge || cleanFBadge || tmLabel || wbColdValid) {
                     const pills = [];
                     if (cleanWBadge) {
-                        const rawWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
+                        const rawWTone = we ? (isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone) : 'neutral';
                         const wTone = escapeHtml(rawWTone || 'neutral');
-                        const wTitle = escapeHtml(we.pos_summary_short || '');
+                        const wTitle = escapeHtml((we && we.pos_summary_short) || '');
                         pills.push(`<span class="moat-pill tone-${wTone}" title="${wTitle}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(cleanWBadge)}</span>`);
                     }
                     if (cleanFBadge) {
-                        const fTone = escapeHtml(fc.badge_tone || 'neutral');
-                        const fTitle = escapeHtml(fc.reason_short || '');
+                        const fTone = escapeHtml((fc && fc.badge_tone) || 'neutral');
+                        const fTitle = escapeHtml((fc && fc.reason_short) || '');
                         const isCautionTrend = Boolean(fc && (fc.alert_code === 'crowd_rush_warn' || fc.alert_code === 'last_train_cliff' || fc.alert_code === 'male_glut_lock' || Number(fc.pred_delta_pt || 0) <= -5));
                         const fSvg = isCautionTrend ? UI_SVG_TREND_DOWN : UI_SVG_TREND_UP;
                         pills.push(`<span class="moat-pill tone-${fTone}" title="${fTitle}">${fSvg}${escapeHtml(cleanFBadge)}</span>`);
                     }
                     if (tmLabel) {
                         const tmTone = escapeHtml(tm.tone || 'neutral');
-                        const tmTitle = escapeHtml(tm.desc || tm.reason || `席回転スピード: ${Number(tm.score)}点`);
+                        const tmTitle = escapeHtml(tm.desc || tm.reason || `席の動き指数: ${Number(tm.score)}点`);
                         pills.push(`<span class="moat-pill tone-${tmTone}" title="${tmTitle}"><span class="moat-dot" aria-hidden="true"></span>${escapeHtml(tmLabel)}</span>`);
                     }
                     if (wbColdValid) {
@@ -2256,7 +2530,7 @@
                     ladiesUsualEl.classList.remove('hidden', 'is-up', 'is-down');
                     if (uWDiff > 0) ladiesUsualEl.classList.add('is-up');
                     else if (uWDiff < 0) ladiesUsualEl.classList.add('is-down');
-                    ladiesUsualEl.textContent = uWDiff > 0 ? `平比+${uWDiff}` : (uWDiff < 0 ? `平比${uWDiff}` : '平比±0');
+                    ladiesUsualEl.textContent = store.usual_w_plain || formatUsualDiffPlainJs(uWDiff, '女性');
                     ladiesUsualEl.title = `普段の${slotLabel}平均(${store.usual_women}名)との差`;
                 } else {
                     ladiesUsualEl.classList.add('hidden');
@@ -2270,7 +2544,7 @@
                     menUsualEl.classList.remove('hidden', 'is-up', 'is-down');
                     if (uMDiff > 0) menUsualEl.classList.add('is-up');
                     else if (uMDiff < 0) menUsualEl.classList.add('is-down');
-                    menUsualEl.textContent = uMDiff > 0 ? `平比+${uMDiff}` : (uMDiff < 0 ? `平比${uMDiff}` : '平比±0');
+                    menUsualEl.textContent = store.usual_m_plain || formatUsualDiffPlainJs(uMDiff, '男性');
                     menUsualEl.title = `普段の${slotLabel}平均(${store.usual_men}名)との差`;
                 } else {
                     menUsualEl.classList.add('hidden');
@@ -2283,6 +2557,7 @@
             const menBar = refs.menBar;
             const ladiesPct = totalCount > 0 ? Math.round((ladiesCount / totalCount) * 100) : 0;
             const menPct = totalCount > 0 ? (100 - ladiesPct) : 0;
+            const isSmallSample = totalCount > 0 && totalCount < 10;
             if (totalCount > 0) {
                 ladiesBar.style.width = ladiesPct + '%';
                 menBar.style.width = menPct + '%';
@@ -2292,6 +2567,9 @@
             }
 
             const isWomenBentoView = (!IS_STAFF && currentAudience === 'women');
+            if (refs.bentoRatioHero) {
+                refs.bentoRatioHero.classList.toggle('is-small-sample', isSmallSample);
+            }
             if (refs.bentoRatioNum) {
                 const targetRatioPct = isWomenBentoView ? menPct : ladiesPct;
                 if (canAnimateDelta && (dW !== 0 || dM !== 0) && item.classList.contains('bento-hero-card')) {
@@ -2308,43 +2586,42 @@
                 }
             }
             if (refs.bentoRatioCaption) {
-                refs.bentoRatioCaption.textContent = isWomenBentoView ? '男性比' : '女性比';
+                refs.bentoRatioCaption.textContent = isSmallSample ? '少人数のため参考値' : (isWomenBentoView ? '男性比' : '女性比');
             }
             if (refs.bentoKickerLabel) {
-                if (isWomenBentoView) {
-                    refs.bentoKickerLabel.textContent = "WOMEN'S #1 PICK";
-                } else if (currentSort === 'nearby') {
-                    refs.bentoKickerLabel.textContent = 'NEAREST #1 PICK';
-                } else {
-                    refs.bentoKickerLabel.textContent = "TONIGHT'S #1 PICK";
-                }
+                refs.bentoKickerLabel.textContent = getLocalizedBentoKicker(isWomenBentoView);
             }
             if (refs.bentoVerdictPill) {
                 const waitMenMin = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
-                let vLabel = '即入店圏';
+                const isJisPos = (store.source_kind === 'jis_pos') || Boolean(store.has_jis_pos) || String(store.source || '').toLowerCase() === 'jis';
+                const jisWaitGrp = Number(store.jis_wait_m_grp || (store.wait_estimate && store.wait_estimate.est_men_wait_groups) || 0);
+                let vLabel = '推定・男性待ち0組圏';
                 let vOk = true;
                 if (totalCount === 0) {
-                    vLabel = '準備中';
+                    vLabel = '営業時間外';
+                    vOk = false;
+                } else if (isSmallSample) {
+                    vLabel = '少人数のため参考値';
                     vOk = false;
                 } else if (isWomenBentoView) {
                     if (menCount >= 4 && menCount >= ladiesCount) {
-                        vLabel = '女子待ち0・即乾杯';
+                        vLabel = '女性待ち0・即案内圏';
                         vOk = true;
-                    } else if (menCount >= 4 && ladiesPct <= 62) {
+                    } else if (menCount >= 4 && ladiesPct <= 60) {
                         vLabel = '案内スムーズ';
                         vOk = true;
                     } else {
-                        vLabel = '女子多め・待ち注意';
+                        vLabel = '女性多め・待ち注意';
                         vOk = false;
                     }
+                } else if (isJisPos) {
+                    vLabel = `実測・男性待ち${jisWaitGrp}組`;
+                    vOk = jisWaitGrp === 0;
                 } else if (waitMenMin > 0) {
-                    vLabel = `男性待機目安 ${waitMenMin}分`;
+                    vLabel = `推定・男性待ち約${waitMenMin}分`;
                     vOk = false;
-                } else if (ladiesCount >= menCount) {
-                    vLabel = '即入店圏';
-                    vOk = true;
                 } else {
-                    vLabel = '待ちなし案内中';
+                    vLabel = '推定・男性待ち0組圏';
                     vOk = true;
                 }
                 refs.bentoVerdictPill.textContent = vLabel;
@@ -2415,16 +2692,17 @@
             const rankingList = document.getElementById('ranking-list');
             const pinnedList = document.getElementById('pinned-list');
             const pinnedContainer = document.getElementById('pinned-list-container');
+            const preopenDetails = document.getElementById('preopen-stores-details');
+            const preopenList = document.getElementById('preopen-ranking-list');
+            const preopenCountEl = document.getElementById('preopen-count-num');
+            const daytimeBanner = document.getElementById('daytime-forecast-banner');
 
             const stores = data.ranking;
             if (!stores || stores.length === 0) return;
 
-            const nextSig = _computeUiSignature(data);
+            const staleState = syncStaleHeaderAndBanner(data);
+            const nextSig = _computeUiSignature(data) + `#stale:${staleState}`;
             if (nextSig === _lastRenderedSignature && rankingList.children.length > 0) {
-                const lastUpdateEl = document.getElementById('last-update');
-                if (lastUpdateEl && data.timestamp) {
-                    lastUpdateEl.textContent = data.timestamp.split(' ')[1] || '--:--';
-                }
                 return;
             }
             _lastRenderedSignature = nextSig;
@@ -2615,6 +2893,10 @@
                 rankingList.replaceChildren(emptyBox);
                 pinnedList.replaceChildren();
                 pinnedContainer.classList.add('hidden');
+                if (preopenList) preopenList.replaceChildren();
+                if (preopenDetails) preopenDetails.classList.add('hidden');
+                if (daytimeBanner) daytimeBanner.classList.add('hidden');
+                syncPrAlternativesSection([]);
                 syncPcInspector([]);
                 _syncPrevStoreCounts(stores);
                 if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
@@ -2664,71 +2946,91 @@
                 pinnedContainer.classList.add('hidden');
             }
 
-            const isStaffView = Boolean(IS_STAFF_SESSION || document.body.classList.contains('staff-mode'));
-            const infeedActive = !isStaffView && typeof AFFILIATE_MASTER !== 'undefined' && AFFILIATE_MASTER && AFFILIATE_MASTER.enabled && Array.isArray(AFFILIATE_MASTER.infeedSlots);
-            const expectedPrCount = infeedActive
-                ? otherItems.reduce((acc, _it, idx) => acc + (AFFILIATE_MASTER.infeedSlots.some(s => s.afterRank === idx + 1) ? 1 : 0), 0)
-                : 0;
+            // Separate Open/Active stores from Pre-Open 0:0 stores (except in Staff Mode or Korea-only filter)
+            let mainRankingItems = otherItems;
+            let preopenItems = [];
+            let allClosedMode = false;
+            if (!IS_STAFF && currentFilter !== 'Korea') {
+                const openCands = [];
+                const preCands = [];
+                otherItems.forEach(it => {
+                    if (_isPreopenZeroStore(it.store) && !_isKorea(it.store)) {
+                        preCands.push(it);
+                    } else {
+                        openCands.push(it);
+                    }
+                });
+                const activeNonKorea = openCands.filter(it => !_isKorea(it.store));
+                if (activeNonKorea.length === 0 && preCands.length > 0) {
+                    allClosedMode = true;
+                    mainRankingItems = otherItems.slice().sort((a, b) => {
+                        const korDiff = _isKorea(a.store) - _isKorea(b.store);
+                        if (korDiff !== 0) return korDiff;
+                        const pkA = Number(a.store.wd_peak_women || a.store.peak_band_avg_w || 0);
+                        const pkB = Number(b.store.wd_peak_women || b.store.peak_band_avg_w || 0);
+                        if (Math.abs(pkB - pkA) > 0.05) return pkB - pkA;
+                        return (b.store.women - a.store.women) || (b.store.men - a.store.men);
+                    });
+                    preopenItems = [];
+                } else {
+                    mainRankingItems = openCands;
+                    preopenItems = preCands;
+                }
+            }
+
+            if (daytimeBanner) {
+                daytimeBanner.classList.toggle('hidden', !allClosedMode);
+            }
+
             const domChildren = rankingList.children;
-            let domPrCount = 0;
-            let storeIdx = 0;
-            let canPatchRankingInPlace = otherItems.length > 0 && domChildren.length === (otherItems.length + expectedPrCount);
+            let canPatchRankingInPlace = mainRankingItems.length > 0 && domChildren.length === mainRankingItems.length;
             if (canPatchRankingInPlace) {
                 for (let ci = 0; ci < domChildren.length; ci++) {
                     const child = domChildren[ci];
-                    if (child.classList && child.classList.contains('pr-card-item')) {
-                        domPrCount++;
-                        continue;
-                    }
-                    const expectedKey = storeIdx < otherItems.length ? String(otherItems[storeIdx].store.name || '').trim() : '';
+                    const expectedKey = String(mainRankingItems[ci].store.name || '').trim();
                     if (!expectedKey || child.getAttribute('data-store') !== expectedKey || _cardDomPool.get(expectedKey) !== child) {
                         canPatchRankingInPlace = false;
                         break;
                     }
-                    storeIdx++;
-                }
-                if (storeIdx !== otherItems.length || domPrCount !== expectedPrCount) {
-                    canPatchRankingInPlace = false;
                 }
             }
 
+            const allowHero = !IS_STAFF && !allClosedMode && staleState !== 'halted';
             if (canPatchRankingInPlace) {
-                otherItems.forEach((item, idx) => {
-                    renderStore(item.store, item.rank, null, false, item.rank, item.isDup, idx === 0);
+                mainRankingItems.forEach((item, idx) => {
+                    const hasGuests = ((item.store.women || 0) + (item.store.men || 0)) > 0;
+                    renderStore(item.store, idx, null, false, idx, item.isDup, allowHero && idx === 0 && hasGuests);
                 });
-                if (infeedActive) {
-                    const prNodes = rankingList.querySelectorAll('.pr-card-item');
-                    const eligibleSlots = AFFILIATE_MASTER.infeedSlots.filter(s => otherItems.length >= Number(s.afterRank || 0));
-                    prNodes.forEach((prNode, sIdx) => {
-                        const slotCfg = eligibleSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[sIdx] || AFFILIATE_MASTER.infeedSlots[0];
-                        if (slotCfg) patchInfeedPrElement(prNode, slotCfg, otherItems);
-                    });
-                }
             } else {
                 const rankingFrag = document.createDocumentFragment();
-                otherItems.forEach((item, idx) => {
-                    renderStore(item.store, item.rank, rankingFrag, false, item.rank, item.isDup, idx === 0);
-                    // In staff mode / staff session, skip all native in-feed PR cards completely
-                    if (infeedActive) {
-                        const currentRank = idx + 1;
-                        const slot = AFFILIATE_MASTER.infeedSlots.find(s => s.afterRank === currentRank);
-                        if (slot) {
-                            const prEl = createInfeedPrElement(slot, otherItems);
-                            if (prEl) rankingFrag.appendChild(prEl);
-                        }
-                    }
+                mainRankingItems.forEach((item, idx) => {
+                    const hasGuests = ((item.store.women || 0) + (item.store.men || 0)) > 0;
+                    renderStore(item.store, idx, rankingFrag, false, idx, item.isDup, allowHero && idx === 0 && hasGuests);
                 });
                 rankingList.replaceChildren(rankingFrag);
             }
 
-            const lastUpdateEl = document.getElementById('last-update');
-            if (lastUpdateEl) {
-                lastUpdateEl.textContent = data.timestamp ? data.timestamp.split(' ')[1] : '--:--';
+            if (preopenDetails && preopenList) {
+                if (preopenItems.length > 0) {
+                    const preFrag = document.createDocumentFragment();
+                    preopenItems.forEach(item => {
+                        renderStore(item.store, -1, preFrag, false, null, item.isDup, false);
+                    });
+                    preopenList.replaceChildren(preFrag);
+                    if (preopenCountEl) preopenCountEl.textContent = String(preopenItems.length);
+                    preopenDetails.classList.remove('hidden');
+                } else {
+                    preopenList.replaceChildren();
+                    preopenDetails.classList.add('hidden');
+                }
             }
+
+            syncPrAlternativesSection(mainRankingItems.length > 0 ? mainRankingItems : otherItems);
+
             _syncPrevStoreCounts(stores);
             if (data.timestamp) _lastAnimatedTimestamp = data.timestamp;
             _allowDeltaTickerThisPass = false;
-            syncPcInspector(filteredStores);
+            syncPcInspector(mainRankingItems.length > 0 ? mainRankingItems.map(x => x.store) : filteredStores);
             if (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) {
                 const openMdl = document.getElementById('analysis-modal');
                 if (openMdl && !openMdl.classList.contains('hidden')) {
@@ -3342,7 +3644,7 @@
                         <ul>
                             <li><strong>① 男性が先行している大型店を選ぶ：</strong> 女余りの有名店へ行くと受付で30分待たされやすくなります。男性比率が高い店舗なら待ちゼロで広いソファ席へ案内されやすいです。</li>
                             <li><strong>② 顔写真付き身分証の「原本」を忘れずに：</strong> 運転免許証・マイナンバーカード・パスポート等の原本が1人でも欠けるとペアごと入店できません。</li>
-                            <li><strong>③ 席替え（チェンジ）はお手洗い帰りにスマートに：</strong> 会話が噛み合わない席で無理に粘らず、30〜40分を目安にスタッフへそっと伝えると角を立てずに移動できます（詳しくは <a href="/for-women" style="color: inherit; text-decoration: underline;">女子向け裏ガイド</a> へ）。</li>
+                            <li><strong>③ 席替え（チェンジ）はお手洗い帰りにスマートに：</strong> 会話が噛み合わない席で無理に粘らず、30〜40分を目安にスタッフへそっと伝えると角を立てずに移動できます（詳しくは <a href="/for-women" style="color: inherit; text-decoration: underline;">初めての女性向け安心ガイド</a> へ）。</li>
                         </ul>
                     `
                     : `
@@ -3535,7 +3837,19 @@
             return store.region === filterVal;
         }
 
-        // --- SNS Share Functions (Ranking & Individual Store) ---
+        // --- SNS Share Functions (PR-free & jargon-free '今夜のおすすめ3店' card for LINE & friends) ---
+        function _resolveCleanShareAreaParam() {
+            const map = {
+                'City:shinjuku': 'shinjuku',
+                'City:shibuya': 'shibuya',
+                'City:umeda': 'umeda',
+                'City:namba': 'namba',
+                'City:nagoya': 'nagoya',
+                'City:fukuoka': 'fukuoka',
+            };
+            return map[currentFilter] || '';
+        }
+
         function buildRankingShareText() {
             const regionNames = {
                 'All': '全国', 'Kanto': '関東', 'Kinki': '関西', 'Chubu': '中部',
@@ -3546,29 +3860,40 @@
                 'City:nagoya': '名古屋エリア', 'City:fukuoka': '福岡エリア'
             };
             const areaTitle = regionNames[currentFilter] || '全国';
-            let text = `いま${areaTitle}で人が集まってる相席ラウンジTOP3🍻\n`;
+            const hm = (window.lastData && window.lastData.timestamp && String(window.lastData.timestamp).includes(' '))
+                ? String(window.lastData.timestamp).split(' ')[1].slice(0, 5)
+                : '現在';
+            let text = `今夜のおすすめ3店（${areaTitle}・${hm}時点）\n`;
             if (window.lastData && window.lastData.ranking) {
                 const list = window.lastData.ranking.filter(s => {
                     if (currentFilter === 'All') return s.region !== 'Korea';
                     return matchesRegionOrCityFilter(s, currentFilter);
-                }).slice(0, 3);
-                const medals = ['🥇', '🥈', '🥉'];
+                }).filter(s => ((s.women || 0) + (s.men || 0)) > 0).slice(0, 3);
+                const rankLabels = ['1位', '2位', '3位'];
                 list.forEach((s, i) => {
                     const b = detectBrandInfo(s);
-                    text += `${medals[i]} ${b.fullDisplayTitle}（女性${s.women}名 / 男性${s.men}名）\n`;
+                    const w = Number(s.women || 0);
+                    const m = Number(s.men || 0);
+                    const tot = w + m;
+                    let note = '';
+                    if (m === 0 && w > 0) note = '・男性すぐ相席';
+                    else if (tot >= 10 && Math.abs(w - m) <= Math.ceil(tot * 0.1)) note = '・男女ほぼ同数';
+                    else if (tot >= 10 && w > m) note = '・女性多め';
+                    text += `${rankLabels[i]} ${b.fullDisplayTitle}（女性${w}名・男性${m}名${note}）\n`;
                 });
             }
-            text += `#相席ナビ #相席ラウンジ`;
-            return text;
+            return text.trim();
         }
 
         async function shareCurrentRanking(platform) {
-            const shareUrl = window.location.origin + window.location.pathname;
+            const areaParam = _resolveCleanShareAreaParam();
+            const shareQs = areaParam ? `?share=top3&area=${encodeURIComponent(areaParam)}` : '?share=top3';
+            const shareUrl = window.location.origin + '/' + shareQs;
             const shareText = buildRankingShareText();
 
             if (platform === 'native' && navigator.share) {
                 try {
-                    await navigator.share({ title: '相席ナビ｜全国ラウンジの今わかる人数ランキング', text: shareText, url: shareUrl });
+                    await navigator.share({ title: '相席ナビ｜今夜のおすすめ3店', text: shareText, url: shareUrl });
                     return;
                 } catch (e) {}
             }
@@ -3576,12 +3901,12 @@
                 const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 window.open(lineUrl, '_blank', 'noopener,noreferrer');
             } else if (platform === 'x' || platform === 'native') {
-                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+                const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText + '\n' + shareUrl + '\n#相席ナビ #相席ラウンジ')}`;
                 window.open(xUrl, '_blank', 'noopener,noreferrer');
             } else if (platform === 'copy') {
                 try {
                     await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                    showRefreshToast('✓ ランキングとURLをコピーしました');
+                    showRefreshToast('✓ 今夜のおすすめ3店とURLをコピーしました');
                 } catch (e) {
                     showRefreshToast('URL: ' + shareUrl);
                 }
@@ -3898,36 +4223,58 @@
 
         function buildCleanMinimalHumanLine(store, isWomenView) {
             if (!store) return '';
+            if (isWomenView && store.human_line_women) return store.human_line_women;
+            if (!isWomenView && store.human_line) return store.human_line;
+
             const w = Math.max(0, Number(store.women || 0));
             const m = Math.max(0, Number(store.men || 0));
             const tot = w + m;
+            const openT = store.open_time_short || (String(store.today_hours_label || '').match(/(\d{1,2}:\d{2})/) || [])[1] || '夕方';
             if (tot === 0) {
-                return '営業時間前または準備中の時間帯です';
+                if (store.wd_peak_hour != null && store.wd_peak_women != null && Number(store.wd_peak_women) >= 3) {
+                    const dayP = store.wd_label ? `${store.wd_label}曜` : '同曜日';
+                    return `本日${openT}オープン。${dayP}のピーク実績は${store.wd_peak_hour}時台（女性平均${Math.round(Number(store.wd_peak_women))}名）`;
+                }
+                return store.is_open_now
+                    ? '現在オープン中（女性0名・男性0名）｜これから来店が始まる時間帯'
+                    : `本日${openT}オープン（現在は営業時間外）`;
             }
+            const wPct = Math.round((w / tot) * 100);
             if (isWomenView) {
-                const wPct = Math.round((w / tot) * 100);
-                if (m >= 4 && m >= w) {
-                    return `いま男性が${m}名先行中で、女性は待ち時間ほぼゼロで入れます`;
-                }
-                if (m >= 4 && wPct <= 62) {
-                    return '男女バランスが良く、席替えもスムーズに回りやすい状況です';
-                }
-                if (m === 0 && w > 0) {
-                    return '現在は女性組のみで、男性の来店待ちの時間帯です';
-                }
-                return '女性組が多めのため、近隣の男性先行店も比較がおすすめです';
+                if (m === 0 && w > 0) return `現在女性${w}名のみ（男性0名）。相席開始まで少し待つ可能性あり`;
+                if (tot < 10) return `男性${m}名・女性${w}名｜少人数のため参考値（落ち着いた時間帯）`;
+                if (m >= 4 && m >= w) return `男性${m}名が先行中（女性${w}名）。女性は待ちほぼ0で即着席しやすい`;
+                if (wPct >= 40 && wPct <= 60) return `男女ほぼ同数（女性${w}・男性${m}）。席替えも自然に回りやすい状況`;
+                return `女性${w}名・男性${m}名で女性多め。近隣の男性先行店も比較がおすすめ`;
+            }
+            if (w === 0 && m > 0) return `いま女性0名（男性${m}名）。男性は待ちの可能性大`;
+            const uwd = store.usual_w_diff;
+            const usl = store.usual_slot_label || '普段同時間帯';
+            const diffSuffix = (uwd !== null && uwd !== undefined && Number(uwd) !== 0)
+                ? (Number(uwd) > 0 ? `｜いつもの${usl}より女性+${Math.round(Number(uwd))}人` : `｜いつもの${usl}より女性${Math.round(Number(uwd))}人`)
+                : '';
+            if (m === 0 && w > 0) {
+                return tot < 10
+                    ? `女性${w}名が待機中（男性0名）。男性は入店即相席｜少人数のため参考値`
+                    : `女性${w}名が待機中・男性0名。男性は入店即相席${diffSuffix}`;
+            }
+            if (tot < 10) {
+                return `女性${w}・男性${m}｜男性待ち0組目安｜少人数のため比率は参考値`;
             }
             const waitM = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
-            if (w >= m + 12 && waitM === 0) {
-                return `いま女性が${w}名いて、男性もスムーズに入れます`;
-            }
-            if (waitM === 0 && w >= m) {
-                return '男女バランスが良く、待ち時間なしで案内中です';
-            }
             if (waitM > 0) {
-                return '男性はやや混雑（女性はすぐ相席しやすい状況）';
+                return `女性${w}・男性${m}｜男性待ち目安${waitM}分（推定）｜男性はやや混雑${diffSuffix}`;
             }
-            return `現在女性が${w}名・男性が${m}名入店中です`;
+            if (wPct >= 45 && wPct <= 55) {
+                return `男女ほぼ同数（女性${w}・男性${m}）｜すぐ相席になりやすい${diffSuffix}`;
+            }
+            if (wPct > 55) {
+                return `女性が多め（女性${w}・男性${m}）｜男性待ち0組目安（推定）${diffSuffix}`;
+            }
+            if (wPct >= 40) {
+                return `女性${w}・男性${m}｜男性待ち0組目安（推定）${diffSuffix}`;
+            }
+            return `男性が先行中（女性${w}・男性${m}）｜男性は待機注意${diffSuffix}`;
         }
 
         function isPcSplitActive() {
@@ -4169,7 +4516,7 @@
                             </div>
                             <div style="text-align:right;">
                                 <div class="cmi-count-lbl">男女バランス</div>
-                                <div class="cmi-curve-val">${tot > 0 ? `女性 ${wPct}%` : '準備中'}</div>
+                                <div class="cmi-curve-val">${tot === 0 ? '営業時間外' : (tot < 10 ? '少人数のため参考値' : `女性 ${wPct}%`)}</div>
                             </div>
                         </div>
                         <div class="cmi-ratio-bar">
@@ -6168,6 +6515,7 @@
             const banner = document.getElementById('pwa-install-banner');
             if (!banner) return;
 
+            let eligibleVisit = false;
             try {
                 const dismissedAt = localStorage.getItem('pwa_dismissed_at');
                 if (dismissedAt) {
@@ -6177,7 +6525,17 @@
                         return;
                     }
                 }
-            } catch (e) {}
+                const visitCount = parseInt(localStorage.getItem('aiseki_visit_count') || '1', 10) || 1;
+                const conciergeDone = localStorage.getItem('aiseki_concierge_done') === '1';
+                eligibleVisit = (visitCount >= 2) || conciergeDone;
+            } catch (e) {
+                eligibleVisit = false;
+            }
+
+            if (!eligibleVisit) {
+                hidePwaBannerElement();
+                return;
+            }
 
             banner.hidden = false;
             banner.classList.remove('hidden');

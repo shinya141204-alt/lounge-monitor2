@@ -486,8 +486,8 @@ class MomentumTests(unittest.TestCase):
         self.assertIn('+15</span>', html)
         self.assertIn('+8</span>', html)
         self.assertIn('狙い目 ', html)
-        self.assertIn('終電後 ', html)
-        self.assertIn('平比', html)
+        self.assertIn('終電後', html)
+        self.assertIn('いつもより', html)
 
         r_status = client.get('/api/status')
         self.assertEqual(r_status.status_code, 200)
@@ -1166,7 +1166,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=44', body, f"{p} missing /static/calm.css?v=44")
+            self.assertIn('/static/calm.css?v=45', body, f"{p} missing /static/calm.css?v=45")
             if '/static/style.css' in body:
                 self.assertRegex(body, r'/static/style\.css\?v=2026\d+_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1179,7 +1179,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=44', sbody, f"{sp} missing /static/calm.css?v=44")
+                self.assertIn('/static/calm.css?v=45', sbody, f"{sp} missing /static/calm.css?v=45")
                 if '/static/style.css' in sbody:
                     self.assertRegex(sbody, r'/static/style\.css\?v=2026\d+_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1404,19 +1404,21 @@ class GrowthFeaturesTests(unittest.TestCase):
         self.assertNotIn('毎晩の「入りやすい穴場店舗」をX・Threadsで更新中', idx_html)
         self.assertIn('公式SNSも更新中', idx_html)
 
-        nav_start = idx_html.find('<nav class="portal-global-nav"')
+        nav_start = idx_html.find('<nav class="portal-global-nav')
         nav_end = idx_html.find('</nav>', nav_start)
         nav_block = idx_html[nav_start:nav_end]
-        p_rank = nav_block.find('リアルタイム順位')
-        p_price = nav_block.find('料金・イベント比較')
-        p_col = nav_block.find('コラム・記事一覧')
-        self.assertTrue(0 <= p_rank < p_price < p_col, "Top nav order must be リアルタイム順位 -> 料金・イベント比較 -> コラム・記事一覧")
+        p_rank = nav_block.find('今の順位')
+        p_price = nav_block.find('料金比較')
+        p_women = nav_block.find('初めての女性向け安心ガイド')
+        p_menu = nav_block.find('メニュー（3秒診断')
+        self.assertTrue(0 <= p_rank < p_price < p_women < p_menu, "Top compact nav order must be 今の順位 -> 料金比較 -> 初めての女性向け安心ガイド -> メニュー")
+        self.assertIn('コラム・記事一覧', idx_html)
 
-        # Verify ranking-list appears BEFORE momentum-legend-bar and official-sns-compact (First-view optimization)
+        # Verify ranking-list appears BEFORE metrics-legend-popover and official-sns-compact (First-view optimization)
         pos_ranking = idx_html.find('id="ranking-list"')
-        pos_legend = idx_html.find('class="momentum-legend-bar"')
+        pos_legend = idx_html.find('id="metrics-legend-popover"')
         pos_sns = idx_html.find('official-sns-compact')
-        self.assertTrue(0 < pos_ranking < pos_legend < pos_sns, "ranking-list must appear before legend and SNS bar")
+        self.assertTrue(0 < pos_ranking < pos_legend < pos_sns, "ranking-list must appear before legend popover and SNS bar")
 
         # 7. Step 2 Affiliate /link/ internal redirect & column 1-to-1 matching verification
         repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1777,7 +1779,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v111'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v112'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1880,14 +1882,14 @@ class FullAuditRegressionTests(unittest.TestCase):
                 self.assertFalse(app_module.latest_data['is_seed'])
                 self.assertTrue(any(s.get('women') == 29 for s in app_module.latest_data['full_data']))
 
-            # 6. Public '/' must show '<h1>相席ナビ</h1>' even when master session is active, and place #ranking-list BEFORE hidden modals
+            # 6. Public '/' must show public hero H1 even when master session is active, and place #ranking-list BEFORE hidden modals
             with self.client.session_transaction() as s:
                 s['is_staff'] = True
                 s['is_master'] = True
             r_pub_with_master = self.client.get('/')
             pub_master_html = r_pub_with_master.data.decode('utf-8')
-            self.assertIn('<h1>相席ナビ</h1>', pub_master_html)
-            self.assertNotIn('<h1>相席ナビ マスター管理</h1>', pub_master_html)
+            self.assertIn('相席ラウンジ、いま入れる店は？', pub_master_html)
+            self.assertNotIn('相席ナビ マスター管理', pub_master_html)
             self.assertTrue('data-store="オリエンタルラウンジ 新宿"' in pub_master_html or 'data-store="OLG 新宿"' in pub_master_html)
             self.assertIn('window.__SSR_PINNED_HYDRATED', pub_master_html)
             self.assertLess(pub_master_html.index('id="ranking-list"'), pub_master_html.index('id="analysis-modal"'))
@@ -4541,20 +4543,20 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         ):
             self.assertIn(expected_selector, calm_css)
 
-        # 2. Public home has .concierge-quick-banner and /concierge link in #menu-modal
+        # 2. Public home has compact concierge link and /concierge link in #menu-modal
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('class="concierge-quick-banner"', home_html)
+        self.assertIn('class="compact-concierge-link"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=44', home_html)
+        self.assertIn('calm.css?v=45', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=44
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=45
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=44', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=45', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4745,9 +4747,9 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=44', home_html)
-        self.assertIn('app.js?v=20261112_1', home_html)
-        self.assertIn('/sw.js?v=111', home_html)
+        self.assertIn('calm.css?v=45', home_html)
+        self.assertIn('app.js?v=20261118_1', home_html)
+        self.assertIn('/sw.js?v=112', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

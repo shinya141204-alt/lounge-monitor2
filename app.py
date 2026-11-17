@@ -494,13 +494,17 @@ def _ensure_scheduler_started_async():
             scheduler.add_job(func=_threads_conv_job, trigger="cron", day_of_week="tue,thu,fri,sun", hour=12, minute="18,22,26,30,34,39,43", jitter=60, executor="sns_ai")
             def _ig_reel_scheduled_job(slot_lbl="20:00"):
                 try:
-                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl) or not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
+                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
                         return
                     cur_stores, is_seed = _visible_live_stores()
-                    import moshimo_reel_queue
-                    moshimo_reel_queue.dispatch_scheduled_ig_reel(cur_stores, slot_label=slot_lbl, is_seed=is_seed)
+                    if instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
+                        import moshimo_reel_queue
+                        moshimo_reel_queue.dispatch_scheduled_ig_reel(cur_stores, slot_label=slot_lbl, is_seed=is_seed)
+                    if slot_lbl == "20:00":
+                        import youtube_poster
+                        youtube_poster.dispatch_scheduled_youtube_short(stores=cur_stores, slot_label=slot_lbl, is_seed=is_seed)
                 except Exception as err:
-                    logging.error(f"Scheduled Instagram Reel post failed: {err}")
+                    logging.error(f"Scheduled short-video post failed: {err}")
             scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
             scheduler.add_job(func=_ig_reel_scheduled_job, trigger=OrTrigger([CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"), CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC")]), args=["22:50"], executor="sns_ai")
             def _tiktok_inbox_job(slot_lbl="20:35"):
@@ -953,7 +957,7 @@ _staff_editorial_preview_cache = {'ts': 0.0, 'sig': None, 'data': None}
 _aux_doc_cache_lock = threading.Lock()
 _sitemap_xml_cache = {'key': None, 'xml': None}
 _llms_txt_cache = {'key': None, 'short': None, 'full': None, 'facts': None}
-_CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format')
+_CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format', 'share')
 
 
 def _normalize_cache_query_args() -> tuple:
@@ -1149,7 +1153,7 @@ def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=660.0):
     else:
         eff_ttl = ttl_sec
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-        bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
+        bucket_15m = now_jst.strftime('%Y%m%d%H%M') if request.path == '/' else f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
         with data_lock:
             cur_stores = latest_data.get('full_data') or []
             last_upd = latest_data.get('last_updated')
@@ -1316,7 +1320,7 @@ def _enrich_for_ssr(stores):
                 )
                 if matched_evs:
                     has_disc = any(e.get('tag') == '割引・特典' for e in matched_evs)
-                    ev_badge = '特典' if has_disc else 'フェア'
+                    ev_badge = '公式特典' if has_disc else '公式フェア'
                     ev_title = matched_evs[0].get('title') or ''
             except Exception:
                 pass
@@ -1328,6 +1332,15 @@ def _enrich_for_ssr(stores):
         moat_intelligence.enrich_stores_with_moat_signals(enriched, allow_weather_blocking=False)
     except Exception:
         pass
+    with data_lock:
+        _lu_ssr = latest_data.get('last_updated')
+    _finalize_enriched_ranking(
+        enriched,
+        last_updated=_lu_ssr,
+        benchmarks=benchmarks,
+        local_db_mod=local_db,
+        is_testing=bool(app.testing),
+    )
     import store_master
     for item in enriched:
         raw_n = item.get('name', '')
@@ -1344,7 +1357,7 @@ def get_initial_status_payload():
     """Return status dict for SSR embedding in index.html if available (memoized per live snapshot & 15m bucket)."""
     restore_latest_data_if_empty()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    bucket_15m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
+    bucket_15m = now_jst.strftime('%Y%m%d%H%M')
     _, ev_upd = _get_cached_events_nonblocking()
     env_probe = _runtime_env_probe()
     import ops_governance
@@ -1772,24 +1785,37 @@ def index():
     monetized_women_dating = affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False)
     monetized_women_clinic = affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False)
 
+    raw_share_area = (request.args.get('area') or '').strip().lower()
+    safe_share_area = raw_share_area if raw_share_area in ('shinjuku', 'shibuya', 'umeda', 'namba', 'nagoya', 'fukuoka') else ''
+
     def _render():
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
         bucket_s = f"{now_jst.strftime('%Y%m%d_%H')}{(now_jst.minute // 15) * 15:02d}"
         s_param = f"{explicit_s}_{bucket_s}" if explicit_s and not re.search(r'\d{8}', explicit_s) else (explicit_s or bucket_s)
+        is_top3_share = (request.args.get('share') or '').strip().lower() == 'top3'
+        area_qs = f"&area={safe_share_area}" if safe_share_area else ''
         og_meta = None
-        og_image_url = f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
+        og_image_url = (
+            f"https://aiseki-navi.com/ogp/top3.png?s={s_param}{area_qs}"
+            if is_top3_share
+            else f"https://aiseki-navi.com/ogp/live.png?s={s_param}"
+        )
         try:
             import ogp_generator
             og_meta = ogp_generator.get_ogp_meta_for_slot(s_param, now_jst=now_jst)
         except Exception:
             pass
         initial_status = get_initial_status_payload()
+        top_provenance = _build_top_provenance_meta(
+            initial_status, local_db_mod=local_db, is_testing=bool(app.testing)
+        )
         return render_template(
             'index.html',
             is_staff=False,
             initial_status=initial_status,
             initial_status_client=_client_status_payload(initial_status),
             deferred_card_pool=_build_deferred_card_pool(initial_status, is_staff=False),
+            top_provenance=top_provenance,
             og_meta=og_meta,
             og_image_url=og_image_url,
             published_scheduled=scheduled_articles.get_published_articles(),
@@ -1798,9 +1824,12 @@ def index():
             monetized_women_dating=monetized_women_dating,
             monetized_women_clinic=monetized_women_clinic,
         )
+    is_top3_share_sig = (request.args.get('share') or '').strip().lower() == 'top3'
     cache_sig = (
         'index_pub',
         has_sns_inflow,
+        is_top3_share_sig,
+        safe_share_area if is_top3_share_sig else '',
         bachelor_shares_instant,
         monetized_women_dating,
         monetized_women_clinic,
@@ -1811,7 +1840,9 @@ def index():
 from ssr_payload import (
     CLIENT_STATUS_DROP_KEYS as _CLIENT_STATUS_DROP_KEYS,
     build_deferred_card_pool as _build_deferred_card_pool,
+    build_top_provenance_meta as _build_top_provenance_meta,
     client_status_payload as _client_status_payload,
+    finalize_enriched_ranking as _finalize_enriched_ranking,
 )
 
 
@@ -2197,6 +2228,9 @@ def staff_monitor():
                 except Exception:
                     editorial_preview = None
             staff_init_status = get_initial_status_payload()
+            staff_top_prov = _build_top_provenance_meta(
+                staff_init_status, local_db_mod=local_db, is_testing=bool(app.testing)
+            )
             return render_template(
                 'index.html',
                 is_staff=True,
@@ -2204,6 +2238,7 @@ def staff_monitor():
                 initial_status=staff_init_status,
                 initial_status_client=_client_status_payload(staff_init_status),
                 deferred_card_pool=_build_deferred_card_pool(staff_init_status, is_staff=True),
+                top_provenance=staff_top_prov,
                 published_scheduled=scheduled_articles.get_published_articles(),
                 scheduled_queue=sched_queue,
                 data_audit_report=audit_report,
@@ -2332,6 +2367,14 @@ def get_status():
         moat_intelligence.enrich_stores_with_moat_signals(enriched_ranking, allow_weather_blocking=False)
     except Exception:
         pass
+
+    _finalize_enriched_ranking(
+        enriched_ranking,
+        last_updated=last_u,
+        benchmarks=benchmarks,
+        local_db_mod=local_db,
+        is_testing=bool(app.testing),
+    )
 
     import store_master
     for item in enriched_ranking:

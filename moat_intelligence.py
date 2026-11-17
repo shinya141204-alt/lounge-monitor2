@@ -2202,7 +2202,7 @@ def calculate_turnover_momentum_index(
         label = "🔄標準ペース"
         tone = "normal"
     else:
-        label = "☕️滞留ぎみ"
+        label = "☕️入れ替わり少なめ"
         tone = "slow"
 
     return {

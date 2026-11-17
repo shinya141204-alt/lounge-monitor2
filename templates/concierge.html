@@ -697,7 +697,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=44">
+    <link rel="stylesheet" href="/static/calm.css?v=45">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -1312,6 +1312,7 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 applyResult(data);
+                try { localStorage.setItem('aiseki_concierge_done', '1'); } catch (e) {}
                 if (stageEl) stageEl.classList.remove('is-updating');
             })
             .catch(function(err) {
@@ -1346,6 +1347,7 @@
         // 明示クエリパラメータ付き着地時のみ初期インテント送信（デフォルト shinjuku:men:pair の無条件加算を防止）
         if (HAS_INITIAL_QUERY) {
             trackHashigoIntent();
+            try { localStorage.setItem('aiseki_concierge_done', '1'); } catch (e) {}
         }
     })();
     </script>

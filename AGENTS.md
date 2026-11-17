@@ -11,11 +11,11 @@
   - アプリ本体: `aiseki-navi-tokyo`（`web` + `worker` の2プロセス構成）
   - データベース: Fly Postgres `aiseki-navi-tokyo-db`（**512MB VM**：メモリ上限を意識し大量行の一括 `fetchall()` を避けること）＋ Redis（高速キャッシュ）＋ SQLite WAL（ローカル/フォールバック）＋ Google Sheets（バックアップ同期）
 - **コアサーバー & Blueprint 分割**:
-  - `app.py`: Flask 初期化・認証・セキュリティヘッダー・`/`（SSR軽量描画）・`/staff`・コア `/api/status`・`/api/vote`・`/api/watch-intent`・`/link/<item_id>`
+  - `app.py` / `ssr_payload.py`: Flask 初期化・認証・セキュリティヘッダー・`/`（SSR軽量描画・カード別鮮度/出典/料金/停止検知）・`/staff`・コア `/api/status`・`/api/vote`・`/api/watch-intent`・`/link/<item_id>`
   - `routes/portal_bp.py`: ブランド別・`/store/<slug>`・`/areas`・`/columns`・`/stats`・`/stats/monthly.csv`・`/stats/weekend-index`・`/stats/monthly/<yyyy_mm>`・`/stats/year-end-2026`・`/price-comparison`・`/for-women`・`/concierge`・`/grooming`・`/about`・`/contact`・全 `/guide/*`
   - `routes/seo_feeds_bp.py`: `/robots.txt`・`/sitemap.xml`・`/llms.txt`・`/llms-full.txt`・`/api/llms-facts.json`（`schema_version="2.1"`）・`/api/cross-site/area-night-summary.json`・`/ads.txt`
   - `routes/staff_bp.py`: スタッフ・マスター管理APIおよび IG スライドキャッシュ
-  - `routes/sns_jobs_bp.py`: 動的 OGP / リール動画配信、非同期 SNS ジョブキュー、全 `/api/trigger-*`
+  - `routes/sns_jobs_bp.py` / `ogp_generator.py`: 動的 OGP（`/ogp/live.png`・`/ogp/top3.png`・`/ogp/weekly.png`）/ リール動画配信、非同期 SNS ジョブキュー、全 `/api/trigger-*`
   - `routes/push_line_bp.py` / `push_watch.py`: Web Push 条件ウォッチ購読（RFC 8292 VAPID ES256 + RFC 8291 `aes128gcm`）＆公式 LINE Messaging API 0円自動応答 Webhook
   - `routes/_bridge.py`: `sys.modules['app']` 動的プロキシ（既存テストの `mock.patch.object(app_module, ...)` 互換維持用）
 - **独自データモート・分析モジュール**:

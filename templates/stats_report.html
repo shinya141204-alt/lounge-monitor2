@@ -901,7 +901,7 @@
             .hmx-tab { transition: background-color 0.15s ease, color 0.15s ease; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=44">
+    <link rel="stylesheet" href="/static/calm.css?v=45">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -942,8 +942,72 @@
             <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 0.8rem;">
                 <a href="/stats/year-end-2026" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.42); color: var(--accent-text); font-weight: 700; text-decoration: none;">2026年 忘年会・年末年始＆ドーム終演連動データ白書 ›</a>
                 <a href="/stats/monthly.csv" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-main); font-weight: 600; text-decoration: none;">店舗別30日統計CSVダウンロード（CC BY 4.0）</a>
+                <a href="#data-provenance" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">データの取り方・蓄積内訳・予測精度 ↓</a>
                 <a href="#heatmap" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">曜日×時間帯別ヒートマップ＆埋め込み発行 ↓</a>
                 <a href="#forecast-accuracy" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">過去{{ forecast_days or 90 }}日間の予測検証ログへ ↓</a>
+            </div>
+        </section>
+
+        {#- 冒頭：データの出典・蓄積件数の内訳・60分後予測の的中率・運営者情報（信頼性開示ブロック） -#}
+        {%- set fc30_s = (forecast_accuracy_30d.summary if (forecast_accuracy_30d and forecast_accuracy_30d.summary) else (forecast_accuracy.summary if (forecast_accuracy and forecast_accuracy.summary) else {})) -%}
+        {%- set fc30_ok = (fc30_s and (fc30_s.resolved_count or 0) >= 30 and fc30_s.mae_wpct is not none) -%}
+        <section id="data-provenance" class="hmx-box" aria-labelledby="prov-summary-title">
+            <h2 id="prov-summary-title" style="font-size:1.15rem;">データの取得方法・蓄積件数の内訳・60分後予測の精度検証・運営体制</h2>
+            <p class="hmx-lead">
+                トップページおよび各記事で表示している数値の「出典」「実測と推定の区別」「予測誤差の実績」「運営・収益モデル」を事実ベースで公開しています。
+            </p>
+            <div class="sim-insights-grid" style="margin-bottom:14px;">
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">1. ブランド別のデータ取得方法（1分更新）</div>
+                    <div class="sim-insight-val" style="font-size:0.95rem;">JIS（ジス）＝公式POS実測 ／ 他＝公式Web公開値</div>
+                    <div class="sim-insight-sub">
+                        ・<strong>JIS（ジス）各店</strong>：公式サイト公開のPOS連動データ（男女人数・待機組数・相席成立組数）を毎分取得（すべて実測値）。<br>
+                        ・<strong>オリエンタルラウンジ・ag（アグ）・XIX（ジックス）・ALFA（アルファ）・CLOVERS（クローバーズ）</strong>：各ブランド公式Webサイトの公開人数を毎分取得（人数は公式表示値／待ち時間はJIS実測POSを教師データとした<strong>統計推定値</strong>）。<br>
+                        ・<strong>ASOBIBAR（アソビバー）・ヤタコイ</strong>：公式リアルタイム公開人数を毎分取得（自由回遊・定額制）。
+                    </div>
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">2. 蓄積ログ件数の内訳と集計期間</div>
+                    {% if moat_coverage and (moat_coverage.raw_snapshots or 0) > 0 %}
+                    <div class="sim-insight-val" style="font-size:0.98rem; font-variant-numeric:tabular-nums;">
+                        本番DB生ログ {{ "{:,}".format(moat_coverage.raw_snapshots | int) }}件
+                    </div>
+                    <div class="sim-insight-sub" style="font-variant-numeric:tabular-nums;">
+                        ・<strong>直近生スナップショット（90日保持）</strong>：{{ "{:,}".format(moat_coverage.raw_snapshots | int) }}件（店舗×1分単位の人数レコード／期間：{{ (moat_coverage.min_timestamp or '')[:10] }} 〜 {{ (moat_coverage.max_timestamp or '')[:16] }}）<br>
+                        ・<strong>1時間単位 永久統計ロールアップ</strong>：{{ "{:,}".format((moat_coverage.rolled_up_hours or 0) | int) }}時間枠（延べ{{ "{:,}".format((moat_coverage.rollup_observations or 0) | int) }}回観測）<br>
+                        ・<strong>JIS公式POS待機・相席ログ</strong>：{{ "{:,}".format((moat_coverage.pos_telemetry_rows or 0) | int) }}件<br>
+                        ※一部コラム（「群衆殺到パラドックス」等）のモデル事前分布校正には、旧DB時代を含む累計アーカイブ（979,768件・2026年10月時点）を使用しています。トップページには現行本番DBの実測件数のみを表示しています。
+                    </div>
+                    {% else %}
+                    <div class="sim-insight-val" style="font-size:0.95rem;">検証ログ集計中</div>
+                    <div class="sim-insight-sub">店舗×分単位の公開人数ログおよび1時間単位ロールアップを自動蓄積しています。</div>
+                    {% endif %}
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">3. 60分後男女比予測の過去的中率・誤差幅（直近30日）</div>
+                    {% if fc30_ok %}
+                    <div class="sim-insight-val" style="font-size:0.98rem; font-variant-numeric:tabular-nums;">
+                        平均誤差 ±{{ "%.1f"|format(fc30_s.mae_wpct | float) }}pt ｜ ±10pt的中 {{ "%.1f"|format(fc30_s.within_10pt_pct | float) }}%
+                    </div>
+                    <div class="sim-insight-sub" style="font-variant-numeric:tabular-nums;">
+                        ・<strong>検証完了サンプル数</strong>：直近30日間 {{ "{:,}".format(fc30_s.resolved_count | int) }}件（予測60分後の実測値と自動照合）<br>
+                        ・<strong>±5pt以内的中率</strong>：{{ "%.1f"|format((fc30_s.within_5pt_pct or 0) | float) }}% ／ <strong>方向的中率</strong>：{{ "%.1f"|format((fc30_s.direction_hit_pct or 0) | float) }}%<br>
+                        ・時間帯別・店舗別の全検証ログはページ下部 <a href="#forecast-accuracy">60分後予測の実測答え合わせ</a> で常時公開しています。
+                    </div>
+                    {% else %}
+                    <div class="sim-insight-val" style="font-size:0.95rem;">過去傾向からの目安（検証データ蓄積中）</div>
+                    <div class="sim-insight-sub">十分な答え合わせ件数に達するまで、予測値は「過去傾向からの目安」として表示します。</div>
+                    {% endif %}
+                </div>
+                <div class="sim-insight-card">
+                    <div class="sim-insight-label">4. 運営者情報・公式提携の有無・順位決定ルール</div>
+                    <div class="sim-insight-val" style="font-size:0.95rem;">公式非提携の独立統計メディア（広告費による順位変動なし）</div>
+                    <div class="sim-insight-sub">
+                        ・<strong>運営・監修</strong>：相席ナビ編集部（編集長：<a href="/about">くわもん</a>）<br>
+                        ・<strong>公式提携の有無</strong>：掲載各ブランドとは資本関係・公式送客提携のない独立メディアです。<br>
+                        ・<strong>収益と中立性</strong>：ランキング外に分離表示したPR・アフィリエイト広告収益で運営しており、<strong>ランキング順位はリアルタイム人数データのみで自動決定（広告費による順位操作ゼロ）</strong>しています。
+                    </div>
+                </div>
             </div>
         </section>
 

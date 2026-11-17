@@ -1576,6 +1576,9 @@
                 {% if editorial.research.weather and editorial.research.weather.available %}
                 <span class="context-chip">🌤️ {{ editorial.research.weather.summary }}（{{ editorial.research.weather.adlib_hint }}）</span>
                 {% endif %}
+                {% if editorial.gemini_status and editorial.gemini_status.gcp_vertex_active %}
+                <a href="/staff/pdca#gcp-credits-setup" class="context-chip" style="text-decoration:none; border-color:var(--green); color:var(--green-ink);">GCPクレジット優先消化ON（Vertex AI: {{ editorial.gemini_status.gcp_project_id }}）</a>
+                {% endif %}
                 {% if editorial.gemini_status and editorial.gemini_status.last_error and not editorial.ai_pending_async %}
                 <span class="context-chip" style="border-color:var(--rose); color:var(--err-ink);">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（自動で安全案へフォールバック済）</span>
                 {% endif %}
@@ -1612,17 +1615,24 @@
         {% if channel == 'instagram' and moshimo_queue %}
         {% set _mq_eps = moshimo_queue.episodes or [] %}
         {% set _mq_init = moshimo_queue.next_episode or (_mq_eps[0] if _mq_eps else none) %}
+        {% set _yt_auto = (moshimo_queue.youtube_auto_post if (moshimo_queue and moshimo_queue.youtube_auto_post) else (yt_autopost or {})) %}
         <section class="moshimo-queue-card" id="moshimo-queue-section" aria-labelledby="moshimo-queue-heading">
             <div class="moshimo-head">
                 <div>
-                    <h2 class="moshimo-title" id="moshimo-queue-heading">3Dボクセル『もしもシリーズ』自動投稿キュー ＆ YouTubeショート連携パック</h2>
-                    <p class="moshimo-sub">平日（月〜金）20:00 JST に事前レンダリング済3Dリールを自動配信（ElevenLabs音声トークン消費ゼロ）。土曜ピークはリアルタイム速報へ自動切替、全10話一巡後は21日クールダウンで火・木に自動再配信します。</p>
+                    <h2 class="moshimo-title" id="moshimo-queue-heading">3Dボクセル『もしもシリーズ』自動投稿キュー（IGリール ＆ YouTubeショート同時自動公開）</h2>
+                    <p class="moshimo-sub">平日（月〜金）20:00 JST に事前レンダリング済3Dリールを Instagram（@aiseki_navi1）と YouTubeショート（@aiseki_navi）へ自動配信（ElevenLabs音声トークン消費ゼロ）。土曜ピークはリアルタイム速報へ自動切替します。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:7px; align-items:flex-end;">
                     <div class="reel-auto-box">
                         <input type="checkbox" id="moshimo-queue-enabled-toggle" {{ 'checked' if moshimo_queue.enabled else '' }} style="accent-color:var(--green); width:16px; height:16px;">
                         <label for="moshimo-queue-enabled-toggle" style="cursor:pointer;">
-                            平日20:00 3D自動配信：<strong id="moshimo-enabled-text" style="color:{{ 'var(--green)' if moshimo_queue.enabled else 'var(--sub)' }};">{{ 'ON（稼働中）' if moshimo_queue.enabled else 'OFF' }}</strong>
+                            平日20:00 IG自動配信：<strong id="moshimo-enabled-text" style="color:{{ 'var(--green)' if moshimo_queue.enabled else 'var(--sub)' }};">{{ 'ON（稼働中）' if moshimo_queue.enabled else 'OFF' }}</strong>
+                        </label>
+                    </div>
+                    <div class="reel-auto-box">
+                        <input type="checkbox" id="moshimo-yt-enabled-toggle" {{ 'checked' if _yt_auto.get('enabled', true) else '' }} style="accent-color:var(--green); width:16px; height:16px;">
+                        <label for="moshimo-yt-enabled-toggle" style="cursor:pointer;">
+                            平日20:00 YouTube自動公開：<strong id="moshimo-yt-enabled-text" style="color:{{ 'var(--green)' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('var(--amber)' if _yt_auto.get('enabled', true) else 'var(--sub)') }};">{{ 'ON（稼働中）' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('認可待ち' if _yt_auto.get('enabled', true) else 'OFF') }}</strong>
                         </label>
                     </div>
                     <div class="reel-auto-box">
@@ -1634,13 +1644,28 @@
                 </div>
             </div>
 
+            {% if not _yt_auto.get('has_upload_scope') %}
+            <div style="margin-top:12px; padding:10px 14px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div style="font-size:0.78rem; color:var(--text); line-height:1.5;">
+                    <strong>YouTubeショート自動投稿（videos.insert）がスタンバイ完了しています：</strong>
+                    現在の <code>@aiseki_navi</code> 連携は読み取り専用のため、右ボタンから1回だけ「動画アップロード権限（youtube.upload）」を追加承認すると今夜20:00から全自動公開が始まります（公開済の#1・#2は自動判定して重複投稿を防止します）。
+                </div>
+                <a href="/staff/youtube/oauth/start?scope=upload&next=sns_editorial" class="moshimo-action-btn primary" style="text-decoration:none; white-space:nowrap;">YouTube自動投稿を1クリック認可</a>
+            </div>
+            {% elif _yt_auto.get('privacy_locked') %}
+            <div style="margin-top:12px; padding:10px 14px; border-radius:10px; background:var(--rose-soft); border:1px solid var(--rose); color:var(--rose-ink); font-size:0.77rem; line-height:1.5;">
+                <strong>Google未審査プロジェクトの非公開ロック検知：</strong>
+                アップロード動画が「非公開（ロック）」になった場合は、<a href="https://support.google.com/youtube/contact/yt_api_form" target="_blank" rel="noopener noreferrer" style="color:inherit; font-weight:800; text-decoration:underline;">YouTube API 審査フォーム</a>（提出用回答シート作成済）を送信すると公開制限が解除されます。
+            </div>
+            {% endif %}
+
             <div class="moshimo-kpi-row">
                 <div class="moshimo-kpi-item">
                     <div class="moshimo-kpi-label">未投稿ストック / 全エピソード</div>
-                    <div class="moshimo-kpi-val" id="moshimo-runway-val">残り {{ moshimo_queue.remaining_count }} / {{ moshimo_queue.total_episodes }}本（投稿済 {{ moshimo_queue.posted_count }}本）</div>
+                    <div class="moshimo-kpi-val" id="moshimo-runway-val">残り {{ moshimo_queue.remaining_count }} / {{ moshimo_queue.total_episodes }}本（IG済 {{ moshimo_queue.posted_count }}本 / YT済 {{ moshimo_queue.youtube_posted_count|default(0) }}本）</div>
                 </div>
                 <div class="moshimo-kpi-item">
-                    <div class="moshimo-kpi-label">次回IG自動配信予定</div>
+                    <div class="moshimo-kpi-label">次回20:00 自動配信予定</div>
                     <div class="moshimo-kpi-val">
                         {% if moshimo_queue.next_episode %}
                         #{{ moshimo_queue.next_episode.order }}（{{ moshimo_queue.next_episode.scheduled_date }} 20:00）
@@ -1675,8 +1700,12 @@
                             <strong style="display:block;">#{{ ep.order }}｜{{ ep.title }}</strong>
                             <span style="font-size:0.72rem; color:var(--sub);">予定: {{ ep.scheduled_date }} 20:00 ・ {{ ep.duration_sec|round(1) }}秒 ・ 記事 {{ ep.related_column_path }}</span>
                         </span>
-                        {% if ep.posted %}
-                        <span class="moshimo-status-tag done">投稿済</span>
+                        {% if ep.posted and ep.yt_posted %}
+                        <span class="moshimo-status-tag done">IG・YT済</span>
+                        {% elif ep.posted %}
+                        <span class="moshimo-status-tag done">IG済</span>
+                        {% elif ep.yt_posted %}
+                        <span class="moshimo-status-tag done">YT済</span>
                         {% elif is_next %}
                         <span class="moshimo-status-tag next">次回配信</span>
                         {% else %}
@@ -1691,6 +1720,7 @@
                         <video id="moshimo-preview-video" class="moshimo-video" controls preload="metadata" playsinline src="{{ _mq_init.static_rel_path }}"></video>
                         <a id="moshimo-download-link" href="{{ _mq_init.static_rel_path }}" download="{{ _mq_init.ep_id }}.mp4" class="moshimo-action-btn primary">MP4を保存（Shorts用）</a>
                         <button type="button" id="moshimo-publish-now-btn" class="moshimo-action-btn">この回を今すぐIG公開</button>
+                        <button type="button" id="moshimo-publish-yt-btn" class="moshimo-action-btn">この回を今すぐYouTube公開</button>
                         <div id="moshimo-op-status" role="status" aria-live="polite" style="font-size:0.75rem; color:var(--sub); line-height:1.45;"></div>
                     </div>
                     <div style="min-width:0;">
@@ -4021,9 +4051,13 @@
             if (igCap) igCap.value = ep.caption || "";
             var opSt = document.getElementById("moshimo-op-status");
             if (opSt) {
-                opSt.textContent = ep.posted
-                    ? ("最終IG配信: " + (ep.last_posted_at || "投稿済"))
-                    : ("IG自動配信予定: " + ep.scheduled_date + " 20:00 JST");
+                var igTxt = ep.posted
+                    ? ("IG済(" + (ep.last_posted_at || "完了") + ")")
+                    : ("IG予定:" + ep.scheduled_date + " 20:00");
+                var ytTxt = ep.yt_posted
+                    ? (" / YouTube済" + (ep.yt_video_id ? " (" + ep.yt_video_id + ")" : ""))
+                    : " / YouTube未公開";
+                opSt.textContent = igTxt + ytTxt;
             }
         }
 
@@ -4083,6 +4117,19 @@
                     );
                 });
             }
+            var ytToggle = document.getElementById("moshimo-yt-enabled-toggle");
+            if (ytToggle) {
+                ytToggle.addEventListener("change", function() {
+                    _saveMoshimoToggle(
+                        { youtube_enabled: ytToggle.checked },
+                        "moshimo-yt-enabled-text",
+                        "ON（稼働中）",
+                        "OFF",
+                        "youtube_enabled",
+                        "var(--green)"
+                    );
+                });
+            }
             var evToggle = document.getElementById("moshimo-evergreen-toggle");
             if (evToggle) {
                 evToggle.addEventListener("change", function() {
@@ -4123,6 +4170,36 @@
                         if (opSt) opSt.textContent = "公開エラー: " + (e.message || "通信失敗");
                     } finally {
                         pubNowBtn.disabled = false;
+                    }
+                });
+            }
+            var pubYtBtn = document.getElementById("moshimo-publish-yt-btn");
+            if (pubYtBtn) {
+                pubYtBtn.addEventListener("click", async function() {
+                    if (!_selectedMoshimoEpId) return;
+                    if (!confirm("選択中のエピソード（" + _selectedMoshimoEpId + "）を今すぐYouTubeショート（@aiseki_navi）へアップロード・公開しますか？")) return;
+                    pubYtBtn.disabled = true;
+                    var opSt = document.getElementById("moshimo-op-status");
+                    if (opSt) opSt.textContent = "YouTubeショート配信ジョブを送信中...";
+                    try {
+                        var resp = await fetch("/api/moshimo-reel-queue", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                            body: JSON.stringify({ action: "publish_youtube", ep_id: _selectedMoshimoEpId, force: true })
+                        });
+                        var data = await resp.json();
+                        if (!resp.ok || (data.ok === false && !data.queued)) {
+                            throw new Error((data && (data.error || data.reason)) || "YouTube公開リクエストに失敗しました");
+                        }
+                        if (opSt) {
+                            opSt.textContent = data.queued
+                                ? ("裏方ワーカーへYouTubeアップロード登録しました（Job: " + data.job_id + "｜数十秒で完了します）")
+                                : ("YouTubeショート公開が完了しました（" + (data.shorts_url || _selectedMoshimoEpId) + "）");
+                        }
+                    } catch (e) {
+                        if (opSt) opSt.textContent = "YouTube公開エラー: " + (e.message || "通信失敗");
+                    } finally {
+                        pubYtBtn.disabled = false;
                     }
                 });
             }

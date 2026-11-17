@@ -5975,6 +5975,11 @@ body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.ben
     display: none !important;
 }
 
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .card-actions,
+body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .stats-group {
+    align-self: flex-start;
+}
+
 body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge,
 body.theme-light:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
     background: transparent !important;
@@ -9327,4 +9332,544 @@ body.compact-mode .analysis-btn-label {
         border: 0 !important;
         white-space: nowrap !important;
     }
+}
+
+/* ==========================================================================
+   2026-11 サイト評価対応：信頼バー・鮮度・1段エリア・営業前折りたたみ・PR分離・固定PWA
+   ========================================================================== */
+
+body:not(.staff-mode) #main-hero-h1 {
+    font-size: clamp(1.08rem, 2.3vw, 1.44rem) !important;
+    line-height: 1.32 !important;
+    letter-spacing: -0.015em;
+}
+
+body:not(.staff-mode) #main-hero-sub {
+    font-size: 0.8rem !important;
+    line-height: 1.55 !important;
+    max-width: 64ch;
+}
+
+.masthead-kicker.is-stale {
+    background: rgba(245, 158, 11, 0.16) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+    color: #fde68a !important;
+}
+
+body.theme-light .masthead-kicker.is-stale {
+    background: #fef3c7 !important;
+    border-color: #d97706 !important;
+    color: #78350f !important;
+}
+
+/* FV直下の1行根拠・信頼バー */
+.fv-trust-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-top: 8px;
+    padding: 7px 11px;
+    border-radius: 10px;
+    border: 1px solid var(--calm-border);
+    background: var(--calm-surface);
+    color: var(--calm-sub);
+    font-size: 0.73rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+.fv-trust-links {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.fv-trust-link {
+    color: var(--calm-text);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+}
+
+body.theme-light .fv-trust-bar {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .fv-trust-link {
+    color: var(--calm-light-text);
+}
+
+/* 10分以上更新停止時の黄色警告帯 */
+.stale-halt-banner {
+    margin: 8px 0 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #f59e0b;
+    background: #3a2a08;
+    color: #fef3c7;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+}
+
+.stale-halt-banner.hidden {
+    display: none !important;
+}
+
+body.theme-light .stale-halt-banner {
+    background: #fffbeb;
+    border-color: #d97706;
+    color: #78350f;
+}
+
+/* 3項目コンパクトナビ＋メニューボタン */
+.portal-global-nav-compact .portal-nav-more-btn {
+    appearance: none;
+    background: var(--calm-surface-2);
+    border: 1px solid var(--calm-border-strong);
+    color: var(--calm-text);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+body.theme-light .portal-global-nav-compact .portal-nav-more-btn {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+/* H1直下の1段エリアチップ */
+.area-quick-chips {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    gap: 6px !important;
+    padding: 2px 0 6px !important;
+    margin-bottom: 8px !important;
+}
+
+.area-quick-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.area-quick-chips .filter-btn,
+.area-quick-chips .more-areas-trigger {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.more-areas-trigger {
+    appearance: none;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface);
+    color: var(--calm-text);
+    cursor: pointer;
+}
+
+.more-areas-trigger.active {
+    background: var(--calm-text);
+    color: var(--calm-bg);
+    border-color: var(--calm-text);
+}
+
+body.theme-light .more-areas-trigger {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .more-areas-trigger.active {
+    background: var(--calm-light-accent);
+    color: #ffffff;
+    border-color: var(--calm-light-accent);
+}
+
+/* ネイティブ Popover（その他エリア ＆ ? 見方）— display は open 時のみ指定 */
+.more-areas-popover,
+.momentum-legend-popover {
+    margin: auto;
+    max-width: min(92vw, 480px);
+    width: calc(100vw - 24px);
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface);
+    color: var(--calm-text);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+}
+
+.more-areas-popover:is(:popover-open, .\:popover-open),
+.momentum-legend-popover:is(:popover-open, .\:popover-open) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.more-areas-popover::backdrop,
+.momentum-legend-popover::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+body.theme-light .more-areas-popover,
+body.theme-light .momentum-legend-popover {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+    box-shadow: 0 14px 36px rgba(24, 24, 27, 0.16);
+}
+
+.more-areas-popover-head,
+.legend-popover-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.popover-close-inline {
+    appearance: none;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 999px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+body.theme-light .popover-close-inline {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+.more-areas-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* 並び順補助アクション（3秒診断・? 見方） */
+.audience-aux-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: auto;
+}
+
+.compact-concierge-link,
+.legend-help-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface);
+    color: var(--calm-text);
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+body.theme-light .compact-concierge-link,
+body.theme-light .legend-help-trigger {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+/* 各カード：取得元・鮮度ラベル ＆ 1行スペック（料金・営業・客層・地図） */
+.card-freshness-tag {
+    margin-inline-start: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--calm-sub);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.card-freshness-tag.is-pos {
+    color: var(--calm-text);
+}
+
+body.theme-light .card-freshness-tag {
+    color: var(--calm-light-sub);
+}
+
+body.theme-light .card-freshness-tag.is-pos {
+    color: var(--calm-light-text);
+}
+
+.store-spec-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin: 4px 0 3px;
+    font-size: 0.73rem;
+    line-height: 1.45;
+    color: var(--calm-sub);
+    font-variant-numeric: tabular-nums;
+}
+
+body.theme-light .store-spec-row {
+    color: var(--calm-light-sub);
+}
+
+.store-spec-row .spec-links {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-map-link,
+.card-price-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    font-size: 0.71rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+body.theme-light .card-map-link,
+body.theme-light .card-price-link {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+.card-price-link.bento-only-link {
+    display: none;
+}
+
+.bento-hero-card .card-price-link.bento-only-link {
+    display: inline-flex;
+}
+
+.bento-ratio-hero.is-small-sample .bento-ratio-main {
+    display: none;
+}
+
+.bento-ratio-hero.is-small-sample .bento-ratio-caption {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--calm-sub);
+}
+
+body.theme-light .bento-ratio-hero.is-small-sample .bento-ratio-caption {
+    color: var(--calm-light-sub);
+}
+
+body.theme-list .store-spec-row,
+body.compact-mode .store-spec-row,
+body.theme-list .card-freshness-tag,
+body.compact-mode .card-freshness-tag {
+    display: none !important;
+}
+
+/* 営業時間外（全店準備中）モード案内バナー ＆ 営業前店舗アコーディオン */
+.daytime-forecast-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0 0 10px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface);
+    color: var(--calm-text);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.daytime-forecast-banner span {
+    font-size: 0.74rem;
+    color: var(--calm-sub);
+}
+
+body.theme-light .daytime-forecast-banner {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+body.theme-light .daytime-forecast-banner span {
+    color: var(--calm-light-sub);
+}
+
+.preopen-stores-disclosure {
+    margin-top: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--calm-border);
+    background: var(--calm-surface);
+    overflow: hidden;
+}
+
+.preopen-stores-disclosure.hidden,
+.daytime-forecast-banner.hidden {
+    display: none !important;
+}
+
+.preopen-stores-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 46px;
+    padding: 10px 14px;
+    color: var(--calm-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+}
+
+.preopen-stores-summary::-webkit-details-marker {
+    display: none;
+}
+
+.preopen-chevron {
+    transition: transform 0.16s ease;
+    color: var(--calm-sub);
+}
+
+.preopen-stores-disclosure[open] .preopen-chevron {
+    transform: rotate(180deg);
+}
+
+.preopen-ranking-list {
+    padding: 0 10px 12px;
+}
+
+body.theme-light .preopen-stores-disclosure {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+}
+
+body.theme-light .preopen-stores-summary {
+    color: var(--calm-light-text);
+}
+
+body.theme-light .preopen-chevron {
+    color: var(--calm-light-sub);
+}
+
+/* ランキング中立性明記 ＆ 最下部「PR｜相席以外の選択肢」独立ブロック */
+.ranking-neutrality-note {
+    margin: 12px 2px 10px;
+    font-size: 0.74rem;
+    line-height: 1.6;
+    color: var(--calm-sub);
+}
+
+body.theme-light .ranking-neutrality-note {
+    color: var(--calm-light-sub);
+}
+
+.pr-alternatives-section {
+    margin: 12px 0 18px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px dashed var(--calm-border-strong);
+    background: var(--calm-surface);
+}
+
+.pr-alternatives-section.hidden,
+body.staff-mode .pr-alternatives-section {
+    display: none !important;
+}
+
+body.theme-light .pr-alternatives-section {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border-strong);
+}
+
+.pr-alternatives-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.pr-alternatives-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--calm-sub);
+}
+
+body.theme-light .pr-alternatives-title {
+    color: var(--calm-light-sub);
+}
+
+.pr-alternatives-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+@media (min-width: 860px) {
+    .pr-alternatives-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* ホーム画面追加バナー：画面下部固定・高さ固定でレイアウトシフト(CLS)完全ゼロ */
+#pwa-install-banner.pwa-install-banner {
+    position: fixed !important;
+    inset-inline: 12px;
+    inset-block-end: max(12px, env(safe-area-inset-bottom));
+    z-index: 95;
+    max-width: 480px;
+    min-height: 54px;
+    margin: 0 auto !important;
+    padding: 9px 12px !important;
+    border-radius: 14px;
+    border: 1px solid var(--calm-border-strong) !important;
+    background: var(--calm-surface) !important;
+    color: var(--calm-text) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42) !important;
+}
+
+body.theme-light #pwa-install-banner.pwa-install-banner {
+    background: var(--calm-light-surface) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: 0 10px 28px rgba(24, 24, 27, 0.16) !important;
+}
+
+#pwa-install-banner.pwa-install-banner.hidden,
+#pwa-install-banner.pwa-install-banner[hidden] {
+    display: none !important;
 }

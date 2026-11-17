@@ -41,7 +41,7 @@ class TestTurnoverMomentumIndex(unittest.TestCase):
         self.assertIn("高回転", res["label"])
 
     def test_slow_turnover_calculation(self):
-        """滞留ぎみケース: 満席高稼働で直近変動ほぼゼロ（15分差分各0名）で score < 45, ☕️滞留ぎみ"""
+        """入れ替わり少なめケース: 満席高稼働で直近変動ほぼゼロ（15分差分各0名）で score < 45, ☕️入れ替わり少なめ"""
         res = moat_intelligence.calculate_turnover_momentum_index(
             store_name="OLG 新宿",
             women=55,
@@ -55,7 +55,7 @@ class TestTurnoverMomentumIndex(unittest.TestCase):
         self.assertIsNotNone(res.get("score"))
         self.assertLess(res["score"], 45)
         self.assertEqual(res["tone"], "slow")
-        self.assertIn("滞留", res["label"])
+        self.assertIn("入れ替わり少なめ", res["label"])
 
     def test_closed_store_safety(self):
         """営業時間外境界値: is_open_now=False の場合は score is None かつ label='判定対象外'"""
@@ -287,11 +287,11 @@ class TestUIAndCachebusterIntegration(unittest.TestCase):
         self.assertIn("イベントサージ", html)
 
     def test_cache_version_108_sync(self):
-        """static/sw.js の CACHE_NAME が aiseki-navi-v111 であること"""
+        """static/sw.js の CACHE_NAME が aiseki-navi-v112 であること"""
         sw_path = os.path.join(os.path.dirname(__file__), "..", "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as f:
             sw_txt = f.read()
-        self.assertIn("const CACHE_NAME = 'aiseki-navi-v111';", sw_txt)
+        self.assertIn("const CACHE_NAME = 'aiseki-navi-v112';", sw_txt)
 
 
 if __name__ == "__main__":

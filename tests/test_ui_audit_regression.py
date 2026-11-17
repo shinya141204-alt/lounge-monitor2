@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=44"
+        expected_calm = "/static/calm.css?v=45"
         expected_portal = "/static/portal.css?v=17"
-        expected_app_js = "/static/app.js?v=20261112_1"
+        expected_app_js = "/static/app.js?v=20261118_1"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261109_2"
-        expected_sw_url = "/sw.js?v=111"
-        expected_cache_name = "aiseki-navi-v111"
+        expected_sw_url = "/sw.js?v=112"
+        expected_cache_name = "aiseki-navi-v112"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -684,10 +684,14 @@ class UiAuditRegressionTests(unittest.TestCase):
             "timeslot_summary": [],
         }
 
+        import datetime as _dt_jst
+        _fresh_now_str = _dt_jst.datetime.now(
+            _dt_jst.timezone(_dt_jst.timedelta(hours=9))
+        ).strftime("%Y-%m-%d %H:%M:%S")
         with app_module.data_lock:
             app_module.latest_data["full_data"] = sample_stores
             app_module.latest_data["top5"] = sample_stores[:3]
-            app_module.latest_data["last_updated"] = "2026-10-31 21:30:00"
+            app_module.latest_data["last_updated"] = _fresh_now_str
             app_module.latest_data["status"] = "ok"
         app_module.clear_fast_http_caches()
 
@@ -809,7 +813,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertTrue(cm_pc_initial["modalHidden"])
                     self.assertTrue(cm_pc_initial["heroHasCls"])
                     self.assertEqual(cm_pc_initial["heroRadius"], "24px")
-                    self.assertIn("#1 PICK", cm_pc_initial["heroKicker"])
+                    self.assertIn("今夜", cm_pc_initial["heroKicker"])
+                    self.assertIn("ここ一択", cm_pc_initial["heroKicker"])
                     self.assertFalse(cm_pc_initial["row2HasCls"])
                     self.assertEqual(cm_pc_initial["row2Bg"], "rgba(0, 0, 0, 0)")
                     self.assertEqual(cm_pc_initial["row2BorderTop"], "0px")
@@ -1921,6 +1926,10 @@ class UiAuditRegressionTests(unittest.TestCase):
         except ImportError:
             self.skipTest("playwright is not installed in this Python environment")
 
+        import datetime as _dt_jst2
+        _fresh_now_str2 = _dt_jst2.datetime.now(
+            _dt_jst2.timezone(_dt_jst2.timedelta(hours=9))
+        ).strftime("%Y-%m-%d %H:%M:%S")
         five_stores = [
             {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 32, "men": 14, "total": 46, "women_diff": 2, "men_diff": 0},
             {"name": "OLG 渋谷本店", "source": "oriental", "region": "Kanto", "women": 28, "men": 12, "total": 40, "women_diff": 1, "men_diff": 0},
@@ -1931,7 +1940,7 @@ class UiAuditRegressionTests(unittest.TestCase):
         with app_module.data_lock:
             app_module.latest_data.clear()
             app_module.latest_data.update({
-                "last_updated": "2026-11-04 20:45:00",
+                "last_updated": _fresh_now_str2,
                 "is_seed": False,
                 "full_data": copy.deepcopy(five_stores),
             })
@@ -1962,15 +1971,15 @@ class UiAuditRegressionTests(unittest.TestCase):
                     page.wait_for_selector("#ranking-list .ranking-item")
 
                     slot_info = page.evaluate("""() => {
-                        const children = Array.from(document.getElementById('ranking-list').children);
-                        const prNodes = document.querySelectorAll('#ranking-list .context-lead-row.pr-card-item');
+                        const listPrNodes = document.querySelectorAll('#ranking-list .pr-card-item');
+                        const prNodes = document.querySelectorAll('#pr-alternatives-section .context-lead-row.pr-card-item');
                         const slot = prNodes[0];
                         const mainLink = slot ? slot.querySelector('.pr-context-main') : null;
                         const subLink = slot ? slot.querySelector('.pr-editorial-sublink') : null;
                         const pill = slot ? slot.querySelector('.pr-disclosure-pill') : null;
                         return {
+                            listPrCount: listPrNodes.length,
                             prCount: prNodes.length,
-                            slotIndexInList: slot ? children.indexOf(slot) : -1,
                             hasRankingItemClass: slot ? slot.classList.contains('ranking-item') : true,
                             hasFakeBar: slot ? !!slot.querySelector('.pr-occupancy-bar') : true,
                             pillText: pill ? pill.textContent.trim() : '',
@@ -1978,8 +1987,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                             subHref: subLink ? (subLink.getAttribute('href') || '') : '',
                         };
                     }""")
-                    self.assertEqual(slot_info["prCount"], 1, "Exactly one contextual slot must appear")
-                    self.assertEqual(slot_info["slotIndexInList"], 4, "Slot must appear immediately after 4th store (index 4)")
+                    self.assertEqual(slot_info["listPrCount"], 0, "PR cards must be strictly removed from #ranking-list")
+                    self.assertEqual(slot_info["prCount"], 2, "Both contextual PR slots must be consolidated in #pr-alternatives-section")
                     self.assertFalse(slot_info["hasRankingItemClass"], "Must not collide with .ranking-item store selectors")
                     self.assertFalse(slot_info["hasFakeBar"], "Must not render legacy fake gender ratio bar")
                     self.assertEqual(slot_info["pillText"], "PR")
@@ -2011,8 +2020,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                         if (window.lastData && origTs) window.lastData.timestamp = origTs;
                         setAudienceMode('women');
                         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-                        const womenDomMode = document.querySelector('#ranking-list .context-lead-row.pr-card-item')?.getAttribute('data-context-mode');
-                        const womenDomHref = document.querySelector('#ranking-list .context-lead-row.pr-card-item')?.getAttribute('data-context-href');
+                        const womenDomMode = document.querySelector('#pr-alternatives-section .context-lead-row.pr-card-item')?.getAttribute('data-context-mode');
+                        const womenDomHref = document.querySelector('#pr-alternatives-section .context-lead-row.pr-card-item')?.getAttribute('data-context-href');
                         setAudienceMode('men');
                         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
                         return {
@@ -2043,7 +2052,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     for is_light in (False, True):
                         page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
                         colors = page.evaluate("""() => {
-                            const slot = document.querySelector('#ranking-list .context-lead-row.pr-card-item');
+                            const slot = document.querySelector('#pr-alternatives-section .context-lead-row.pr-card-item');
                             const slotBg = getComputedStyle(slot).backgroundColor;
                             const cta = slot.querySelector('.pr-context-cta');
                             const ctaBg = getComputedStyle(cta).backgroundColor;
@@ -2066,13 +2075,15 @@ class UiAuditRegressionTests(unittest.TestCase):
 
                     staff_disp = page.evaluate("""() => {
                         document.body.classList.add('staff-mode');
-                        const d = getComputedStyle(document.querySelector('#ranking-list .context-lead-row.pr-card-item')).display;
+                        const secDisp = getComputedStyle(document.getElementById('pr-alternatives-section')).display;
+                        const cardDisp = getComputedStyle(document.querySelector('#pr-alternatives-section .context-lead-row.pr-card-item')).display;
                         document.body.classList.remove('staff-mode');
-                        return d;
+                        return {secDisp, cardDisp};
                     }""")
-                    self.assertEqual(staff_disp, "none", "Contextual promo row must hide in staff-mode")
+                    self.assertEqual(staff_disp["secDisp"], "none", "#pr-alternatives-section must hide in staff-mode")
+                    self.assertEqual(staff_disp["cardDisp"], "none", "Contextual promo row must hide in staff-mode")
 
-                    # Verify 10th-rank hybrid second slot (rank10_context): SSR 2-slot placement on >=10 stores + all 6 time/audience modes
+                    # Verify second hybrid slot (rank10_context) inside #pr-alternatives-section + all 6 time/audience modes
                     twelve_stores = five_stores + [
                         {"name": "OLG 町田", "source": "oriental", "region": "Kanto", "women": 17, "men": 8, "total": 25, "women_diff": 0, "men_diff": 0},
                         {"name": "OLG 横浜", "source": "oriental", "region": "Kanto", "women": 16, "men": 8, "total": 24, "women_diff": 0, "men_diff": 0},
@@ -2085,17 +2096,17 @@ class UiAuditRegressionTests(unittest.TestCase):
                     with app_module.data_lock:
                         app_module.latest_data.clear()
                         app_module.latest_data.update({
-                            "last_updated": "2026-11-04 21:00:00",
+                            "last_updated": _fresh_now_str2,
                             "is_seed": False,
                             "full_data": copy.deepcopy(twelve_stores),
                         })
                     app_module.clear_fast_http_caches()
 
                     page.goto(base + "/", wait_until="domcontentloaded")
-                    page.wait_for_selector('#ranking-list [data-context-slot="rank10_context"]')
+                    page.wait_for_selector('#pr-alternatives-section [data-context-slot="rank10_context"]')
                     second_slot_info = page.evaluate("""async () => {
-                        const children = Array.from(document.getElementById('ranking-list').children);
-                        const prNodes = Array.from(document.querySelectorAll('#ranking-list .context-lead-row.pr-card-item'));
+                        const listPrCount = document.querySelectorAll('#ranking-list .pr-card-item').length;
+                        const prNodes = Array.from(document.querySelectorAll('#pr-alternatives-section .context-lead-row.pr-card-item'));
                         const slot1 = prNodes[0];
                         const slot2 = prNodes[1];
                         const cfg2 = AFFILIATE_MASTER.infeedSlots[1];
@@ -2123,12 +2134,10 @@ class UiAuditRegressionTests(unittest.TestCase):
                         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
                         return {
+                            listPrCount,
                             prCount: prNodes.length,
                             slot1Key: slot1 ? slot1.getAttribute('data-context-slot') : '',
                             slot2Key: slot2 ? slot2.getAttribute('data-context-slot') : '',
-                            slot1Idx: slot1 ? children.indexOf(slot1) : -1,
-                            slot2Idx: slot2 ? children.indexOf(slot2) : -1,
-                            slot2GridCol: slot2 ? getComputedStyle(slot2).gridColumn : '',
                             mNight: [mNight.mode, mNight.item.url],
                             mToast: [mToast.mode, mToast.item.url],
                             mSkin: [mSkin.mode, mSkin.item.url],
@@ -2137,11 +2146,10 @@ class UiAuditRegressionTests(unittest.TestCase):
                             wLate: [wLate.mode, wLate.item.url],
                         };
                     }""")
+                    self.assertEqual(second_slot_info["listPrCount"], 0)
                     self.assertEqual(second_slot_info["prCount"], 2)
                     self.assertEqual(second_slot_info["slot1Key"], "rank4_context")
                     self.assertEqual(second_slot_info["slot2Key"], "rank10_context")
-                    self.assertEqual(second_slot_info["slot1Idx"], 4)
-                    self.assertEqual(second_slot_info["slot2Idx"], 11)
                     self.assertEqual(second_slot_info["mNight"], ["night_second_venue", "/link/second_venue_reservation"])
                     self.assertEqual(second_slot_info["mToast"], ["evening_toast_care", "/link/night_care_supplement"])
                     self.assertEqual(second_slot_info["mSkin"], ["evening_skincare", "/link/mens_skincare_clinic"])
@@ -2152,7 +2160,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     for is_light in (False, True):
                         page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()})")
                         colors2 = page.evaluate("""() => {
-                            const slot = document.querySelector('#ranking-list [data-context-slot="rank10_context"]');
+                            const slot = document.querySelector('#pr-alternatives-section [data-context-slot="rank10_context"]');
                             const slotBg = getComputedStyle(slot).backgroundColor;
                             const cta = slot.querySelector('.pr-context-cta');
                             return {
@@ -2345,6 +2353,248 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertIn("appinstalled", js_txt)
         self.assertIn("pwa_installed", js_txt)
         self.assertNotIn("setTimeout(checkPwaBannerVisibility, 2000)", js_txt)
+
+    def test_site_evaluation_trust_ux_and_stale_guards(self):
+        """外部サイト評価システムの改善要件（出典・鮮度・5分/10分停止検知・定型文撤廃・<10名参考値・営業前折りたたみ・昼間ピーク順・PR完全分離・2回目PWA固定表示・LINE専用OGP）を包括検証"""
+        import datetime as _dt
+        import time as _time
+        from urllib.parse import urlsplit
+
+        jst = _dt.timezone(_dt.timedelta(hours=9))
+        now_jst = _dt.datetime.now(jst)
+        now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+        now_ep = _time.time()
+
+        eval_stores = [
+            {
+                "name": "JIS NISHISHINJUKU",
+                "source": "jis",
+                "region": "Kanto",
+                "women": 19,
+                "men": 18,
+                "total": 37,
+                "women_diff": 2,
+                "men_diff": 0,
+                "is_open_now": True,
+                "fetched_at": now_ep - 125.0,
+                "pos_telemetry": {
+                    "telemetry_type": "jis_pos",
+                    "men_waiting_groups": 0,
+                    "women_waiting_groups": 0,
+                },
+            },
+            {
+                "name": "OLG 新宿",
+                "source": "oriental",
+                "region": "Kanto",
+                "women": 7,
+                "men": 0,
+                "total": 7,
+                "women_diff": 0,
+                "men_diff": 0,
+                "is_open_now": True,
+                "fetched_at": now_ep - 245.0,
+            },
+            {
+                "name": "OLG ag渋谷",
+                "source": "ag",
+                "region": "Kanto",
+                "women": 0,
+                "men": 9,
+                "total": 9,
+                "women_diff": 0,
+                "men_diff": 1,
+                "is_open_now": True,
+                "fetched_at": now_ep - 180.0,
+            },
+            {
+                "name": "OLG 梅田茶屋町",
+                "source": "oriental",
+                "region": "Kinki",
+                "women": 0,
+                "men": 0,
+                "total": 0,
+                "women_diff": 0,
+                "men_diff": 0,
+                "is_open_now": False,
+                "fetched_at": now_ep - 120.0,
+            },
+        ]
+
+        def _mock_hours(sname, total_guests=0, **kw):
+            is_open = int(total_guests or 0) > 0
+            return {
+                "is_open_now": is_open,
+                "scheduled_open": is_open,
+                "hours_label": "18:00〜翌5:00",
+                "today_hours_label": "18:00〜翌5:00",
+                "schedule_spec": {"mt": [18, 29], "fs": [18, 29], "sh": [18, 29], "cw": [], "label": "18:00〜翌5:00"},
+                "opening_hours_specification": [],
+            }
+
+        with patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
+            with app_module.data_lock:
+                app_module.latest_data.clear()
+                app_module.latest_data.update({
+                    "last_updated": now_str,
+                    "is_seed": False,
+                    "status": "ok",
+                    "full_data": copy.deepcopy(eval_stores),
+                })
+            app_module.clear_fast_http_caches()
+
+            # 1. Live mode SSR check: provenance, freshness, spec row, conditional human copy, zero canned copy, zero '女子向け裏ガイド'
+            home_html = self.client.get("/").data.decode("utf-8")
+            self.assertNotIn("男女バランスが良く、待ち時間なしで案内中です", home_html)
+            self.assertNotIn("女子向け裏ガイド", home_html)
+            self.assertIn("初めての女性向け安心ガイド", home_html)
+            self.assertIn("JIS公式POS実測・2分前", home_html)
+            self.assertIn("公式サイト表示値・4分前", home_html)
+            self.assertIn("男女ほぼ同数", home_html)
+            self.assertIn("女性7名が待機中", home_html)
+            self.assertIn("いま女性0名（男性9名）。男性は待ちの可能性大", home_html)
+            self.assertIn("少人数のため参考値", home_html)
+            self.assertIn("客層データ収集中", home_html)
+            self.assertIn('id="fv-trust-bar"', home_html)
+            self.assertIn('id="area-quick-chips"', home_html)
+            self.assertIn('id="preopen-stores-details"', home_html)
+            self.assertIn('id="ranking-neutrality-note"', home_html)
+            self.assertIn('id="pr-alternatives-section"', home_html)
+            self.assertIn('class="ranking-item is-inspector-selected bento-hero-card rank-1"', home_html)
+
+            # 2. Delayed (>= 5 min) & Halted (>= 10 min) stale-data guards
+            delayed_str = (now_jst - _dt.timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S")
+            with app_module.data_lock:
+                app_module.latest_data["last_updated"] = delayed_str
+            app_module.clear_fast_http_caches()
+            delayed_html = self.client.get("/").data.decode("utf-8")
+            self.assertIn("時点のデータ（更新停止中）", delayed_html)
+            self.assertNotIn("全国63店の男女人数を1分更新</h1>", delayed_html)
+
+            halted_str = (now_jst - _dt.timedelta(minutes=12)).strftime("%Y-%m-%d %H:%M:%S")
+            with app_module.data_lock:
+                app_module.latest_data["last_updated"] = halted_str
+            app_module.clear_fast_http_caches()
+            halted_html = self.client.get("/").data.decode("utf-8")
+            self.assertIn("現在データ更新が止まっています（最後の取得", halted_html)
+            self.assertNotIn('id="stale-halt-banner" class="stale-halt-banner hidden"', halted_html)
+            self.assertNotIn(" bento-hero-card", halted_html)
+
+        # 3. All-closed daytime forecast mode
+        closed_stores = [
+            {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 0, "men": 0, "total": 0, "is_open_now": False},
+            {"name": "OLG 渋谷本店", "source": "oriental", "region": "Kanto", "women": 0, "men": 0, "total": 0, "is_open_now": False},
+        ]
+        with patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
+            with app_module.data_lock:
+                app_module.latest_data["last_updated"] = now_str
+                app_module.latest_data["full_data"] = copy.deepcopy(closed_stores)
+            app_module.clear_fast_http_caches()
+            daytime_html = self.client.get("/").data.decode("utf-8")
+            self.assertNotIn('id="daytime-forecast-banner" class="daytime-forecast-banner hidden"', daytime_html)
+            self.assertIn("ピーク人数順", daytime_html)
+
+        # 4. /stats#data-provenance & /ogp/top3.png clean share card
+        stats_resp = self.client.get("/stats")
+        self.assertEqual(stats_resp.status_code, 200)
+        stats_html = stats_resp.data.decode("utf-8")
+        self.assertIn('id="data-provenance"', stats_html)
+        self.assertIn("JIS（ジス）", stats_html)
+        self.assertIn("相席ナビ編集部", stats_html)
+
+        ogp_resp = self.client.get("/ogp/top3.png")
+        self.assertEqual(ogp_resp.status_code, 200)
+        self.assertEqual(ogp_resp.mimetype, "image/png")
+        self.assertTrue(ogp_resp.data.startswith(b"\x89PNG\r\n\x1a\n"))
+
+        share_top_html = self.client.get("/?share=top3&area=City:shinjuku").data.decode("utf-8")
+        self.assertIn("/ogp/top3.png", share_top_html)
+
+        # 5. Playwright mobile check: PWA banner hidden on 1st visit, fixed bottom on 2nd visit with zero layout shift
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return
+
+        with app_module.data_lock:
+            app_module.latest_data["last_updated"] = now_str
+            app_module.latest_data["full_data"] = copy.deepcopy(eval_stores)
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_mob_router(context):
+            def handle_route(route):
+                u = urlsplit(route.request.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (f"?{u.query}" if u.query else "")
+                resp = self.client.open(path_qs, method=route.request.method, headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"})
+                headers = {k.lower(): v for k, v in resp.headers.items() if k.lower() not in ("transfer-encoding", "content-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=headers, body=resp.get_data())
+            context.route("**/*", handle_route)
+
+        attach_mob_router_fn = attach_mob_router
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None), \
+             patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    ctx_m = browser.new_context(
+                        viewport={"width": 390, "height": 844},
+                        user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+                        has_touch=True,
+                        is_mobile=True,
+                        service_workers="block",
+                    )
+                    attach_mob_router_fn(ctx_m)
+                    mpage = ctx_m.new_page()
+                    mpage.goto(base + "/", wait_until="domcontentloaded")
+                    first_visit = mpage.evaluate("""() => {
+                        const b = document.getElementById('pwa-install-banner');
+                        const pre = document.getElementById('preopen-stores-details');
+                        return {
+                            bannerDisplay: getComputedStyle(b).display,
+                            visitCount: localStorage.getItem('aiseki_visit_count'),
+                            preopenHidden: pre.classList.contains('hidden'),
+                            preopenOpen: pre.open,
+                            mainCardsCount: document.querySelectorAll('#ranking-list .ranking-item').length,
+                            preopenCardsCount: document.querySelectorAll('#preopen-ranking-list .ranking-item').length,
+                        };
+                    }""")
+                    self.assertEqual(first_visit["bannerDisplay"], "none", "PWA banner must NOT appear on 1st mobile visit")
+                    self.assertEqual(first_visit["visitCount"], "1")
+                    self.assertFalse(first_visit["preopenHidden"], "Pre-open disclosure must be visible when pre-open stores exist")
+                    self.assertFalse(first_visit["preopenOpen"], "Pre-open disclosure must start collapsed")
+                    self.assertEqual(first_visit["mainCardsCount"], 3, "Only the 3 open stores render in main #ranking-list")
+                    self.assertEqual(first_visit["preopenCardsCount"], 1, "Closed 0:0 store moves into #preopen-ranking-list")
+
+                    # Simulate 2nd session visit (clear sessionStorage flag while preserving localStorage visit_count=1)
+                    mpage.evaluate("sessionStorage.removeItem('aiseki_visit_counted')")
+                    mpage.reload(wait_until="domcontentloaded")
+                    second_visit = mpage.evaluate("""() => {
+                        const b = document.getElementById('pwa-install-banner');
+                        const headerTopBefore = document.querySelector('header').getBoundingClientRect().top;
+                        const cs = getComputedStyle(b);
+                        const pos = cs.position;
+                        const disp = cs.display;
+                        dismissPwaBanner();
+                        const headerTopAfter = document.querySelector('header').getBoundingClientRect().top;
+                        return {
+                            disp,
+                            pos,
+                            visitCount: localStorage.getItem('aiseki_visit_count'),
+                            headerShift: Math.abs(headerTopAfter - headerTopBefore),
+                        };
+                    }""")
+                    self.assertNotEqual(second_visit["disp"], "none", "PWA banner must appear on 2nd mobile visit")
+                    self.assertEqual(second_visit["pos"], "fixed", "PWA banner must be position:fixed so closing causes zero layout shift")
+                    self.assertEqual(second_visit["visitCount"], "2")
+                    self.assertEqual(second_visit["headerShift"], 0, "Dismissing PWA banner must cause zero layout shift")
+                    ctx_m.close()
+                finally:
+                    browser.close()
 
 
 if __name__ == "__main__":

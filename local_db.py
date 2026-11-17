@@ -3570,6 +3570,8 @@ def get_moat_coverage_summary() -> dict:
         "min_timestamp": None,
         "max_timestamp": None,
         "rolled_up_hours": 0,
+        "rollup_observations": 0,
+        "rollup_min_date": None,
         "pos_telemetry_rows": 0,
         "weather_context_rows": 0,
         "event_history_count": 0,
@@ -3597,7 +3599,9 @@ def get_moat_coverage_summary() -> dict:
             "(SELECT COUNT(*) FROM store_event_history), "
             "(SELECT COUNT(*) FROM arena_schedule_events), "
             "(SELECT COUNT(*) FROM crowd_votes), "
-            "(SELECT COUNT(*) FROM store_watch_intents)"
+            "(SELECT COUNT(*) FROM store_watch_intents), "
+            "(SELECT COALESCE(SUM(sample_count), 0) FROM store_hourly_rollups), "
+            "(SELECT MIN(date_jst) FROM store_hourly_rollups)"
         )
         if rows and rows[0]:
             r = rows[0]
@@ -3608,6 +3612,8 @@ def get_moat_coverage_summary() -> dict:
             out["arena_events_count"] = int(r[4] or 0)
             out["crowd_votes_total"] = int(r[5] or 0)
             out["watch_intents_total"] = int(r[6] or 0)
+            out["rollup_observations"] = int(r[7] or 0)
+            out["rollup_min_date"] = r[8] or None
     except Exception:
         return out
 
@@ -4520,6 +4526,7 @@ def _derive_benchmarks_for_slot(base_data: dict, cur_wd: int, cur_h: int) -> dic
     by_wd_peak = base_data["by_wd_peak"]
     static_per_store = base_data["static_per_store"]
 
+    evening_hours = (18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4)
     out = {}
     for sname in base_data["stores_seen"]:
         wh_stat = by_wd_hour[sname].get((cur_wd, cur_h))
@@ -4544,6 +4551,19 @@ def _derive_benchmarks_for_slot(base_data: dict, cur_wd: int, cur_h: int) -> dic
             usual_w = None
             usual_m = None
 
+        wd_peak_hour = None
+        wd_peak_women = None
+        store_wd_map = by_wd_hour.get(sname) or {}
+        best_avg_w = 0.0
+        for eh in evening_hours:
+            eh_stat = store_wd_map.get((cur_wd, eh))
+            if eh_stat and eh_stat[2] >= 2:
+                avg_eh_w = eh_stat[0] / eh_stat[2]
+                if avg_eh_w > best_avg_w:
+                    best_avg_w = avg_eh_w
+                    wd_peak_hour = eh
+                    wd_peak_women = round(avg_eh_w, 1)
+
         st = static_per_store[sname]
         out[sname] = {
             "usual_women": usual_w,
@@ -4557,6 +4577,9 @@ def _derive_benchmarks_for_slot(base_data: dict, cur_wd: int, cur_h: int) -> dic
             "midnight_label_short": st["midnight_label_short"],
             "peak_band_avg_w": st["peak_band_avg_w"],
             "midnight_avg_w": st["midnight_avg_w"],
+            "wd_peak_hour": wd_peak_hour,
+            "wd_peak_women": wd_peak_women,
+            "wd_label": wd_ja,
             "has_measured_usual": usual_w is not None,
             "has_measured_core": bool(st.get("has_measured_core")),
             "has_measured_midnight": bool(st.get("has_measured_midnight")),

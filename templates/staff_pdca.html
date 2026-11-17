@@ -878,6 +878,94 @@
             border-color: var(--rose);
             color: var(--rose-ink);
         }
+        .gcp-radio-fieldset {
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 10px 12px;
+            margin: 10px 0 0;
+            background: var(--surface);
+        }
+        .gcp-radio-fieldset > legend {
+            font-size: 0.77rem;
+            font-weight: 800;
+            color: var(--text);
+            padding: 0 6px;
+        }
+        .gcp-radio-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 18px;
+            margin-top: 4px;
+        }
+        .gcp-choice-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 36px;
+            font-size: 0.78rem;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .gcp-choice-label input[type="checkbox"],
+        .gcp-choice-label input[type="radio"] {
+            accent-color: var(--green);
+            inline-size: 1.05rem;
+            block-size: 1.05rem;
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .gcp-choice-label input:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+        @supports not (accent-color: #22c55e) {
+            .gcp-choice-label input[type="checkbox"].gcp-vh-fallback {
+                position: absolute !important;
+                clip-path: inset(50%) !important;
+                overflow: hidden !important;
+                width: 1px !important;
+                height: 1px !important;
+                margin: -1px !important;
+                padding: 0 !important;
+                border: 0 !important;
+                white-space: nowrap !important;
+            }
+            .gcp-choice-label.has-vh-fallback {
+                position: relative;
+                padding-inline-start: 1.75rem;
+            }
+            .gcp-choice-label input[type="checkbox"].gcp-vh-fallback + span::before {
+                content: "";
+                position: absolute;
+                inset-inline-start: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 1.15rem;
+                height: 1.15rem;
+                border: 2px solid var(--border-strong);
+                background: var(--surface);
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+            .gcp-choice-label input[type="checkbox"].gcp-vh-fallback:focus-visible + span::before {
+                outline: 2px solid var(--blue);
+                outline-offset: 2px;
+            }
+            .gcp-choice-label input[type="checkbox"].gcp-vh-fallback:checked + span::before {
+                background-color: var(--green);
+                border-color: var(--green);
+            }
+            .gcp-choice-label input[type="checkbox"].gcp-vh-fallback:checked + span::after {
+                content: "✓";
+                position: absolute;
+                inset-inline-start: 0.22rem;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--active-ink);
+                font-weight: 800;
+                font-size: 0.85rem;
+            }
+        }
         .loop-submit-btn {
             width: auto;
             min-height: 48px;
@@ -1550,11 +1638,11 @@
                     {% else %}
                     <span class="ultra-badge">自動同期: 毎日 17:25 / 03:25 JST</span>
                     {% endif %}
-                    <button type="button" id="sync-meta-insights-btn" class="mini-btn">公式API（Threads / IGリール / YouTube）を即時同期</button>
+                    <button type="button" id="sync-meta-insights-btn" class="mini-btn">公式API（Threads / IGリール / YouTube / サチコ）を即時同期</button>
                 </div>
             </div>
             <p class="lead" style="margin-bottom:12px;">
-                Threads・IGリール・YouTubeショートの公式API自動回収（毎日 17:25 / 03:25 JST）に加え、Google Search Console（エクスポートZIP/CSV）・各画面スクリーンショットから実測数値のみを取り込み、SNS鬼デスク・維持率バンディット・次回SEOコラムの企画指令へ自動反映します。
+                Threads・IGリール・YouTubeショート・Google Search Consoleの公式API自動回収（毎日 17:25 / 03:25 JST・直近48hのGSC未確定ラグ自動除外）に加え、各画面スクリーンショットやエクスポートCSVから実測数値のみを取り込み、SNS鬼デスク・維持率バンディット・次回SEOコラムの企画指令へ自動反映します。
             </p>
 
             <div class="kpi-strip" style="margin-bottom:12px;">
@@ -1582,13 +1670,17 @@
 
             <div id="insights-loop-status" class="loop-status-msg" role="status" aria-live="polite"></div>
 
-            <details class="yt-oauth-details" id="yt-oauth-setup" {% if request.args.get('yt_error') or request.args.get('yt_setup') == '1' %}open{% endif %}>
+            {% set yt_auto_info = yt_autopost if yt_autopost is mapping else {} %}
+            {% set gcp_info = gcp_status if gcp_status is mapping else {} %}
+            <details class="yt-oauth-details" id="yt-oauth-setup" {% if request.args.get('yt_error') or request.args.get('yt_setup') == '1' or (yt_oauth_info.connected and not yt_oauth_info.has_upload_scope) %}open{% endif %}>
                 <summary>
-                    <span>YouTube Analytics / Data API 自動同期設定（読み取り専用OAuth・毎日 17:25 / 03:25 自動回収）</span>
-                    {% if yt_oauth_info.connected %}
-                    <span class="chip plus">自動同期ON：{{ yt_oauth_info.channel_title or '@aiseki_navi' }}{% if yt_oauth_info.custom_url %}（{{ yt_oauth_info.custom_url }}）{% endif %}</span>
+                    <span>YouTube Analytics 自動同期 ＆ ショート動画 20:00 自動公開設定（@aiseki_navi）</span>
+                    {% if yt_oauth_info.connected and yt_oauth_info.has_upload_scope %}
+                    <span class="chip plus">自動同期＋自動公開ON：{{ yt_oauth_info.channel_title or '@aiseki_navi' }}</span>
+                    {% elif yt_oauth_info.connected %}
+                    <span class="chip">分析同期ON（自動公開は1クリック追加認可で解禁）</span>
                     {% else %}
-                    <span class="chip">未連携（初回1回のみ設定・スクショ不要化）</span>
+                    <span class="chip">未連携（初回1回のみ設定）</span>
                     {% endif %}
                 </summary>
                 <div class="yt-oauth-body">
@@ -1598,17 +1690,62 @@
                             <strong>連携中チャンネル：</strong>{{ yt_oauth_info.channel_title or '@aiseki_navi' }}
                             {% if yt_oauth_info.custom_url %}<code>{{ yt_oauth_info.custom_url }}</code>{% endif %}
                             ｜ <strong>最終同期：</strong>{{ yt_oauth_info.last_sync_at or '連携済' }}（{{ yt_oauth_info.last_synced_count|default(0) }}本）
+                            ｜ <strong>自動投稿権限：</strong>{% if yt_oauth_info.has_upload_scope %}<span style="color:var(--green-ink); font-weight:700;">認可済（youtube.upload）</span>{% else %}<span style="color:var(--amber); font-weight:700;">未認可（読み取り専用）</span>{% endif %}
                             {% if yt_oauth_info.last_error %}<br><span style="color:var(--rose);">注意：{{ yt_oauth_info.last_error }}</span>{% endif %}
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <a href="/staff/youtube/oauth/start" class="mini-btn">チャンネル再選択・再認可</a>
+                            {% if not yt_oauth_info.has_upload_scope %}
+                            <a href="/staff/youtube/oauth/start?scope=upload" class="run-btn" style="text-decoration:none; display:inline-flex; align-items:center; width:auto; min-height:38px; padding:6px 14px;">YouTube自動投稿を認可</a>
+                            {% else %}
+                            <a href="/staff/youtube/oauth/start?scope=upload" class="mini-btn" style="text-decoration:none;">チャンネル再選択・再認可</a>
+                            {% endif %}
                             <button type="button" id="yt-disconnect-btn" class="mini-btn">連携を解除</button>
                         </div>
                     </div>
+
+                    {% if yt_auto_info.privacy_locked %}
+                    <div style="padding:10px 12px; border-radius:9px; background:var(--rose-soft); border:1px solid var(--rose); color:var(--rose-ink); font-size:0.77rem; margin-bottom:10px; line-height:1.55;">
+                        <strong>Google未審査プロジェクトの非公開ロックを検知しました：</strong>
+                        YouTube Data API の仕様により、APIコンプライアンス審査通過前のプロジェクトからアップロードした動画は自動的に「非公開（ロック）」になる場合があります。
+                        <a href="https://support.google.com/youtube/contact/yt_api_form" target="_blank" rel="noopener noreferrer" style="color:inherit; font-weight:800; text-decoration:underline;">YouTube API 審査フォーム</a>（提出用回答シート作成済）を送信すると公開制限が解除されます。
+                    </div>
+                    {% endif %}
+
+                    <form id="yt-autopost-settings-form" method="post" action="/api/pdca/youtube/auto-post" aria-labelledby="yt-autopost-form-title" style="padding:10px 12px; border-radius:9px; background:var(--surface); border:1px solid var(--border); margin-bottom:12px;">
+                        <div id="yt-autopost-form-title" style="font-size:0.79rem; font-weight:800; color:var(--text); margin-bottom:6px;">
+                            YouTubeショート 平日20:00 自動投稿スケジュール設定
+                        </div>
+                        <label for="yt-autopost-enabled" class="gcp-choice-label has-vh-fallback">
+                            <input type="checkbox" id="yt-autopost-enabled" name="enabled" value="1" class="gcp-vh-fallback" {{ 'checked' if yt_auto_info.get('enabled', true) else '' }}>
+                            <span>平日20:00 JST に『もしもシリーズ』最新話を YouTubeショート（@aiseki_navi）へ自動公開する（公開済の#1・#2は自動スキップ）</span>
+                        </label>
+                        <fieldset class="gcp-radio-fieldset">
+                            <legend>アップロード時の公開範囲</legend>
+                            <div class="gcp-radio-row">
+                                {% set cur_priv = yt_auto_info.get('privacy_status', 'public') %}
+                                <label for="yt-priv-public" class="gcp-choice-label">
+                                    <input type="radio" id="yt-priv-public" name="privacy_status" value="public" {{ 'checked' if cur_priv == 'public' else '' }}>
+                                    <span>公開（public・推奨）</span>
+                                </label>
+                                <label for="yt-priv-unlisted" class="gcp-choice-label">
+                                    <input type="radio" id="yt-priv-unlisted" name="privacy_status" value="unlisted" {{ 'checked' if cur_priv == 'unlisted' else '' }}>
+                                    <span>限定公開（unlisted・テスト確認用）</span>
+                                </label>
+                                <label for="yt-priv-private" class="gcp-choice-label">
+                                    <input type="radio" id="yt-priv-private" name="privacy_status" value="private" {{ 'checked' if cur_priv == 'private' else '' }}>
+                                    <span>非公開下書き（private・Studioから手動公開）</span>
+                                </label>
+                            </div>
+                        </fieldset>
+                        <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <button type="submit" id="yt-autopost-save-btn" class="mini-btn">自動投稿設定を保存</button>
+                            <span id="yt-autopost-msg" role="status" aria-live="polite" style="font-size:0.76rem; color:var(--green-ink);"></span>
+                        </div>
+                    </form>
                     {% endif %}
 
                     <div style="font-size:0.76rem; color:var(--sub); margin-bottom:10px; line-height:1.55;">
-                        Google Cloud（既存プロジェクト <code>loungemonitor</code> 可）で <strong>YouTube Data API v3</strong> と <strong>YouTube Analytics API</strong> を有効化し、OAuthクライアント（ウェブアプリケーション）の「承認済みのリダイレクトURI」に下記URLを登録してください（読み取り専用権限のみ・動画変更権限ゼロ）。
+                        Google Cloud（既存プロジェクト <code>loungemonitor</code>）で <strong>YouTube Data API v3</strong> と <strong>YouTube Analytics API</strong> を有効化し、OAuthクライアント（ウェブアプリケーション）の「承認済みのリダイレクトURI」に下記URLを登録してください。
                         <div style="margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <code id="yt-redirect-uri-code" style="padding:5px 9px; border-radius:7px; background:var(--surface); border:1px solid var(--border-strong); color:var(--text); font-size:0.76rem;">{{ yt_oauth_info.redirect_uri|default('https://aiseki-navi.com/staff/youtube/oauth/callback') }}</code>
                             <span class="yt-copy-wrap">
@@ -1645,8 +1782,89 @@
                             </div>
                         </div>
                         <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                            <span style="font-size:0.74rem; color:var(--sub);">※Googleのアカウント選択画面が出たら、ブランドアカウント<strong>『相席ナビ | 夜の街データ＆もしも検証 (@aiseki_navi)』</strong>を選んでください。</span>
+                            <span style="font-size:0.74rem; color:var(--sub);">※Googleのアカウント選択画面が出たら、ブランドアカウント<strong>『相席ナビ (@aiseki_navi)』</strong>を選んでください。</span>
                             <button type="submit" id="yt-oauth-submit-btn" class="run-btn loop-submit-btn">保存してGoogle認可へ進む</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
+
+            <details class="yt-oauth-details" id="gcp-credits-setup">
+                <summary>
+                    <span>GCPクレジット優先消化モード（Vertex AI Gemini 3.1 Pro/Flash ＋ Cloud HD音声合成）</span>
+                    {% if gcp_info.vertex_active %}
+                    <span class="chip plus">稼働中：{{ gcp_info.project_id }}（AI実費 $0）</span>
+                    {% elif gcp_info.service_account_configured %}
+                    <span class="chip">待機中（{{ gcp_info.project_id }}）</span>
+                    {% else %}
+                    <span class="chip">ローカル開発 / 未設定</span>
+                    {% endif %}
+                </summary>
+                <div class="yt-oauth-body">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 12px; border-radius:9px; background:var(--surface); border:1px solid var(--border-strong); margin-bottom:10px;">
+                        <div style="font-size:0.78rem; color:var(--text); line-height:1.55;">
+                            <strong>接続先GCPプロジェクト：</strong><code>{{ gcp_info.project_id or '未設定' }}</code>
+                            {% if gcp_info.client_email %}｜ <code>{{ gcp_info.client_email }}</code>{% endif %}<br>
+                            <span>Fly.io（月約$27）の安定稼働は一切触らず、Gemini推論（SNS・コラム・PDCA参謀・スクショOCR）と動画音声合成（Chirp 3 HD）をGCPクレジット枠から優先消化し、万が一のクレジット切れ時も0秒で既存AIキーへ自動フォールバックします。</span>
+                        </div>
+                        <button type="button" id="gcp-probe-btn" class="mini-btn">GCPクレジット疎通テスト</button>
+                    </div>
+
+                    <div id="gcp-credits-status-msg" class="loop-status-msg" role="status" aria-live="polite"></div>
+
+                    <form id="gcp-credits-form" method="post" action="/api/pdca/gcp-credits" aria-labelledby="gcp-credits-form-title">
+                        <div id="gcp-credits-form-title" style="font-size:0.79rem; font-weight:800; color:var(--text); margin-bottom:6px;">
+                            GCPクレジット優先ルーティング設定
+                        </div>
+                        <label for="gcp-vertex-enabled" class="gcp-choice-label has-vh-fallback">
+                            <input type="checkbox" id="gcp-vertex-enabled" name="vertex_enabled" value="1" class="gcp-vh-fallback" {{ 'checked' if gcp_info.get('vertex_enabled', true) else '' }}>
+                            <span>Vertex AI Gemini 優先ルーティングを有効化（<code>gemini-3.1-pro-preview</code> / <code>gemini-3-flash-preview</code> でGCPクレジット消化）</span>
+                        </label>
+
+                        {% set cur_tts_mode = gcp_info.get('tts_mode', 'auto_fallback') %}
+                        <fieldset class="gcp-radio-fieldset">
+                            <legend>ショート動画ナレーション音声（Google Cloud Text-to-Speech）</legend>
+                            <div class="gcp-radio-row">
+                                <label for="gcp-tts-mode-auto" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-tts-mode-auto" name="tts_mode" value="auto_fallback" {{ 'checked' if cur_tts_mode == 'auto_fallback' else '' }}>
+                                    <span>自動バックアップ（ElevenLabs優先・上限時はGCP音声へ切替）</span>
+                                </label>
+                                <label for="gcp-tts-mode-primary" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-tts-mode-primary" name="tts_mode" value="gcp_primary" {{ 'checked' if cur_tts_mode == 'gcp_primary' else '' }}>
+                                    <span>GCPクレジット最優先（ElevenLabs消費ゼロ）</span>
+                                </label>
+                                <label for="gcp-tts-mode-off" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-tts-mode-off" name="tts_mode" value="off" {{ 'checked' if cur_tts_mode == 'off' else '' }}>
+                                    <span>OFF</span>
+                                </label>
+                            </div>
+                        </fieldset>
+
+                        {% set cur_tts_voice = gcp_info.get('tts_voice', 'ja-JP-Chirp3-HD-Puck') %}
+                        <fieldset class="gcp-radio-fieldset">
+                            <legend>Google Cloud 日本語HD音声モデル</legend>
+                            <div class="gcp-radio-row">
+                                <label for="gcp-voice-puck" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-voice-puck" name="tts_voice" value="ja-JP-Chirp3-HD-Puck" {{ 'checked' if cur_tts_voice == 'ja-JP-Chirp3-HD-Puck' else '' }}>
+                                    <span>Chirp 3 HD 男性（自然・テンポ良）</span>
+                                </label>
+                                <label for="gcp-voice-aoede" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-voice-aoede" name="tts_voice" value="ja-JP-Chirp3-HD-Aoede" {{ 'checked' if cur_tts_voice == 'ja-JP-Chirp3-HD-Aoede' else '' }}>
+                                    <span>Chirp 3 HD 女性（自然・クリア）</span>
+                                </label>
+                                <label for="gcp-voice-n2c" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-voice-n2c" name="tts_voice" value="ja-JP-Neural2-C" {{ 'checked' if cur_tts_voice == 'ja-JP-Neural2-C' else '' }}>
+                                    <span>Neural2 男性（落ち着いた報道トーン）</span>
+                                </label>
+                                <label for="gcp-voice-n2b" class="gcp-choice-label">
+                                    <input type="radio" id="gcp-voice-n2b" name="tts_voice" value="ja-JP-Neural2-B" {{ 'checked' if cur_tts_voice == 'ja-JP-Neural2-B' else '' }}>
+                                    <span>Neural2 女性（明るい案内トーン）</span>
+                                </label>
+                            </div>
+                        </fieldset>
+
+                        <div style="margin-top:12px; display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                            <button type="submit" id="gcp-save-btn" class="run-btn loop-submit-btn">GCPクレジット設定を保存</button>
                         </div>
                     </form>
                 </div>
@@ -1825,6 +2043,17 @@
 
                 <div>
                     <h3 id="gsc-query-table-heading" class="loop-subhead">Loop 2C：Search Console 実測上位＆お宝クエリ（高表示・低CTR）</h3>
+                    {% if gsc_diag.finalized_through_date %}
+                    <div style="font-size:0.74rem; color:var(--sub); margin-bottom:8px; font-variant-numeric:tabular-nums;">
+                        API自動同期済（確定期間: {{ gsc_diag.window_start_date }}〜{{ gsc_diag.finalized_through_date }}｜直近48h未確定ラグ除外）
+                        {% if gsc_diag.w1_clicks is not none and gsc_diag.w2_clicks is not none %}
+                        ／ 週次クリック: 先々週 {{ gsc_diag.w1_clicks }}回（表示{{ gsc_diag.w1_impressions }}）→ 先週 {{ gsc_diag.w2_clicks }}回（表示{{ gsc_diag.w2_impressions }}）
+                        {% if gsc_diag.continuing_pages_count is not none and gsc_diag.new_pages_count is not none %}
+                        ［継続{{ gsc_diag.continuing_pages_count }}頁: {{ gsc_diag.continuing_w1_clicks }}→{{ gsc_diag.continuing_w2_clicks }}回 ／ 新規インデックス{{ gsc_diag.new_pages_count }}頁: +{{ gsc_diag.new_w2_clicks }}回］
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% if gsc_diag.top_queries %}
                     <div class="table-wrap" tabindex="0" role="region" aria-labelledby="gsc-query-table-heading" style="margin-bottom:8px;">
                         <table class="pdca-table" style="min-width:500px;">
@@ -2263,7 +2492,7 @@
                 if (j && j.ok) {
                     const sum = (j.sync && j.sync.summary) || {};
                     setLoopStatus(
-                        `同期完了（Threads更新: ${sum.threads_updated || 0}件 / IG・リール更新: ${sum.instagram_updated || 0}件 / YouTubeショート更新: ${sum.youtube_updated || 0}件）。画面を最新状態へ更新します...`,
+                        `同期完了（Threads更新: ${sum.threads_updated || 0}件 / IG・リール更新: ${sum.instagram_updated || 0}件 / YouTubeショート更新: ${sum.youtube_updated || 0}件 / サチコ更新: ${sum.gsc_updated || 0}件）。画面を最新状態へ更新します...`,
                         false
                     );
                     redirected = true;
@@ -2604,6 +2833,121 @@
                             submitBtn.disabled = false;
                             submitBtn.textContent = origLabel;
                         }
+                    }
+                });
+            }
+
+            const ytAutoForm = document.getElementById('yt-autopost-settings-form');
+            if (ytAutoForm) {
+                ytAutoForm.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    const saveBtn = document.getElementById('yt-autopost-save-btn');
+                    const msgEl = document.getElementById('yt-autopost-msg');
+                    const enEl = document.getElementById('yt-autopost-enabled');
+                    const privEl = ytAutoForm.querySelector('input[name="privacy_status"]:checked');
+                    if (saveBtn) saveBtn.disabled = true;
+                    if (msgEl) {
+                        msgEl.style.color = 'var(--sub)';
+                        msgEl.textContent = '保存中...';
+                    }
+                    try {
+                        const j = await fetchJsonSafe('/api/pdca/youtube/auto-post', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                enabled: Boolean(enEl && enEl.checked),
+                                privacy_status: privEl ? privEl.value : 'public'
+                            })
+                        }, 15000);
+                        if (j && j.ok) {
+                            if (msgEl) {
+                                msgEl.style.color = 'var(--green-ink)';
+                                msgEl.textContent = 'YouTube自動投稿設定を保存しました。';
+                            }
+                        } else if (msgEl) {
+                            msgEl.style.color = 'var(--rose)';
+                            msgEl.textContent = '保存エラー: ' + ((j && j.error) || '失敗しました');
+                        }
+                    } catch (err) {
+                        if (msgEl) {
+                            msgEl.style.color = 'var(--rose)';
+                            msgEl.textContent = '通信エラー: ' + ((err && err.message) || '失敗');
+                        }
+                    } finally {
+                        if (saveBtn) saveBtn.disabled = false;
+                    }
+                });
+            }
+
+            const gcpMsgBox = document.getElementById('gcp-credits-status-msg');
+            function setGcpStatus(text, isErr) {
+                if (!gcpMsgBox) return;
+                gcpMsgBox.style.display = 'block';
+                gcpMsgBox.style.borderColor = isErr ? 'var(--rose)' : 'var(--green)';
+                gcpMsgBox.style.color = isErr ? 'var(--rose-ink)' : 'var(--green-ink)';
+                gcpMsgBox.textContent = text;
+            }
+
+            const gcpForm = document.getElementById('gcp-credits-form');
+            if (gcpForm) {
+                gcpForm.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    const btn = document.getElementById('gcp-save-btn');
+                    const vEn = document.getElementById('gcp-vertex-enabled');
+                    const tMode = gcpForm.querySelector('input[name="tts_mode"]:checked');
+                    const tVoice = gcpForm.querySelector('input[name="tts_voice"]:checked');
+                    if (btn) btn.disabled = true;
+                    setGcpStatus('GCPクレジット設定を保存しています...', false);
+                    try {
+                        const j = await fetchJsonSafe('/api/pdca/gcp-credits', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                vertex_enabled: Boolean(vEn && vEn.checked),
+                                tts_mode: tMode ? tMode.value : 'auto_fallback',
+                                tts_voice: tVoice ? tVoice.value : 'ja-JP-Chirp3-HD-Puck'
+                            })
+                        }, 15000);
+                        if (j && j.ok) {
+                            setGcpStatus('GCPクレジット設定を保存しました（全AIパイプラインへ即時反映済）。', false);
+                        } else {
+                            setGcpStatus('保存エラー: ' + ((j && j.error) || '設定更新に失敗しました'), true);
+                        }
+                    } catch (err) {
+                        setGcpStatus('通信エラー: ' + ((err && err.message) || '失敗'), true);
+                    } finally {
+                        if (btn) btn.disabled = false;
+                    }
+                });
+            }
+
+            const gcpProbeBtn = document.getElementById('gcp-probe-btn');
+            if (gcpProbeBtn) {
+                gcpProbeBtn.addEventListener('click', async () => {
+                    const orig = gcpProbeBtn.textContent;
+                    gcpProbeBtn.disabled = true;
+                    gcpProbeBtn.textContent = '疎通テスト中...';
+                    setGcpStatus('GCP Vertex AI（Gemini）および Cloud Text-to-Speech の実機疎通を確認しています...', false);
+                    try {
+                        const j = await fetchJsonSafe('/api/pdca/gcp-credits', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({ action: 'test' })
+                        }, 25000);
+                        if (j && j.ok) {
+                            setGcpStatus(
+                                `疎通OK（${j.elapsed_ms || 0}ms）｜Vertex AI: ${j.vertex_model || 'OK'} ／ Cloud TTS: ${j.tts_voice || 'OK'}（プロジェクト: ${j.project_id}）`,
+                                false
+                            );
+                        } else {
+                            const detail = j ? [j.error, j.vertex_error, j.tts_error].filter(Boolean).join(' / ') : '応答なし';
+                            setGcpStatus('疎通確認結果: ' + detail, true);
+                        }
+                    } catch (err) {
+                        setGcpStatus('疎通テスト通信エラー: ' + ((err && err.message) || '失敗'), true);
+                    } finally {
+                        gcpProbeBtn.disabled = false;
+                        gcpProbeBtn.textContent = orig;
                     }
                 });
             }

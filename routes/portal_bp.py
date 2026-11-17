@@ -779,6 +779,19 @@ def stats_whitepaper():
             _maybe_trigger_public_backfill(fc_acc)
         except Exception:
             fc_acc = None
+        try:
+            fc_acc_30 = (
+                fc_acc
+                if fc_days == 30
+                else core.local_db.get_forecast_accuracy_report(
+                    days=30,
+                    limit_recent=5,
+                    allow_blocking=True,
+                    auto_backfill=False,
+                )
+            )
+        except Exception:
+            fc_acc_30 = fc_acc
         hb, hs = _gov_hidden_sets()
         report_data = None
         try:
@@ -851,6 +864,7 @@ def stats_whitepaper():
             'stats_report.html',
             report=report_data,
             forecast_accuracy=fc_acc,
+            forecast_accuracy_30d=fc_acc_30,
             forecast_days=fc_days,
             moat_coverage=moat_coverage,
             live_stores=live_stores,

@@ -50,11 +50,16 @@ class TopPageSsrLimitTests(unittest.TestCase):
         self.assertEqual(len(self.payload['ranking']), 40)
         self.assertEqual(self._ranking_list_html().count('class="ranking-item'), 20)
 
-    def test_infeed_slots_after_rank_4_and_10_still_rendered(self):
+    def test_infeed_slots_moved_outside_ranking_list_into_pr_section(self):
         block = self._ranking_list_html()
-        self.assertIn('data-context-slot="rank4_context"', block)
-        self.assertIn('data-context-slot="rank10_context"', block)
-        self.assertLess(block.index('rank4_context'), block.index('rank10_context'))
+        self.assertNotIn('pr-card-item', block)
+        self.assertNotIn('data-context-slot="rank4_context"', block)
+        self.assertNotIn('data-context-slot="rank10_context"', block)
+        pr_pos = self.html.index('id="pr-alternatives-section"')
+        pr_section = self.html[pr_pos:]
+        self.assertIn('data-context-slot="rank4_context"', pr_section)
+        self.assertIn('data-context-slot="rank10_context"', pr_section)
+        self.assertLess(pr_section.index('rank4_context'), pr_section.index('rank10_context'))
 
     def test_all_store_links_remain_crawlable(self):
         for st in self.payload['ranking']:

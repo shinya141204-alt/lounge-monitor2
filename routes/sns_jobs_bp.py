@@ -79,6 +79,55 @@ def dynamic_live_ogp_image():
         return send_from_directory(core.app.static_folder, 'note-eyecatch.jpg', mimetype='image/jpeg')
 
 
+@sns_jobs_bp.route('/ogp/top3.png')
+def dynamic_clean_top3_ogp_image():
+    """Render a clean PR-free, jargon-free '今夜のおすすめ3店' 1200x630 PNG for LINE sharing."""
+    import ogp_generator
+    import ops_governance
+    core.restore_latest_data_if_empty()
+    core.trigger_background_fetch_if_needed()
+    raw_area = (request.args.get('area') or '').strip().lower()
+    safe_area = raw_area if raw_area in ('shinjuku', 'shibuya', 'umeda', 'namba', 'nagoya', 'fukuoka') else ''
+    now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    bucket_5m = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 5) * 5:02d}"
+    with core.data_lock:
+        raw_copy = list(core.latest_data.get('full_data') or [])
+        last_u = core.latest_data.get('last_updated')
+        is_s = bool(core.latest_data.get('is_seed'))
+    stores = ops_governance.filter_visible_stores(raw_copy)
+    ogp_key = ('top3_clean', safe_area, bucket_5m, core._live_data_signature(stores, last_u, is_s))
+    now_mono = time.monotonic()
+    ogp_cache = core._ogp_bytes_cache
+    with core._ogp_bytes_cache_lock:
+        hit = ogp_cache.get(ogp_key)
+        if hit is not None and (now_mono - hit[0] < 120.0):
+            ogp_cache.move_to_end(ogp_key)
+            resp = Response(hit[1], mimetype='image/png')
+            resp.headers['Cache-Control'] = 'public, max-age=180'
+            return resp
+    try:
+        png_bytes = ogp_generator.generate_clean_top3_share_png(
+            stores, area_code=safe_area, last_updated=last_u, now_jst=now_jst
+        )
+        with core._ogp_bytes_cache_lock:
+            ogp_cache[ogp_key] = (now_mono, png_bytes)
+            ogp_cache.move_to_end(ogp_key)
+            while len(ogp_cache) > core._OGP_BYTES_CACHE_MAX:
+                ogp_cache.popitem(last=False)
+        resp = Response(png_bytes, mimetype='image/png')
+        resp.headers['Cache-Control'] = 'public, max-age=180'
+        return resp
+    except Exception as e:
+        logging.error(f"Clean Top3 OGP generation failed: {e}")
+        import io
+        from PIL import Image
+        fb_buf = io.BytesIO()
+        Image.new('RGB', (1200, 630), (17, 17, 19)).save(fb_buf, format='PNG')
+        resp = Response(fb_buf.getvalue(), mimetype='image/png')
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
+
+
 @sns_jobs_bp.route('/ogp/weekly.png')
 def dynamic_weekly_ogp_image():
     """Dynamically render a 1200x630 weekly ranking & open-data infographic OGP card image (memoized in RAM)."""
@@ -449,6 +498,7 @@ SUPPORTED_SNS_JOB_TYPES = (
     'tiktok_inbox',
     'ladies_sns',
     'ig_moshimo_reel',
+    'yt_moshimo_short',
     'prewarm_bundle',
 )
 
@@ -602,6 +652,22 @@ def execute_sns_job_payload(job_type: str, params: dict = None) -> dict:
             slot_label=slot,
             share_to_feed=share_feed,
             custom_caption=cap,
+            force=force,
+        )
+
+    if jtype == 'yt_moshimo_short':
+        import youtube_poster
+        ep_id = str(p.get('ep_id') or '').strip() or None
+        title = str(p.get('title') or '').strip()
+        desc = str(p.get('description') or '').strip()
+        priv = str(p.get('privacy_status') or '').strip() or None
+        slot = str(p.get('slot') or '20:00').strip()
+        return youtube_poster.publish_moshimo_episode_to_youtube(
+            ep_id=ep_id,
+            slot_label=slot,
+            custom_title=title,
+            custom_description=desc,
+            privacy_status=priv,
             force=force,
         )
 
@@ -1014,7 +1080,46 @@ def api_moshimo_reel_queue():
             raw_ev = payload.get('evergreen_recycle', request.args.get('evergreen_recycle', '0'))
             ev_on = bool(raw_ev) if isinstance(raw_ev, bool) else (str(raw_ev).strip().lower() in ('1', 'true', 'on', 'yes'))
             moshimo_reel_queue.set_evergreen_recycle_enabled(ev_on)
-        return jsonify({'ok': True, **moshimo_reel_queue.get_moshimo_queue_status()})
+        if 'youtube_enabled' in payload or 'youtube_privacy' in payload or 'youtube_live_reels' in payload:
+            import youtube_poster
+            if 'youtube_enabled' in payload:
+                raw_yt = payload.get('youtube_enabled')
+                yt_on = bool(raw_yt) if isinstance(raw_yt, bool) else (str(raw_yt).strip().lower() in ('1', 'true', 'on', 'yes'))
+                youtube_poster.set_youtube_auto_post_enabled(yt_on)
+            if 'youtube_privacy' in payload:
+                youtube_poster.set_youtube_upload_privacy(str(payload.get('youtube_privacy') or 'public'))
+            if 'youtube_live_reels' in payload:
+                raw_lr = payload.get('youtube_live_reels')
+                lr_on = bool(raw_lr) if isinstance(raw_lr, bool) else (str(raw_lr).strip().lower() in ('1', 'true', 'on', 'yes'))
+                youtube_poster.set_youtube_live_reels_enabled(lr_on)
+        st = moshimo_reel_queue.get_moshimo_queue_status(allow_blocking=True)
+        st['youtube_enabled'] = bool((st.get('youtube_auto_post') or {}).get('enabled'))
+        return jsonify({'ok': True, **st})
+
+    if action == 'publish_youtube':
+        import youtube_poster
+        ep_id = str(payload.get('ep_id') or request.args.get('ep_id') or '').strip() or None
+        slot = str(payload.get('slot') or request.args.get('slot') or '20:00').strip()
+        title = str(payload.get('title') or '').strip()
+        desc = str(payload.get('description') or '').strip()
+        priv = str(payload.get('privacy_status') or '').strip() or None
+        force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '1'))) == '1')
+        queued_resp = _maybe_enqueue_async_sns_trigger(
+            'yt_moshimo_short',
+            {'ep_id': ep_id, 'slot': slot, 'title': title, 'description': desc, 'privacy_status': priv, 'force': force},
+        )
+        if queued_resp is not None:
+            return queued_resp
+        res = youtube_poster.publish_moshimo_episode_to_youtube(
+            ep_id=ep_id,
+            slot_label=slot,
+            custom_title=title,
+            custom_description=desc,
+            privacy_status=priv,
+            force=force,
+        )
+        status_code = 200 if res.get('ok') else 400
+        return jsonify(res), status_code
 
     ep_id = str(payload.get('ep_id') or request.args.get('ep_id') or '').strip() or None
     slot = str(payload.get('slot') or request.args.get('slot') or '20:00').strip()

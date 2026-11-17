@@ -1115,7 +1115,7 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     women = int(store.get("women") or 0)
     men = int(store.get("men") or 0)
     tot = women + men
-    wpct = round((women / tot) * 100) if tot > 0 else 50
+    wpct = round((women / tot) * 100) if tot > 0 else None
 
     # Three metric cards: Women / Men / Female Ratio
     cards_y = 262
@@ -1127,7 +1127,13 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
     metrics = [
         ("現在の女性人数", str(women), "名", (244, 114, 182), (56, 18, 42, 235)),
         ("現在の男性人数", str(men), "名", (96, 165, 250), (16, 32, 62, 235)),
-        ("リアルタイム女性比率", str(wpct), "%", accent, (46, 36, 14, 235)),
+        (
+            "リアルタイム女性比率",
+            str(wpct) if wpct is not None else "--",
+            "%" if wpct is not None else "",
+            accent,
+            (46, 36, 14, 235),
+        ),
     ]
     for idx, (lbl, num_s, unit_s, fg_col, bg_col) in enumerate(metrics):
         bx = 76 + idx * (box_w + gap)
@@ -1147,14 +1153,17 @@ def generate_bonus_alert_png(store: dict, mode: str = "female_lead", now_jst: da
         draw.text((start_x, cards_y + 72), num_s, font=f_big_num, fill=fg_col)
         draw.text((start_x + nw_px + 6, cards_y + 118), unit_s, font=f_unit, fill=(248, 250, 252, 240))
 
-    # Ratio progress bar
+    # Ratio progress bar (only fill when guests > 0; never fake 50:50 on 0:0)
     bar_x = 76
     bar_y = 492
     bar_w = W - 152
     bar_h = 22
-    draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=11, fill=(59, 130, 246, 225))
-    fill_w = max(22, min(bar_w, int(bar_w * (wpct / 100.0))))
-    draw.rounded_rectangle((bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), radius=11, fill=(236, 72, 153, 255))
+    if wpct is not None:
+        draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=11, fill=(59, 130, 246, 225))
+        fill_w = max(22, min(bar_w, int(bar_w * (wpct / 100.0))))
+        draw.rounded_rectangle((bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), radius=11, fill=(236, 72, 153, 255))
+    else:
+        draw.rounded_rectangle((bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), radius=11, fill=(51, 65, 85, 190))
 
     # Footer brand line
     footer_l = "相席ナビ (aiseki-navi.com)  |  全国60店舗超リアルタイム人数・男女比モニター"
@@ -1209,5 +1218,149 @@ def generate_verified_live_ogp_png(
     png_bytes = generate_live_ogp_png(stores, s_param=s_param, now_jst=now_jst)
     qa_res = inspect_ogp_visual_quality(png_bytes, image_type="live_ogp", timeout_sec=timeout_sec)
     return png_bytes, qa_res
+
+
+_CLEAN_SHARE_AREA_FILTERS = {
+    "shinjuku": ("新宿エリア", ("新宿", "SHINJUKU")),
+    "shibuya": ("渋谷・恵比寿", ("渋谷", "恵比寿", "SHIBUYA", "EBISU")),
+    "umeda": ("梅田・茶屋町", ("梅田", "茶屋町", "大阪駅前", "UMEDA", "CHAYAMACHI")),
+    "namba": ("難波・心斎橋", ("難波", "心斎橋", "NAMBA", "SHINSAIBASHI")),
+    "nagoya": ("名古屋エリア", ("名古屋", "栄", "錦", "住吉", "NAGOYA")),
+    "fukuoka": ("福岡エリア", ("福岡", "天神", "小倉", "FUKUOKA")),
+}
+
+
+def generate_clean_top3_share_png(
+    stores: list,
+    area_code: str = "",
+    last_updated: str = None,
+    now_jst: datetime.datetime = None,
+) -> bytes:
+    """Render a clean, PR-free, jargon-free 1200x630 '今夜のおすすめ3店' card for LINE & friend sharing."""
+    import store_master
+    now_jst = now_jst or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+    W, H = 1200, 630
+    canvas = Image.new("RGBA", (W, H), (17, 17, 19, 255))
+    draw = make_safe_draw(canvas, "RGBA")
+
+    f_kicker = _get_font(22)
+    f_title = _get_font(42)
+    f_rank = _get_font(30)
+    f_store = _get_font(30)
+    f_counts = _get_font(28)
+    f_note = _get_font(21)
+    f_footer = _get_font(20)
+
+    area_key = (area_code or "").strip().lower()
+    area_cfg = _CLEAN_SHARE_AREA_FILTERS.get(area_key)
+    area_title = area_cfg[0] if area_cfg else "全国"
+
+    korea_kws = ("カンナム", "ホンデ", "ソウル", "GANGNAM", "HONGDAE", "SEOUL")
+    dom = [
+        s for s in (stores or [])
+        if isinstance(s, dict)
+        and s.get("region") != "Korea"
+        and not any(k in str(s.get("name") or "") or k in str(s.get("name") or "").upper() for k in korea_kws)
+    ]
+    if area_cfg:
+        kws = area_cfg[1]
+        filtered = [
+            s for s in dom
+            if any(kw in str(s.get("name") or "").upper() or kw in str(s.get("name") or "") for kw in kws)
+            and "錦糸町" not in (str(s.get("name") or "") if area_key == "nagoya" else "")
+        ]
+        dom = filtered
+
+    open_active = [s for s in dom if (int(s.get("women") or 0) + int(s.get("men") or 0)) > 0 or bool(s.get("is_open_now"))]
+    all_off_hours = bool(len(dom) > 0 and len(open_active) == 0)
+
+    ranked = sorted(
+        dom,
+        key=lambda s: (
+            (int(s.get("women") or 0) + int(s.get("men") or 0)) > 0,
+            int(s.get("women") or 0) >= 6,
+            int(s.get("women") or 0),
+            -abs(int(s.get("women") or 0) - int(s.get("men") or 0)),
+        ),
+        reverse=True,
+    )[:3]
+
+    stamp_str = now_jst.strftime("%m/%d %H:%M")
+    if last_updated and " " in str(last_updated):
+        parts_ts = str(last_updated).strip().split(" ")
+        if len(parts_ts[0]) >= 10 and len(parts_ts[1]) >= 5:
+            stamp_str = f"{parts_ts[0][5:7]}/{parts_ts[0][8:10]} {parts_ts[1][:5]}"
+        else:
+            stamp_str = parts_ts[1][:5]
+
+    draw.rounded_rectangle((48, 36, 332, 76), radius=18, fill=(35, 35, 41, 255), outline=(82, 82, 91, 180), width=1)
+    draw.text((68, 44), f"{stamp_str} 時点の実人数", font=f_kicker, fill=(228, 228, 231, 255))
+
+    headline = f"営業時間前の注目3店（{area_title}）" if all_off_hours else f"今夜のおすすめ3店（{area_title}）"
+    draw.text((48, 92), headline, font=f_title, fill=(244, 244, 245, 255))
+
+    row_y0 = 168
+    row_h = 118
+    row_gap = 16
+    for idx in range(3):
+        ry = row_y0 + idx * (row_h + row_gap)
+        draw.rounded_rectangle(
+            (48, ry, W - 48, ry + row_h),
+            radius=18,
+            fill=(26, 26, 30, 255),
+            outline=(63, 63, 70, 210),
+            width=2 if idx == 0 else 1,
+        )
+        rk_txt = "注目" if all_off_hours else f"{idx + 1}位"
+        draw.text((74, ry + 24), rk_txt, font=f_rank, fill=(244, 168, 184, 255) if idx == 0 else (212, 212, 216, 255))
+
+        if idx < len(ranked):
+            st = ranked[idx]
+            raw_n = str(st.get("name") or "")
+            disp_n = store_master.seo_name(raw_n) or raw_n
+            w = max(0, int(st.get("women") or 0))
+            m = max(0, int(st.get("men") or 0))
+            tot = w + m
+            if tot == 0:
+                cond_s = "現在オープン中（0名:0名）" if st.get("is_open_now") else "営業時間外（営業開始後に実人数を表示）"
+            elif m == 0 and w > 0:
+                cond_s = "女性待機中・男性すぐ相席"
+            elif w == 0 and m > 0:
+                cond_s = "男性のみ入店中・女性すぐ案内"
+            elif tot < 10:
+                cond_s = "少人数のため参考値（落ち着いた店内）"
+            else:
+                wpct = int(round((w / float(tot)) * 100.0))
+                if 45 <= wpct <= 55:
+                    cond_s = "男女ほぼ同数・すぐ相席しやすい"
+                elif wpct > 55:
+                    cond_s = "女性が多め・男性も入りやすい"
+                else:
+                    cond_s = "男性やや多め・女性は待ちなし"
+
+            clean_store, store_font, _ = fit_text_and_font(draw, disp_n, max_width=560, max_size=30, min_size=20)
+            draw.text((152, ry + 20), clean_store, font=store_font, fill=(244, 244, 245, 255))
+            draw.text((152, ry + 68), cond_s, font=f_note, fill=(180, 180, 190, 255))
+
+            cnt_w = f"女性 {w}名"
+            cnt_m = f"男性 {m}名"
+            draw.text((760, ry + 24), cnt_w, font=f_counts, fill=(244, 168, 184, 255))
+            draw.text((955, ry + 24), cnt_m, font=f_counts, fill=(147, 197, 253, 255))
+        else:
+            draw.text((152, ry + 40), "該当エリアの対象店舗なし", font=f_store, fill=(161, 161, 170, 255))
+
+    master_cnt = len(store_master.load() or {})
+    cnt_lbl = f"全国{master_cnt}店" if master_cnt > 0 else "全国対象店舗"
+    draw.text(
+        (48, 574),
+        f"相席ナビ aiseki-navi.com ｜ {cnt_lbl}の公開人数を横断比較（広告による順位変動なし）",
+        font=f_footer,
+        fill=(161, 161, 170, 255),
+    )
+
+    out = io.BytesIO()
+    canvas.convert("RGB").save(out, format="PNG", compress_level=3)
+    canvas.close()
+    return out.getvalue()
 
 

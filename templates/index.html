@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=44" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261112_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=45" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261118_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -337,12 +337,12 @@
 
     <div id="app-shell" class="container">
         {% if not is_staff %}
-        <!-- PWA Smart Install Banner -->
+        <!-- PWA Smart Install Banner (2nd+ visit or post-diagnosis only; fixed bottom to prevent layout shift) -->
         <aside id="pwa-install-banner" class="pwa-install-banner hidden" hidden role="region" aria-label="ホーム画面に追加のご案内">
             <div class="pwa-banner-content">
                 <div class="pwa-banner-info">
-                    <div class="pwa-banner-title">ホーム画面に追加でアプリ化</div>
-                    <div class="pwa-banner-desc">ワンタップで今夜の混雑・男女比速報をチェック</div>
+                    <div class="pwa-banner-title">ホーム画面に追加でワンタップ起動</div>
+                    <div class="pwa-banner-desc">次回から今夜の男女人数・待ち状況をすぐ確認</div>
                 </div>
             </div>
             <div class="pwa-banner-actions">
@@ -352,12 +352,19 @@
         </aside>
         <script>
             try {
+                if (!sessionStorage.getItem('aiseki_visit_counted')) {
+                    sessionStorage.setItem('aiseki_visit_counted', '1');
+                    var _prevVisits = parseInt(localStorage.getItem('aiseki_visit_count') || '0', 10) || 0;
+                    localStorage.setItem('aiseki_visit_count', String(_prevVisits + 1));
+                }
                 if (!document.documentElement.classList.contains('is-pwa-standalone')) {
                     var _ua = (window.navigator.userAgent || '').toLowerCase();
                     var _isTouchMobile = /iphone|ipad|ipod|android/.test(_ua) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
                     var _dismissedAt = parseInt(localStorage.getItem('pwa_dismissed_at') || '0', 10);
                     var _withinCooldown = _dismissedAt > 0 && (Date.now() - _dismissedAt) < (30 * 24 * 60 * 60 * 1000);
-                    if (_isTouchMobile && !_withinCooldown) {
+                    var _visitCount = parseInt(localStorage.getItem('aiseki_visit_count') || '1', 10) || 1;
+                    var _conciergeDone = localStorage.getItem('aiseki_concierge_done') === '1';
+                    if (_isTouchMobile && !_withinCooldown && (_visitCount >= 2 || _conciergeDone)) {
                         var _pwaBannerEl = document.getElementById('pwa-install-banner');
                         if (_pwaBannerEl) {
                             _pwaBannerEl.hidden = false;
@@ -369,6 +376,10 @@
         </script>
         {% endif %}
 
+        {% set tp = top_provenance if (top_provenance is defined and top_provenance) else {} %}
+        {% set tp_stale = tp.stale_state or 'live' %}
+        {% set tp_total_stores = tp.total_monitored_stores or 63 %}
+        {% set tp_last_hm = tp.last_hm or ((initial_status.timestamp.split(' ')[1][:5]) if (initial_status and initial_status.timestamp and ' ' in initial_status.timestamp) else '--:--') %}
         <header>
             {% if is_staff %}
             <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
@@ -382,10 +393,13 @@
             <div class="header-top-row">
                 <div class="header-brand-block">
                     {% if not is_staff %}
-                    <span class="masthead-kicker"><span class="cm-live-dot" aria-hidden="true"></span>全国63店舗 ・ 1分自動更新</span>
+                    <span id="live-kicker-bar" class="masthead-kicker{% if tp_stale != 'live' %} is-stale{% endif %}">
+                        <span id="live-kicker-dot" class="cm-live-dot{% if tp_stale != 'live' %} hidden{% endif %}" aria-hidden="true"></span>
+                        <span id="live-kicker-text">{% if tp_stale != 'live' %}{{ tp_last_hm }}時点のデータ（更新停止中）{% else %}全国{{ tp_total_stores }}店舗・1分自動更新{% endif %}</span>
+                    </span>
                     {% endif %}
-                    <h1>{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% else %}相席ナビ{% endif %}</h1>
-                    <p class="subtitle">全国ラウンジの今わかる人数ランキング</p>
+                    <h1 id="main-hero-h1">{% if is_staff and is_master %}相席ナビ マスター管理{% elif is_staff %}相席ナビ 業務モニター{% elif tp_stale != 'live' %}相席ラウンジ、いま入れる店は？全国{{ tp_total_stores }}店の男女人数を横断チェック{% else %}相席ラウンジ、いま入れる店は？全国{{ tp_total_stores }}店の男女人数を1分更新{% endif %}</h1>
+                    <p id="main-hero-sub" class="subtitle">{% if is_staff %}全国ラウンジの今わかる人数ランキング{% else %}オリエンタルラウンジ・JIS（ジス）・ag（アグ）・ASOBIBAR（アソビバー）など全{{ tp_total_stores }}店の現在人数と{% if tp.forecast_verified %}「60分後の男女比予測」{% else %}「過去傾向からの60分後目安」{% endif %}・ブランド横断の待ち目安を1画面で比較。{% endif %}</p>
                 </div>
                 <div class="header-controls">
                     <!-- Mobile & Desktop Common Primary Actions -->
@@ -484,18 +498,23 @@
                 <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
             </div>
             {% if not is_staff %}
-            <!-- Portal Global Navigation Bar -->
-            <nav class="portal-global-nav" aria-label="サイト内メニュー">
-                <a href="/" class="portal-nav-link active">リアルタイム順位</a>
-                <a href="/concierge" class="portal-nav-link">3秒ハシゴ診断</a>
-                <a href="/for-women" class="portal-nav-link">女子向け裏ガイド</a>
-                <a href="/price-comparison" class="portal-nav-link">料金・イベント比較</a>
-                <a href="/columns" class="portal-nav-link">コラム・記事一覧</a>
-                <a href="/areas" class="portal-nav-link">エリアから探す</a>
-                <a href="/stats" class="portal-nav-link">統計データ白書</a>
-                <a href="/guide/brand-comparison" class="portal-nav-link">3大ブランド比較</a>
-                <a href="/grooming" class="portal-nav-link">服装・事前準備</a>
+            <!-- Compact 3-Primary-Item Global Navigation (Remaining 6 items stored in Menu Drawer) -->
+            <nav class="portal-global-nav portal-global-nav-compact" aria-label="サイト内メニュー">
+                <a href="/" class="portal-nav-link active">今の順位</a>
+                <a href="/price-comparison" class="portal-nav-link">料金比較</a>
+                <a href="/for-women" class="portal-nav-link">初めての女性向け安心ガイド</a>
+                <button type="button" class="portal-nav-link portal-nav-more-btn" onclick="openMenuModal()" aria-haspopup="dialog">メニュー（3秒診断・記事・白書）</button>
             </nav>
+            <!-- FV 1-Line Data Provenance & Trust Bar -->
+            <div id="fv-trust-bar" class="fv-trust-bar" aria-label="データの取得元と運営方針">
+                <span class="fv-trust-text">
+                    JIS（ジス）＝公式POS実測／他ブランド＝公式公開人数を1分間隔取得 ｜ 最終取得 <span id="last-update">{{ tp_last_hm }}</span>{% if tp.raw_snapshots and tp.raw_snapshots > 0 %} ｜ 蓄積 {{ "{:,}".format(tp.raw_snapshots | int) }}件（{{ tp.collection_since }}）{% endif %}{% if tp.forecast_verified %} ｜ 60分後予測誤差 平均±{{ tp.forecast_mae_pt }}pt（直近30日 n={{ "{:,}".format(tp.forecast_resolved_count | int) }}）{% else %} ｜ 60分後＝過去傾向からの目安{% endif %} ｜ 公式非提携・広告収益運営
+                </span>
+                <span class="fv-trust-links">
+                    <a href="/stats#data-provenance" class="fv-trust-link">データの取り方と予測の当たり具合を見る ›</a>
+                    <a href="/about" class="fv-trust-link">運営者情報</a>
+                </span>
+            </div>
             {% include '_nav_loader.html' %}
             {% endif %}
         </header>
@@ -504,6 +523,13 @@
             <div id="pull-indicator">
                 <div class="spinner"></div>
             </div>
+
+            {% if not is_staff %}
+            <!-- Stale Data Halt Alert Banner (>= 10 min without fresh scrape) -->
+            <div id="stale-halt-banner" class="stale-halt-banner{% if tp_stale != 'halted' %} hidden{% endif %}" role="status" aria-live="polite">
+                <strong>現在データ更新が止まっています（最後の取得 <span id="stale-last-hm">{{ tp_last_hm }}</span>）。</strong>下は最後に取得できた人数です。
+            </div>
+            {% endif %}
             
             <div id="loading" class="loading-state{% if initial_status and initial_status.ranking %} hidden{% endif %}">
                 <div class="spinner"></div>
@@ -512,37 +538,56 @@
 
             <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
 
+                <!-- 1-Row Persistent Area Quick Chips right under Header -->
+                <div id="area-quick-chips" class="filter-bar area-quick-chips" role="region" aria-label="エリア絞り込み">
+                    <button type="button" class="filter-btn active" data-region="All">全国</button>
+                    <button type="button" class="filter-btn filter-btn-gps" id="quick-nearby-chip" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地</button>
+                    <button type="button" class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
+                    <button type="button" class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷</button>
+                    <button type="button" class="filter-btn filter-btn-city" data-region="City:umeda">梅田</button>
+                    <button type="button" class="filter-btn filter-btn-city" data-region="City:nagoya">名古屋</button>
+                    <button type="button" class="filter-btn filter-btn-city" data-region="City:fukuoka">福岡</button>
+                    <button type="button" class="more-areas-trigger" id="more-areas-btn" popovertarget="more-areas-popover" aria-label="その他の地域を選択">その他 ▾</button>
+                </div>
+                <div id="more-areas-popover" class="more-areas-popover" popover="auto" role="region" aria-label="その他の地域一覧">
+                    <div class="more-areas-popover-head">
+                        <span>その他のエリアを選択</span>
+                        <button type="button" class="popover-close-inline" popovertarget="more-areas-popover" popovertargetaction="hide" aria-label="閉じる">✕</button>
+                    </div>
+                    <div class="more-areas-grid">
+                        <button type="button" class="filter-btn filter-btn-city" data-region="City:namba">難波・心斎橋</button>
+                        <button type="button" class="filter-btn" data-region="Kanto">関東全域</button>
+                        <button type="button" class="filter-btn" data-region="Kinki">関西全域</button>
+                        <button type="button" class="filter-btn" data-region="Chubu">中部</button>
+                        <button type="button" class="filter-btn" data-region="Kyushu">九州・沖縄</button>
+                        <button type="button" class="filter-btn" data-region="Hokkaido">北海道</button>
+                        <button type="button" class="filter-btn" data-region="Tohoku">東北</button>
+                        <button type="button" class="filter-btn" data-region="Chugoku">中国</button>
+                        <button type="button" class="filter-btn" data-region="Shikoku">四国</button>
+                        <button type="button" class="filter-btn" data-region="Korea">韓国</button>
+                    </div>
+                </div>
+
                 {% if not is_staff %}
-                <div id="audience-mode-bar" class="audience-mode-bar" role="region" aria-label="目線モード切替">
+                <div id="audience-mode-bar" class="audience-mode-bar" role="region" aria-label="並び順の目線切替">
                     <div class="audience-mode-row">
-                        <span class="audience-mode-label">表示モード</span>
-                        <div class="audience-mode-toggle" role="group" aria-label="男女目線の切り替え">
-                            <button type="button" class="audience-pill-btn active" data-audience="men" onclick="setAudienceMode('men', true)">男性目線<span class="aud-sub-pc">（女性人数順）</span><span class="aud-sub-sp">・女性順</span></button>
-                            <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)">女性目線<span class="aud-sub-pc">（待ち0・特典順）</span><span class="aud-sub-sp">・待ち0順</span></button>
+                        <div class="audience-mode-toggle" role="group" aria-label="並び順の切り替え">
+                            <button type="button" class="audience-pill-btn active" data-audience="men" onclick="setAudienceMode('men', true)">女性が多い順</button>
+                            <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)">女性がすぐ入れる順</button>
+                        </div>
+                        <div class="audience-aux-actions">
+                            <a href="/concierge" class="compact-concierge-link">3秒診断 ›</a>
+                            <button type="button" class="legend-help-trigger" id="legend-help-btn" popovertarget="metrics-legend-popover" title="実測・推定や予測誤差などの見方を表示">? 見方</button>
                         </div>
                     </div>
                     <div id="ladies-mode-quicklinks" class="ladies-mode-quicklinks hidden">
-                        <span class="ladies-mode-hint"><span class="status-dot-live" aria-hidden="true"></span>男性が先行中＆限定フェア開催中の「受付待ちゼロ圏」を上段に表示中</span>
+                        <span class="ladies-mode-hint"><span class="status-dot-live" aria-hidden="true"></span>男性が先行中で女性が待たずに座りやすい店舗を上位表示しています</span>
                         <div class="ladies-quick-actions">
-                            <a href="/for-women" class="ladies-quick-link">女子向け裏ガイド＆席替え術 ›</a>
+                            <a href="/for-women" class="ladies-quick-link">初めての女性向け安心ガイド＆席替え術 ›</a>
                             {% if not is_staff and not session.get('is_staff') %}
                             <button type="button" class="ladies-quick-link" onclick="openGuideModal('all')">女性向け特典・1対1デート特集 ›</button>
                             {% endif %}
                         </div>
-                    </div>
-                </div>
-
-                <!-- 3-Second Tonight's Lounge & Hopping Concierge Quick Bar -->
-                <div class="concierge-quick-banner">
-                    <div class="cqb-left">
-                        <span class="cqb-badge">3秒診断</span>
-                        <span class="cqb-title">今夜どこ行く？現在人数×98万件データで「本命＆徒歩ハシゴ先」を3秒診断</span>
-                    </div>
-                    <div class="cqb-actions">
-                        <a href="/concierge?area=shinjuku" class="cqb-chip">新宿</a>
-                        <a href="/concierge?area=umeda" class="cqb-chip">梅田</a>
-                        <a href="/concierge?area=shibuya" class="cqb-chip">渋谷</a>
-                        <a href="/concierge" class="cqb-cta">3秒診断する ›</a>
                     </div>
                 </div>
                 {% endif %}
@@ -553,33 +598,14 @@
                         <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="検索文字をクリア" title="検索をクリア" onclick="clearSearchInput()">✕</button>
                     </div>
                     <div class="sort-controls">
-                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性順</button>
+                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性が多い順</button>
                         <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
                         <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')"><span class="aud-sub-pc">女性比率順</span><span class="aud-sub-sp">比率順</span></button>
                         {% if not is_staff %}
-                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちゼロ・特典開催中の店舗順で並び替え"><span class="aud-sub-pc">待ち0・特典順</span><span class="aud-sub-sp">待ち0順</span></button>
+                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちほぼゼロの店舗順で並び替え"><span class="aud-sub-pc">女性待ち0順</span><span class="aud-sub-sp">待ち0順</span></button>
                         {% endif %}
                         <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
-                </div>
-
-                <div class="filter-bar">
-                    <button class="filter-btn active" data-region="All">全て</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷・恵比寿</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:umeda">梅田・茶屋町</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:namba">難波・心斎橋</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:nagoya">名古屋</button>
-                    <button class="filter-btn filter-btn-city" data-region="City:fukuoka">福岡</button>
-                    <button class="filter-btn" data-region="Kanto">関東全域</button>
-                    <button class="filter-btn" data-region="Kinki">関西全域</button>
-                    <button class="filter-btn" data-region="Chubu">中部</button>
-                    <button class="filter-btn" data-region="Kyushu">九州・沖縄</button>
-                    <button class="filter-btn" data-region="Hokkaido">北海道</button>
-                    <button class="filter-btn" data-region="Tohoku">東北</button>
-                    <button class="filter-btn" data-region="Chugoku">中国</button>
-                    <button class="filter-btn" data-region="Shikoku">四国</button>
-                    <button class="filter-btn" data-region="Korea">韓国</button>
                 </div>
 
                 <div id="active-filter-summary" class="active-filter-summary hidden" aria-live="polite">
@@ -775,7 +801,7 @@
                 <template id="ranking-item-template">
                     <div class="ranking-item" tabindex="0">
                         <div class="bento-kicker-row">
-                            <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
+                            <span class="bento-kicker-label">今夜全国ならここ一択</span>
                             <span class="bento-verdict-pill is-ok">即入店圏</span>
                         </div>
                         <div class="rank-badge">01</div>
@@ -785,9 +811,17 @@
                                 <span class="distance-tag hidden"></span>
                                 <span class="momentum-tag hidden"></span>
                                 <span class="area-tag">東京</span>
+                                <span class="card-freshness-tag hidden"></span>
                             </div>
                             <h3 class="store-name">Store Name</h3>
                             <p class="cm-human-line hidden"></p>
+                            <div class="store-spec-row hidden">
+                                <span class="spec-text"></span>
+                                <span class="spec-links">
+                                    <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden" onclick="event.stopPropagation()">地図</a>
+                                    <a href="/price-comparison" class="card-price-link hidden" onclick="event.stopPropagation()">料金を見る</a>
+                                </span>
+                            </div>
                             <div class="store-micro-metrics hidden"></div>
                             <div class="moat-signals-row hidden"></div>
                         </div>
@@ -840,6 +874,13 @@
                     </div>
                 </template>
 
+                {% if not is_staff %}
+                <div id="daytime-forecast-banner" class="daytime-forecast-banner{% if not tp.all_closed_mode %} hidden{% endif %}" role="status">
+                    <strong>現在は全店営業前の時間帯のため「先週・直近30日の{{ tp.today_wd_ja or '' }}曜ピーク人数順」を表示しています</strong>
+                    <span>多くの店舗は18:00〜19:00オープンです。営業開始と同時にリアルタイム人数ランキングへ自動で切り替わります。</span>
+                </div>
+                {% endif %}
+
                 <div class="cm-pc-split-layout">
                     <div class="cm-pc-left-col">
                         <!-- Pinned Stores Section -->
@@ -853,28 +894,23 @@
 
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
-                            {# Only the first SSR_RANK_LIMIT cards are server-rendered; the rest are appended by app.js from INITIAL_STATUS_DATA (all stores stay crawlable via the footer store list). #}
                             {% set ssr_rank_limit = 20 %}
-                            {% for s in initial_status.ranking[:ssr_rank_limit] %}
+                            {% set ns_ssr = namespace(rendered=0) %}
+                            {% for s in initial_status.ranking %}
+                            {% set ssr_skip_preopen = (not is_staff) and (not tp.all_closed_mode) and s.is_preopen_zero %}
+                            {% if not ssr_skip_preopen and ns_ssr.rendered < ssr_rank_limit %}
+                            {% set ns_ssr.rendered = ns_ssr.rendered + 1 %}
                             {% set ssr_w_num = (s.women or 0) %}
                             {% set ssr_m_num = (s.men or 0) %}
+                            {% set ssr_tot_num = ssr_w_num + ssr_m_num %}
                             {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if s.wait_estimate else 0) or 0 %}
-                            {% if ssr_w_num == 0 and ssr_m_num == 0 %}
-                                {% set ssr_human_copy = '営業時間前または準備中の時間帯です' %}
-                            {% elif ssr_w_num >= ssr_m_num + 12 and ssr_wait_m == 0 %}
-                                {% set ssr_human_copy = 'いま女性が' ~ ssr_w_num ~ '名いて、男性もスムーズに入れます' %}
-                            {% elif ssr_wait_m == 0 and ssr_w_num >= ssr_m_num %}
-                                {% set ssr_human_copy = '男女バランスが良く、待ち時間なしで案内中です' %}
-                            {% elif ssr_wait_m > 0 %}
-                                {% set ssr_human_copy = '男性はやや混雑（女性はすぐ相席しやすい状況）' %}
-                            {% else %}
-                                {% set ssr_human_copy = '現在女性が' ~ ssr_w_num ~ '名・男性が' ~ ssr_m_num ~ '名入店中です' %}
-                            {% endif %}
-                            {% set is_bento_hero = (not is_staff) and loop.first and (s.ssr_rank == 1) %}
-                            <div class="ranking-item{% if loop.first %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
+                            {% set ssr_human_copy = s.human_line or '現在人数を集計中です' %}
+                            {% set is_bento_hero = (not is_staff) and (ns_ssr.rendered == 1) and (s.ssr_rank == 1) and (tp_stale != 'halted') and (not tp.all_closed_mode) and (ssr_tot_num > 0) %}
+                            {% set ssr_slug = s.slug or (s.name | store_linkable_slug) %}
+                            <div class="ranking-item{% if ns_ssr.rendered == 1 %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
-                                    <span class="bento-kicker-label">TONIGHT'S #1 PICK</span>
-                                    <span class="bento-verdict-pill {{ 'is-wait' if ((ssr_w_num == 0 and ssr_m_num == 0) or ssr_wait_m > 0) else 'is-ok' }}">{% if ssr_w_num == 0 and ssr_m_num == 0 %}準備中{% elif ssr_wait_m > 0 %}男性待機目安 {{ ssr_wait_m }}分{% elif ssr_w_num >= ssr_m_num %}即入店圏{% else %}待ちなし案内中{% endif %}</span>
+                                    <span class="bento-kicker-label">今夜全国ならここ一択</span>
+                                    <span class="bento-verdict-pill {{ 'is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0 or s.is_small_sample) else 'is-ok' }}">{% if ssr_tot_num == 0 %}営業時間外{% elif s.is_small_sample %}少人数のため参考値{% elif ssr_wait_m > 0 %}男性待ち目安 {{ ssr_wait_m }}分{% elif s.source_kind == 'jis_pos' %}実測・男性待ち{{ s.jis_wait_m_grp or 0 }}組{% else %}推定・男性待ち0組圏{% endif %}</span>
                                 </div>
                                 <div class="rank-badge">{% if not is_staff and s.ssr_rank %}{{ '%02d'|format(s.ssr_rank) }}{% elif s.ssr_rank %}{{ s.ssr_rank }}{% else %}-{% endif %}</div>
                                 <div class="store-info">
@@ -893,13 +929,32 @@
                                         {% else %}
                                         <span class="area-tag hidden"></span>
                                         {% endif %}
+                                        {% if s.freshness_label %}
+                                        <span class="card-freshness-tag{% if s.source_kind == 'jis_pos' %} is-pos{% endif %}">{{ s.freshness_label }}</span>
+                                        {% else %}
+                                        <span class="card-freshness-tag hidden"></span>
+                                        {% endif %}
                                     </div>
-                                    <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                                    <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
-                                    <div class="store-micro-metrics{% if not s.core_time_short %} hidden{% endif %}">{% if s.core_time_short %}狙い目 {{ s.core_time_short }}{% if s.midnight_retention_pct is number %} <span class="micro-sep">｜</span> 終電後 {{ s.midnight_retention_pct | round | int }}%{% if s.midnight_label_short %}（{{ s.midnight_label_short }}）{% endif %}{% endif %}{% endif %}</div>
-                                    {% set ssr_has_guest = ((s.women or 0) + (s.men or 0)) > 0 or (s.wait_estimate and (s.wait_estimate.est_men_wait_groups or 0) > 0) %}
-                                    {% set ssr_w_badge = ((s.wait_estimate.wait_badge_men | clean_badge) if (s.wait_estimate and ssr_has_guest) else '') %}
-                                    {% set ssr_f_badge = ((s.forecast_60m.badge_men | clean_badge) if s.forecast_60m else '') %}
+                                    <div class="store-spec-row">
+                                        <span class="spec-text">{{ s.spec_price_short }}{% if s.spec_hours_short %} ｜ 営業 {{ s.spec_hours_short }}{% endif %}{% if s.spec_age_short %} ｜ {{ s.spec_age_short }}{% endif %}</span>
+                                        <span class="spec-links">
+                                            {% if s.map_url %}
+                                            <a href="{{ s.map_url }}" target="_blank" rel="noopener noreferrer" class="card-map-link" onclick="event.stopPropagation()">地図</a>
+                                            {% else %}
+                                            <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden" onclick="event.stopPropagation()">地図</a>
+                                            {% endif %}
+                                            {% if ssr_slug %}
+                                            <a href="/store/{{ ssr_slug }}" class="card-price-link{% if not is_bento_hero %} bento-only-link{% endif %}" onclick="event.stopPropagation()">料金を見る</a>
+                                            {% else %}
+                                            <a href="/price-comparison" class="card-price-link{% if not is_bento_hero %} bento-only-link{% endif %}" onclick="event.stopPropagation()">料金を見る</a>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="store-micro-metrics{% if not (s.core_time_short or s.midnight_plain) %} hidden{% endif %}">{% if s.core_time_short %}狙い目 {{ s.core_time_short }}{% endif %}{% if s.core_time_short and s.midnight_plain %} <span class="micro-sep">｜</span> {% endif %}{% if s.midnight_plain %}{{ s.midnight_plain }}{% endif %}</div>
+                                    {% set ssr_w_badge = s.wait_pill_men or '' %}
+                                    {% set ssr_f_badge = s.forecast_pill_men or '' %}
                                     {% set ssr_f_caution = (s.forecast_60m and (s.forecast_60m.alert_code in ['crowd_rush_warn', 'last_train_cliff', 'male_glut_lock'] or (s.forecast_60m.pred_delta_pt or 0) <= -5)) %}
                                     {% set ssr_tm = s.turnover_momentum if (s.turnover_momentum and s.turnover_momentum.score is number and s.turnover_momentum.label and s.turnover_momentum.label != '判定対象外') else none %}
                                     {% set ssr_wb = s.weather_brief if s.weather_brief else none %}
@@ -907,7 +962,7 @@
                                     <div class="moat-signals-row{% if not (ssr_w_badge or ssr_f_badge or ssr_tm or ssr_wb_cold) %} hidden{% endif %}">
                                         {% if ssr_w_badge %}<span class="moat-pill tone-{{ s.wait_estimate.wait_tone or 'neutral' }}" title="{{ s.wait_estimate.pos_summary_short or '' }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_w_badge }}</span>{% endif %}
                                         {% if ssr_f_badge %}<span class="moat-pill tone-{{ s.forecast_60m.badge_tone or 'neutral' }}" title="{{ s.forecast_60m.reason_short or '' }}">{% if ssr_f_caution %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 3.5 4.5 7 7 5 11 9"/></svg>{% else %}<svg class="moat-svg" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 8.5 4.2 5.3 6.8 7 11 2.8"/></svg>{% endif %}{{ ssr_f_badge }}</span>{% endif %}
-                                        {% if ssr_tm %}<span class="moat-pill tone-{{ ssr_tm.tone or 'neutral' }}" title="{{ ssr_tm.desc or ssr_tm.reason or ('席回転スピード: ' ~ ssr_tm.score ~ '点') }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_tm.label | clean_badge }}</span>{% endif %}
+                                        {% if ssr_tm %}<span class="moat-pill tone-{{ ssr_tm.tone or 'neutral' }}" title="{{ ssr_tm.desc or ssr_tm.reason or ('席の動き指数: ' ~ ssr_tm.score ~ '点') }}"><span class="moat-dot" aria-hidden="true"></span>{{ ssr_tm.label | clean_badge }}</span>{% endif %}
                                         {% if ssr_wb_cold %}<span class="moat-pill tone-rain" title="前日比{{ '%.1f'|format(ssr_wb.temp_diff_c) }}℃急冷（屋内需要サージ警戒）"><span class="moat-dot" aria-hidden="true"></span>急冷サージ</span>{% endif %}
                                     </div>
                                 </div>
@@ -927,9 +982,9 @@
                                     </button>
                                 </div>
                                 <div class="stats-group">
-                                    <div class="bento-ratio-hero">
-                                        <div class="bento-ratio-main"><span class="bento-ratio-num">{{ s.ssr_ladies_pct if (ssr_w_num + ssr_m_num) > 0 else 0 }}</span><span class="bento-ratio-unit">%</span></div>
-                                        <span class="bento-ratio-caption">女性比</span>
+                                    <div class="bento-ratio-hero{% if s.is_small_sample %} is-small-sample{% endif %}">
+                                        <div class="bento-ratio-main"><span class="bento-ratio-num">{{ s.ssr_ladies_pct if ssr_tot_num > 0 else 0 }}</span><span class="bento-ratio-unit">%</span></div>
+                                        <span class="bento-ratio-caption">{% if s.is_small_sample %}少人数のため参考値{% else %}女性比{% endif %}</span>
                                     </div>
                                     <div class="stat ladies">
                                         <div class="stat-num-row">
@@ -941,8 +996,8 @@
                                             {% endif %}
                                         </div>
                                         <span class="label">LADIES</span>
-                                        {% if s.usual_w_diff is not none %}
-                                        <span class="stat-usual{% if s.usual_w_diff > 0 %} is-up{% elif s.usual_w_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">平比{% if s.usual_w_diff > 0 %}+{{ s.usual_w_diff }}{% elif s.usual_w_diff < 0 %}{{ s.usual_w_diff }}{% else %}±0{% endif %}</span>
+                                        {% if s.usual_w_plain %}
+                                        <span class="stat-usual{% if (s.usual_w_diff or 0) > 0 %} is-up{% elif (s.usual_w_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">{{ s.usual_w_plain }}</span>
                                         {% else %}
                                         <span class="stat-usual hidden"></span>
                                         {% endif %}
@@ -957,8 +1012,8 @@
                                             {% endif %}
                                         </div>
                                         <span class="label">MEN</span>
-                                        {% if s.usual_m_diff is not none %}
-                                        <span class="stat-usual{% if s.usual_m_diff > 0 %} is-up{% elif s.usual_m_diff < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">平比{% if s.usual_m_diff > 0 %}+{{ s.usual_m_diff }}{% elif s.usual_m_diff < 0 %}{{ s.usual_m_diff }}{% else %}±0{% endif %}</span>
+                                        {% if s.usual_m_plain %}
+                                        <span class="stat-usual{% if (s.usual_m_diff or 0) > 0 %} is-up{% elif (s.usual_m_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">{{ s.usual_m_plain }}</span>
                                         {% else %}
                                         <span class="stat-usual hidden"></span>
                                         {% endif %}
@@ -969,52 +1024,20 @@
                                     <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
                                 </div>
                             </div>
-                            {% if not is_staff and not session.get('is_staff') and loop.index == 4 and (initial_status.ranking|length) >= 4 %}
-                            {% set use_honest_1on1 = (bachelor_shares_instant is not defined) or bachelor_shares_instant %}
-                            <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
-                                <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="nofollow sponsored noopener">
-                                    <div class="pr-context-body">
-                                        <div class="pr-context-meta">
-                                            <span class="pr-disclosure-pill">PR</span>
-                                            <span class="pr-context-kicker">2対2より1対1で話したい日の選択肢</span>
-                                        </div>
-                                        {% if use_honest_1on1 %}
-                                        <div class="pr-context-title">相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」</div>
-                                        <div class="pr-context-sub">複数人の相席が合わない日や1名利用の夜に、近隣で1対1のカフェ・食事相手を探せる定番サービス</div>
-                                        {% else %}
-                                        <div class="pr-context-title">メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」</div>
-                                        <div class="pr-context-sub">希望日時を入れるだけでAIが相手を調整。落ち着いたカフェやバーで1対1対話</div>
-                                        {% endif %}
-                                    </div>
-                                    <span class="pr-context-cta">公式詳細 ›</span>
-                                </a>
-                                <div class="pr-context-foot">
-                                    <a class="pr-editorial-sublink" href="/guide/lounge-vs-screened-date">相席ラウンジ vs 1対1デート徹底比較 ›</a>
-                                </div>
-                            </aside>
-                            {% endif %}
-                            {% if not is_staff and not session.get('is_staff') and loop.index == 10 and (initial_status.ranking|length) >= 10 %}
-                            <aside class="context-lead-row pr-card-item" data-context-slot="rank10_context" data-context-mode="night_second_venue" data-context-href="/link/second_venue_reservation" aria-label="プロモーションおよび2軒目ガイド">
-                                <a class="pr-context-main" href="/link/second_venue_reservation?from=/" target="_blank" rel="nofollow sponsored noopener">
-                                    <div class="pr-context-body">
-                                        <div class="pr-context-meta">
-                                            <span class="pr-disclosure-pill">PR</span>
-                                            <span class="pr-context-kicker">2軒目バー・後日デートの席確保に</span>
-                                        </div>
-                                        <div class="pr-context-title">着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」</div>
-                                        <div class="pr-context-sub">週末の満席歩き回りを回避。駅近の隠れ家バー・厳選ダイニングをスマホで空席予約</div>
-                                    </div>
-                                    <span class="pr-context-cta">空席・プランを見る ›</span>
-                                </a>
-                                <div class="pr-context-foot">
-                                    <a class="pr-editorial-sublink" href="/guide/second-venue">着席45分で自然に2軒目へ誘うフレーズ・立ち回り ›</a>
-                                </div>
-                                <img class="pr-tracking-pixel" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" width="1" height="1" alt="" loading="lazy" aria-hidden="true">
-                            </aside>
                             {% endif %}
                             {% endfor %}
                             {% endif %}
                         </div>
+
+                        {% if not is_staff %}
+                        <details id="preopen-stores-details" class="preopen-stores-disclosure{% if tp.all_closed_mode or (tp.preopen_domestic_count or 0) == 0 %} hidden{% endif %}">
+                            <summary id="preopen-stores-summary" class="preopen-stores-summary">
+                                <span class="preopen-summary-label">営業前の<strong id="preopen-count-num">{{ tp.preopen_domestic_count or 0 }}</strong>店を見る（開店時刻・同曜日のピーク実績つき）</span>
+                                <span class="preopen-chevron" aria-hidden="true">▾</span>
+                            </summary>
+                            <div id="preopen-ranking-list" class="ranking-list preopen-ranking-list"></div>
+                        </details>
+                        {% endif %}
                     </div>
 
                     {% if not is_staff %}
@@ -1043,12 +1066,12 @@
                                     </div>
                                     <div style="text-align: right;">
                                         <div class="cmi-count-lbl">女性比率</div>
-                                        <div class="cmi-curve-val">{{ top_s.ssr_ladies_pct or 0 }}%</div>
+                                        <div class="cmi-curve-val">{% if top_s.is_small_sample %}少人数のため参考値{% else %}{{ top_s.ssr_ladies_pct or 0 }}%{% endif %}</div>
                                     </div>
                                 </div>
                                 <div class="cmi-ratio-bar">
-                                    <div class="cmi-bar-w" style="width: {{ top_s.ssr_ladies_pct or 50 }}%;"></div>
-                                    <div class="cmi-bar-m" style="width: {{ top_s.ssr_men_pct or 50 }}%;"></div>
+                                    <div class="cmi-bar-w" style="width: {{ top_s.ssr_ladies_pct or 0 }}%;"></div>
+                                    <div class="cmi-bar-m" style="width: {{ top_s.ssr_men_pct or 0 }}%;"></div>
                                 </div>
                             </div>
                         </div>
@@ -1065,7 +1088,6 @@
                 </div>
                 <script>
                     (function () {
-                        // Keyboard activation for JS-cloned .ranking-item cards (SSR cards carry their own inline onkeydown)
                         if (!window.__rankingKeyNavBound) {
                             window.__rankingKeyNavBound = true;
                             document.addEventListener('keydown', function (ev) {
@@ -1117,6 +1139,11 @@
                                     ar.textContent = '';
                                 }
                             }
+                            var fl = item.querySelector('.card-freshness-tag');
+                            if (fl && d.fl) {
+                                fl.classList.remove('hidden');
+                                fl.textContent = d.fl;
+                            }
                             var sn = item.querySelector('.store-name');
                             if (sn) {
                                 sn.textContent = '';
@@ -1152,20 +1179,33 @@
                                     hl.classList.add('hidden');
                                 }
                             }
+                            var spRow = item.querySelector('.store-spec-row');
+                            if (spRow && d.sp) {
+                                spRow.classList.remove('hidden');
+                                var spTxt = spRow.querySelector('.spec-text');
+                                if (spTxt) {
+                                    spTxt.textContent = d.sp + (d.sh ? ' ｜ 営業 ' + d.sh : '') + (d.sa ? ' ｜ ' + d.sa : '');
+                                }
+                                var mapLnk = spRow.querySelector('.card-map-link');
+                                if (mapLnk && d.mu) {
+                                    mapLnk.href = d.mu;
+                                    mapLnk.classList.remove('hidden');
+                                }
+                            }
                             var mc = item.querySelector('.store-micro-metrics');
-                            if (mc && d.ct) {
+                            if (mc && (d.ct || d.mp_txt)) {
                                 mc.classList.remove('hidden');
                                 mc.textContent = '';
-                                mc.appendChild(document.createTextNode('狙い目 ' + d.ct));
-                                // d.mr is only present when measured (ssr_payload); no fabricated label fallback
-                                if (d.mr !== null && d.mr !== undefined && isFinite(Number(d.mr))) {
+                                if (d.ct) mc.appendChild(document.createTextNode('狙い目 ' + d.ct));
+                                if (d.ct && d.mp_txt) {
                                     mc.appendChild(document.createTextNode(' '));
                                     var sep = document.createElement('span');
                                     sep.className = 'micro-sep';
                                     sep.textContent = '｜';
                                     mc.appendChild(sep);
-                                    mc.appendChild(document.createTextNode(' 終電後 ' + Math.round(Number(d.mr)) + '%' + (d.ml ? '（' + d.ml + '）' : '')));
+                                    mc.appendChild(document.createTextNode(' '));
                                 }
+                                if (d.mp_txt) mc.appendChild(document.createTextNode(d.mp_txt));
                             }
                             var mrEl = item.querySelector('.moat-signals-row');
                             if (mrEl && (d.wb || d.fb)) {
@@ -1205,6 +1245,10 @@
                             }
                             var wNum = Number(d.w || 0);
                             var mNum = Number(d.m || 0);
+                            var bHero = item.querySelector('.bento-ratio-hero');
+                            var bCap = item.querySelector('.bento-ratio-caption');
+                            if (bHero) bHero.classList.toggle('is-small-sample', Boolean(d.ss));
+                            if (bCap) bCap.textContent = d.ss ? '少人数のため参考値' : '女性比';
                             var brNum = item.querySelector('.bento-ratio-num');
                             if (brNum) brNum.textContent = String((wNum + mNum) > 0 ? (d.wp || 0) : 0);
                             var lc = item.querySelector('.stat.ladies .count');
@@ -1220,7 +1264,7 @@
                                 lu.classList.remove('hidden');
                                 if (d.uwd > 0) lu.classList.add('is-up');
                                 else if (d.uwd < 0) lu.classList.add('is-down');
-                                lu.textContent = '平比' + (d.uwd > 0 ? '+' + d.uwd : (d.uwd < 0 ? d.uwd : '±0'));
+                                lu.textContent = d.uwd > 0 ? ('いつもより女性+' + d.uwd + '人') : (d.uwd < 0 ? ('いつもより女性' + Math.abs(d.uwd) + '人少なめ') : 'いつも並み');
                                 lu.title = '普段の' + (d.usl || '') + '平均(' + (d.uw !== undefined && d.uw !== null ? d.uw : 0) + '名)との差';
                             }
                             var mcNum = item.querySelector('.stat.men .count');
@@ -1236,7 +1280,7 @@
                                 mu.classList.remove('hidden');
                                 if (d.umd > 0) mu.classList.add('is-up');
                                 else if (d.umd < 0) mu.classList.add('is-down');
-                                mu.textContent = '平比' + (d.umd > 0 ? '+' + d.umd : (d.umd < 0 ? d.umd : '±0'));
+                                mu.textContent = d.umd > 0 ? ('いつもより男性+' + d.umd + '人') : (d.umd < 0 ? ('いつもより男性' + Math.abs(d.umd) + '人少なめ') : 'いつも並み');
                                 mu.title = '普段の' + (d.usl || '') + '平均(' + (d.um !== undefined && d.um !== null ? d.um : 0) + '名)との差';
                             }
                             var lb = item.querySelector('.bar-fill-ladies');
@@ -1250,7 +1294,6 @@
                             if (pinnedRaw) {
                                 var pinned = JSON.parse(pinnedRaw);
                                 if (Array.isArray(pinned) && pinned.length > 0) {
-                                    // Render pinned stores ranked below SSR_RANK_LIMIT immediately as real data cards (zero black placeholder boxes)
                                     var deferredPool = {{ (deferred_card_pool if deferred_card_pool is defined else []) | tojson }};
                                     var pinSet = Object.create(null);
                                     for (var i = 0; i < pinned.length; i++) pinSet[pinned[i]] = true;
@@ -1289,23 +1332,12 @@
                                         }
                                         if (moved > 0) {
                                             var newFirst = rList.querySelector('.ranking-item[data-store]');
-                                            if (newFirst && !document.body.classList.contains('staff-mode')) {
+                                            var haltEl = document.getElementById('stale-halt-banner');
+                                            var isHalted = haltEl && !haltEl.classList.contains('hidden');
+                                            if (newFirst && !document.body.classList.contains('staff-mode') && !isHalted) {
                                                 var rb = newFirst.querySelector('.rank-badge');
                                                 if (!rb || rb.textContent.trim() !== '-') {
                                                     newFirst.classList.add('bento-hero-card');
-                                                }
-                                            }
-                                            var prCards = rList.querySelectorAll('.pr-card-item');
-                                            if (prCards.length > 0) {
-                                                var remCards = rList.querySelectorAll('.ranking-item[data-store]');
-                                                var slotRanks = [4, 10];
-                                                for (var pi = 0; pi < prCards.length; pi++) {
-                                                    var afterR = slotRanks[pi] || 0;
-                                                    if (afterR > 0 && remCards.length >= afterR) {
-                                                        remCards[afterR - 1].insertAdjacentElement('afterend', prCards[pi]);
-                                                    } else if (prCards[pi].parentNode) {
-                                                        prCards[pi].parentNode.removeChild(prCards[pi]);
-                                                    }
                                                 }
                                             }
                                         }
@@ -1322,19 +1354,72 @@
                     })();
                 </script>
 
-                <!-- Momentum & Card Legend Bar (Placed below ranking list to keep first-view clean) -->
-                <div class="momentum-legend-bar" aria-label="表示指標の説明" style="margin-top: 12px;">
-                    <span class="momentum-legend-pill">「+数字」＝15分比 ｜ 「丸ドット」＝待ち時間解析（JISは公式POS実測） ｜ 「60分後%」＝AI男女比予測</span>
-                    <span class="momentum-legend-hint">終電後%＝21-22時比の深夜0-1時女性維持率 ｜ タップで詳細予測＆グラフ</span>
-                </div>
+                {% if not is_staff %}
+                <!-- Truthful Ranking Neutrality Statement -->
+                <p id="ranking-neutrality-note" class="ranking-neutrality-note">
+                    ランキング順位はリアルタイムの人数データのみで自動決定しています。広告費や公式提携の有無による順位変動はありません（店舗名の「公式特典」「公式フェア」は各店舗公式Webの公開イベント情報であり、広告枠ではありません）。
+                </p>
 
-                <div class="info-bar">
-                    <p>最終更新: <span id="last-update">{% if initial_status and initial_status.timestamp and ' ' in initial_status.timestamp %}{{ initial_status.timestamp.split(' ')[1] }}{% else %}--:--{% endif %}</span> <span class="info-bar-subnote" style="margin-left: 6px;">（※+数字は直近15分の伸び）</span></p>
-
-                    <div class="live-indicator">
-                        <div class="dot"></div>
-                        1分自動更新
+                {% if not session.get('is_staff') %}
+                {% set use_honest_1on1 = (bachelor_shares_instant is not defined) or bachelor_shares_instant %}
+                <!-- Consolidated PR / Alternatives Block (Strictly Outside Ranked Store List) -->
+                <section id="pr-alternatives-section" class="pr-alternatives-section" aria-label="PR｜相席以外の選択肢">
+                    <div class="pr-alternatives-head">
+                        <span class="pr-disclosure-pill">PR</span>
+                        <span class="pr-alternatives-title">PR｜相席以外の選択肢（1対1デート・2軒目予約・身だしなみ）</span>
                     </div>
+                    <div id="pr-alternatives-grid" class="pr-alternatives-grid">
+                        <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
+                            <a class="pr-context-main" href="/link/dating_bachelor?from=/" target="_blank" rel="nofollow sponsored noopener">
+                                <div class="pr-context-body">
+                                    <div class="pr-context-meta">
+                                        <span class="pr-disclosure-pill">PR</span>
+                                        <span class="pr-context-kicker">2対2より1対1で話したい日の選択肢</span>
+                                    </div>
+                                    {% if use_honest_1on1 %}
+                                    <div class="pr-context-title">相席より1対1で落ち着いて会いたい日の「定番恋活・デートアプリ」</div>
+                                    <div class="pr-context-sub">複数人の相席が合わない日や1名利用の夜に、近隣で1対1のカフェ・食事相手を探せる定番サービス</div>
+                                    {% else %}
+                                    <div class="pr-context-title">メッセージ不要で週1回デートが決まる「審査制1対1カフェデート」</div>
+                                    <div class="pr-context-sub">希望日時を入れるだけでAIが相手を調整。落ち着いたカフェやバーで1対1対話</div>
+                                    {% endif %}
+                                </div>
+                                <span class="pr-context-cta">公式詳細 ›</span>
+                            </a>
+                            <div class="pr-context-foot">
+                                <a class="pr-editorial-sublink" href="/guide/lounge-vs-screened-date">相席ラウンジ vs 1対1デート徹底比較 ›</a>
+                            </div>
+                        </aside>
+                        <aside class="context-lead-row pr-card-item" data-context-slot="rank10_context" data-context-mode="night_second_venue" data-context-href="/link/second_venue_reservation" aria-label="プロモーションおよび2軒目ガイド">
+                            <a class="pr-context-main" href="/link/second_venue_reservation?from=/" target="_blank" rel="nofollow sponsored noopener">
+                                <div class="pr-context-body">
+                                    <div class="pr-context-meta">
+                                        <span class="pr-disclosure-pill">PR</span>
+                                        <span class="pr-context-kicker">2軒目バー・後日デートの席確保に</span>
+                                    </div>
+                                    <div class="pr-context-title">着席45分後の2軒目・次回ディナーで迷わない「一休.comレストラン」</div>
+                                    <div class="pr-context-sub">週末の満席歩き回りを回避。駅近の隠れ家バー・厳選ダイニングをスマホで空席予約</div>
+                                </div>
+                                <span class="pr-context-cta">空席・プランを見る ›</span>
+                            </a>
+                            <div class="pr-context-foot">
+                                <a class="pr-editorial-sublink" href="/guide/second-venue">着席45分で自然に2軒目へ誘うフレーズ・立ち回り ›</a>
+                            </div>
+                            <img class="pr-tracking-pixel" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" width="1" height="1" alt="" loading="lazy" aria-hidden="true">
+                        </aside>
+                    </div>
+                </section>
+                {% endif %}
+                {% endif %}
+
+                <!-- On-Demand `? 見方` Metrics Legend Popover -->
+                <div id="metrics-legend-popover" class="momentum-legend-bar momentum-legend-popover" popover="auto" aria-label="表示指標の説明">
+                    <div class="legend-popover-head">
+                        <strong>カード内の数値・バッジの見方</strong>
+                        <button type="button" class="popover-close-inline" popovertarget="metrics-legend-popover" popovertargetaction="hide" aria-label="閉じる">✕</button>
+                    </div>
+                    <span class="momentum-legend-pill">・<strong>実測／推定</strong>：JIS（ジス）は公式POS実測の待ち組数、他ブランドは公式公開人数とJIS実測POS相関からの推定値です。</span>
+                    <span class="momentum-legend-hint">・<strong>いつもより±N人</strong>＝過去30日の同曜日・同時間帯平均との差 ｜ <strong>+数字</strong>＝直近15分の増減 ｜ <strong>少人数のため参考値</strong>＝男女合計10名未満のため比率変動が大きい状態</span>
                 </div>
 
                 {% if not is_staff %}
@@ -1368,7 +1453,7 @@
                     <div class="seo-guide-header">
                         <h2>特集コラム・ブランド比較ガイド</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/for-women" class="guide-open-btn" style="text-decoration: none;">女子向け裏ガイド ›</a>
+                            <a href="/for-women" class="guide-open-btn" style="text-decoration: none;">初めての女性向け安心ガイド ›</a>
                             <a href="/columns" class="guide-open-btn" style="text-decoration: none;">コラム一覧を見る ›</a>
                             <a href="/areas" class="guide-open-btn" style="text-decoration: none;">エリア別ガイド ›</a>
                         </div>
@@ -1409,12 +1494,12 @@
                             <div class="portal-article-thumb">
                                 <picture>
                                     <source srcset="/static/eyecatch-crowd-rush-paradox.webp?v=3" type="image/webp">
-                                    <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——98万件ログが暴く群衆殺到パラドックス" width="1200" height="630" loading="lazy" decoding="async">
+                                    <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——実測ログが暴く群衆殺到パラドックス" width="1200" height="630" loading="lazy" decoding="async">
                                 </picture>
-                                <span class="portal-article-badge">新着・98万件検証</span>
+                                <span class="portal-article-badge">実測データ検証</span>
                             </div>
                             <div class="portal-article-body">
-                                <h3>金土22時に「女性60%」を見て向かうと、約3回に1回は男余りに転落する——98万件のログが暴く『群衆殺到パラドックス』</h3>
+                                <h3>金土22時に「女性60%」を見て向かうと、約3回に1回は男余りに転落する——実測ログが暴く『群衆殺到パラドックス』</h3>
                                 <p>19時発なら転落率6.1%なのに22時発で29.8%へ急騰する理由と、97.7%が女子優位を維持する「70%安全バッファ」の境界線。</p>
                                 <span class="portal-article-more">記事を読む ›</span>
                             </div>
@@ -1661,7 +1746,7 @@
                     <h3>コラム・特集記事</h3>
                     <ul>
                         <li><a href="/columns">コラム・記事一覧（全{{ 18 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
-                        <li><a href="/for-women">女子向け裏ガイド＆待ちゼロ店舗ボード</a></li>
+                        <li><a href="/for-women">初めての女性向け安心ガイド＆待ちゼロ店舗ボード</a></li>
                         <li><a href="/guide/lounge-vs-screened-date">相席ラウンジ vs 審査制1対1デート比較</a></li>
                         <li><a href="/guide/dress-code-cleanliness">服装・NGドレスコード＆清潔感チェック</a></li>
                         <li><a href="/guide/brand-waveform-asymmetry">5大ブランドの時間波形＆男女逆転検証</a></li>
@@ -2027,7 +2112,7 @@
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
-                                <span class="article-tag">女子向け裏ガイド</span>
+                                <span class="article-tag">初めての女性向け安心ガイド</span>
                                 <span class="article-read-time">5分 / LIVE連動</span>
                             </div>
                             <h3 class="article-card-title">【女性限定】相席ラウンジ完全裏ガイド——受付待ちゼロの店選び・客層比較・角が立たない席替え＆退店術</h3>
@@ -2109,16 +2194,16 @@
                         <div class="article-card-thumb">
                             <picture>
                                 <source srcset="/static/eyecatch-crowd-rush-paradox.webp?v=3" type="image/webp">
-                                <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——98万件ログ検証" width="640" height="360" decoding="async" loading="lazy">
+                                <img src="/static/eyecatch-crowd-rush-paradox.jpg?v=3" alt="金土22時に女性60%を見て向かうと約3回に1回は男余りに転落する——実測ログ検証" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge">⚡ 98万件データ検証</span>
+                            <span class="article-card-badge">実測データ検証</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
                                 <span class="article-tag">群衆殺到パラドックス</span>
                                 <span class="article-read-time">約7分で読める</span>
                             </div>
-                            <h3 class="article-card-title">金土22時に「女性60%」を見て向かうと、約3回に1回は男余りに転落する——98万件ログが暴く『群衆殺到パラドックス』</h3>
+                            <h3 class="article-card-title">金土22時に「女性60%」を見て向かうと、約3回に1回は男余りに転落する——実測ログが暴く『群衆殺到パラドックス』</h3>
                             <p class="article-card-desc">19時発なら転落率6.1%なのに22時発で29.8%に急騰する構造要因と、97.7%が女子優位を維持する「70%安全バッファ」の法則。</p>
                             <div class="article-card-footer">
                                 <span class="article-read-btn">検証記事を読む ›</span>
@@ -2820,9 +2905,9 @@
                 </div>
                 {% endif %}
 
-                <!-- Strategy & Guides Section -->
+                <!-- Strategy & Guides Section (Holds all secondary navigation items removed from FV) -->
                 <div class="menu-section">
-                    <div class="menu-section-title">ポータル・ガイド</div>
+                    <div class="menu-section-title">ポータル・ガイド（全機能メニュー）</div>
                     <div class="menu-grid">
                         <a href="/concierge" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
@@ -2832,32 +2917,50 @@
                         </a>
                         <a href="/for-women" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>女子向け裏ガイド</strong>
-                                <span>受付待ちゼロ店・客層・席替えマニュアル</span>
+                                <strong>初めての女性向け安心ガイド</strong>
+                                <span>受付待ちゼロ店・客層・角が立たない席替え術</span>
+                            </div>
+                        </a>
+                        <a href="/guide" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>初心者向け基本ガイド</strong>
+                                <span>必須の身分証・料金システム・入店の流れ</span>
                             </div>
                         </a>
                         <a href="/price-comparison" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
                                 <strong>料金・イベント比較</strong>
-                                <span>近隣ライバル店の通常料金＆男性割引検証</span>
+                                <span>4時間帯別単価・単独待機料・割引イベント一覧</span>
                             </div>
                         </a>
-                        <a href="/columns" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                        <a href="/stats" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>コラム・記事一覧</strong>
-                                <span>3大ブランド比較・平日穴場データ</span>
+                                <strong>統計データ白書・予測精度</strong>
+                                <span>データの取り方・60分後予測の実測的中率</span>
                             </div>
                         </a>
                         <a href="/areas" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
                                 <strong>エリアから探す</strong>
-                                <span>新宿・渋谷・梅田・栄・天神ほか</span>
+                                <span>新宿・渋谷・梅田・栄・天神ほか全国一覧</span>
+                            </div>
+                        </a>
+                        <a href="/guide/brand-comparison" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>主要ブランド徹底比較</strong>
+                                <span>オリエンタルラウンジ・JIS（ジス）・ag（アグ）の違い</span>
+                            </div>
+                        </a>
+                        <a href="/columns" class="menu-grid-item" style="text-decoration: none; color: inherit;">
+                            <div class="menu-grid-text">
+                                <strong>コラム・記事一覧</strong>
+                                <span>曜日・時間帯別のデータ検証コラム集</span>
                             </div>
                         </a>
                         <a href="/grooming" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
                                 <strong>服装・事前準備ガイド</strong>
-                                <span>ドレスコード・持ち物・当日のマナー</span>
+                                <span>NGドレスコード・持ち物・清潔感チェック</span>
                             </div>
                         </a>
                         <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
@@ -2895,9 +2998,10 @@
     {% if initial_status %}
     <script>
         window.INITIAL_STATUS_DATA = {{ (initial_status_client or initial_status) | tojson }};
+        window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261112_1" defer></script>
+    <script src="/static/app.js?v=20261118_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -2913,7 +3017,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=111', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=112', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {
