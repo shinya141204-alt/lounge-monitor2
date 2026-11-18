@@ -432,6 +432,15 @@ def staff_sns_editorial():
         moshimo_queue = moshimo_reel_queue.get_moshimo_queue_status(allow_blocking=False)
     except Exception as _re_err:
         logging.debug(f"Reel studio init fallback: {_re_err}")
+    gcp_status = None
+    yt_autopost = None
+    try:
+        import gcp_vertex_bridge
+        import youtube_poster
+        gcp_status = gcp_vertex_bridge.get_gcp_credit_bridge_status(allow_blocking=False)
+        yt_autopost = youtube_poster.get_youtube_auto_post_status(allow_blocking=False)
+    except Exception:
+        pass
     return render_template(
         'staff_sns_editorial.html',
         editorial=editorial,
@@ -442,6 +451,8 @@ def staff_sns_editorial():
         tiktok_auto_enabled=tiktok_auto_enabled,
         reel_studio=reel_studio,
         moshimo_queue=moshimo_queue,
+        gcp_status=gcp_status,
+        yt_autopost=yt_autopost,
     )
 
 
@@ -1157,9 +1168,20 @@ def staff_pdca():
     )
     if is_json_req:
         return jsonify(pdca_data)
+    import gcp_vertex_bridge
     import youtube_analytics_sync
+    import youtube_poster
     yt_oauth = youtube_analytics_sync.get_youtube_sync_status(base_url=request.url_root, allow_blocking=True)
-    return render_template('staff_pdca.html', pdca=pdca_data, days=days, yt_oauth=yt_oauth)
+    gcp_status = gcp_vertex_bridge.get_gcp_credit_bridge_status(allow_blocking=True)
+    yt_autopost = youtube_poster.get_youtube_auto_post_status(allow_blocking=True)
+    return render_template(
+        'staff_pdca.html',
+        pdca=pdca_data,
+        days=days,
+        yt_oauth=yt_oauth,
+        gcp_status=gcp_status,
+        yt_autopost=yt_autopost,
+    )
 
 
 @staff_bp.route('/api/pdca')
@@ -1336,11 +1358,27 @@ def api_pdca_youtube_config():
             return jsonify({'ok': False, 'error': err_msg}), 400
         return redirect(f"/staff/pdca?yt_error={quote(err_msg)}#yt-oauth-setup")
 
+    include_upload = False
+    if request.form:
+        include_upload = str(request.form.get('include_upload') or '').strip().lower() in ('1', 'true', 'on', 'yes')
+    else:
+        req_json = request.get_json(silent=True) or {}
+        if isinstance(req_json, dict):
+            include_upload = str(req_json.get('include_upload') or '').strip().lower() in ('1', 'true', 'on', 'yes')
+    if request.args.get('scope') == 'upload' or request.args.get('include_upload') == '1':
+        include_upload = True
+
     state_tok = secrets.token_urlsafe(24)
     session['yt_oauth_state'] = state_tok
     session['yt_oauth_state_ts'] = int(time.time())
+    session['yt_oauth_upload'] = bool(include_upload)
+    session['yt_oauth_next'] = 'sns_editorial' if request.args.get('next') == 'sns_editorial' else 'pdca'
     redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
-    auth_url, url_err = youtube_analytics_sync.build_oauth_authorize_url(redirect_uri, state_tok)
+    auth_url, url_err = youtube_analytics_sync.build_oauth_authorize_url(
+        redirect_uri,
+        state_tok,
+        include_upload=include_upload,
+    )
     if url_err or not auth_url:
         err_msg = url_err or 'Google認可URLの生成に失敗しました'
         if wants_json:
@@ -1367,11 +1405,22 @@ def staff_youtube_oauth_start():
         return redirect('/staff/pdca?yt_error=' + quote('同一オリジンから操作してください') + '#yt-oauth-setup')
     import youtube_analytics_sync
 
+    include_upload = (
+        request.args.get('scope') == 'upload'
+        or request.args.get('include_upload') == '1'
+    )
+    next_page = 'sns_editorial' if request.args.get('next') == 'sns_editorial' else 'pdca'
     state_tok = secrets.token_urlsafe(24)
     session['yt_oauth_state'] = state_tok
     session['yt_oauth_state_ts'] = int(time.time())
+    session['yt_oauth_upload'] = bool(include_upload)
+    session['yt_oauth_next'] = next_page
     redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
-    auth_url, err_msg = youtube_analytics_sync.build_oauth_authorize_url(redirect_uri, state_tok)
+    auth_url, err_msg = youtube_analytics_sync.build_oauth_authorize_url(
+        redirect_uri,
+        state_tok,
+        include_upload=include_upload,
+    )
     if err_msg or not auth_url:
         return redirect('/staff/pdca?yt_error=' + quote(err_msg or 'クライアントID・シークレットを設定してください') + '#yt-oauth-setup')
     return redirect(auth_url)
@@ -1394,10 +1443,17 @@ def staff_youtube_oauth_callback():
     import sns_insights_loop
     import youtube_analytics_sync
 
+    def _success_redirect_url(cnt: int, next_target: str) -> str:
+        if next_target == 'sns_editorial':
+            return f"/staff/sns-editorial?yt_connected=1&yt_synced={cnt}#moshimo-queue-section"
+        return f"/staff/pdca?yt_connected=1&yt_synced={cnt}#pdca-closed-loop"
+
     oauth_err = (request.args.get('error') or '').strip()
     if oauth_err:
         session.pop('yt_oauth_state', None)
         session.pop('yt_oauth_state_ts', None)
+        session.pop('yt_oauth_upload', None)
+        session.pop('yt_oauth_next', None)
         msg = 'Google認証がキャンセルまたは拒否されました（' + oauth_err[:40] + '）'
         return redirect('/staff/pdca?yt_error=' + quote(msg) + '#yt-oauth-setup')
 
@@ -1411,10 +1467,12 @@ def staff_youtube_oauth_callback():
                 _recent_oauth_codes.pop(k_old, None)
         if code_sig and code_sig in _recent_oauth_codes:
             prev_cnt = _recent_oauth_codes[code_sig][1]
-            return redirect(f"/staff/pdca?yt_connected=1&yt_synced={prev_cnt}#pdca-closed-loop")
+            return redirect(_success_redirect_url(prev_cnt, str(session.get('yt_oauth_next') or 'pdca')))
 
         expected_state = str(session.pop('yt_oauth_state', '') or '')
         state_ts = int(session.pop('yt_oauth_state_ts', 0) or 0)
+        requested_upload = bool(session.pop('yt_oauth_upload', False))
+        next_target = str(session.pop('yt_oauth_next', 'pdca') or 'pdca')
         got_state = str(request.args.get('state') or '')
         if (
             not expected_state
@@ -1429,7 +1487,11 @@ def staff_youtube_oauth_callback():
             )
 
         redirect_uri = youtube_analytics_sync.resolve_oauth_redirect_uri(base_url=request.url_root)
-        ex_res = youtube_analytics_sync.exchange_code_and_save(code=code, redirect_uri=redirect_uri)
+        ex_res = youtube_analytics_sync.exchange_code_and_save(
+            code=code,
+            redirect_uri=redirect_uri,
+            requested_upload=requested_upload,
+        )
         if not ex_res.get('ok'):
             err_msg = str(ex_res.get('error') or 'YouTube連携に失敗しました')
             # Multi-machine duplicate callback fallback: if the sibling Fly machine already redeemed this code moments ago
@@ -1442,7 +1504,7 @@ def staff_youtube_oauth_callback():
                         ).replace(tzinfo=datetime.timezone(datetime.timedelta(hours=9)))
                         if abs(now_ts - conn_dt.timestamp()) <= 45:
                             return redirect(
-                                f"/staff/pdca?yt_connected=1&yt_synced={int(cur_st.get('last_synced_count') or 0)}#pdca-closed-loop"
+                                _success_redirect_url(int(cur_st.get('last_synced_count') or 0), next_target)
                             )
                     except Exception:
                         pass
@@ -1468,7 +1530,7 @@ def staff_youtube_oauth_callback():
         if code_sig:
             _recent_oauth_codes[code_sig] = (time.time(), synced_cnt)
 
-    return redirect(f"/staff/pdca?yt_connected=1&yt_synced={synced_cnt}#pdca-closed-loop")
+    return redirect(_success_redirect_url(synced_cnt, next_target))
 
 
 @staff_bp.route('/api/pdca/youtube/disconnect', methods=['POST'])
@@ -1487,6 +1549,87 @@ def api_pdca_youtube_disconnect():
         'youtube_oauth': youtube_analytics_sync.get_youtube_sync_status(
             base_url=request.url_root, allow_blocking=True
         ),
+    })
+
+
+@staff_bp.route('/api/pdca/youtube/auto-post', methods=['GET', 'POST'])
+def api_pdca_youtube_auto_post():
+    """Master-only endpoint to inspect or configure YouTube Shorts automatic upload settings."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import youtube_poster
+
+    if request.method == 'GET':
+        return jsonify({
+            'ok': True,
+            'youtube_auto_post': youtube_poster.get_youtube_auto_post_status(allow_blocking=True),
+        })
+
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+
+    enabled = payload.get('enabled') if 'enabled' in payload else None
+    priv = payload.get('privacy_status') if 'privacy_status' in payload else None
+    live_reels = payload.get('live_reels_enabled') if 'live_reels_enabled' in payload else None
+
+    updated = youtube_poster.update_youtube_auto_post_settings(
+        enabled=bool(enabled) if enabled is not None else None,
+        privacy_status=str(priv) if priv is not None else None,
+        live_reels_enabled=bool(live_reels) if live_reels is not None else None,
+    )
+    return jsonify({'ok': True, 'youtube_auto_post': updated})
+
+
+@staff_bp.route('/api/pdca/gcp-credits', methods=['GET', 'POST'])
+def api_pdca_gcp_credits():
+    """Master-only endpoint to inspect, toggle, or live-probe GCP Credit consumption (Vertex AI + Cloud TTS)."""
+    guard = _check_master_api_csrf()
+    if guard is not None:
+        return guard
+    import gcp_vertex_bridge
+    import sns_editorial
+
+    if request.method == 'GET':
+        return jsonify({
+            'ok': True,
+            'gcp_status': gcp_vertex_bridge.get_gcp_credit_bridge_status(allow_blocking=True),
+            'gemini_status': sns_editorial.get_gemini_status(allow_blocking=True),
+        })
+
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+
+    action = str(payload.get('action') or 'save').strip().lower()
+    if action == 'test':
+        probe = gcp_vertex_bridge.run_gcp_credit_connectivity_test()
+        status_code = 200 if (probe.get('ok') or probe.get('partial_ok')) else 400
+        return jsonify(probe), status_code
+
+    v_en = payload.get('vertex_enabled') if 'vertex_enabled' in payload else None
+    v_loc = payload.get('vertex_location') if 'vertex_location' in payload else None
+    t_mode = payload.get('tts_mode') if 'tts_mode' in payload else None
+    t_voice = payload.get('tts_voice') if 'tts_voice' in payload else None
+
+    updated = gcp_vertex_bridge.update_gcp_credit_settings(
+        vertex_enabled=bool(v_en) if v_en is not None else None,
+        vertex_location=str(v_loc) if v_loc is not None else None,
+        tts_mode=str(t_mode) if t_mode is not None else None,
+        tts_voice=str(t_voice) if t_voice is not None else None,
+    )
+    try:
+        import column_editorial
+        column_editorial.clear_column_ai_cache()
+    except Exception:
+        pass
+    sns_editorial.clear_editorial_ai_cache()
+    core.clear_fast_http_caches()
+    return jsonify({
+        'ok': True,
+        'gcp_status': updated,
+        'gemini_status': sns_editorial.get_gemini_status(allow_blocking=True),
     })
 
 

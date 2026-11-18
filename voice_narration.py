@@ -28,6 +28,7 @@ import threading
 import time
 import urllib.parse
 import wave
+from typing import Optional
 
 import requests
 
@@ -759,8 +760,20 @@ def get_voice_narration_status(allow_blocking: bool = False) -> dict:
     vname = get_elevenlabs_voice_name(allow_blocking=allow_blocking)
     model_id = get_elevenlabs_model_id(allow_blocking=allow_blocking)
     enabled = is_voice_narration_enabled(allow_blocking=allow_blocking)
-    configured = bool(eff_key and vid)
-    active = bool(configured and enabled)
+
+    gcp_tts_mode = "off"
+    gcp_tts_voice = ""
+    gcp_sa_ok = False
+    try:
+        import gcp_vertex_bridge
+        gcp_sa_ok = gcp_vertex_bridge.is_gcp_service_account_configured()
+        gcp_tts_mode = gcp_vertex_bridge.get_gcp_tts_mode(allow_blocking=allow_blocking)
+        gcp_tts_voice = gcp_vertex_bridge.get_gcp_tts_voice(allow_blocking=allow_blocking)
+    except Exception:
+        pass
+    gcp_tts_ready = bool(gcp_sa_ok and gcp_tts_mode in ("gcp_primary", "auto_fallback"))
+    configured = bool((eff_key and vid) or (gcp_sa_ok and gcp_tts_mode == "gcp_primary"))
+    active = bool(enabled and (configured or gcp_tts_ready))
 
     with _status_lock:
         last_err = _runtime_meta["last_error"]
@@ -780,6 +793,9 @@ def get_voice_narration_status(allow_blocking: bool = False) -> dict:
         "supported_models": [
             {"id": k, "label": v} for k, v in SUPPORTED_ELEVENLABS_MODELS.items()
         ],
+        "gcp_tts_ready": gcp_tts_ready,
+        "gcp_tts_mode": gcp_tts_mode,
+        "gcp_tts_voice": gcp_tts_voice,
         "enabled": enabled,
         "active": active,
         "last_error": last_err,
@@ -803,18 +819,36 @@ def get_reel_cache_voice_signature(
     if narration_override is False:
         return "bgm_only"
     wants_voice = True if narration_override is True else is_voice_narration_enabled(allow_blocking=allow_blocking)
-    if not (wants_voice and has_cfg):
+    if not wants_voice:
         return "bgm_only"
 
-    vid = get_elevenlabs_voice_id(allow_blocking=allow_blocking)
-    mid = get_elevenlabs_model_id(allow_blocking=allow_blocking)
     cleaned_custom = normalize_narration_script_input(custom_narration_text or "")
     custom_sig = (
         hashlib.sha256(cleaned_custom.encode("utf-8")).hexdigest()[:12]
         if cleaned_custom
         else "auto"
     )
-    return f"el2:{vid}:{mid}:{custom_sig}"
+
+    gcp_mode = "off"
+    gcp_voice = ""
+    gcp_ok = False
+    try:
+        import gcp_vertex_bridge
+        gcp_ok = gcp_vertex_bridge.is_gcp_service_account_configured()
+        gcp_mode = gcp_vertex_bridge.get_gcp_tts_mode(allow_blocking=allow_blocking)
+        gcp_voice = gcp_vertex_bridge.get_gcp_tts_voice(allow_blocking=allow_blocking)
+    except Exception:
+        pass
+
+    if gcp_ok and gcp_mode == "gcp_primary":
+        return f"gcp1:{gcp_voice}:{custom_sig}"
+    if has_cfg:
+        vid = get_elevenlabs_voice_id(allow_blocking=allow_blocking)
+        mid = get_elevenlabs_model_id(allow_blocking=allow_blocking)
+        return f"el2:{vid}:{mid}:{custom_sig}"
+    if gcp_ok and gcp_mode == "auto_fallback":
+        return f"gcp1:{gcp_voice}:{custom_sig}"
+    return "bgm_only"
 
 
 def normalize_narration_script_input(raw_text: str) -> str:
@@ -1186,19 +1220,63 @@ def synthesize_narration_audio(
     clean_script = normalize_narration_script_input(script_text)
     phonetic_text = to_tts_phonetic_japanese(clean_script)
 
-    if not eff_key or not eff_vid:
-        return {
-            "ok": False,
-            "error": "ElevenLabs APIキーまたはVoice IDが未設定です。",
-            "script_text": clean_script,
-            "phonetic_text": phonetic_text,
-        }
     if not phonetic_text:
         return {
             "ok": False,
             "error": "読み上げ台本が空です。",
             "script_text": clean_script,
             "phonetic_text": "",
+        }
+
+    gcp_mode = "off"
+    gcp_ok = False
+    if not (api_key or "").strip():
+        try:
+            import gcp_vertex_bridge
+            gcp_ok = gcp_vertex_bridge.is_gcp_service_account_configured()
+            gcp_mode = gcp_vertex_bridge.get_gcp_tts_mode(allow_blocking=False)
+        except Exception:
+            gcp_ok = False
+
+    def _run_gcp_tts_synth() -> Optional[dict]:
+        if not (gcp_ok and gcp_mode in ("gcp_primary", "auto_fallback")):
+            return None
+        try:
+            import gcp_vertex_bridge
+            g_res = gcp_vertex_bridge.synthesize_gcp_cloud_tts(
+                script_text=clean_script,
+                phonetic_text=phonetic_text,
+                timeout=timeout,
+                force_refresh=force_refresh,
+                cache_dir=TTS_TMP_CACHE_DIR,
+                cache_ttl_sec=TTS_SHARED_CACHE_TTL_SEC,
+                duration_prober=probe_audio_duration_sec,
+            )
+            if g_res.get("ok"):
+                with _status_lock:
+                    _runtime_meta["last_error"] = ""
+                    _runtime_meta["last_synth_at"] = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+                    _runtime_meta["last_duration_sec"] = float(g_res.get("duration_sec") or 0.0)
+                    _runtime_meta["last_cached"] = bool(g_res.get("cached"))
+                return g_res
+        except Exception:
+            pass
+        return None
+
+    if gcp_ok and gcp_mode == "gcp_primary":
+        gcp_primary_res = _run_gcp_tts_synth()
+        if gcp_primary_res:
+            return gcp_primary_res
+
+    if not eff_key or not eff_vid:
+        gcp_fb = _run_gcp_tts_synth()
+        if gcp_fb:
+            return gcp_fb
+        return {
+            "ok": False,
+            "error": "ElevenLabs APIキーまたはVoice IDが未設定です。",
+            "script_text": clean_script,
+            "phonetic_text": phonetic_text,
         }
 
     cache_raw = f"v2|{eff_vid}|{eff_model}|{phonetic_text}"
@@ -1287,20 +1365,14 @@ def synthesize_narration_audio(
 
     global _quota_429_cooldown_until
     now_mono = time.monotonic()
+    in_el_cooldown = False
+    cd_msg = ""
     with _status_lock:
         if not force_refresh and _quota_429_cooldown_until > now_mono:
             rem_cd = int(max(1.0, _quota_429_cooldown_until - now_mono))
             cd_msg = f"ElevenLabsレート制限クールダウン中（残り約{rem_cd}秒）のためBGMへ自動フォールバックしました。"
             _runtime_meta["last_error"] = cd_msg
-            return {
-                "ok": False,
-                "error": cd_msg,
-                "cooldown_active": True,
-                "script_text": clean_script,
-                "phonetic_text": phonetic_text,
-                "voice_id": eff_vid,
-                "model_id": eff_model,
-            }
+            in_el_cooldown = True
         memo_entry = _fallback_model_memo.get((eff_vid, eff_model))
         if memo_entry and memo_entry[1] > now_mono:
             initial_model = memo_entry[0]
@@ -1308,6 +1380,20 @@ def synthesize_narration_audio(
             if memo_entry:
                 _fallback_model_memo.pop((eff_vid, eff_model), None)
             initial_model = eff_model
+
+    if in_el_cooldown:
+        gcp_cd_fb = _run_gcp_tts_synth()
+        if gcp_cd_fb:
+            return gcp_cd_fb
+        return {
+            "ok": False,
+            "error": cd_msg,
+            "cooldown_active": True,
+            "script_text": clean_script,
+            "phonetic_text": phonetic_text,
+            "voice_id": eff_vid,
+            "model_id": eff_model,
+        }
 
     try:
         used_model = initial_model
@@ -1341,6 +1427,9 @@ def synthesize_narration_audio(
             err_detail = _sanitize_error_text(resp.text if resp.status_code != 200 else "empty audio payload", eff_key)
             msg = f"ElevenLabs音声合成エラー（HTTP {resp.status_code}）: {err_detail}"
             logger.warning(f"[voice_narration] {msg}")
+            gcp_err_fb = _run_gcp_tts_synth()
+            if gcp_err_fb:
+                return gcp_err_fb
             with _status_lock:
                 _runtime_meta["last_error"] = msg
             return {
@@ -1386,6 +1475,9 @@ def synthesize_narration_audio(
     except Exception as exc:
         msg = f"ElevenLabs通信タイムアウトまたは接続失敗: {_sanitize_error_text(str(exc), eff_key)}"
         logger.warning(f"[voice_narration] {msg}")
+        gcp_exc_fb = _run_gcp_tts_synth()
+        if gcp_exc_fb:
+            return gcp_exc_fb
         with _status_lock:
             _runtime_meta["last_error"] = msg
         return {

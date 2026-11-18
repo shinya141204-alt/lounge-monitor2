@@ -969,7 +969,7 @@ def record_sns_delivery_status(
     into `job_state` (`sns_delivery:<channel>`) so Master can inspect silent API/token failures across redeploys.
     """
     ch = (channel or "x").strip().lower()
-    if ch not in ("x", "threads", "instagram", "tiktok", "note"):
+    if ch not in ("x", "threads", "instagram", "tiktok", "note", "youtube_shorts"):
         return
     now_jst = now_jst or datetime.datetime.now(JST)
     ts_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
@@ -1300,47 +1300,77 @@ def set_ai_engine_pref(pref: str) -> str:
 
 
 def has_any_ai_key(allow_blocking: bool = True) -> bool:
-    return bool(get_claude_api_key(allow_blocking=allow_blocking) or get_gemini_api_key(allow_blocking=allow_blocking))
+    if get_claude_api_key(allow_blocking=allow_blocking) or get_gemini_api_key(allow_blocking=allow_blocking):
+        return True
+    try:
+        import gcp_vertex_bridge
+        return bool(
+            gcp_vertex_bridge.is_gcp_service_account_configured()
+            and gcp_vertex_bridge.is_vertex_ai_enabled(allow_blocking=allow_blocking)
+        )
+    except Exception:
+        return False
 
 
 def get_gemini_status(allow_blocking: bool = False) -> dict:
     """
-    Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + Claude Opus/Sonnet)
+    Return safe, masked Dual-Engine AI status metadata (Gemini Pro/Flash + GCP Vertex AI + Claude Opus/Sonnet)
     for Master editorial dashboards while preserving 100% backward-compatible field names.
     """
     g_stored = (job_state.get_value(GEMINI_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
     g_env = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     g_key = g_stored or g_env
-    g_source = (
-        "管理画面から登録済み（暗号化保存）" if g_stored
-        else ("Render環境変数（GEMINI_API_KEY）" if g_env else "未設定")
-    )
+
+    gcp_st = {}
+    try:
+        import gcp_vertex_bridge
+        gcp_st = gcp_vertex_bridge.get_gcp_credit_bridge_status(allow_blocking=allow_blocking) or {}
+    except Exception:
+        gcp_st = {}
+    vertex_active = bool(gcp_st.get("vertex_active"))
+    gcp_project = str(gcp_st.get("project_id") or "")
+
+    if vertex_active and g_key:
+        g_source = f"GCPクレジット優先（Vertex AI: {gcp_project}）＋AI Studio予備"
+    elif vertex_active:
+        g_source = f"GCPクレジット稼働（Vertex AI: {gcp_project}）"
+    else:
+        g_source = (
+            "管理画面から登録済み（暗号化保存）" if g_stored
+            else ("環境変数（GEMINI_API_KEY）" if g_env else "未設定")
+        )
 
     c_stored = (job_state.get_value(CLAUDE_KEY_STORAGE_PREFIX, allow_blocking=allow_blocking) or "").strip()
     c_env = (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("CLAUDE_API_KEY") or "").strip()
     c_key = c_stored or c_env
     c_source = (
         "管理画面から登録済み（暗号化保存）" if c_stored
-        else ("Render環境変数（ANTHROPIC_API_KEY）" if c_env else "未設定")
+        else ("環境変数（ANTHROPIC_API_KEY）" if c_env else "未設定")
     )
 
     pref = get_ai_engine_pref(allow_blocking=allow_blocking)
-    any_configured = bool(g_key or c_key)
+    has_gemini_side = bool(g_key or vertex_active)
+    any_configured = bool(has_gemini_side or c_key)
 
     # Determine primary active provider based on preference & configured keys
-    if pref == "gemini" and g_key:
+    if pref == "gemini" and has_gemini_side:
         primary_provider = "gemini"
     elif pref == "claude" and c_key:
         primary_provider = "claude"
     elif c_key:
         primary_provider = "claude"
-    elif g_key:
+    elif has_gemini_side:
         primary_provider = "gemini"
     else:
         primary_provider = "none"
 
-    active_key = c_key if primary_provider == "claude" else g_key
-    masked = _mask_secret(active_key)
+    if primary_provider == "claude":
+        masked = _mask_secret(c_key)
+    elif vertex_active:
+        masked = f"GCP:{gcp_project}"
+    else:
+        masked = _mask_secret(g_key)
+
     last_err = _last_gemini_meta.get("last_error") or ""
     if not any_configured:
         state = "unconfigured"
@@ -1349,13 +1379,21 @@ def get_gemini_status(allow_blocking: bool = False) -> dict:
     else:
         state = "active"
 
-    default_model = DEFAULT_CLAUDE_MODELS[0] if primary_provider == "claude" else DEFAULT_GEMINI_MODELS[0]
-    last_model = _last_gemini_meta.get("last_model") or default_model
-    provider_badge = (
-        "Claude Opus × 2段階推敲 ＋ 街況Web検索（Gemini予備）"
-        if (c_key and g_key)
-        else ("Claude Opus × 2段階人間語推敲 ＋ 街況Web検索" if c_key else "Gemini Pro / 上位Flash 長考執筆")
+    default_model = (
+        DEFAULT_CLAUDE_MODELS[0]
+        if primary_provider == "claude"
+        else ("vertex:gemini-3.1-pro-preview" if vertex_active else DEFAULT_GEMINI_MODELS[0])
     )
+    last_model = _last_gemini_meta.get("last_model") or default_model
+    gemini_label = "GCP Vertex AI（クレジット消化）" if vertex_active else "Gemini Pro/Flash"
+    if primary_provider == "gemini" and vertex_active:
+        provider_badge = f"GCPクレジット優先執筆（Vertex AI Gemini 3.1 Pro / Flash）" + (" ＋ Claude予備" if c_key else "")
+    elif c_key and has_gemini_side:
+        provider_badge = f"Claude Opus × 2段階推敲 ＋ 街況Web検索（{gemini_label}予備）"
+    elif c_key:
+        provider_badge = "Claude Opus × 2段階人間語推敲 ＋ 街況Web検索"
+    else:
+        provider_badge = "Gemini Pro / 上位Flash 長考執筆"
 
     return {
         "configured": any_configured,
@@ -1364,12 +1402,15 @@ def get_gemini_status(allow_blocking: bool = False) -> dict:
         "primary_provider": primary_provider,
         "engine_pref": pref,
         "engine_badge": provider_badge,
-        "key_kind": "claude" if primary_provider == "claude" else ("vertex_express" if g_key.startswith("AQ.") else ("ai_studio" if g_key else "none")),
+        "key_kind": "claude" if primary_provider == "claude" else ("gcp_vertex" if vertex_active else ("vertex_express" if g_key.startswith("AQ.") else ("ai_studio" if g_key else "none"))),
         "masked_key": masked,
         "source": c_source if primary_provider == "claude" else g_source,
         "gemini_configured": bool(g_key),
         "gemini_masked_key": _mask_secret(g_key),
         "gemini_source": g_source,
+        "gcp_vertex_active": vertex_active,
+        "gcp_vertex_enabled": bool(gcp_st.get("vertex_enabled")),
+        "gcp_project_id": gcp_project,
         "claude_configured": bool(c_key),
         "claude_masked_key": _mask_secret(c_key),
         "claude_source": c_source,
@@ -4474,21 +4515,32 @@ def call_editorial_ai_json(
     now_jst = now_jst or datetime.datetime.now(JST)
     g_key = get_gemini_api_key(allow_blocking=allow_blocking)
     c_key = get_claude_api_key(allow_blocking=allow_blocking)
-    if not g_key and not c_key:
+    vertex_ready = False
+    try:
+        import gcp_vertex_bridge
+        vertex_ready = bool(
+            gcp_vertex_bridge.is_gcp_service_account_configured()
+            and gcp_vertex_bridge.is_vertex_ai_enabled(allow_blocking=allow_blocking)
+        )
+    except Exception:
+        vertex_ready = False
+
+    has_gemini_side = bool(g_key or vertex_ready)
+    if not has_gemini_side and not c_key:
         return None, "", "APIキー未設定"
 
     pref = get_ai_engine_pref(allow_blocking=allow_blocking)
     providers = []
-    if pref == "gemini" or (prefer_fast and pref == "auto" and g_key and not c_key):
-        if g_key:
+    if pref == "gemini" or (prefer_fast and pref == "auto" and has_gemini_side and not c_key):
+        if has_gemini_side:
             providers.append("gemini")
         if c_key:
             providers.append("claude")
     else:
-        # Both 'auto' and 'claude' try Claude Opus/Sonnet first when Claude key is present, then fail over to Gemini Pro/Flash
+        # Both 'auto' and 'claude' try Claude Opus/Sonnet first when Claude key is present, then fail over to Gemini / GCP Vertex AI
         if c_key:
             providers.append("claude")
-        if g_key:
+        if has_gemini_side:
             providers.append("gemini")
 
     eff_deadline_sec = max(4.0, float(total_deadline_sec))
@@ -4670,6 +4722,45 @@ def call_editorial_ai_json(
                         _last_gemini_meta["working_route"] = None
 
         elif prov == "gemini":
+            if vertex_ready:
+                rem_v = deadline - time.monotonic()
+                has_after_vertex = bool(g_key) or has_later_provider
+                v_deadline = min(14.0, max(2.5, rem_v - (reserve_sec if has_after_vertex else 0.3)))
+                if rem_v > 1.8:
+                    try:
+                        import gcp_vertex_bridge
+                        v_parsed, v_model, v_err = gcp_vertex_bridge.call_vertex_gemini_parts(
+                            parts=[{"text": prompt}],
+                            system_instruction=sys_instr,
+                            max_output_tokens=max_output_tokens,
+                            thinking_budget=thinking_budget,
+                            temperature=temperature,
+                            prefer_fast=prefer_fast,
+                            total_deadline_sec=v_deadline,
+                            per_call_timeout_sec=min(float(per_call_timeout_sec), v_deadline),
+                            allow_blocking=allow_blocking,
+                            json_parser=_parse_ai_json_object,
+                            now_jst=now_jst,
+                        )
+                        if v_parsed:
+                            _last_gemini_meta["working_route"] = ("vertex", v_model)
+                            _last_gemini_meta["last_provider"] = "gemini"
+                            _last_gemini_meta["last_model"] = v_model
+                            _last_gemini_meta["last_error"] = (
+                                f"Claude一時エラーのためGCP({v_model})へ退避: {claude_fail_note[:90]}"
+                                if claude_fail_note
+                                else ""
+                            )
+                            _last_gemini_meta["last_ok_at"] = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+                            return _wrap_ai_res(v_parsed, v_model, "")
+                        if v_err and v_err not in ("vertex_disabled", "vertex_cooldown"):
+                            last_err = v_err
+                    except Exception as v_exc:
+                        last_err = f"Vertex AI例外: {type(v_exc).__name__}"
+
+            if not g_key:
+                continue
+
             preferred_g = (os.environ.get("GEMINI_MODEL") or "").strip()
             discovered_g = _discover_ai_studio_models(
                 g_key,

@@ -191,28 +191,42 @@ def _threads_ladies_job():
 
 
 def _ig_reel_scheduled_job(slot_lbl="20:00"):
-    """Scheduled Plan B 2x/day IG Reel post (daily 20:00 + active-night 22:50, 5-template rotation + grid protection)."""
-    if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=120, fail_open=False):
+    """Scheduled Plan B 2x/day IG Reel + 20:00 YouTube Shorts auto-publish (independent failure isolation)."""
+    if not turbo_store.acquire_distributed_lock(f"cron:ig_reel:{slot_lbl}", ttl_sec=180, fail_open=False):
         return
     try:
         import ops_governance
         import sns_editorial
         if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
             return
-        import instagram_poster
-        if not instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
-            return
         with app_module.data_lock:
             cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
             is_seed = bool(app_module.latest_data.get("is_seed"))
-        import moshimo_reel_queue
-        moshimo_reel_queue.dispatch_scheduled_ig_reel(
-            cur_stores,
-            slot_label=slot_lbl,
-            is_seed=is_seed,
-        )
+
+        try:
+            import instagram_poster
+            if instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
+                import moshimo_reel_queue
+                moshimo_reel_queue.dispatch_scheduled_ig_reel(
+                    cur_stores,
+                    slot_label=slot_lbl,
+                    is_seed=is_seed,
+                )
+        except Exception as ig_err:
+            logger.error(f"[worker] Scheduled Instagram Reel post failed: {ig_err}")
+
+        if slot_lbl == "20:00":
+            try:
+                import youtube_poster
+                youtube_poster.dispatch_scheduled_youtube_short(
+                    stores=cur_stores,
+                    slot_label=slot_lbl,
+                    is_seed=is_seed,
+                )
+            except Exception as yt_err:
+                logger.error(f"[worker] Scheduled YouTube Short post failed: {yt_err}")
     except Exception as err:
-        logger.error(f"[worker] Scheduled Instagram Reel post failed: {err}")
+        logger.error(f"[worker] Scheduled short-video dispatch failed: {err}")
 
 
 def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):

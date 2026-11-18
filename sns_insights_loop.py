@@ -956,26 +956,276 @@ def collect_youtube_shorts_insights(limit: int = 20, now_jst: Optional[datetime.
     }
 
 
+GSC_READONLY_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
+DEFAULT_GSC_SITE_URL = "https://aiseki-navi.com/"
+
+
+def _is_gsc_network_blocked_in_tests() -> bool:
+    """Prevent unmocked outbound Search Console API calls during unit tests (`AGENTS.md §1`)."""
+    if os.environ.get("ALLOW_GSC_SYNC_IN_TESTS") == "1":
+        return False
+    for fn in (getattr(requests, "post", None), getattr(requests, "get", None)):
+        if fn is not None and (hasattr(fn, "assert_called") or type(fn).__module__.startswith("unittest.mock")):
+            return False
+    return bool(os.environ.get("DISABLE_SHEETS") == "1" or os.environ.get("PYTEST_CURRENT_TEST"))
+
+
+def collect_gsc_insights(
+    days: int = 28,
+    site_url: str = DEFAULT_GSC_SITE_URL,
+    now_jst: Optional[datetime.datetime] = None,
+) -> Dict[str, Any]:
+    """
+    Pull finalized Google Search Console metrics (`date`, `query`, `page`, plus W1 vs W2 continuing/new
+    page cohort decomposition) via the official Search Console API (`webmasters/v3`) using the existing
+    service account (`GOOGLE_CREDENTIALS_B64` / `google_credentials.json`).
+
+    Excludes the most recent 48 hours (`end_date = today_jst - 2d`, `dataState="final"`) so GSC's
+    unfinalized right-edge reporting lag (`0 clicks`) never triggers false drop alerts.
+    """
+    import urllib.parse
+
+    if _is_gsc_network_blocked_in_tests():
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "test_isolated",
+            "synced": 0,
+            "updated": 0,
+            "detail": "テスト環境のためSearch Console外部通信をスキップ",
+        }
+
+    try:
+        import gcp_vertex_bridge
+
+        token, tok_err = gcp_vertex_bridge.get_gcp_access_token(
+            (GSC_READONLY_SCOPE,), timeout_sec=8.0, now_jst=now_jst
+        )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "auth_error",
+            "synced": 0,
+            "updated": 0,
+            "detail": f"GSC認証初期化エラー: {type(exc).__name__}",
+        }
+
+    if not token:
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "unconfigured",
+            "synced": 0,
+            "updated": 0,
+            "detail": f"GSCサービスアカウント未設定 ({tok_err or 'no_token'})",
+        }
+
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    target_site = (site_url or os.environ.get("GSC_SITE_URL") or DEFAULT_GSC_SITE_URL).strip()
+    try:
+        r_sites = requests.get(
+            "https://www.googleapis.com/webmasters/v3/sites",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=8.0,
+        )
+        if r_sites.status_code == 200:
+            avail = [str(s.get("siteUrl") or "") for s in ((r_sites.json() or {}).get("siteEntry") or [])]
+            if avail and target_site not in avail:
+                host = urllib.parse.urlparse(target_site).netloc or target_site.replace("sc-domain:", "").strip("/")
+                for cand in (f"https://{host}/", f"sc-domain:{host}"):
+                    if cand in avail:
+                        target_site = cand
+                        break
+                else:
+                    return {
+                        "ok": False,
+                        "channel": "gsc",
+                        "status": "site_not_authorized",
+                        "synced": 0,
+                        "updated": 0,
+                        "detail": f"Search Console閲覧権限未付与 ({target_site})",
+                    }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "network_error",
+            "synced": 0,
+            "updated": 0,
+            "detail": f"GSCサイト一覧取得エラー: {type(exc).__name__}",
+        }
+
+    dt_now = (now_jst.astimezone(JST) if (now_jst and now_jst.tzinfo) else (now_jst.replace(tzinfo=JST) if now_jst else datetime.datetime.now(JST)))
+    safe_days = max(7, min(90, int(days or 28)))
+    end_dt = dt_now.date() - datetime.timedelta(days=2)
+    start_dt = end_dt - datetime.timedelta(days=safe_days - 1)
+    start_s, end_s = start_dt.isoformat(), end_dt.isoformat()
+
+    enc_site = urllib.parse.quote(target_site, safe="")
+    q_endpoint = f"https://www.googleapis.com/webmasters/v3/sites/{enc_site}/searchAnalytics/query"
+
+    def _run_gsc_query(dims: List[str], s_date: str, e_date: str, row_limit: int = 60) -> Optional[List[Dict[str, Any]]]:
+        resp = requests.post(
+            q_endpoint,
+            headers=headers,
+            json={
+                "startDate": s_date,
+                "endDate": e_date,
+                "dimensions": dims,
+                "rowLimit": row_limit,
+                "dataState": "final",
+            },
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            return None
+        return (resp.json() or {}).get("rows") or []
+
+    try:
+        date_rows = _run_gsc_query(["date"], start_s, end_s, row_limit=100)
+        query_rows = _run_gsc_query(["query"], start_s, end_s, row_limit=60)
+        page_rows = _run_gsc_query(["page"], start_s, end_s, row_limit=40)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "network_error",
+            "synced": 0,
+            "updated": 0,
+            "detail": f"GSCクエリ通信エラー: {type(exc).__name__}",
+        }
+
+    if date_rows is None or query_rows is None or page_rows is None:
+        return {
+            "ok": False,
+            "channel": "gsc",
+            "status": "api_error",
+            "synced": 0,
+            "updated": 0,
+            "detail": "Search Console API応答エラー",
+        }
+
+    # Compute exact un-thresholded totals from `date` dimension (avoids anonymized query omission)
+    tot_clicks = sum(int(round(float(r.get("clicks") or 0))) for r in date_rows)
+    tot_impr = sum(int(round(float(r.get("impressions") or 0))) for r in date_rows)
+    w_pos_num = sum(float(r.get("position") or 0.0) * max(1.0, float(r.get("impressions") or 0.0)) for r in date_rows if float(r.get("impressions") or 0.0) > 0)
+    avg_pos = round(w_pos_num / float(tot_impr), 2) if tot_impr > 0 else None
+    avg_ctr = round((tot_clicks / float(tot_impr)) * 100.0, 2) if tot_impr > 0 else 0.0
+
+    # Weekly W1 (prior 7d) vs W2 (latest 7d) continuing vs newly-indexed page cohort check
+    w2_end = end_dt
+    w2_start = end_dt - datetime.timedelta(days=6)
+    w1_end = w2_start - datetime.timedelta(days=1)
+    w1_start = w1_end - datetime.timedelta(days=6)
+    w1_s, w1_e = w1_start.isoformat(), w1_end.isoformat()
+    w2_s, w2_e = w2_start.isoformat(), w2_end.isoformat()
+
+    w1_date_c = sum(int(round(float(r.get("clicks") or 0))) for r in date_rows if w1_s <= str((r.get("keys") or [""])[0]) <= w1_e)
+    w1_date_i = sum(int(round(float(r.get("impressions") or 0))) for r in date_rows if w1_s <= str((r.get("keys") or [""])[0]) <= w1_e)
+    w2_date_c = sum(int(round(float(r.get("clicks") or 0))) for r in date_rows if w2_s <= str((r.get("keys") or [""])[0]) <= w2_e)
+    w2_date_i = sum(int(round(float(r.get("impressions") or 0))) for r in date_rows if w2_s <= str((r.get("keys") or [""])[0]) <= w2_e)
+
+    cohort_meta: Dict[str, Any] = {
+        "window_start_date": start_s,
+        "finalized_through_date": end_s,
+        "w1_clicks": w1_date_c,
+        "w1_impressions": w1_date_i,
+        "w2_clicks": w2_date_c,
+        "w2_impressions": w2_date_i,
+    }
+    try:
+        w1_pg_rows = _run_gsc_query(["page"], w1_s, w1_e, row_limit=250)
+        w2_pg_rows = _run_gsc_query(["page"], w2_s, w2_e, row_limit=250)
+        if w1_pg_rows is not None and w2_pg_rows is not None:
+            w1_map = {str((r.get("keys") or [""])[0]): r for r in w1_pg_rows if (r.get("keys") or [""])[0]}
+            w2_map = {str((r.get("keys") or [""])[0]): r for r in w2_pg_rows if (r.get("keys") or [""])[0]}
+            cont_keys = set(w1_map) & set(w2_map)
+            new_keys = set(w2_map) - set(w1_map)
+            cohort_meta.update({
+                "continuing_pages_count": len(cont_keys),
+                "new_pages_count": len(new_keys),
+                "continuing_w1_clicks": sum(int(round(float(w1_map[k].get("clicks") or 0))) for k in cont_keys),
+                "continuing_w2_clicks": sum(int(round(float(w2_map[k].get("clicks") or 0))) for k in cont_keys),
+                "new_w2_clicks": sum(int(round(float(w2_map[k].get("clicks") or 0))) for k in new_keys),
+            })
+    except Exception:
+        pass
+
+    queries_in = [
+        {
+            "query": str((r.get("keys") or [""])[0]),
+            "clicks": int(round(float(r.get("clicks") or 0))),
+            "impressions": int(round(float(r.get("impressions") or 0))),
+            "ctr_pct": round(float(r.get("ctr") or 0.0) * 100.0, 2),
+            "position": round(float(r.get("position") or 0.0), 2),
+        }
+        for r in query_rows
+        if (r.get("keys") or [""])[0]
+    ]
+    pages_in = [
+        {
+            "page": str((r.get("keys") or [""])[0]),
+            "clicks": int(round(float(r.get("clicks") or 0))),
+            "impressions": int(round(float(r.get("impressions") or 0))),
+            "ctr_pct": round(float(r.get("ctr") or 0.0) * 100.0, 2),
+            "position": round(float(r.get("position") or 0.0), 2),
+        }
+        for r in page_rows
+        if (r.get("keys") or [""])[0]
+    ]
+    summary_in = {
+        "total_clicks": tot_clicks,
+        "total_impressions": tot_impr,
+        "avg_ctr_pct": avg_ctr,
+        "avg_position": avg_pos,
+        **cohort_meta,
+    }
+    touched = _upsert_gsc_payload(
+        gsc_summary_in=summary_in,
+        gsc_queries_in=queries_in,
+        gsc_pages_in=pages_in,
+        source="gsc_api_auto",
+        replace_lists=True,
+        now_jst=now_jst,
+    )
+    return {
+        "ok": True,
+        "channel": "gsc",
+        "status": "ok",
+        "synced": len(queries_in),
+        "updated": touched,
+        "queries_fetched": len(queries_in),
+        "pages_fetched": len(pages_in),
+        "finalized_through_date": end_s,
+        "detail": f"Search Console確定データ（{start_s}〜{end_s}）クエリ{len(queries_in)}件・ページ{len(pages_in)}件を自動同期",
+    }
+
+
 def sync_all_sns_insights(limit: int = 15, now_jst: Optional[datetime.datetime] = None) -> Dict[str, Any]:
-    """Run automated official API insights sync across Threads + Instagram/Reels + YouTube Shorts and refresh loop summary."""
+    """Run automated official API insights sync across Threads + Instagram/Reels + YouTube Shorts + Search Console and refresh loop summary."""
     th_res = collect_threads_insights(limit=limit, now_jst=now_jst)
     ig_res = collect_instagram_insights(limit=limit, now_jst=now_jst)
     yt_res = collect_youtube_shorts_insights(limit=max(15, int(limit or 15)), now_jst=now_jst)
+    gsc_res = collect_gsc_insights(days=28, now_jst=now_jst)
 
     store = _load_store(allow_blocking=True)
     sync_ts = _now_jst_str(now_jst)
     th_cnt = int(th_res.get("synced") or 0)
     ig_cnt = int(ig_res.get("synced") or 0)
     yt_cnt = int(yt_res.get("synced") or 0)
+    gsc_cnt = int(gsc_res.get("synced") or 0)
     summary = {
         "synced_at": sync_ts,
         "threads": th_res,
         "instagram": ig_res,
         "youtube_shorts": yt_res,
+        "gsc": gsc_res,
         "threads_updated": th_cnt,
         "instagram_updated": ig_cnt,
         "youtube_updated": yt_cnt,
-        "total_synced": th_cnt + ig_cnt + yt_cnt,
+        "gsc_updated": gsc_cnt,
+        "total_synced": th_cnt + ig_cnt + yt_cnt + gsc_cnt,
     }
     store["last_sync_at"] = sync_ts
     store["last_sync_summary"] = summary
@@ -983,7 +1233,7 @@ def sync_all_sns_insights(limit: int = 15, now_jst: Optional[datetime.datetime] 
 
     feedback = compute_loop_feedback(days=28, allow_blocking=True)
     return {
-        "ok": bool(th_res.get("ok") or ig_res.get("ok") or yt_res.get("ok")),
+        "ok": bool(th_res.get("ok") or ig_res.get("ok") or yt_res.get("ok") or gsc_res.get("ok")),
         "sync": summary,
         "summary": summary,
         "feedback": feedback,
@@ -1159,6 +1409,28 @@ def _upsert_gsc_payload(
         if pos is not None and pos > 0.0:
             summary_cur["avg_position"] = pos
             touched += 1
+        for date_k in ("window_start_date", "finalized_through_date"):
+            raw_dv = str(gsc_summary_in.get(date_k) or "").strip()
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_dv):
+                summary_cur[date_k] = raw_dv
+            elif replace_lists and date_k in summary_cur:
+                summary_cur.pop(date_k, None)
+        for int_meta_k in (
+            "w1_clicks",
+            "w1_impressions",
+            "w2_clicks",
+            "w2_impressions",
+            "continuing_pages_count",
+            "new_pages_count",
+            "continuing_w1_clicks",
+            "continuing_w2_clicks",
+            "new_w2_clicks",
+        ):
+            mv = _safe_nonneg_int(gsc_summary_in.get(int_meta_k))
+            if mv is not None:
+                summary_cur[int_meta_k] = mv
+            elif replace_lists and int_meta_k in summary_cur:
+                summary_cur.pop(int_meta_k, None)
 
     q_map: Dict[str, Dict[str, Any]] = (
         {} if replace_lists else {str(q.get("query") or ""): dict(q) for q in (gsc.get("queries") or []) if isinstance(q, dict) and q.get("query")}
@@ -1786,8 +2058,18 @@ def ingest_insight_screenshot_via_carbon(
 
     import sns_editorial
     eff_key = (api_key if api_key is not None else sns_editorial.get_gemini_api_key(allow_blocking=True)).strip()
-    if not eff_key:
-        return {"ok": False, "error": "GEMINI_API_KEY が未設定のためスクリーンショット自動読取を実行できません"}
+    vertex_ready = False
+    try:
+        import gcp_vertex_bridge
+        vertex_ready = bool(
+            gcp_vertex_bridge.is_gcp_service_account_configured()
+            and gcp_vertex_bridge.is_vertex_ai_enabled(allow_blocking=True)
+        )
+    except Exception:
+        vertex_ready = False
+
+    if not eff_key and not vertex_ready:
+        return {"ok": False, "error": "GEMINI_API_KEY または GCP Vertex AI が未設定のためスクリーンショット自動読取を実行できません"}
 
     hint_clean = str(platform_hint or "auto").strip().lower()[:24]
     b64_img = base64.b64encode(bytes(image_bytes)).decode("ascii")
@@ -1832,6 +2114,50 @@ def ingest_insight_screenshot_via_carbon(
 
     t0 = time.monotonic()
     last_err = ""
+
+    if vertex_ready and api_key is None:
+        try:
+            import gcp_vertex_bridge
+            v_parsed, v_model, v_err = gcp_vertex_bridge.call_vertex_gemini_parts(
+                parts=[
+                    {"inlineData": {"mimeType": clean_mime, "data": b64_img}},
+                    {"text": prompt},
+                ],
+                max_output_tokens=2048,
+                thinking_budget=0,
+                temperature=0.1,
+                prefer_fast=False,
+                total_deadline_sec=min(float(timeout_sec) * (0.65 if eff_key else 0.95), 18.0),
+                per_call_timeout_sec=14.0,
+                allow_blocking=True,
+                json_parser=_parse_json_object,
+                now_jst=now_jst,
+            )
+            if v_parsed and isinstance(v_parsed, dict):
+                ingest_res = ingest_manual_insight_records(
+                    v_parsed,
+                    source=f"carbon_vision:{v_model}",
+                    now_jst=now_jst,
+                )
+                ingest_res["model_used"] = v_model
+                ingest_res["detected_platform"] = str(v_parsed.get("detected_platform") or hint_clean)
+                ingest_res["extracted_raw"] = {
+                    "posts_count": len(v_parsed.get("posts") or []),
+                    "note_articles_count": len(v_parsed.get("note_articles") or []),
+                    "gsc_queries_count": len(v_parsed.get("gsc_queries") or []),
+                }
+                return ingest_res
+            if v_err and v_err not in ("vertex_disabled", "vertex_cooldown"):
+                last_err = v_err
+        except Exception as v_exc:
+            last_err = f"Vertex Vision {type(v_exc).__name__}"
+
+    if not eff_key:
+        return {
+            "ok": False,
+            "error": f"スクリーンショットからの数値抽出に失敗しました（{last_err or 'APIキー未設定'}）",
+        }
+
     for m_name in models_to_try:
         rem = timeout_sec - (time.monotonic() - t0)
         if rem <= 1.5:
@@ -2271,10 +2597,21 @@ def compute_loop_feedback(days: int = 28, allow_blocking: bool = False) -> Dict[
         "data_status": "ok" if gsc_has_data else "insufficient",
         "updated_at": gsc_store.get("updated_at") or "",
         "source": gsc_store.get("source") or "",
+        "window_start_date": gsc_summary.get("window_start_date") or "",
+        "finalized_through_date": gsc_summary.get("finalized_through_date") or "",
         "total_clicks": gsc_summary.get("total_clicks"),
         "total_impressions": gsc_summary.get("total_impressions"),
         "avg_ctr_pct": gsc_summary.get("avg_ctr_pct"),
         "avg_position": gsc_summary.get("avg_position"),
+        "w1_clicks": gsc_summary.get("w1_clicks"),
+        "w1_impressions": gsc_summary.get("w1_impressions"),
+        "w2_clicks": gsc_summary.get("w2_clicks"),
+        "w2_impressions": gsc_summary.get("w2_impressions"),
+        "continuing_pages_count": gsc_summary.get("continuing_pages_count"),
+        "new_pages_count": gsc_summary.get("new_pages_count"),
+        "continuing_w1_clicks": gsc_summary.get("continuing_w1_clicks"),
+        "continuing_w2_clicks": gsc_summary.get("continuing_w2_clicks"),
+        "new_w2_clicks": gsc_summary.get("new_w2_clicks"),
         "top_queries": gsc_queries[:10],
         "opportunity_queries": opp_queries[:6],
         "top_pages": gsc_pages[:8],

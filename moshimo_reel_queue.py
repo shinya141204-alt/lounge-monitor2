@@ -312,30 +312,40 @@ def _load_custom_episodes(allow_blocking: bool = False) -> list:
 
 
 def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
-    """Combine built-in episodes (`#1..#10`) with any custom episodes added via `job_state`."""
+    """Combine built-in episodes (`#1..#10`) with any validated custom episodes added via `job_state`."""
+    import re as _re
+    _valid_rel_re = _re.compile(r"^/static/reels/moshimo/[A-Za-z0-9_.-]+\.mp4$")
     out = [dict(ep) for ep in MOSHIMO_EPISODES]
     seen = {ep["ep_id"] for ep in out}
     last_date = out[-1]["scheduled_date"] if out else "2026-11-26"
     next_order = len(out) + 1
     for c_ep in _load_custom_episodes(allow_blocking=allow_blocking):
-        eid = str(c_ep.get("ep_id") or "").strip()
-        if not eid or eid in seen:
+        try:
+            eid = str(c_ep.get("ep_id") or "").strip()
+            rel_p = str(c_ep.get("static_rel_path") or "").strip()
+            if not eid or eid in seen or not _valid_rel_re.match(rel_p):
+                continue
+            sched = str(c_ep.get("scheduled_date") or "").strip()[:10]
+            if not sched:
+                sched = _next_weekday_after(last_date)
+            order_val = int(c_ep.get("order") or next_order)
+            dur_raw = c_ep.get("duration_sec")
+            dur_val = float(dur_raw) if dur_raw is not None else 0.0
+            thumb_val = int(c_ep.get("thumb_offset_ms") or 500)
+        except (TypeError, ValueError):
             continue
         seen.add(eid)
-        sched = str(c_ep.get("scheduled_date") or "").strip()[:10]
-        if not sched:
-            sched = _next_weekday_after(last_date)
         last_date = max(last_date, sched)
         item = {
             "ep_id": eid,
-            "order": int(c_ep.get("order") or next_order),
+            "order": order_val,
             "scheduled_date": sched,
             "title": str(c_ep.get("title") or eid),
             "youtube_title": str(c_ep.get("youtube_title") or f"{c_ep.get('title') or eid} #もしもシリーズ #雑学"),
-            "static_rel_path": str(c_ep.get("static_rel_path") or ""),
-            "duration_sec": float(c_ep.get("duration_sec") or 32.0),
+            "static_rel_path": rel_p,
+            "duration_sec": dur_val,
             "related_column_path": str(c_ep.get("related_column_path") or "/columns"),
-            "thumb_offset_ms": int(c_ep.get("thumb_offset_ms") or 500),
+            "thumb_offset_ms": thumb_val,
             "caption": str(c_ep.get("caption") or ""),
         }
         out.append(item)
@@ -368,8 +378,12 @@ def build_youtube_shorts_pinned_comment(ep: dict) -> str:
 
 
 def resolve_episode_local_path(ep: dict) -> str:
-    rel = str(ep.get("static_rel_path") or "").lstrip("/")
-    return os.path.join(_REPO_DIR, rel)
+    rel = str((ep or {}).get("static_rel_path") or "").lstrip("/")
+    allowed_root = os.path.realpath(os.path.join(_REPO_DIR, "static", "reels", "moshimo"))
+    cand = os.path.realpath(os.path.join(_REPO_DIR, rel))
+    if not (cand.startswith(allowed_root + os.sep) and cand.lower().endswith(".mp4")):
+        return os.path.join(allowed_root, "__invalid_path__.mp4")
+    return cand
 
 
 def is_moshimo_queue_enabled(allow_blocking: bool = False) -> bool:
@@ -432,14 +446,30 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
     items = []
     unposted_count = 0
     posted_count = 0
+    yt_posted_count = 0
     latest_posted_ts = ""
     next_ep_summary = None
+
+    yt_auto_status = {}
+    try:
+        import youtube_poster
+        yt_auto_status = youtube_poster.get_youtube_auto_post_status(allow_blocking=allow_blocking)
+    except Exception:
+        yt_auto_status = {}
 
     for ep in all_eps:
         posted = is_episode_posted(ep["ep_id"])
         last_ts = get_episode_last_posted_ts(ep["ep_id"], allow_blocking=allow_blocking)
         if last_ts and last_ts > latest_posted_ts:
             latest_posted_ts = last_ts
+        yt_done, yt_vid, yt_ts = False, "", ""
+        try:
+            import youtube_poster
+            yt_done, yt_vid, yt_ts = youtube_poster.find_synced_youtube_video_for_episode(ep, allow_blocking=allow_blocking)
+        except Exception:
+            yt_done, yt_vid, yt_ts = False, "", ""
+        if yt_done:
+            yt_posted_count += 1
         local_path = resolve_episode_local_path(ep)
         file_exists = os.path.isfile(local_path)
         file_bytes = os.path.getsize(local_path) if file_exists else 0
@@ -459,6 +489,10 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
             "video_url": f"{instagram_poster.SITE_URL}{ep['static_rel_path']}?v={ep['ep_id']}",
             "posted": posted,
             "last_posted_at": last_ts,
+            "yt_posted": yt_done,
+            "yt_video_id": yt_vid,
+            "yt_shorts_url": f"https://www.youtube.com/shorts/{yt_vid}" if yt_vid else "",
+            "yt_last_posted_at": yt_ts,
             "file_exists": file_exists,
             "file_size_mb": round(file_bytes / (1024 * 1024), 2) if file_bytes else 0.0,
         }
@@ -479,6 +513,8 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
         "posted_today": has_moshimo_posted_on_biz_date(biz_date),
         "total_episodes": len(all_eps),
         "posted_count": posted_count,
+        "youtube_posted_count": yt_posted_count,
+        "youtube_auto_post": yt_auto_status,
         "remaining_episodes": unposted_count,
         "remaining_count": unposted_count,
         "last_posted_at": latest_posted_ts,

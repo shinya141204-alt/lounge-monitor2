@@ -13,11 +13,12 @@ performance metrics for `@aiseki_navi` without manual CSV exports or screenshots
       * `likes`, `comments`, `shares`, `subscribersGained`
 
 Security & Compliance Guarantees:
-  1. Strictly READ-ONLY Google OAuth 2.0 scopes (`youtube.readonly`, `yt-analytics.readonly`).
-     Never requests `youtube.upload` or write scopes — zero risk of unverified-app private-lock or channel mutation.
+  1. Defaults to READ-ONLY Google OAuth 2.0 scopes (`youtube.readonly`, `yt-analytics.readonly`),
+     and requests `youtube.upload` ONLY when Master explicitly triggers `include_upload=True`
+     (1-click consent upgrade for YouTube Shorts automatic publishing).
   2. `client_secret` and `refresh_token` are persisted exclusively under `token:*` keys in `job_state`
-     (automatic `obf1:` stream obfuscation across PostgreSQL, Redis, local cache, and Sheets backup)
-     and are NEVER returned in status payloads or logs.
+     and are NEVER returned in status payloads or logs. Channel identity pinning prevents accidental
+     wrong-account authorization once `@aiseki_navi` is linked.
   3. Strict Fact Guarantee (`AGENTS.md §1`): Zero fabricated values. When YouTube Analytics API has a
      24–48h lag on newly published Shorts (`analytics_views == 0`), real-time `views`/`likes` from Data API
      are synced while retention fields remain omitted so any previously ingested Studio screenshot metrics
@@ -29,6 +30,7 @@ import json
 import logging
 import os
 import re
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlencode, urlparse
 
@@ -39,6 +41,7 @@ import job_state
 logger = logging.getLogger(__name__)
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
+_meta_lock = threading.Lock()
 
 YOUTUBE_OAUTH_META_KEY = "youtube_oauth_meta_v1"
 YOUTUBE_CLIENT_SECRET_STATE_KEY = "token:youtube_client_secret"
@@ -46,6 +49,7 @@ YOUTUBE_REFRESH_TOKEN_STATE_KEY = "token:youtube_refresh_token"
 
 GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+GOOGLE_REVOKE_ENDPOINT = "https://oauth2.googleapis.com/revoke"
 YOUTUBE_DATA_API_BASE = "https://www.googleapis.com/youtube/v3"
 YOUTUBE_ANALYTICS_API_URL = "https://youtubeanalytics.googleapis.com/v2/reports"
 
@@ -56,6 +60,8 @@ YOUTUBE_READONLY_SCOPES = (
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 )
+YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+YOUTUBE_FULL_SCOPES = YOUTUBE_READONLY_SCOPES + (YOUTUBE_UPLOAD_SCOPE,)
 
 MAX_SHORTS_DURATION_SEC = 185  # YouTube Shorts max duration is 180s (+5s container rounding tolerance)
 
@@ -110,8 +116,18 @@ def _save_meta(meta: Dict[str, Any]) -> None:
     job_state.set_value(YOUTUBE_OAUTH_META_KEY, json.dumps(clean, ensure_ascii=False))
 
 
+def _merge_and_save_meta(updates: Dict[str, Any]) -> Dict[str, Any]:
+    """Re-read latest `youtube_oauth_meta_v1` under lock and merge `updates` so concurrent callbacks are never clobbered."""
+    with _meta_lock:
+        fresh = _load_meta(allow_blocking=True)
+        fresh.update(updates or {})
+        _save_meta(fresh)
+        return fresh
+
+
 def _get_effective_credentials(allow_blocking: bool = True) -> Dict[str, str]:
     meta = _load_meta(allow_blocking=allow_blocking)
+    explicitly_disconnected = bool(meta.get("disconnected_explicit"))
     client_id = (
         str(meta.get("client_id") or "").strip()
         or str(os.environ.get("YOUTUBE_CLIENT_ID") or "").strip()
@@ -120,9 +136,11 @@ def _get_effective_credentials(allow_blocking: bool = True) -> Dict[str, str]:
         str(job_state.get_value(YOUTUBE_CLIENT_SECRET_STATE_KEY, allow_blocking=allow_blocking, default="") or "").strip()
         or str(os.environ.get("YOUTUBE_CLIENT_SECRET") or "").strip()
     )
+    stored_rt = str(job_state.get_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, allow_blocking=allow_blocking, default="") or "").strip()
     refresh_token = (
-        str(job_state.get_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, allow_blocking=allow_blocking, default="") or "").strip()
-        or str(os.environ.get("YOUTUBE_REFRESH_TOKEN") or "").strip()
+        stored_rt
+        if explicitly_disconnected
+        else (stored_rt or str(os.environ.get("YOUTUBE_REFRESH_TOKEN") or "").strip())
     )
     channel_id = (
         str(meta.get("channel_id") or "").strip()
@@ -173,14 +191,22 @@ def resolve_oauth_redirect_uri(base_url: Optional[str] = None) -> str:
 
 
 def get_youtube_sync_status(base_url: Optional[str] = None, allow_blocking: bool = False) -> Dict[str, Any]:
-    """Return safe, secret-free YouTube OAuth & sync status for `/staff/pdca`."""
+    """Return safe, secret-free YouTube OAuth & sync status for `/staff/pdca` and `/staff/sns-editorial`."""
     meta = _load_meta(allow_blocking=allow_blocking)
     creds = _get_effective_credentials(allow_blocking=allow_blocking)
     has_client = bool(creds["client_id"] and creds["client_secret"])
     connected = bool(has_client and creds["refresh_token"])
+    raw_granted = meta.get("granted_scopes")
+    if isinstance(raw_granted, list) and raw_granted:
+        granted_scopes = [str(s) for s in raw_granted if s]
+    else:
+        granted_scopes = list(YOUTUBE_READONLY_SCOPES) if connected else []
+    has_upload = bool(meta.get("has_upload_scope") or (YOUTUBE_UPLOAD_SCOPE in granted_scopes))
     return {
         "has_client_credentials": has_client,
         "connected": connected,
+        "has_upload_scope": bool(connected and has_upload),
+        "granted_scopes": granted_scopes,
         "client_id_masked": _mask_client_id(creds["client_id"]),
         "client_id": creds["client_id"],
         "channel_id": creds["channel_id"],
@@ -191,7 +217,7 @@ def get_youtube_sync_status(base_url: Optional[str] = None, allow_blocking: bool
         "last_synced_count": int(meta.get("last_synced_count") or 0),
         "last_error": str(meta.get("last_error") or ""),
         "redirect_uri": resolve_oauth_redirect_uri(base_url=base_url),
-        "scopes": list(YOUTUBE_READONLY_SCOPES),
+        "scopes": granted_scopes if granted_scopes else list(YOUTUBE_READONLY_SCOPES),
     }
 
 
@@ -240,7 +266,7 @@ def parse_oauth_client_credentials(
 
 
 def save_oauth_client_credentials(client_id: str, client_secret: str) -> Dict[str, Any]:
-    """Persist validated OAuth client credentials (obfuscating `client_secret` via `token:*`)."""
+    """Persist validated OAuth client credentials (clearing stale refresh token if `client_id` changed)."""
     cid, csec, err = parse_oauth_client_credentials(
         client_id=client_id,
         client_secret=client_secret,
@@ -249,18 +275,31 @@ def save_oauth_client_credentials(client_id: str, client_secret: str) -> Dict[st
     if err:
         return {"ok": False, "error": err}
 
-    meta = _load_meta(allow_blocking=True)
-    meta["client_id"] = cid
-    meta["updated_at"] = _now_jst_str()
-    _save_meta(meta)
+    prev_meta = _load_meta(allow_blocking=True)
+    prev_cid = str(prev_meta.get("client_id") or "").strip()
+    updates: Dict[str, Any] = {
+        "client_id": cid,
+        "updated_at": _now_jst_str(),
+    }
+    if prev_cid and prev_cid != cid:
+        job_state.set_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, "")
+        updates["granted_scopes"] = []
+        updates["has_upload_scope"] = False
+        updates["connected_at"] = ""
+    _merge_and_save_meta(updates)
     job_state.set_value(YOUTUBE_CLIENT_SECRET_STATE_KEY, csec)
     return {"ok": True, "client_id_masked": _mask_client_id(cid)}
 
 
-def build_oauth_authorize_url(redirect_uri: str, state_token: str) -> Tuple[str, str]:
+def build_oauth_authorize_url(
+    redirect_uri: str,
+    state_token: str,
+    include_upload: bool = False,
+) -> Tuple[str, str]:
     """
     Build Google OAuth 2.0 authorization URL with `prompt="consent select_account"` so the user
     can explicitly choose the `@aiseki_navi` YouTube Brand Account and receive an offline `refresh_token`.
+    When `include_upload=True`, requests `youtube.upload` alongside `youtube.readonly` + `yt-analytics.readonly`.
     """
     creds = _get_effective_credentials(allow_blocking=True)
     if not creds["client_id"] or not creds["client_secret"]:
@@ -268,11 +307,12 @@ def build_oauth_authorize_url(redirect_uri: str, state_token: str) -> Tuple[str,
     if not state_token:
         return "", "OAuth stateトークンの生成に失敗しました"
 
+    target_scopes = YOUTUBE_FULL_SCOPES if include_upload else YOUTUBE_READONLY_SCOPES
     params = {
         "client_id": creds["client_id"],
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": " ".join(YOUTUBE_READONLY_SCOPES),
+        "scope": " ".join(target_scopes),
         "access_type": "offline",
         "prompt": "consent select_account",
         "include_granted_scopes": "true",
@@ -318,7 +358,11 @@ def _fetch_my_youtube_channel(access_token: str) -> Tuple[Optional[Dict[str, Any
         return None, f"YouTube API通信エラー: {type(exc).__name__}"
 
 
-def exchange_code_and_save(code: str, redirect_uri: str) -> Dict[str, Any]:
+def exchange_code_and_save(
+    code: str,
+    redirect_uri: str,
+    requested_upload: bool = False,
+) -> Dict[str, Any]:
     """Exchange OAuth2 authorization `code` for tokens, verify channel identity, and persist obfuscated refresh token."""
     clean_code = str(code or "").strip()
     if not clean_code:
@@ -357,6 +401,13 @@ def exchange_code_and_save(code: str, redirect_uri: str) -> Dict[str, Any]:
     tok_json = tok_resp.json() or {}
     access_token = str(tok_json.get("access_token") or "").strip()
     refresh_token = str(tok_json.get("refresh_token") or "").strip() or creds["refresh_token"]
+    raw_scope = str(tok_json.get("scope") or "").strip()
+    if raw_scope:
+        granted_scopes = [s.strip() for s in raw_scope.split() if s.strip()]
+    else:
+        granted_scopes = list(YOUTUBE_FULL_SCOPES if requested_upload else YOUTUBE_READONLY_SCOPES)
+    has_upload = YOUTUBE_UPLOAD_SCOPE in granted_scopes
+
     if not access_token:
         return {"ok": False, "error": "アクセストークンを取得できませんでした"}
     if not refresh_token:
@@ -369,42 +420,79 @@ def exchange_code_and_save(code: str, redirect_uri: str) -> Dict[str, Any]:
     if ch_err or not ch_info:
         return {"ok": False, "error": ch_err or "YouTubeチャンネルの確認に失敗しました"}
 
+    prev_meta = _load_meta(allow_blocking=True)
+    pinned_channel_id = (
+        str(os.environ.get("YOUTUBE_EXPECTED_CHANNEL_ID") or "").strip()
+        or str(prev_meta.get("channel_id") or "").strip()
+    )
+    if pinned_channel_id and ch_info["channel_id"] != pinned_channel_id:
+        return {
+            "ok": False,
+            "error": (
+                f"既存連携チャンネル（{prev_meta.get('channel_title') or pinned_channel_id}）と異なるアカウントが選択されました。"
+                "『相席ナビ (@aiseki_navi)』を選び直すか、変更する場合は先に『連携を解除』を押してください。"
+            ),
+        }
+
     job_state.set_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, refresh_token)
-    meta = _load_meta(allow_blocking=True)
-    meta.update(
+    _merge_and_save_meta(
         {
             "client_id": creds["client_id"],
             "channel_id": ch_info["channel_id"],
             "channel_title": ch_info["channel_title"],
             "custom_url": ch_info["custom_url"],
             "uploads_playlist_id": ch_info["uploads_playlist_id"],
+            "granted_scopes": granted_scopes,
+            "has_upload_scope": has_upload,
+            "disconnected_explicit": False,
             "connected_at": _now_jst_str(),
             "last_error": "",
         }
     )
-    _save_meta(meta)
     return {
         "ok": True,
         "channel_id": ch_info["channel_id"],
         "channel_title": ch_info["channel_title"],
         "custom_url": ch_info["custom_url"],
+        "has_upload_scope": has_upload,
     }
 
 
 def disconnect_youtube_oauth(clear_client_credentials: bool = False) -> Dict[str, Any]:
-    """Clear stored YouTube OAuth refresh token (and optionally client credentials)."""
+    """Revoke (best-effort) and clear stored YouTube OAuth refresh token (and optionally client credentials)."""
+    old_rt = str(job_state.get_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, allow_blocking=True, default="") or "").strip()
     job_state.set_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, "")
-    meta = _load_meta(allow_blocking=True)
-    meta["last_error"] = ""
-    meta["connected_at"] = ""
+    if old_rt and os.environ.get("DISABLE_SHEETS") != "1":
+        try:
+            requests.post(
+                GOOGLE_REVOKE_ENDPOINT,
+                params={"token": old_rt},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=6,
+            )
+        except Exception:
+            pass
+    updates: Dict[str, Any] = {
+        "last_error": "",
+        "connected_at": "",
+        "channel_id": "",
+        "uploads_playlist_id": "",
+        "granted_scopes": [],
+        "has_upload_scope": False,
+        "disconnected_explicit": True,
+    }
     if clear_client_credentials:
         job_state.set_value(YOUTUBE_CLIENT_SECRET_STATE_KEY, "")
-        meta["client_id"] = ""
-    _save_meta(meta)
+        updates["client_id"] = ""
+    _merge_and_save_meta(updates)
     return {"ok": True}
 
 
-def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str) -> Tuple[str, str]:
+def _refresh_access_token_with_scopes(
+    client_id: str,
+    client_secret: str,
+    refresh_token: str,
+) -> Tuple[str, List[str], str]:
     try:
         resp = requests.post(
             GOOGLE_TOKEN_ENDPOINT,
@@ -417,7 +505,7 @@ def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str
             timeout=14,
         )
     except Exception as exc:
-        return "", f"トークン更新通信エラー: {type(exc).__name__}"
+        return "", [], f"トークン更新通信エラー: {type(exc).__name__}"
 
     if resp.status_code >= 400:
         err_tag = ""
@@ -426,13 +514,55 @@ def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str
         except Exception:
             err_tag = ""
         if err_tag == "invalid_grant" or resp.status_code in (400, 401):
-            return "", f"YouTube認証トークンの再認可が必要です ({err_tag or resp.status_code})"
-        return "", f"YouTubeトークン更新 HTTP {resp.status_code}"
+            return "", [], f"YouTube認証トークンの再認可が必要です ({err_tag or resp.status_code})"
+        return "", [], f"YouTubeトークン更新 HTTP {resp.status_code}"
 
-    access_token = str((resp.json() or {}).get("access_token") or "").strip()
+    body = resp.json() or {}
+    access_token = str(body.get("access_token") or "").strip()
+    raw_scope = str(body.get("scope") or "").strip()
+    scopes = [s.strip() for s in raw_scope.split() if s.strip()] if raw_scope else []
     if not access_token:
-        return "", "YouTubeアクセストークンが空でした"
-    return access_token, ""
+        return "", scopes, "YouTubeアクセストークンが空でした"
+    return access_token, scopes, ""
+
+
+def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str) -> Tuple[str, str]:
+    tok, _, err = _refresh_access_token_with_scopes(client_id, client_secret, refresh_token)
+    return tok, err
+
+
+def get_valid_youtube_access_token(require_upload_scope: bool = False) -> Tuple[str, Dict[str, Any], str]:
+    """
+    Mint a fresh OAuth2 access token for `@aiseki_navi`, syncing `granted_scopes` metadata.
+    When `require_upload_scope=True`, verifies that `youtube.upload` was granted before attempting upload.
+    """
+    creds = _get_effective_credentials(allow_blocking=True)
+    meta = _load_meta(allow_blocking=True)
+    if not (creds["client_id"] and creds["client_secret"] and creds["refresh_token"]):
+        return "", meta, "YouTube OAuthが未連携です（/staff/pdca から連携してください）"
+
+    access_token, refreshed_scopes, err = _refresh_access_token_with_scopes(
+        creds["client_id"], creds["client_secret"], creds["refresh_token"]
+    )
+    if err or not access_token:
+        return "", meta, err or "YouTubeトークン更新に失敗しました"
+
+    if refreshed_scopes:
+        has_up = YOUTUBE_UPLOAD_SCOPE in refreshed_scopes
+        if meta.get("granted_scopes") != refreshed_scopes or bool(meta.get("has_upload_scope")) != has_up:
+            meta = _merge_and_save_meta({"granted_scopes": refreshed_scopes, "has_upload_scope": has_up})
+
+    if require_upload_scope:
+        known_scopes = meta.get("granted_scopes") or []
+        has_up_now = bool(meta.get("has_upload_scope") or (YOUTUBE_UPLOAD_SCOPE in known_scopes))
+        if not has_up_now:
+            return (
+                "",
+                meta,
+                "YouTube自動投稿の権限（youtube.upload）がまだ認可されていません。『YouTube自動投稿を認可』ボタンから1クリック承認してください。",
+            )
+
+    return access_token, meta, ""
 
 
 def _parse_analytics_report_rows(report_json: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
@@ -565,8 +695,7 @@ def fetch_youtube_shorts_metrics(
         creds["client_id"], creds["client_secret"], creds["refresh_token"]
     )
     if tok_err or not access_token:
-        meta["last_error"] = tok_err or "トークン更新失敗"
-        _save_meta(meta)
+        _merge_and_save_meta({"last_error": tok_err or "トークン更新失敗"})
         return {
             "ok": False,
             "channel": "youtube_shorts",
@@ -578,11 +707,11 @@ def fetch_youtube_shorts_metrics(
 
     uploads_pid = str(meta.get("uploads_playlist_id") or "").strip()
     channel_id = creds["channel_id"] or str(meta.get("channel_id") or "").strip()
+    ch_updates: Dict[str, Any] = {}
     if not uploads_pid or not channel_id:
         ch_info, ch_err = _fetch_my_youtube_channel(access_token)
         if ch_err or not ch_info:
-            meta["last_error"] = ch_err or "チャンネル取得失敗"
-            _save_meta(meta)
+            _merge_and_save_meta({"last_error": ch_err or "チャンネル取得失敗"})
             return {
                 "ok": False,
                 "channel": "youtube_shorts",
@@ -593,14 +722,12 @@ def fetch_youtube_shorts_metrics(
             }
         channel_id = ch_info["channel_id"]
         uploads_pid = ch_info["uploads_playlist_id"]
-        meta.update(
-            {
-                "channel_id": channel_id,
-                "channel_title": ch_info["channel_title"],
-                "custom_url": ch_info["custom_url"],
-                "uploads_playlist_id": uploads_pid,
-            }
-        )
+        ch_updates = {
+            "channel_id": channel_id,
+            "channel_title": ch_info["channel_title"],
+            "custom_url": ch_info["custom_url"],
+            "uploads_playlist_id": uploads_pid,
+        }
 
     safe_limit = max(1, min(35, int(limit or 20)))
     try:
@@ -619,8 +746,7 @@ def fetch_youtube_shorts_metrics(
             pl_items = []
         elif pl_resp.status_code >= 400:
             err_txt = f"YouTube投稿一覧 HTTP {pl_resp.status_code}"
-            meta["last_error"] = err_txt
-            _save_meta(meta)
+            _merge_and_save_meta({**ch_updates, "last_error": err_txt})
             return {
                 "ok": False,
                 "channel": "youtube_shorts",
@@ -633,8 +759,7 @@ def fetch_youtube_shorts_metrics(
             pl_items = (pl_resp.json() or {}).get("items") or []
     except Exception as exc:
         err_txt = f"YouTube投稿一覧通信エラー: {type(exc).__name__}"
-        meta["last_error"] = err_txt
-        _save_meta(meta)
+        _merge_and_save_meta({**ch_updates, "last_error": err_txt})
         return {
             "ok": False,
             "channel": "youtube_shorts",
@@ -655,10 +780,7 @@ def fetch_youtube_shorts_metrics(
     now_dt = _now_jst(now_jst)
     ts_str = _now_jst_str(now_dt)
     if not video_ids:
-        meta["last_sync_at"] = ts_str
-        meta["last_synced_count"] = 0
-        meta["last_error"] = ""
-        _save_meta(meta)
+        _merge_and_save_meta({**ch_updates, "last_sync_at": ts_str, "last_synced_count": 0, "last_error": ""})
         return {
             "ok": True,
             "channel": "youtube_shorts",
@@ -682,8 +804,7 @@ def fetch_youtube_shorts_metrics(
         )
         if v_resp.status_code >= 400:
             err_txt = f"YouTube動画詳細 HTTP {v_resp.status_code}"
-            meta["last_error"] = err_txt
-            _save_meta(meta)
+            _merge_and_save_meta({**ch_updates, "last_error": err_txt})
             return {
                 "ok": False,
                 "channel": "youtube_shorts",
@@ -695,8 +816,7 @@ def fetch_youtube_shorts_metrics(
         v_items = (v_resp.json() or {}).get("items") or []
     except Exception as exc:
         err_txt = f"YouTube動画詳細通信エラー: {type(exc).__name__}"
-        meta["last_error"] = err_txt
-        _save_meta(meta)
+        _merge_and_save_meta({**ch_updates, "last_error": err_txt})
         return {
             "ok": False,
             "channel": "youtube_shorts",
@@ -821,10 +941,14 @@ def fetch_youtube_shorts_metrics(
             }
         )
 
-    meta["last_sync_at"] = ts_str
-    meta["last_synced_count"] = len(out_posts)
-    meta["last_error"] = analytics_warn
-    _save_meta(meta)
+    _merge_and_save_meta(
+        {
+            **ch_updates,
+            "last_sync_at": ts_str,
+            "last_synced_count": len(out_posts),
+            "last_error": analytics_warn,
+        }
+    )
 
     detail_msg = (
         f"YouTubeショート {len(out_posts)}本（Analytics維持率 {analytics_hit_count}本）を自動同期"
