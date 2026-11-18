@@ -245,8 +245,60 @@ def _coerce_epoch(val):
     return 0.0
 
 
+def stale_thresholds_sec(fetch_interval_sec: int = 60) -> tuple:
+    """Return (delayed_sec, halted_sec) scaled to the active scrape interval (60s night vs 600s daytime)."""
+    try:
+        iv = max(60, min(900, int(fetch_interval_sec or 60)))
+    except (TypeError, ValueError):
+        iv = 60
+    return (max(300, int(iv * 1.6) + 60), max(600, int(iv * 2.6) + 60))
+
+
+def infer_effective_fetch_interval_sec(
+    snap_epoch=None,
+    now_jst=None,
+    raw_interval=None,
+    dom_total: int = 0,
+    open_dom_cnt: int = 0,
+) -> int:
+    """Single source of truth for effective scrape interval (60s vs 600s), including the 17:00 JST transition window."""
+    if raw_interval is not None:
+        try:
+            return max(60, min(900, int(raw_interval)))
+        except (TypeError, ValueError):
+            pass
+    now_dt = now_jst or datetime.datetime.now(JST)
+    if 7 <= now_dt.hour < 17 and dom_total > 0 and open_dom_cnt == 0:
+        return 600
+    if snap_epoch is not None and now_dt.hour == 17 and now_dt.minute < 15:
+        try:
+            snap_dt = datetime.datetime.fromtimestamp(float(snap_epoch), JST)
+            if snap_dt.date() == now_dt.date() and 7 <= snap_dt.hour < 17:
+                return 600
+        except (TypeError, ValueError, OSError):
+            pass
+    return 60
+
+
+def is_area_redundant_with_branch(area_label: str, branch_title: str) -> bool:
+    """Return True when the store branch name already includes the area/city name (e.g. area='長崎', branch='長崎')."""
+    ar = re.sub(r'エリア$', '', str(area_label or '')).strip()
+    br = re.sub(r'店$', '', str(branch_title or '')).strip()
+    if not ar or not br:
+        return False
+    if ar == br:
+        return True
+    parts = [p.strip() for p in re.split(r'[・/／\-\s　]+', ar) if len(p.strip()) >= 2]
+    for p in parts:
+        if p == '京都' and '東京' in br and '京都' not in br.replace('東京', ''):
+            continue
+        if p in br:
+            return True
+    return False
+
+
 def compute_freshness_fields(item: dict, now_epoch: float = None, fallback_epoch: float = None) -> tuple:
-    """Return (source_kind, source_label, age_min, freshness_label) with strict JIS POS verification."""
+    """Return (source_kind, source_label, age_min, freshness_label, freshness_short) with strict JIS POS verification."""
     now_ep = float(now_epoch if now_epoch is not None else time.time())
     pos_tel = item.get('pos_telemetry')
     has_jis_pos = bool(
@@ -260,16 +312,18 @@ def compute_freshness_fields(item: dict, now_epoch: float = None, fallback_epoch
     if has_jis_pos:
         source_kind = 'jis_pos'
         source_label = 'JIS公式POS実測'
+        short_prefix = 'POS実測・'
     else:
         source_kind = 'official_web'
         source_label = '公式サイト表示値'
+        short_prefix = ''
 
     f_ep = _coerce_epoch(item.get('fetched_at'))
     if f_ep <= 0.0 and fallback_epoch:
         f_ep = _coerce_epoch(fallback_epoch)
 
     if f_ep <= 0.0:
-        return (source_kind, source_label, None, f'{source_label}・計測待機中')
+        return (source_kind, source_label, None, f'{source_label}・計測待機中', f'{short_prefix}待機中')
 
     raw_diff = now_ep - f_ep
     age_sec = max(0.0, raw_diff)
@@ -285,7 +339,7 @@ def compute_freshness_fields(item: dict, now_epoch: float = None, fallback_epoch
             rel = f'{jst_dt.strftime("%H:%M")}取得'
         else:
             rel = f'{jst_dt.strftime("%m/%d %H:%M")}取得'
-    return (source_kind, source_label, age_min, f'{source_label}・{rel}')
+    return (source_kind, source_label, age_min, f'{source_label}・{rel}', f'{short_prefix}{rel}')
 
 
 def build_dynamic_human_line(item: dict, is_women_view: bool = False, all_closed_mode: bool = False) -> str:
@@ -453,13 +507,16 @@ def attach_card_ux_metadata(
         item['wd_label'] = benchmarks_entry.get('wd_label')
         item['peak_band_avg_w'] = benchmarks_entry.get('peak_band_avg_w')
 
-    source_kind, source_label, age_min, freshness_label = compute_freshness_fields(
+    source_kind, source_label, age_min, freshness_label, freshness_short = compute_freshness_fields(
         item, now_epoch=now_epoch, fallback_epoch=fallback_epoch
     )
     item['source_kind'] = source_kind
     item['source_label'] = source_label
     item['age_min'] = age_min
     item['freshness_label'] = freshness_label
+    item['freshness_short'] = freshness_short
+    branch_disp = str(item.get('ssr_disp') or item.get('ssr_title') or item.get('name') or '')
+    item['area_redundant_sp'] = is_area_redundant_with_branch(item.get('ssr_area') or '', branch_disp)
 
     hours_lbl = item.get('today_hours_label') or spec.get('default_hours_label') or ''
     item['spec_price_short'] = spec.get('spec_price_short') or '料金詳細は店舗ページへ'
@@ -505,8 +562,22 @@ def finalize_enriched_ranking(
         return enriched
     items = [dict(st) if isinstance(st, dict) else st for st in enriched]
     now_ep = time.time()
+    now_jst = datetime.datetime.now(JST)
     fb_ep = parse_jst_epoch(last_updated or '')
-    is_halted = bool(fb_ep is not None and (now_ep - fb_ep) >= 600.0)
+
+    dom_items = [st for st in items if isinstance(st, dict) and not is_korea_store(st)]
+    open_dom_cnt = sum(
+        1 for st in dom_items
+        if bool(st.get('is_open_now')) or (int(st.get('women') or 0) + int(st.get('men') or 0)) > 0
+    )
+    eff_interval = infer_effective_fetch_interval_sec(
+        snap_epoch=fb_ep,
+        now_jst=now_jst,
+        dom_total=len(dom_items),
+        open_dom_cnt=open_dom_cnt,
+    )
+    _, halted_sec = stale_thresholds_sec(eff_interval)
+    is_halted = bool(fb_ep is not None and (now_ep - fb_ep) >= halted_sec)
 
     fc_verified = False
     if local_db_mod is not None:
@@ -524,11 +595,6 @@ def finalize_enriched_ranking(
         except Exception:
             fc_verified = False
 
-    dom_items = [st for st in items if isinstance(st, dict) and not is_korea_store(st)]
-    open_dom_cnt = sum(
-        1 for st in dom_items
-        if bool(st.get('is_open_now')) or (int(st.get('women') or 0) + int(st.get('men') or 0)) > 0
-    )
     all_closed = bool(len(dom_items) > 0 and open_dom_cnt == 0 and not is_halted)
 
     for st in items:
@@ -660,6 +726,28 @@ def build_top_provenance_meta(initial_status: dict, local_db_mod=None, is_testin
         last_hm = str(ts_str).split(' ')[1][:5]
     ts_ep = parse_jst_epoch(ts_str)
 
+    ranking = (initial_status or {}).get('ranking') or []
+    dom_stores = [s for s in ranking if isinstance(s, dict) and not is_korea_store(s)]
+    open_dom = [
+        s for s in dom_stores
+        if bool(s.get('is_open_now')) or (int(s.get('women') or 0) + int(s.get('men') or 0)) > 0
+    ]
+    preopen_dom = [
+        s for s in dom_stores
+        if not bool(s.get('is_open_now')) and (int(s.get('women') or 0) + int(s.get('men') or 0)) == 0
+    ]
+
+    raw_iv = (initial_status or {}).get('fetch_interval_sec')
+    eff_interval = infer_effective_fetch_interval_sec(
+        snap_epoch=ts_ep,
+        now_jst=now_jst,
+        raw_interval=raw_iv,
+        dom_total=len(dom_stores),
+        open_dom_cnt=len(open_dom),
+    )
+    delayed_sec, halted_sec = stale_thresholds_sec(eff_interval)
+    is_daytime_10m = bool(eff_interval >= 300 and len(dom_stores) > 0 and len(open_dom) == 0)
+
     if is_seed:
         stale_state = 'seed'
     elif ts_ep is None:
@@ -672,9 +760,9 @@ def build_top_provenance_meta(initial_status: dict, local_db_mod=None, is_testin
         else:
             age_sec = max(0.0, raw_diff)
             data_age_min = int(age_sec // 60)
-            if data_age_min >= 10:
+            if age_sec >= halted_sec:
                 stale_state = 'halted'
-            elif data_age_min >= 5:
+            elif age_sec >= delayed_sec:
                 stale_state = 'delayed'
             else:
                 stale_state = 'live'
@@ -708,16 +796,6 @@ def build_top_provenance_meta(initial_status: dict, local_db_mod=None, is_testin
     dir_hit = fc_summary.get('direction_hit_pct')
     forecast_verified = bool(resolved_cnt >= _MIN_VERIFIED_FORECAST_SAMPLES and mae_wpct is not None)
 
-    ranking = (initial_status or {}).get('ranking') or []
-    dom_stores = [s for s in ranking if isinstance(s, dict) and not is_korea_store(s)]
-    open_dom = [
-        s for s in dom_stores
-        if bool(s.get('is_open_now')) or (int(s.get('women') or 0) + int(s.get('men') or 0)) > 0
-    ]
-    preopen_dom = [
-        s for s in dom_stores
-        if not bool(s.get('is_open_now')) and (int(s.get('women') or 0) + int(s.get('men') or 0)) == 0
-    ]
     all_closed_mode = bool(
         len(dom_stores) > 0
         and len(open_dom) == 0
@@ -730,6 +808,10 @@ def build_top_provenance_meta(initial_status: dict, local_db_mod=None, is_testin
 
     return {
         'stale_state': stale_state,
+        'fetch_interval_sec': eff_interval,
+        'is_daytime_10m': is_daytime_10m,
+        'delayed_threshold_sec': delayed_sec,
+        'halted_threshold_sec': halted_sec,
         'data_age_min': data_age_min,
         'last_hm': last_hm,
         'raw_snapshots': raw_snapshots,
@@ -822,6 +904,8 @@ def build_deferred_card_pool(status, is_staff=False, start_idx=20):
             'hl': hl,
             'hlw': s.get('human_line_women') or '',
             'fl': s.get('freshness_label') or '',
+            'fls': s.get('freshness_short') or '',
+            'ars': 1 if s.get('area_redundant_sp') else 0,
             'sp': s.get('spec_price_short') or '',
             'sa': s.get('spec_age_short') or '',
             'sh': s.get('spec_hours_short') or '',

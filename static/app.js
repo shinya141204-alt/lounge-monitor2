@@ -444,9 +444,10 @@
         function setNearbySort() {
             if (userLocation) {
                 currentSort = 'nearby';
-                document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-                const btn = document.getElementById('nearby-sort-btn');
-                if (btn) btn.classList.add('active');
+                document.querySelectorAll('.sort-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.sort === 'nearby');
+                });
+                syncMobileSortTrigger();
                 if (window.lastData) updateUI(window.lastData);
                 return;
             }
@@ -470,8 +471,10 @@
                     };
                     if (btn) btn.textContent = '現在地順';
                     currentSort = 'nearby';
-                    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-                    if (btn) btn.classList.add('active');
+                    document.querySelectorAll('.sort-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.sort === 'nearby');
+                    });
+                    syncMobileSortTrigger();
                     if (window.lastData) updateUI(window.lastData);
                 },
                 (err) => {
@@ -1090,6 +1093,38 @@
             };
         }
 
+        function syncMobileSortTrigger() {
+            const trigger = document.getElementById('mobile-sort-btn');
+            if (!trigger) return;
+            const isDefaultMen = (currentAudience !== 'women' && currentSort === 'women');
+            const isDefaultWomen = (currentAudience === 'women' && currentSort === 'ladies_comfort');
+            if (isDefaultMen || isDefaultWomen) {
+                trigger.textContent = '並び順 ▾';
+                trigger.classList.remove('is-custom-sort');
+                return;
+            }
+            const labelMap = {
+                women: '女性順 ▾',
+                men: '男性順 ▾',
+                ratio: '比率順 ▾',
+                ladies_comfort: '待ち0順 ▾',
+                nearby: '現在地順 ▾'
+            };
+            trigger.textContent = labelMap[currentSort] || '並び順 ▾';
+            trigger.classList.add('is-custom-sort');
+        }
+
+        function toggleMobileTrustBar(btn) {
+            const bar = document.getElementById('fv-trust-bar');
+            if (!bar) return;
+            const expanded = bar.classList.toggle('is-expanded');
+            if (btn) {
+                btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                btn.textContent = expanded ? '閉じる ▴' : '出典・精度 ▾';
+            }
+        }
+        window.toggleMobileTrustBar = toggleMobileTrustBar;
+
         function applyAudienceModeDOM() {
             if (IS_STAFF) return;
             const isWomen = currentAudience === 'women';
@@ -1104,6 +1139,7 @@
             document.querySelectorAll('.sort-btn').forEach(b => {
                 b.classList.toggle('active', b.dataset.sort === currentSort);
             });
+            syncMobileSortTrigger();
         }
 
         function setAudienceMode(mode, notify = false) {
@@ -1165,8 +1201,10 @@
                 return;
             }
             currentSort = sortType;
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.sort-btn[data-sort="${sortType}"]`)?.classList.add('active');
+            document.querySelectorAll('.sort-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.sort === sortType);
+            });
+            syncMobileSortTrigger();
             syncRegionFilterButtons();
             if (window.lastData) updateUI(window.lastData);
         }
@@ -1344,12 +1382,16 @@
                 badgeEl: item.querySelector('.brand-badge'),
                 areaEl: item.querySelector('.area-tag'),
                 freshnessEl: item.querySelector('.card-freshness-tag'),
+                freshnessFullEl: item.querySelector('.card-freshness-tag .card-freshness-full'),
+                freshnessSpEl: item.querySelector('.card-freshness-tag .card-freshness-sp'),
                 distTag: item.querySelector('.distance-tag'),
                 momTag: item.querySelector('.momentum-tag'),
                 storeNameEl: item.querySelector('.store-name'),
                 humanLineEl: item.querySelector('.cm-human-line'),
                 specRowEl: item.querySelector('.store-spec-row'),
                 specTextEl: item.querySelector('.store-spec-row .spec-text'),
+                specPriceMainEl: item.querySelector('.store-spec-row .spec-price-main'),
+                specHoursAgeExtraEl: item.querySelector('.store-spec-row .spec-hours-age-extra'),
                 mapLinkEl: item.querySelector('.store-spec-row .card-map-link'),
                 priceLinkEl: item.querySelector('.store-spec-row .card-price-link'),
                 microEl: item.querySelector('.store-micro-metrics'),
@@ -1384,18 +1426,59 @@
             } catch (e) {}
         })();
 
+        function _isAllDomesticClosedJs(data) {
+            if (data && Array.isArray(data.ranking) && data.ranking.length > 0) {
+                const domStores = data.ranking.filter(s => s && s.region !== 'Korea' && !String(s.name || '').includes('カンナム') && !String(s.name || '').includes('ホンデ'));
+                if (domStores.length > 0) {
+                    return domStores.every(s => !s.is_open_now && (Math.max(0, Number(s.women || 0)) + Math.max(0, Number(s.men || 0))) === 0);
+                }
+            }
+            return Boolean(window.TOP_PROVENANCE_META && window.TOP_PROVENANCE_META.is_daytime_10m);
+        }
+
+        function _isDaytime10MinCadenceJs(data) {
+            try {
+                const nowJst = new Date(Date.now() + 9 * 3600 * 1000);
+                const jstHour = nowJst.getUTCHours();
+                const jstMin = nowJst.getUTCMinutes();
+                if (jstHour >= 7 && jstHour < 17) {
+                    return _isAllDomesticClosedJs(data);
+                }
+                if (jstHour === 17 && jstMin < 15 && data && data.timestamp) {
+                    const snapMs = new Date(String(data.timestamp).replace(' ', 'T') + '+09:00').getTime();
+                    if (Number.isFinite(snapMs)) {
+                        const snapJst = new Date(snapMs + 9 * 3600 * 1000);
+                        if (snapJst.getUTCDate() === nowJst.getUTCDate() && snapJst.getUTCHours() >= 7 && snapJst.getUTCHours() < 17) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function isDaytime10MinMode(data) {
+            return _isDaytime10MinCadenceJs(data) && _isAllDomesticClosedJs(data);
+        }
+
         function getDataStaleState(data) {
             if (!data || data.is_seed) return 'live';
             const ageSec = getStatusAgeSec(data);
             if (!Number.isFinite(ageSec)) return 'live';
-            if (ageSec >= 600) return 'halted';
-            if (ageSec >= 300) return 'delayed';
+            const daytime10m = _isDaytime10MinCadenceJs(data);
+            const delayedSec = daytime10m ? 1020 : 300;
+            const haltedSec = daytime10m ? 1620 : 600;
+            if (ageSec >= haltedSec) return 'halted';
+            if (ageSec >= delayedSec) return 'delayed';
             return 'live';
         }
 
         function syncStaleHeaderAndBanner(data) {
             if (IS_STAFF || !data) return 'live';
             const staleState = getDataStaleState(data);
+            const daytime10m = isDaytime10MinMode(data);
             const rawTs = data.timestamp ? String(data.timestamp) : '';
             const hm = rawTs.includes(' ') ? rawTs.split(' ')[1].slice(0, 5) : '--:--';
             const totalStores = Array.isArray(data.ranking) && data.ranking.length >= 50 ? data.ranking.length : 63;
@@ -1408,10 +1491,16 @@
             const kickerDot = document.getElementById('live-kicker-dot');
             const kickerText = document.getElementById('live-kicker-text');
             if (kickerBar && kickerText) {
+                kickerBar.setAttribute('data-stale', staleState);
                 if (staleState === 'live') {
                     kickerBar.classList.remove('is-stale');
-                    if (kickerDot) kickerDot.classList.remove('hidden');
-                    kickerText.textContent = `全国${totalStores}店舗・1分自動更新`;
+                    if (daytime10m) {
+                        if (kickerDot) kickerDot.classList.add('hidden');
+                        kickerText.textContent = `全国${totalStores}店・営業前（夜間1分更新）`;
+                    } else {
+                        if (kickerDot) kickerDot.classList.remove('hidden');
+                        kickerText.textContent = `全国${totalStores}店舗・1分自動更新`;
+                    }
                 } else {
                     kickerBar.classList.add('is-stale');
                     if (kickerDot) kickerDot.classList.add('hidden');
@@ -1420,7 +1509,7 @@
             }
             const h1El = document.getElementById('main-hero-h1');
             if (h1El && !IS_STAFF) {
-                h1El.textContent = staleState === 'live'
+                h1El.textContent = (staleState === 'live' && !daytime10m)
                     ? `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を1分更新`
                     : `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を横断チェック`;
             }
@@ -2012,24 +2101,24 @@
                 if (/^(?:OLG|ORIENTAL)\s+ag/i.test(trimmedName) || /^ag(?:\s+|(?=[^a-zA-Z0-9])|$)/i.test(trimmedName)) {
                     code = 'ag';
                     cls = 'brand-ag';
-                    stripped = trimmedName.replace(/^(?:OLG|ORIENTAL)\s+ag\s*/i, '').replace(/^ag\s*/i, '');
+                    stripped = trimmedName.replace(/^(?:OLG|ORIENTAL)\s+ag(?:\s*[（(]アグ[）)])?\s*/i, '').replace(/^ag(?:\s*[（(]アグ[）)])?\s*/i, '');
                 } else {
                     code = 'オリエンタルラウンジ';
                     cls = 'brand-olg';
                     stripped = trimmedName.replace(/^(?:OLG|ORIENTAL)(?:\s+|$)/i, '').replace(/^オリエンタルラウンジ\s*/i, '');
                 }
-            } else if (rawSource === 'JIS' || /^JIS(?:\s+|$)/i.test(trimmedName)) {
+            } else if (rawSource === 'JIS' || /^JIS(?:\s+|[（(]|$)/i.test(trimmedName)) {
                 code = 'JIS';
                 cls = 'brand-jis';
-                stripped = trimmedName.replace(/^JIS(?:\s+|$)/i, '');
-            } else if (rawSource === 'ASOBIBAR' || /^ASOBIBAR(?:\s+|$)/i.test(trimmedName)) {
+                stripped = trimmedName.replace(/^JIS(?:\s*[（(]ジス[）)])?\s*/i, '');
+            } else if (rawSource === 'ASOBIBAR' || /^ASOBIBAR(?:\s+|[（(]|$)/i.test(trimmedName)) {
                 code = 'ASOBIBAR';
                 cls = 'brand-asobibar';
-                stripped = trimmedName.replace(/^ASOBIBAR(?:\s+|$)/i, '');
-            } else if (rawSource === 'XIX' || /^XIX(?:\s+|$)/i.test(trimmedName)) {
+                stripped = trimmedName.replace(/^ASOBIBAR(?:\s*[（(]アソビバー[）)])?\s*/i, '');
+            } else if (rawSource === 'XIX' || /^XIX(?:\s+|[（(]|$)/i.test(trimmedName)) {
                 code = 'XIX';
                 cls = 'brand-xix';
-                stripped = trimmedName.replace(/^XIX(?:\s+|$)/i, '');
+                stripped = trimmedName.replace(/^XIX(?:\s*[（(]ジックス[）)])?\s*/i, '');
             } else if (rawSource === 'ALFA' || /ALFA/i.test(trimmedName)) {
                 code = 'ALFA';
                 cls = 'brand-alfa';
@@ -2085,6 +2174,40 @@
             const hh = String(jstDate.getUTCHours()).padStart(2, '0');
             const mm = String(jstDate.getUTCMinutes()).padStart(2, '0');
             return `${srcLbl}・${hh}:${mm}取得`;
+        }
+
+        function formatStoreFreshnessShortJs(store) {
+            if (!store) return '';
+            const isJis = (store.source_kind === 'jis_pos') || (store.has_jis_pos === true && store.jis_wait_m_grp != null) || Boolean(store.wait_estimate && store.wait_estimate.is_measured);
+            const prefix = isJis ? 'POS実測・' : '';
+            let epSec = Number(store.fetched_at || 0);
+            if (!(epSec > 0) && window.lastData && window.lastData.timestamp) {
+                const parsedMs = new Date(String(window.lastData.timestamp).replace(' ', 'T') + '+09:00').getTime();
+                if (Number.isFinite(parsedMs)) epSec = parsedMs / 1000;
+            }
+            if (!(epSec > 0)) {
+                return store.freshness_short || (isJis ? 'POS実測・待機中' : '計測待機中');
+            }
+            const ageSec = Math.max(0, (Date.now() / 1000) - epSec);
+            const ageMin = Math.floor(ageSec / 60);
+            if (ageSec < 60) return `${prefix}1分以内`;
+            if (ageMin < 60) return `${prefix}${ageMin}分前`;
+            const jstDate = new Date((epSec + 9 * 3600) * 1000);
+            const hh = String(jstDate.getUTCHours()).padStart(2, '0');
+            const mm = String(jstDate.getUTCMinutes()).padStart(2, '0');
+            return `${prefix}${hh}:${mm}`;
+        }
+
+        function isAreaRedundantSpJs(areaLabel, branchTitle) {
+            const a = String(areaLabel || '').replace(/エリア$/, '').trim();
+            const b = String(branchTitle || '').replace(/店$/, '').trim();
+            if (!a || !b) return false;
+            if (a === b) return true;
+            const tokens = a.split(/[・\/／\-\s　]+/).map(t => t.trim()).filter(t => t.length >= 2);
+            return tokens.some(tok => {
+                if (tok === '京都' && b.includes('東京') && !b.replace(/東京/g, '').includes('京都')) return false;
+                return b.includes(tok);
+            });
         }
 
         function formatMidnightRetentionPlainJs(pct) {
@@ -2259,13 +2382,17 @@
                 badgeEl.textContent = brandInfo.code;
             }
 
+            const baseNameForArea = brandInfo.cleanName || store.name;
             const areaEl = refs.areaEl;
             if (areaEl) {
                 if (brandInfo.areaLabel) {
+                    const redundantSp = Boolean(store.area_redundant_sp) || isAreaRedundantSpJs(brandInfo.areaLabel, baseNameForArea);
                     areaEl.classList.remove('hidden');
+                    areaEl.classList.toggle('is-redundant-on-sp', redundantSp);
                     areaEl.textContent = brandInfo.areaLabel;
                 } else {
                     areaEl.classList.add('hidden');
+                    areaEl.classList.remove('is-redundant-on-sp');
                     areaEl.textContent = '';
                 }
             }
@@ -2273,14 +2400,25 @@
             const freshnessEl = refs.freshnessEl;
             if (freshnessEl) {
                 const fText = formatStoreFreshnessJs(store);
+                const fShort = formatStoreFreshnessShortJs(store) || fText;
                 if (fText) {
                     const isJis = (store.source_kind === 'jis_pos') || Boolean(store.has_jis_pos) || String(store.source || '').toLowerCase() === 'jis';
                     freshnessEl.classList.remove('hidden');
                     freshnessEl.classList.toggle('is-pos', isJis);
-                    freshnessEl.textContent = fText;
+                    if (refs.freshnessFullEl && refs.freshnessSpEl) {
+                        refs.freshnessFullEl.textContent = fText;
+                        refs.freshnessSpEl.textContent = fShort;
+                    } else {
+                        freshnessEl.textContent = fText;
+                    }
                 } else {
                     freshnessEl.classList.add('hidden');
-                    freshnessEl.textContent = '';
+                    if (refs.freshnessFullEl && refs.freshnessSpEl) {
+                        refs.freshnessFullEl.textContent = '';
+                        refs.freshnessSpEl.textContent = '';
+                    } else {
+                        freshnessEl.textContent = '';
+                    }
                 }
             }
 
@@ -2381,7 +2519,13 @@
                 const ageShort = store.spec_age_short || '';
                 if (priceShort || hrsShort) {
                     specRowEl.classList.remove('hidden');
-                    if (refs.specTextEl) {
+                    if (refs.specPriceMainEl && refs.specHoursAgeExtraEl) {
+                        refs.specPriceMainEl.textContent = priceShort || (hrsShort ? `営業 ${hrsShort}` : '');
+                        const extraSegs = [];
+                        if (priceShort && hrsShort) extraSegs.push(`営業 ${hrsShort}`);
+                        if (ageShort) extraSegs.push(ageShort);
+                        refs.specHoursAgeExtraEl.textContent = extraSegs.length > 0 ? (' ｜ ' + extraSegs.join(' ｜ ')) : '';
+                    } else if (refs.specTextEl) {
                         const segs = [];
                         if (priceShort) segs.push(priceShort);
                         if (hrsShort) segs.push(`営業 ${hrsShort}`);
@@ -2701,6 +2845,12 @@
             if (!stores || stores.length === 0) return;
 
             const staleState = syncStaleHeaderAndBanner(data);
+            if (!IS_STAFF && currentModalStoreName) {
+                const openModalEl = document.getElementById('analysis-modal');
+                if (openModalEl && !openModalEl.classList.contains('hidden')) {
+                    renderModalQuickSpecBar(currentModalStoreName);
+                }
+            }
             const nextSig = _computeUiSignature(data) + `#stale:${staleState}`;
             if (nextSig === _lastRenderedSignature && rankingList.children.length > 0) {
                 return;
@@ -4650,6 +4800,76 @@
             return gen === _modalGen;
         }
 
+        function renderModalQuickSpecBar(storeName) {
+            const box = document.getElementById('modal-quick-spec-bar');
+            if (!box) return;
+            if (IS_STAFF) {
+                box.classList.add('hidden');
+                box.textContent = '';
+                return;
+            }
+            const list = (window.lastData && Array.isArray(window.lastData.ranking))
+                ? window.lastData.ranking
+                : ((window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking)) ? window.INITIAL_STATUS_DATA.ranking : []);
+            const store = list.find(s => s && s.name === storeName) || null;
+            if (!store) {
+                box.classList.add('hidden');
+                box.textContent = '';
+                return;
+            }
+            const priceShort = store.spec_price_short || '';
+            const hrsShort = store.spec_hours_short || store.today_hours_label || '';
+            const ageShort = store.spec_age_short || '';
+            const fText = formatStoreFreshnessJs(store);
+            const mapHref = safeHttpUrl(store.map_url);
+
+            if (!priceShort && !hrsShort && !fText && !mapHref) {
+                box.classList.add('hidden');
+                box.textContent = '';
+                return;
+            }
+
+            box.textContent = '';
+            const topRow = document.createElement('div');
+            topRow.className = 'mqs-primary-row';
+
+            const priceEl = document.createElement('span');
+            priceEl.className = 'mqs-price-text';
+            priceEl.textContent = priceShort || (hrsShort ? `営業 ${hrsShort}` : storeName);
+            topRow.appendChild(priceEl);
+
+            const actionWrap = document.createElement('div');
+            actionWrap.className = 'mqs-actions';
+            if (mapHref) {
+                const mapBtn = document.createElement('a');
+                mapBtn.className = 'mqs-action-pill is-map';
+                mapBtn.href = mapHref;
+                mapBtn.target = '_blank';
+                mapBtn.rel = 'noopener noreferrer';
+                mapBtn.textContent = 'Googleマップ ↗';
+                actionWrap.appendChild(mapBtn);
+            }
+            const priceBtn = document.createElement('a');
+            priceBtn.className = 'mqs-action-pill';
+            priceBtn.href = '/price-comparison';
+            priceBtn.textContent = '料金比較 ›';
+            actionWrap.appendChild(priceBtn);
+            topRow.appendChild(actionWrap);
+            box.appendChild(topRow);
+
+            const metaItems = [];
+            if (priceShort && hrsShort) metaItems.push(`営業 ${hrsShort}`);
+            if (ageShort) metaItems.push(ageShort);
+            if (fText) metaItems.push(fText);
+            if (metaItems.length > 0) {
+                const metaRow = document.createElement('div');
+                metaRow.className = 'mqs-meta-row';
+                metaRow.textContent = metaItems.join(' ｜ ');
+                box.appendChild(metaRow);
+            }
+            box.classList.remove('hidden');
+        }
+
         async function openModal(storeName) {
             loadChartJs(); // Pre-trigger Chart.js download in parallel with data fetch
             const gen = _beginModalGeneration();
@@ -4661,6 +4881,8 @@
             const title = document.getElementById('modal-store-name');
             const banner = document.getElementById('live-comparison-banner');
             const bInfo = detectBrandInfo(storeName);
+
+            renderModalQuickSpecBar(storeName);
 
             const officialUrl = getOfficialBrandUrl(bInfo.code, storeName);
             const officialLinkEl = document.getElementById('modal-official-link');
@@ -5882,18 +6104,23 @@
                 avgM = Number(avgM) || 0;
                 slotLabel = escapeHtml(slotLabel);
 
-                const diffW = +(liveStore.women - avgW).toFixed(1);
-                if (avgW > 0 || liveStore.women > 0) {
-                    const clsW = diffW >= 5 ? 'hot' : (diffW > 0 ? 'up' : (diffW < 0 ? 'down' : 'neutral'));
-                    const signW = diffW > 0 ? `+${diffW}名 ${UI_SVG_ARROW_NE}` : (diffW < 0 ? `${diffW}名` : '並み');
-                    diffBadgeW = `<span class="diff-badge ${clsW}">女性: 普段の${slotLabel}(${avgW}名)比 ${signW}</span>`;
-                }
+                const isPreopenZero = _isPreopenZeroStore(liveStore);
+                if (isPreopenZero && (avgW > 0 || avgM > 0)) {
+                    diffBadgeW = `<span class="diff-badge neutral">営業時間外（普段の${slotLabel}: 女性${avgW}名 / 男性${avgM}名）</span>`;
+                } else {
+                    const diffW = +(liveStore.women - avgW).toFixed(1);
+                    if (avgW > 0 || liveStore.women > 0) {
+                        const clsW = diffW >= 5 ? 'hot' : (diffW > 0 ? 'up' : (diffW < 0 ? 'down' : 'neutral'));
+                        const signW = diffW > 0 ? `+${diffW}名 ${UI_SVG_ARROW_NE}` : (diffW < 0 ? `${diffW}名` : '並み');
+                        diffBadgeW = `<span class="diff-badge ${clsW}">女性: 普段の${slotLabel}(${avgW}名)比 ${signW}</span>`;
+                    }
 
-                const diffM = +(liveStore.men - avgM).toFixed(1);
-                if (avgM > 0 || liveStore.men > 0) {
-                    const clsM = diffM > 0 ? 'neutral' : (diffM < 0 ? 'down' : 'neutral');
-                    const signM = diffM > 0 ? `+${diffM}名` : (diffM < 0 ? `${diffM}名` : '並み');
-                    diffBadgeM = `<span class="diff-badge ${clsM}">男性: 普段の${slotLabel}(${avgM}名)比 ${signM}</span>`;
+                    const diffM = +(liveStore.men - avgM).toFixed(1);
+                    if (avgM > 0 || liveStore.men > 0) {
+                        const clsM = diffM > 0 ? 'neutral' : (diffM < 0 ? 'down' : 'neutral');
+                        const signM = diffM > 0 ? `+${diffM}名` : (diffM < 0 ? `${diffM}名` : '並み');
+                        diffBadgeM = `<span class="diff-badge ${clsM}">男性: 普段の${slotLabel}(${avgM}名)比 ${signM}</span>`;
+                    }
                 }
             }
 

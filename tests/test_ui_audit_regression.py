@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=46"
-        expected_portal = "/static/portal.css?v=17"
-        expected_app_js = "/static/app.js?v=20261118_1"
+        expected_calm = "/static/calm.css?v=47"
+        expected_portal = "/static/portal.css?v=18"
+        expected_app_js = "/static/app.js?v=20261118_2"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=113"
-        expected_cache_name = "aiseki-navi-v113"
+        expected_sw_url = "/sw.js?v=114"
+        expected_cache_name = "aiseki-navi-v114"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -1165,11 +1165,13 @@ class UiAuditRegressionTests(unittest.TestCase):
                     mpage.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
                     mpage.wait_for_timeout(120)
                     mob_state = mpage.evaluate("""() => {
-                        const pills = Array.from(document.querySelectorAll('.moat-pill')).map(el => ({
-                            text: el.innerText.trim(),
-                            rects: el.getClientRects().length,
-                            height: el.getBoundingClientRect().height
-                        }));
+                        const pills = Array.from(document.querySelectorAll('.moat-pill'))
+                            .filter(el => el.offsetParent !== null)
+                            .map(el => ({
+                                text: el.innerText.trim(),
+                                rects: el.getClientRects().length,
+                                height: el.getBoundingClientRect().height
+                            }));
                         const nav = document.querySelector('.portal-global-nav');
                         const ncs = getComputedStyle(nav);
                         return {pills, navWrap: ncs.flexWrap, navOverflowX: ncs.overflowX};
@@ -2841,8 +2843,13 @@ class UiAuditRegressionTests(unittest.TestCase):
                     mp.keyboard.press("Escape")
 
                     mob_metrics = mp.evaluate("""() => {
+                        const rl = document.getElementById('ranking-list');
+                        const tb = document.getElementById('fv-trust-bar');
                         const sub = document.getElementById('main-hero-sub');
-                        const c2 = document.querySelectorAll('#ranking-list .ranking-item')[1];
+                        const cards = document.querySelectorAll('#ranking-list .ranking-item');
+                        const c1 = cards[0];
+                        const c2 = cards[1];
+                        const c1r = c1.getBoundingClientRect();
                         const c2r = c2.getBoundingClientRect();
                         const si = c2.querySelector('.store-info').getBoundingClientRect();
                         const mr = c2.querySelector('.store-meta-row');
@@ -2851,9 +2858,12 @@ class UiAuditRegressionTests(unittest.TestCase):
                             .map(el => Math.round(el.getBoundingClientRect().height));
                         return {
                             docOV: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                            rankingTop: Math.round(rl.getBoundingClientRect().top),
+                            tbCollapsedH: Math.round(tb.getBoundingClientRect().height),
                             subWS: getComputedStyle(sub).whiteSpace,
                             subSW: sub.scrollWidth,
                             subCW: sub.clientWidth,
+                            c1H: Math.round(c1r.height),
                             c2H: Math.round(c2r.height),
                             c2InfoW: Math.round(si.width),
                             mrSW: mr.scrollWidth,
@@ -2862,12 +2872,35 @@ class UiAuditRegressionTests(unittest.TestCase):
                         };
                     }""")
                     self.assertLessEqual(mob_metrics["docOV"], 0)
+                    self.assertLessEqual(mob_metrics["rankingTop"], 360)
+                    self.assertLessEqual(mob_metrics["tbCollapsedH"], 44)
                     self.assertEqual(mob_metrics["subWS"], "normal")
                     self.assertLessEqual(mob_metrics["subSW"], mob_metrics["subCW"] + 1)
                     self.assertGreaterEqual(mob_metrics["c2InfoW"], 180)
-                    self.assertLessEqual(mob_metrics["c2H"], 310)
+                    self.assertLessEqual(mob_metrics["c1H"], 240)
+                    self.assertLessEqual(mob_metrics["c2H"], 150)
                     self.assertLessEqual(mob_metrics["mrSW"], mob_metrics["mrCW"] + 1)
                     self.assertGreaterEqual(mob_metrics["minVisBtnH"], 38)
+
+                    # Trust bar expandable on mobile + mobile sort popover + card tap modal quick spec bar
+                    mp.click(".fv-trust-toggle-btn")
+                    tb_exp_h = mp.evaluate("Math.round(document.getElementById('fv-trust-bar').getBoundingClientRect().height)")
+                    self.assertGreater(tb_exp_h, mob_metrics["tbCollapsedH"])
+                    mp.click(".fv-trust-toggle-btn")
+
+                    mp.click("#mobile-sort-btn")
+                    sort_pop_w = mp.evaluate("document.getElementById('mobile-sort-popover').getBoundingClientRect().width")
+                    self.assertLessEqual(sort_pop_w, 390)
+                    mp.keyboard.press("Escape")
+
+                    mp.locator("#ranking-list .ranking-item").nth(1).click()
+                    mp.wait_for_timeout(80)
+                    mqs_vis = mp.evaluate("""() => {
+                        const q = document.getElementById('modal-quick-spec-bar');
+                        return Boolean(q && !q.classList.contains('hidden') && q.offsetParent !== null && q.textContent.trim().length > 0);
+                    }""")
+                    self.assertTrue(mqs_vis)
+                    mp.click("#analysis-modal .close-btn-pill")
 
                     for rt in ("/stats", "/stats/weekend-index"):
                         mp.goto("http://aiseki.local" + rt, wait_until="domcontentloaded")
@@ -2877,6 +2910,38 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ctx_mob.close()
                 finally:
                     browser.close()
+
+    def test_daytime_stale_thresholds_and_redundant_area_helper(self):
+        import datetime as _dt
+        import ssr_payload
+        jst = _dt.timezone(_dt.timedelta(hours=9))
+        self.assertEqual(ssr_payload.stale_thresholds_sec(60), (300, 600))
+        self.assertEqual(ssr_payload.stale_thresholds_sec(600), (1020, 1620))
+        self.assertEqual(ssr_payload.stale_thresholds_sec("invalid"), (300, 600))
+        self.assertEqual(ssr_payload.stale_thresholds_sec(999999), (1500, 2400))
+
+        # 16:52 daytime snapshot evaluated at 17:01 JST (even if 1 store opened at 17:00) keeps 600s grace cadence
+        snap_1652 = _dt.datetime(2026, 11, 18, 16, 52, 0, tzinfo=jst).timestamp()
+        now_1701 = _dt.datetime(2026, 11, 18, 17, 1, 0, tzinfo=jst)
+        self.assertEqual(
+            ssr_payload.infer_effective_fetch_interval_sec(
+                snap_epoch=snap_1652, now_jst=now_1701, dom_total=60, open_dom_cnt=1
+            ),
+            600,
+        )
+        # Once 17:01 night snapshot lands, cadence switches immediately to 60s
+        snap_1701 = _dt.datetime(2026, 11, 18, 17, 1, 0, tzinfo=jst).timestamp()
+        self.assertEqual(
+            ssr_payload.infer_effective_fetch_interval_sec(
+                snap_epoch=snap_1701, now_jst=now_1701, dom_total=60, open_dom_cnt=1
+            ),
+            60,
+        )
+
+        self.assertTrue(ssr_payload.is_area_redundant_with_branch("長崎", "長崎"))
+        self.assertTrue(ssr_payload.is_area_redundant_with_branch("東京・新宿", "新宿"))
+        self.assertFalse(ssr_payload.is_area_redundant_with_branch("京都・河原町", "東京都庁前"))
+        self.assertFalse(ssr_payload.is_area_redundant_with_branch("大阪・キタ", "梅田"))
 
 
 if __name__ == "__main__":

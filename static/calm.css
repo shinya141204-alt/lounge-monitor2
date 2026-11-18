@@ -9941,8 +9941,639 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
     display: none !important;
 }
 
-/* モバイル（<=768px）#2以降店舗カードの2列グリッド整形 ＆ 小ボタンタップ領域確保 */
+/* ==========================================================================
+   28. モバイル（<=768px）情報密度の引き算 ＆ FV/カード縦予算・詳細シート最適化
+       - PC（>=769px）レイアウト完全無改変
+       - タップ領域 >= 38px ＆ WCAG コントラスト比 >= 5.5:1（ダーク/ライト両対応）
+   ========================================================================== */
+
+.cm-live-dot.hidden {
+    display: none !important;
+}
+
+.fv-trust-toggle-btn,
+.mobile-sort-trigger,
+.legend-help-trigger.mobile-sort-trigger,
+.aud-lbl-sp,
+.card-freshness-sp,
+.sheet-drag-handle {
+    display: none;
+}
+
+body.staff-mode .modal-quick-spec-bar {
+    display: none !important;
+}
+
+@media (min-width: 769px) {
+    .fv-trust-summary-row {
+        display: contents;
+    }
+}
+
+/* モーダル最上部の即時スペック・マップ・出典クイックバー（カードタップ0ms表示） */
+.modal-quick-spec-bar {
+    margin: 0 0 10px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--calm-border);
+    background: var(--calm-surface);
+    font-variant-numeric: tabular-nums;
+}
+
+.modal-quick-spec-bar.hidden {
+    display: none !important;
+}
+
+body.theme-light .modal-quick-spec-bar {
+    background: var(--calm-light-surface);
+    border-color: var(--calm-light-border);
+}
+
+.mqs-primary-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+}
+
+.mqs-price-text {
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--calm-text);
+}
+
+body.theme-light .mqs-price-text {
+    color: var(--calm-light-text);
+}
+
+.mqs-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.mqs-action-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface-2);
+    color: var(--calm-text);
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+body.theme-light .mqs-action-pill {
+    background: var(--calm-light-surface-2);
+    border-color: var(--calm-light-border-strong);
+    color: var(--calm-light-text);
+}
+
+.mqs-meta-row {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--calm-border);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--calm-sub);
+}
+
+body.theme-light .mqs-meta-row {
+    border-top-color: var(--calm-light-border);
+    color: var(--calm-light-sub);
+}
+
 @media (max-width: 768px) {
+    /* 1) FV全体の余白・ヘッダー2列統合（右端見切れ防止＆縦42px圧縮） */
+    body:not(.staff-mode) #app-shell.container {
+        padding-top: 8px !important;
+        padding-inline: 12px !important;
+    }
+
+    body:not(.staff-mode) header {
+        padding: 0 !important;
+        margin-bottom: 4px !important;
+    }
+
+    body:not(.staff-mode) .header-top-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "kicker ctrls"
+            "h1 h1"
+            "sub sub";
+        align-items: center !important;
+        column-gap: 6px !important;
+        row-gap: 4px !important;
+        margin-bottom: 4px !important;
+    }
+
+    body:not(.staff-mode) .header-brand-block {
+        display: contents !important;
+    }
+
+    body:not(.staff-mode) #live-kicker-bar {
+        grid-area: kicker;
+        margin: 0 !important;
+        font-size: 0.69rem !important;
+        line-height: 1.25 !important;
+        min-width: 0;
+        justify-content: flex-start !important;
+    }
+
+    body:not(.staff-mode) .header-top-row .header-controls {
+        grid-area: ctrls;
+        justify-self: end;
+        gap: 5px !important;
+    }
+
+    /* 更新・ライト切替はアイコンボタン化（aria-label保持）で1行に収める */
+    body:not(.staff-mode) .hdr-btn-txt-sp-hide {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    body:not(.staff-mode) #refresh-btn,
+    body:not(.staff-mode) #quick-daylight-btn {
+        width: 36px !important;
+        min-width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+
+    body:not(.staff-mode) #mobile-menu-btn {
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 11px !important;
+        font-size: 0.74rem !important;
+    }
+
+    body:not(.staff-mode) #main-hero-h1 {
+        grid-area: h1;
+        font-size: 1.03rem !important;
+        line-height: 1.3 !important;
+        margin: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        word-break: auto-phrase;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+    }
+
+    body:not(.staff-mode) #main-hero-sub {
+        grid-area: sub;
+        font-size: 0.72rem !important;
+        line-height: 1.38 !important;
+        margin: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+
+    body:not(.staff-mode) .hero-sub-brand-prefix {
+        display: none;
+    }
+
+    /* 2) グローバル3タブナビ：右上のメニューボタンと重複する4番目ボタンを非表示化＆左揃え1行スリム化 */
+    body:not(.staff-mode) .container > header > .portal-global-nav.portal-global-nav-compact {
+        margin: 2px 0 4px 0 !important;
+        padding: 3px 0 !important;
+        gap: 4px !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+    }
+
+    body:not(.staff-mode) .portal-global-nav-compact > * {
+        margin-inline: 0 !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .portal-global-nav-compact .portal-nav-link,
+    body:not(.theme-light):not(.staff-mode) .portal-global-nav-compact .portal-nav-link.active,
+    body.theme-light:not(.staff-mode) .portal-global-nav-compact .portal-nav-link,
+    body.theme-light:not(.staff-mode) .portal-global-nav-compact .portal-nav-link.active {
+        box-sizing: border-box !important;
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        min-height: 28px !important;
+        height: 28px !important;
+        padding: 0 10px !important;
+        font-size: 0.74rem !important;
+        line-height: 1 !important;
+    }
+
+    body:not(.staff-mode) .portal-global-nav-compact .portal-nav-more-btn {
+        display: none !important;
+    }
+
+    /* 3) FV根拠バー：初期1行（30px）＋タップ展開で全件数・予測誤差・リンクを表示 */
+    body:not(.staff-mode) #fv-trust-bar {
+        display: block;
+        margin-top: 2px;
+        margin-bottom: 5px;
+        padding: 4px 8px 4px 10px;
+        border-radius: 9px;
+        font-size: 0.7rem;
+        line-height: 1.35;
+    }
+
+    body:not(.staff-mode) .fv-trust-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar:not(.is-expanded) .fv-trust-detail-seg {
+        display: none;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar:not(.is-expanded) .fv-trust-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar:not(.is-expanded) .fv-trust-links {
+        display: none;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar.is-expanded {
+        padding: 8px 10px;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar.is-expanded .fv-trust-summary-row {
+        align-items: flex-start;
+    }
+
+    body:not(.staff-mode) #fv-trust-bar.is-expanded .fv-trust-links {
+        display: flex;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--calm-border);
+    }
+
+    body.theme-light:not(.staff-mode) #fv-trust-bar.is-expanded .fv-trust-links {
+        border-top-color: var(--calm-light-border);
+    }
+
+    body:not(.staff-mode) .fv-trust-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        min-height: 26px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--calm-border-strong);
+        background: var(--calm-surface-2);
+        color: var(--calm-text);
+        font: inherit;
+        font-size: 0.68rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    body.theme-light:not(.staff-mode) .fv-trust-toggle-btn {
+        background: var(--calm-light-surface-2);
+        border-color: var(--calm-light-border-strong);
+        color: var(--calm-light-text);
+    }
+
+    /* 4) エリアチップ＆目線切替＋並び順＋検索の1段スリム化 */
+    body:not(.staff-mode) .area-quick-chips {
+        padding: 1px 0 4px !important;
+        margin-bottom: 5px !important;
+        gap: 5px !important;
+    }
+
+    body:not(.staff-mode) .area-quick-chips .filter-btn,
+    body:not(.staff-mode) .area-quick-chips .more-areas-trigger {
+        min-height: 34px;
+        padding: 4px 11px;
+        font-size: 0.76rem;
+    }
+
+    body:not(.staff-mode) #audience-mode-bar {
+        padding: 0 !important;
+        margin: 0 0 5px 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    body:not(.staff-mode) .audience-mode-row {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+    }
+
+    body:not(.staff-mode) .audience-mode-toggle {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 2px;
+    }
+
+    body:not(.staff-mode) .audience-pill-btn {
+        min-height: 32px;
+        padding: 4px 6px;
+        font-size: 0.73rem;
+        white-space: nowrap;
+    }
+
+    body:not(.staff-mode) .aud-lbl-pc {
+        display: none;
+    }
+
+    body:not(.staff-mode) .aud-lbl-sp {
+        display: inline;
+    }
+
+    body:not(.staff-mode) .compact-concierge-link {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) .audience-aux-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    body:not(.staff-mode) .mobile-sort-trigger {
+        display: inline-flex;
+    }
+
+    body:not(.staff-mode) .mobile-sort-trigger.is-custom-sort {
+        background: var(--cm-cta-bg);
+        border-color: var(--cm-cta-bg);
+        color: var(--cm-cta-text);
+    }
+
+    body:not(.staff-mode) .legend-help-trigger {
+        min-height: 34px;
+        padding: 4px 9px;
+        font-size: 0.72rem;
+    }
+
+    body:not(.staff-mode) .ladies-mode-quicklinks:not(.hidden) {
+        margin-top: 4px;
+        padding: 5px 8px;
+        border-radius: 10px;
+        border: 1px solid var(--calm-border);
+        background: var(--calm-surface);
+    }
+
+    body.theme-light:not(.staff-mode) .ladies-mode-quicklinks:not(.hidden) {
+        border-color: var(--calm-light-border);
+        background: #ffffff;
+    }
+
+    body:not(.staff-mode) .ladies-mode-quicklinks .ladies-mode-hint {
+        display: none;
+    }
+
+    body:not(.staff-mode) .ladies-mode-quicklinks .ladies-quick-actions {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        gap: 5px;
+    }
+
+    body:not(.staff-mode) .ladies-mode-quicklinks .ladies-quick-actions::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not(.staff-mode) .ladies-mode-quicklinks .ladies-quick-link {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 30px;
+        padding: 3px 9px;
+        font-size: 0.71rem;
+    }
+
+    body:not(.staff-mode) .daytime-forecast-banner:not(.hidden) {
+        padding: 7px 11px;
+        margin: 0 0 8px;
+        font-size: 0.74rem;
+        line-height: 1.4;
+    }
+
+    body:not(.staff-mode) .daytime-forecast-banner span {
+        display: none;
+    }
+
+    body:not(.staff-mode) .stale-halt-banner:not(.hidden) {
+        padding: 7px 11px;
+        margin: 4px 0 7px;
+        font-size: 0.75rem;
+        line-height: 1.42;
+    }
+
+    /* サブページ共通（/price-comparison 等）：モバイルFVの見出し・リード文を適正化 */
+    body:not(.theme-light):not(.staff-mode) .hero-box h1,
+    body.theme-light:not(.staff-mode) .hero-box h1,
+    body:not(.theme-light):not(.staff-mode) .page-hero h1,
+    body.theme-light:not(.staff-mode) .page-hero h1 {
+        font-size: 1.15rem !important;
+        line-height: 1.36 !important;
+        margin-bottom: 6px !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .hero-box p,
+    body.theme-light:not(.staff-mode) .hero-box p,
+    body:not(.theme-light):not(.staff-mode) .page-hero p,
+    body.theme-light:not(.staff-mode) .page-hero p {
+        font-size: 0.79rem !important;
+        line-height: 1.52 !important;
+    }
+
+    body:not(.staff-mode) .portal-global-nav-row {
+        margin-bottom: 10px !important;
+        padding: 4px 0 !important;
+    }
+
+    body:not(.staff-mode) .search-sort-container {
+        margin-bottom: 6px !important;
+        gap: 0 !important;
+    }
+
+    body:not(.staff-mode) .search-sort-container .sort-controls {
+        display: none !important;
+    }
+
+    @supports not selector(:popover-open) {
+        body:not(.staff-mode) .mobile-sort-trigger {
+            display: none !important;
+        }
+        body:not(.staff-mode) .search-sort-container .sort-controls {
+            display: flex !important;
+        }
+    }
+
+    body:not(.theme-light):not(.staff-mode) #search-input,
+    body.theme-light:not(.staff-mode) #search-input,
+    body:not(.staff-mode) #search-input {
+        min-height: 36px !important;
+        height: 36px !important;
+        padding: 5px 32px 5px 36px !important;
+        font-size: 16px !important;
+    }
+
+    /* 並び順ポップオーバー内のソートボタンを視認性の高いピルに整形 */
+    #mobile-sort-popover .sort-btn {
+        min-height: 38px;
+        padding: 6px 12px !important;
+        border-radius: 999px !important;
+        border: 1px solid var(--calm-border-strong) !important;
+        background: var(--calm-surface-2) !important;
+        color: var(--calm-text) !important;
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+    }
+
+    body.theme-light #mobile-sort-popover .sort-btn {
+        background: var(--calm-light-surface-2) !important;
+        border-color: var(--calm-light-border-strong) !important;
+        color: var(--calm-light-text) !important;
+    }
+
+    #mobile-sort-popover .sort-btn.active {
+        background: var(--cm-cta-bg) !important;
+        border-color: var(--cm-cta-bg) !important;
+        color: var(--cm-cta-text) !important;
+    }
+
+    /* 5) カード共通：重複エリア名・長い出典表記・分析ボタンの引き算（カード全体タップでモーダル表示） */
+    body:not(.staff-mode) .ranking-item .area-tag.is-redundant-on-sp {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .card-freshness-full {
+        display: none;
+    }
+
+    body:not(.staff-mode) .ranking-item .card-freshness-sp {
+        display: inline;
+    }
+
+    body:not(.staff-mode) .ranking-item .card-actions .analysis-btn {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .card-actions .pin-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .store-micro-metrics,
+    body:not(.staff-mode) .ranking-item .stat-usual {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .moat-signals-row:not(.hidden) {
+        gap: 4px !important;
+        margin-top: 3px !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .moat-signals-row .moat-pill:nth-child(n+3) {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) .ranking-item .moat-pill:not(.hidden) {
+        white-space: nowrap !important;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 2px 8px !important;
+        font-size: 0.69rem !important;
+        line-height: 1.35 !important;
+    }
+
+    /* 6) #1 シグネチャー Bento ヒーローカード（351px -> ~215px、重複バッジ・途中切れゼロ） */
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card {
+        padding: 11px 13px 11px !important;
+        column-gap: 8px !important;
+        row-gap: 5px !important;
+        border-radius: 18px !important;
+        margin-bottom: 8px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .bento-kicker-row {
+        flex-wrap: nowrap !important;
+        gap: 5px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card > .store-info {
+        gap: 3px !important;
+        min-width: 0;
+    }
+
+    /* 10名以上の #1 カードは男女数・比率・待ち判定が上下に表示済みのため定型文を省略（少人数時のみ参考値注記を表示） */
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .cm-human-line {
+        display: none;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card:has(.bento-ratio-hero.is-small-sample) .cm-human-line:not(.hidden) {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 0.74rem !important;
+        line-height: 1.36 !important;
+        margin: 0 !important;
+    }
+
+    /* #1 カード上部に待ち判定ピルが表示済みのため、下部ピル列では60分後予測ピルを優先表示して重複を解消 */
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .moat-signals-row:has(.moat-pill:not(.hidden) ~ .moat-pill:not(.hidden)) .moat-pill:not(.hidden):first-child {
+        display: none !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .store-spec-row:not(.hidden) {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 3px 6px;
+        margin: 1px 0 !important;
+        font-size: 0.7rem;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .spec-price-main {
+        word-break: auto-phrase;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item.bento-hero-card .spec-hours-age-extra {
+        display: none;
+    }
+
+    /* 7) #2以降＋ピン留め店舗カード（291px -> ~105-120px、1画面に5〜6店舗収容） */
     body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) {
         display: grid !important;
         grid-template-columns: auto minmax(0, 1fr) auto;
@@ -9951,9 +10582,9 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
             "rank info stats"
             "rank info actions";
         column-gap: 8px;
-        row-gap: 8px;
+        row-gap: 4px;
         align-items: start;
-        padding: 13px 6px !important;
+        padding: 9px 4px !important;
     }
 
     body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
@@ -9965,6 +10596,32 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
     body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .store-info {
         grid-area: info;
         min-width: 0;
+        gap: 2px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) .store-name {
+        font-size: 0.94rem !important;
+        line-height: 1.28 !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) .store-spec-row {
+        display: none !important;
+    }
+
+    /* 営業中（10名以上）はピル2個に集約して定型説明行を省略；営業前0人・10名未満は1〜2行で根拠を表示 */
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) .cm-human-line {
+        display: none;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card):has(.moat-signals-row.hidden) .cm-human-line:not(.hidden),
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card):has(.bento-ratio-hero.is-small-sample) .cm-human-line:not(.hidden) {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 0.73rem !important;
+        line-height: 1.36 !important;
+        margin: 1px 0 0 !important;
     }
 
     body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .stats-group {
@@ -9972,6 +10629,12 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
         margin-left: 0 !important;
         justify-self: end;
         align-self: start;
+        gap: 8px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) .stat .count {
+        font-size: 1.18rem !important;
+        line-height: 1.05 !important;
     }
 
     body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .card-actions {
@@ -9979,6 +10642,49 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
         margin: 0 !important;
         justify-self: end;
         align-self: end;
+    }
+
+    /* お気に入りセクション見出しもスリム化 */
+    body:not(.staff-mode) .section-header {
+        margin: 4px 0 4px !important;
+    }
+
+    /* 8) ボトムシート（#analysis-modal）：ドラッグハンドルが sticky ヘッダーの box-shadow に隠れる不具合を解消 */
+    body:not(.staff-mode) #analysis-modal .modal-content {
+        padding: 8px 14px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body:not(.staff-mode) #analysis-modal .modal-content::before {
+        display: none !important;
+    }
+
+    body:not(.staff-mode) #analysis-modal .sheet-drag-handle {
+        display: block;
+        position: relative;
+        z-index: 32;
+        width: 38px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--calm-border-strong);
+        margin: 2px auto 6px;
+    }
+
+    body.theme-light:not(.staff-mode) #analysis-modal .sheet-drag-handle {
+        background: var(--calm-light-border-strong);
+    }
+
+    body:not(.staff-mode) #analysis-modal .modal-header {
+        padding: 4px 0 8px !important;
+        margin-bottom: 8px !important;
+        box-shadow: 0 -18px 0 0 var(--calm-bg) !important;
+    }
+
+    body.theme-light:not(.staff-mode) #analysis-modal .modal-header {
+        box-shadow: 0 -18px 0 0 var(--calm-light-bg) !important;
+    }
+
+    body.theme-light.audience-women:not(.staff-mode) #analysis-modal .modal-header {
+        box-shadow: 0 -18px 0 0 #f2eaeb !important;
     }
 
     .sns-compact-pill,

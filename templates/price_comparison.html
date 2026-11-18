@@ -36,7 +36,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=17">
+    <link rel="stylesheet" href="/static/portal.css?v=18">
 
     <script type="application/ld+json">
     {
@@ -223,6 +223,86 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 18px;
+        }
+        .notice-sp-toggle,
+        .notice-sp-sub {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .notice-sp-sub {
+                display: block;
+                margin-top: 4px;
+                font-size: 0.72rem;
+                line-height: 1.45;
+                color: var(--text-sub);
+            }
+        }
+        @media (max-width: 768px) {
+            .hero-box {
+                margin-bottom: 10px !important;
+            }
+            .hero-box h1 {
+                font-size: 1.08rem;
+                line-height: 1.36;
+                margin-bottom: 6px;
+            }
+            .hero-box p {
+                font-size: 0.78rem;
+                line-height: 1.5;
+            }
+            .official-notice-box {
+                padding: 9px 12px !important;
+                margin-bottom: 12px !important;
+            }
+            .official-notice-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .official-notice-head .official-notice-title {
+                margin-bottom: 0 !important;
+                font-size: 0.78rem !important;
+            }
+            .notice-sp-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 30px;
+                padding: 3px 10px;
+                border-radius: 999px;
+                border: 1px solid var(--border-strong);
+                background: var(--card-elevated);
+                color: var(--text-main);
+                font: inherit;
+                font-size: 0.72rem;
+                font-weight: 700;
+                cursor: pointer;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            .official-notice-box:not(.is-expanded) .official-notice-collapsible {
+                display: none;
+            }
+            .official-notice-box.is-expanded .official-notice-collapsible {
+                margin-top: 8px;
+            }
+            .area-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                scrollbar-width: none;
+                padding-bottom: 4px;
+                margin-bottom: 12px;
+                gap: 6px;
+            }
+            .area-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            .area-tab-btn {
+                flex: 0 0 auto;
+                white-space: nowrap;
+                min-height: 36px;
+            }
         }
         .area-tab-btn {
             padding: 8px 13px;
@@ -437,7 +517,7 @@
             margin-right: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=46">
+    <link rel="stylesheet" href="/static/calm.css?v=47">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
@@ -475,7 +555,12 @@
         </header>
 
         <aside class="official-notice-box" role="note" aria-label="料金・イベント情報および評価基準に関するご注意">
-            <div class="official-notice-title">料金・イベント情報の確認および推奨評価基準について</div>
+            <div class="official-notice-head">
+                <div class="official-notice-title">料金・イベント情報の確認および推奨評価基準について</div>
+                <button type="button" class="notice-sp-toggle" aria-expanded="false" onclick="var b=this.closest('.official-notice-box');var ex=b.classList.toggle('is-expanded');this.setAttribute('aria-expanded',ex?'true':'false');this.textContent=ex?'閉じる ▴':'詳細を見る ▾';">詳細を見る ▾</button>
+            </div>
+            <div class="notice-sp-sub">※料金・営業時間・開催イベントは変更される場合があるため、来店前に必ず各店公式HP・公式アプリをご確認ください。</div>
+            <div class="official-notice-collapsible">
             <div>
                 ・<strong>公式ホームページ確認のお願い：</strong>掲載している料金システム・営業時間・1名入店条件・イベント開催情報は公開データをもとに集計していますが、繁忙期・祝前日・年末年始等の特別営業や、店舗都合による急な内容変更・終了・表記差異がある場合がございます。ご来店の際は必ず各店舗の<strong>公式ホームページ・公式アプリ</strong>にて最新情報をご確認ください。<br>
                 ・<strong>最低人数の評価基準（女性{{ data.min_women_eval }}名以上）：</strong>店内の人数が少ない状態では、女性比率が高くても初回相席後に席替え（チェンジ）できる次の相席相手がいない場合があります。そのため当サイトでは<strong>女性{{ data.min_women_eval }}名以上（約5組以上）を比率評価・推奨選出の対象ライン</strong>、<strong>女性{{ data.min_women_top }}名以上を安定回転ライン</strong>として判定しています。また、公式ホームページ上の営業時間内に入店人数が0名の店舗は「営業時間外」ではなく<strong>「0 : 0」（営業中・空席）</strong>と表記します。
@@ -490,6 +575,7 @@
                     <button type="button" onclick="sharePriceComparison('line')" style="min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">LINE共有</button>
                     <button type="button" id="copy-comp-share-btn" onclick="sharePriceComparison('copy')" style="min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--accent-soft); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; cursor: pointer;">告知文をコピー</button>
                 </div>
+            </div>
             </div>
         </aside>
 
