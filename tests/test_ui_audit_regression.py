@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=49"
+        expected_calm = "/static/calm.css?v=50"
         expected_portal = "/static/portal.css?v=19"
-        expected_app_js = "/static/app.js?v=20261118_4"
+        expected_app_js = "/static/app.js?v=20261119_1"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=116"
-        expected_cache_name = "aiseki-navi-v116"
+        expected_sw_url = "/sw.js?v=117"
+        expected_cache_name = "aiseki-navi-v117"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -781,28 +781,34 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ranking_txt = page.evaluate("document.getElementById('ranking-list').innerText")
                     self.assertNotRegex(ranking_txt, r"\bOLG\b|\bORIENTAL\b(?!\s*LOUNGE)|\bYATAKOI\b")
 
-                    # Clean Minimal Neutral Dark (#111113), 1-tap Light toggle (#f6f6f7), Editorial Bento (#1 hero + #2+ airy hairline row), and PC Sticky Inspector (#pc-store-inspector)
+                    # Clean Minimal Neutral Dark (#111113), 1-tap Light toggle (#f6f6f7), Plan 2 StoreSignalCard (18px tonal surface + VACAN signal + inner HeadcountMeter + 2-col PC grid), and PC Sticky Inspector (#pc-store-inspector)
                     cm_pc_initial = page.evaluate("""() => {
                         const insp = document.getElementById('pc-store-inspector');
                         const modal = document.getElementById('analysis-modal');
+                        const rl = document.getElementById('ranking-list');
                         const cards = Array.from(document.querySelectorAll('#ranking-list .ranking-item[data-store]'));
                         const hero = cards[0];
                         const row2 = cards[1];
                         const heroCs = hero ? getComputedStyle(hero) : null;
                         const row2Cs = row2 ? getComputedStyle(row2) : null;
+                        const heroRect = hero ? hero.getBoundingClientRect() : null;
+                        const row2Rect = row2 ? row2.getBoundingClientRect() : null;
                         return {
                             bodyBg: getComputedStyle(document.body).backgroundColor,
                             inspDisplay: insp ? getComputedStyle(insp).display : 'none',
                             inspPosition: insp ? getComputedStyle(insp).position : '',
                             inspText: insp ? insp.innerText : '',
                             modalHidden: modal ? modal.classList.contains('hidden') : false,
+                            gridCols: rl ? getComputedStyle(rl).gridTemplateColumns.trim().split(/\\s+/).length : 0,
                             heroHasCls: hero ? hero.classList.contains('bento-hero-card') : false,
                             heroRadius: heroCs ? heroCs.borderTopLeftRadius : '',
-                            heroKicker: hero ? (hero.querySelector('.bento-kicker-label')?.innerText || '') : '',
+                            heroBg: heroCs ? heroCs.backgroundColor : '',
+                            heroKicker: hero ? (hero.querySelector('.bento-kicker-label')?.textContent || '') : '',
+                            heroVerdict: hero ? (hero.querySelector('.bento-verdict-pill')?.innerText || '') : '',
                             row2HasCls: row2 ? row2.classList.contains('bento-hero-card') : true,
                             row2Bg: row2Cs ? row2Cs.backgroundColor : '',
-                            row2BorderTop: row2Cs ? row2Cs.borderTopWidth : '',
-                            row2BorderBottom: row2Cs ? row2Cs.borderBottomWidth : ''
+                            row2Radius: row2Cs ? row2Cs.borderTopLeftRadius : '',
+                            sameRowTop: (heroRect && row2Rect) ? Math.abs(heroRect.top - row2Rect.top) : 999
                         };
                     }""")
                     self.assertEqual(cm_pc_initial["bodyBg"], "rgb(17, 17, 19)")
@@ -811,14 +817,17 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertIn("オリエンタルラウンジ 新宿", cm_pc_initial["inspText"])
                     self.assertNotRegex(cm_pc_initial["inspText"], r"\bOLG\b|\bORIENTAL\b|\bYATAKOI\b")
                     self.assertTrue(cm_pc_initial["modalHidden"])
+                    self.assertEqual(cm_pc_initial["gridCols"], 2)
                     self.assertTrue(cm_pc_initial["heroHasCls"])
-                    self.assertEqual(cm_pc_initial["heroRadius"], "24px")
+                    self.assertEqual(cm_pc_initial["heroRadius"], "18px")
+                    self.assertEqual(cm_pc_initial["heroBg"], "rgb(26, 26, 30)")
                     self.assertIn("今夜", cm_pc_initial["heroKicker"])
                     self.assertIn("ここ一択", cm_pc_initial["heroKicker"])
+                    self.assertTrue(len(cm_pc_initial["heroVerdict"]) > 0)
                     self.assertFalse(cm_pc_initial["row2HasCls"])
-                    self.assertEqual(cm_pc_initial["row2Bg"], "rgba(0, 0, 0, 0)")
-                    self.assertEqual(cm_pc_initial["row2BorderTop"], "0px")
-                    self.assertEqual(cm_pc_initial["row2BorderBottom"], "1px")
+                    self.assertEqual(cm_pc_initial["row2Bg"], "rgb(26, 26, 30)")
+                    self.assertEqual(cm_pc_initial["row2Radius"], "18px")
+                    self.assertLessEqual(cm_pc_initial["sameRowTop"], 2.0)
 
                     # Clicking 2nd card on PC updates right inspector without opening #analysis-modal
                     page.click('#ranking-list .ranking-item[data-store="ag（アグ）渋谷"]')
@@ -1157,7 +1166,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     ctx_staff.close()
                     ctx_pc.close()
 
-                    # 4. Mobile 390x844 .moat-pill widow-wrap check & horizontal swipe nav check
+                    # 4. Mobile 390x844 Plan 2 SignalBadge (.bento-verdict-pill) single-line check & horizontal swipe nav check
                     ctx_mob = browser.new_context(viewport={"width": 390, "height": 844})
                     attach_router(ctx_mob, self.client)
                     mpage = ctx_mob.new_page()
@@ -1165,7 +1174,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                     mpage.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
                     mpage.wait_for_timeout(120)
                     mob_state = mpage.evaluate("""() => {
-                        const pills = Array.from(document.querySelectorAll('.moat-pill'))
+                        const pills = Array.from(document.querySelectorAll('#ranking-list .bento-verdict-pill'))
                             .filter(el => el.offsetParent !== null)
                             .map(el => ({
                                 text: el.innerText.trim(),
@@ -1178,8 +1187,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                     }""")
                     self.assertGreaterEqual(len(mob_state["pills"]), 2)
                     for pill in mob_state["pills"]:
-                        self.assertEqual(pill["rects"], 1, f"Mobile 390px .moat-pill wrapped onto multiple lines: {pill}")
-                        self.assertLessEqual(pill["height"], 24)
+                        self.assertEqual(pill["rects"], 1, f"Mobile 390px .bento-verdict-pill wrapped onto multiple lines: {pill}")
+                        self.assertLessEqual(pill["height"], 30)
                     self.assertEqual(mob_state["navWrap"], "nowrap")
                     self.assertEqual(mob_state["navOverflowX"], "auto")
                     self.assertEqual(mpage.evaluate("getComputedStyle(document.getElementById('pc-store-inspector')).display"), "none")
@@ -2877,8 +2886,8 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertEqual(mob_metrics["subWS"], "normal")
                     self.assertLessEqual(mob_metrics["subSW"], mob_metrics["subCW"] + 1)
                     self.assertGreaterEqual(mob_metrics["c2InfoW"], 180)
-                    self.assertLessEqual(mob_metrics["c1H"], 240)
-                    self.assertLessEqual(mob_metrics["c2H"], 150)
+                    self.assertLessEqual(mob_metrics["c1H"], 250)
+                    self.assertLessEqual(mob_metrics["c2H"], 250)
                     self.assertLessEqual(mob_metrics["mrSW"], mob_metrics["mrCW"] + 1)
                     self.assertGreaterEqual(mob_metrics["minVisBtnH"], 38)
 
@@ -3189,7 +3198,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 try:
-                    # 1) PC Public (1280x900) - PC Plan 1
+                    # 1) PC Public (1280x900) - Plan 2 (TableCheck / VACAN StoreSignalCard 2-col grid + UnifiedOmnibar + Figma SVG assets)
                     ctx_pc = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
                     attach_router(ctx_pc, self.client)
                     pc = ctx_pc.new_page()
@@ -3197,37 +3206,77 @@ class UiAuditRegressionTests(unittest.TestCase):
                     pc.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
                     pc.wait_for_timeout(120)
 
-                    # Click inline star next to store name on ALFA Hiroshima
+                    # Click 36x36 circle favorite button on ALFA Hiroshima + Miyazaki to verify 2-col pinned grid & SVG slot geometry
                     alfa_pin = pc.locator('#ranking-list .ranking-item[data-store*="ALFA"] .store-title-row .pin-btn')
                     self.assertEqual(alfa_pin.get_attribute("aria-pressed"), "false")
                     alfa_pin.click()
+                    pc.locator('#ranking-list .ranking-item[data-store="オリエンタルラウンジ 宮崎"] .store-title-row .pin-btn').click()
                     pc.wait_for_timeout(80)
 
                     pc_fav_state = pc.evaluate("""() => {
-                        const pinCard = document.querySelector('#pinned-list .ranking-item.pinned-item');
-                        if (!pinCard) return null;
+                        const pinCards = Array.from(document.querySelectorAll('#pinned-list .ranking-item.pinned-item'));
+                        if (pinCards.length < 2) return null;
+                        const pinCard = pinCards[0];
+                        const pinCard2 = pinCards[1];
                         const cr = pinCard.getBoundingClientRect();
-                        const rr = pinCard.querySelector('.rank-badge').getBoundingClientRect();
+                        const cr2 = pinCard2.getBoundingClientRect();
                         const pb = pinCard.querySelector('.store-title-row .pin-btn');
+                        const pbRect = pb ? pb.getBoundingClientRect() : null;
+                        const starRect = pb ? pb.querySelector('.star-icon')?.getBoundingClientRect() : null;
+                        const chev = pinCard.querySelector('.plan2-chevron-icon');
+                        const chevRect = chev ? chev.getBoundingClientRect() : null;
+                        const pinIcon = document.querySelector('.plan2-pin-icon');
+                        const pinIconRect = pinIcon ? pinIcon.getBoundingClientRect() : null;
+                        const searchIcon = document.querySelector('.plan2-search-icon');
+                        const searchIconRect = searchIcon ? searchIcon.getBoundingClientRect() : null;
                         const wLbl = pinCard.querySelector('.stat.ladies .label')?.innerText.trim();
                         const mLbl = pinCard.querySelector('.stat.men .label')?.innerText.trim();
                         const barH = pinCard.querySelector('.occupancy-bar').getBoundingClientRect().height;
+                        const meterBg = getComputedStyle(pinCard.querySelector('.stats-group')).backgroundColor;
+                        const miyazakiTitle = pinCard2.querySelector('.store-name')?.innerText.trim() || '';
                         return {
                             cardW: Math.round(cr.width),
-                            rankTopOffset: Math.round(rr.top - cr.top),
+                            sameRowTop: Math.abs(cr.top - cr2.top),
                             pressed: pb ? pb.getAttribute('aria-pressed') : '',
+                            pinBtnW: pbRect ? Math.round(pbRect.width) : 0,
+                            pinBtnH: pbRect ? Math.round(pbRect.height) : 0,
+                            starW: starRect ? Math.round(starRect.width) : 0,
+                            starH: starRect ? Math.round(starRect.height) : 0,
+                            chevW: chevRect ? Math.round(chevRect.width) : 0,
+                            chevH: chevRect ? Math.round(chevRect.height) : 0,
+                            chevLoaded: Boolean(chev && chev.complete && chev.naturalWidth === 14),
+                            pinIconW: pinIconRect ? Math.round(pinIconRect.width) : 0,
+                            pinIconLoaded: Boolean(pinIcon && pinIcon.complete && pinIcon.naturalWidth === 13),
+                            searchIconW: searchIconRect ? Math.round(searchIconRect.width) : 0,
+                            searchIconLoaded: Boolean(searchIcon && searchIcon.complete && searchIcon.naturalWidth === 13),
                             wLbl,
                             mLbl,
                             barH: Math.round(barH),
+                            meterBg,
+                            miyazakiTitle,
                         };
                     }""")
                     self.assertIsNotNone(pc_fav_state)
-                    self.assertGreaterEqual(pc_fav_state["cardW"], 500, f"PC Plan 1 pinned card must stay 1-column full width: {pc_fav_state}")
-                    self.assertLessEqual(pc_fav_state["rankTopOffset"], 26, f"Rank badge must be top-aligned, not floating mid-card: {pc_fav_state}")
+                    self.assertGreaterEqual(pc_fav_state["cardW"], 340, f"Plan 2 PC 2-column card width check: {pc_fav_state}")
+                    self.assertLessEqual(pc_fav_state["cardW"], 440, f"Plan 2 PC 2-column card width check: {pc_fav_state}")
+                    self.assertLessEqual(pc_fav_state["sameRowTop"], 2.0, f"2 pinned cards must sit side-by-side on PC: {pc_fav_state}")
                     self.assertEqual(pc_fav_state["pressed"], "true")
+                    self.assertEqual(pc_fav_state["pinBtnW"], 36)
+                    self.assertEqual(pc_fav_state["pinBtnH"], 36)
+                    self.assertEqual(pc_fav_state["starW"], 18)
+                    self.assertEqual(pc_fav_state["starH"], 18)
+                    self.assertEqual(pc_fav_state["chevW"], 14)
+                    self.assertEqual(pc_fav_state["chevH"], 14)
+                    self.assertTrue(pc_fav_state["chevLoaded"])
+                    self.assertEqual(pc_fav_state["pinIconW"], 13)
+                    self.assertTrue(pc_fav_state["pinIconLoaded"])
+                    self.assertEqual(pc_fav_state["searchIconW"], 13)
+                    self.assertTrue(pc_fav_state["searchIconLoaded"])
                     self.assertEqual(pc_fav_state["wLbl"], "女性")
                     self.assertEqual(pc_fav_state["mLbl"], "男性")
-                    self.assertGreaterEqual(pc_fav_state["barH"], 4)
+                    self.assertEqual(pc_fav_state["barH"], 6)
+                    self.assertEqual(pc_fav_state["meterBg"], "rgb(35, 35, 41)")
+                    self.assertEqual(pc_fav_state["miyazakiTitle"], "オリエンタルラウンジ 宮崎")
                     ctx_pc.close()
 
                     # 2) Mobile Public (390x844) - Mobile Plan A (1-column Favorites)

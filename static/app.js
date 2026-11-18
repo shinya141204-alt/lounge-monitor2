@@ -1412,6 +1412,8 @@
                 bentoRatioCaption: item.querySelector('.bento-ratio-caption'),
                 ladiesLabelEl: item.querySelector('.stat.ladies .label'),
                 menLabelEl: item.querySelector('.stat.men .label'),
+                plan2SubEl: item.querySelector('.plan2-card-sub'),
+                plan2ForecastEl: item.querySelector('.plan2-footer-forecast'),
             };
             return item._refs;
         }
@@ -2476,6 +2478,11 @@
                 prefixSpan.className = 'store-brand-prefix';
                 prefixSpan.textContent = `${brandInfo.code} `;
                 storeNameEl.appendChild(prefixSpan);
+            } else if (brandInfo.code && !String(baseName).toUpperCase().includes(String(brandInfo.code).toUpperCase())) {
+                const prefixSpan = document.createElement('span');
+                prefixSpan.className = 'store-brand-prefix is-plan2-brand';
+                prefixSpan.textContent = `${brandInfo.code} `;
+                storeNameEl.appendChild(prefixSpan);
             }
             const branchSpan = document.createElement('span');
             branchSpan.className = 'store-branch-name';
@@ -2518,10 +2525,30 @@
             }
 
             const specRowEl = refs.specRowEl;
+            const priceShort = store.spec_price_short || '';
+            const hrsShort = store.spec_hours_short || store.today_hours_label || '';
+            const ageShort = store.spec_age_short || '';
+            if (refs.plan2SubEl) {
+                const isWomenSub = (!IS_STAFF && currentAudience === 'women');
+                const concisePrice = isWomenSub
+                    ? (store.is_flat_rate ? (priceShort.split(/[｜|]/)[1] || '女性定額').trim() : '女性チャージ0円・飲み放題無料')
+                    : (priceShort.split(/[（(｜|]/)[0] || '').trim();
+                const subSegs = [];
+                if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
+                    subSegs.push(store._distKm < 1.0 ? `現在地から${Math.round(store._distKm * 1000)}m` : `現在地から${store._distKm.toFixed(1)}km`);
+                } else if (brandInfo.areaLabel && !(Boolean(store.area_redundant_sp) || isAreaRedundantSpJs(brandInfo.areaLabel, baseName))) {
+                    subSegs.push(brandInfo.areaLabel);
+                } else if (hrsShort) {
+                    subSegs.push(hrsShort);
+                }
+                if (concisePrice) {
+                    subSegs.push(concisePrice);
+                } else if (ageShort && ageShort !== '客層データ収集中') {
+                    subSegs.push(ageShort);
+                }
+                refs.plan2SubEl.textContent = subSegs.join(' ・ ');
+            }
             if (specRowEl) {
-                const priceShort = store.spec_price_short || '';
-                const hrsShort = store.spec_hours_short || store.today_hours_label || '';
-                const ageShort = store.spec_age_short || '';
                 if (priceShort || hrsShort) {
                     specRowEl.classList.remove('hidden');
                     if (refs.specPriceMainEl && refs.specHoursAgeExtraEl) {
@@ -2752,38 +2779,69 @@
                 const waitMenMin = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
                 const isJisPos = (store.source_kind === 'jis_pos') || Boolean(store.has_jis_pos) || String(store.source || '').toLowerCase() === 'jis';
                 const jisWaitGrp = Number(store.jis_wait_m_grp || (store.wait_estimate && store.wait_estimate.est_men_wait_groups) || 0);
-                let vLabel = '推定・男性待ち0組圏';
+                let vLabel = '即相席圏（推定待ち0分）';
                 let vOk = true;
+                let vClosed = false;
                 if (totalCount === 0) {
                     vLabel = '営業時間外';
                     vOk = false;
-                } else if (isSmallSample) {
-                    vLabel = '少人数のため参考値';
-                    vOk = false;
+                    vClosed = true;
                 } else if (isWomenBentoView) {
                     if (menCount >= 4 && menCount >= ladiesCount) {
                         vLabel = '女性待ち0・即案内圏';
                         vOk = true;
                     } else if (menCount >= 4 && ladiesPct <= 60) {
-                        vLabel = '案内スムーズ';
+                        vLabel = '案内スムーズ（待ちほぼ0）';
                         vOk = true;
+                    } else if (ladiesCount > 0 && menCount === 0) {
+                        vLabel = '男性来店待ち（女性先行中）';
+                        vOk = false;
                     } else {
                         vLabel = '女性多め・待ち注意';
                         vOk = false;
                     }
                 } else if (isJisPos) {
-                    vLabel = `実測・男性待ち${jisWaitGrp}組`;
+                    vLabel = jisWaitGrp === 0 ? 'いま待ち0組（公式POS実測）' : `男性待ち${jisWaitGrp}組（公式POS実測）`;
                     vOk = jisWaitGrp === 0;
                 } else if (waitMenMin > 0) {
-                    vLabel = `推定・男性待ち約${waitMenMin}分`;
+                    vLabel = `やや混雑（男性待ち約${waitMenMin}分）`;
+                    vOk = false;
+                } else if (ladiesCount === 0 && menCount > 0) {
+                    vLabel = '男性先行中（女性来店待ち）';
                     vOk = false;
                 } else {
-                    vLabel = '推定・男性待ち0組圏';
+                    vLabel = '即相席圏（推定待ち0分）';
                     vOk = true;
                 }
                 refs.bentoVerdictPill.textContent = vLabel;
                 refs.bentoVerdictPill.classList.toggle('is-ok', vOk);
                 refs.bentoVerdictPill.classList.toggle('is-wait', !vOk);
+                refs.bentoVerdictPill.classList.toggle('is-closed', vClosed);
+            }
+
+            if (refs.plan2ForecastEl) {
+                const fc = store.forecast_60m || null;
+                if (totalCount === 0) {
+                    const openHm = store.open_time_short || ((hrsShort.match(/(\d{1,2}:\d{2})/) || [])[1]) || '';
+                    refs.plan2ForecastEl.textContent = openHm ? `本日 ${openHm} オープン予定` : '営業時間外（開店後に自動更新）';
+                } else if (fc && fc.pred_60m_wpct !== null && fc.pred_60m_wpct !== undefined && Number.isFinite(Number(fc.pred_60m_wpct))) {
+                    const wp = Math.round(Number(fc.pred_60m_wpct));
+                    const dPt = Number(fc.pred_delta_pt || 0);
+                    const fcVerified = !(window.TOP_PROVENANCE_META && window.TOP_PROVENANCE_META.forecast_verified === false);
+                    const pfx = fcVerified ? '60分後予測' : '60分後目安';
+                    if (isWomenBentoView) {
+                        refs.plan2ForecastEl.textContent = `${pfx}：男性${100 - wp}%（女性${wp}%）`;
+                    } else {
+                        const sfx = (wp >= 65 && dPt >= -4)
+                            ? '（好調持続）'
+                            : (dPt >= 4 ? '（女性上昇傾向）' : (dPt <= -8 ? '（終電・低下注意）' : '（安定）'));
+                        refs.plan2ForecastEl.textContent = `${pfx}：女性${wp}%${sfx}`;
+                    }
+                } else if (store.core_time_short) {
+                    refs.plan2ForecastEl.textContent = `狙い目時間帯：${store.core_time_short}`;
+                } else {
+                    refs.plan2ForecastEl.textContent = formatStoreFreshnessJs(store) || '1分ごとに自動更新中';
+                }
             }
 
             // Hybrid Motion (Plan A: Per-Digit Odometer + Plan C: 0.9s Left-Edge Soft One-Shot)
@@ -3083,6 +3141,8 @@
 
             if (pinnedItems.length > 0) {
                 pinnedContainer.classList.remove('hidden');
+                const pinnedCountNoteEl = document.getElementById('pinned-count-note');
+                if (pinnedCountNoteEl) pinnedCountNoteEl.textContent = `${pinnedItems.length}件ピン留め中`;
                 const pinnedDom = pinnedList.children;
                 const canPatchPinnedInPlace = (
                     pinnedDom.length === pinnedItems.length &&
@@ -3106,6 +3166,8 @@
                 if (pinnedList.children.length > 0) {
                     pinnedList.replaceChildren();
                 }
+                const pinnedCountNoteEl = document.getElementById('pinned-count-note');
+                if (pinnedCountNoteEl) pinnedCountNoteEl.textContent = '';
                 pinnedContainer.classList.add('hidden');
             }
 
@@ -4540,37 +4602,47 @@
             const isLight = document.body.classList.contains('theme-light');
             const waitM = Number((target.wait_estimate && target.wait_estimate.est_wait_men_min) || 0);
 
-            let statusLabel = 'いまスムーズに入れます';
+            const isJisPosInsp = (target.source_kind === 'jis_pos') || Boolean(target.has_jis_pos) || String(target.source || '').toLowerCase() === 'jis';
+            const jisWaitGrpInsp = Number(target.jis_wait_m_grp || (target.wait_estimate && target.wait_estimate.est_men_wait_groups) || 0);
+            let statusLabel = '即相席圏（推定待ち0分）';
             let statusCls = 'is-ok';
             if (tot === 0) {
-                statusLabel = '営業時間前・準備中';
-                statusCls = 'is-wait';
+                statusLabel = '営業時間外';
+                statusCls = 'is-wait is-closed';
             } else if (isWomenView) {
                 if (m >= 4 && m >= w) {
-                    statusLabel = '受付待ちほぼゼロで案内中';
+                    statusLabel = '女性待ち0・即案内圏';
                     statusCls = 'is-ok';
                 } else if (m >= 4 && wPct <= 62) {
-                    statusLabel = 'スムーズに相席しやすい';
+                    statusLabel = '案内スムーズ（待ちほぼ0）';
                     statusCls = 'is-ok';
                 } else {
                     statusLabel = '女性組がやや多め';
                     statusCls = 'is-wait';
                 }
+            } else if (isJisPosInsp) {
+                statusLabel = jisWaitGrpInsp === 0 ? 'いま待ち0組（公式POS実測）' : `男性待ち${jisWaitGrpInsp}組（公式POS実測）`;
+                statusCls = jisWaitGrpInsp === 0 ? 'is-ok' : 'is-wait';
+            } else if (waitM > 0) {
+                statusLabel = `やや混雑（男性待ち約${waitM}分）`;
+                statusCls = 'is-wait';
+            } else if (w === 0 && m > 0) {
+                statusLabel = '男性先行中（女性来店待ち）';
+                statusCls = 'is-wait';
             } else {
-                if (waitM > 0) {
-                    statusLabel = `男性やや混雑（目安 ${waitM}分）`;
-                    statusCls = 'is-wait';
-                } else if (w >= m) {
-                    statusLabel = 'いまスムーズに入れます';
-                    statusCls = 'is-ok';
-                } else {
-                    statusLabel = '待ち時間なしで案内中';
-                    statusCls = 'is-ok';
-                }
+                statusLabel = '即相席圏（推定待ち0分）';
+                statusCls = 'is-ok';
             }
 
-            let summaryText = buildCleanMinimalHumanLine(target, isWomenView);
-            if (target.core_time_short) {
+            const inspHrs = target.spec_hours_short || target.today_hours_label || '';
+            const inspPrice = isWomenView
+                ? (target.is_flat_rate ? ((target.spec_price_short || '').split(/[｜|]/)[1] || '女性定額').trim() : '女性チャージ0円・飲み放題無料')
+                : ((target.spec_price_short || '').split(/[（(｜|]/)[0] || '').trim();
+            const inspSubParts = [];
+            if (inspHrs) inspSubParts.push(inspHrs);
+            if (inspPrice) inspSubParts.push(inspPrice);
+            let summaryText = inspSubParts.length > 0 ? inspSubParts.join(' ・ ') : buildCleanMinimalHumanLine(target, isWomenView);
+            if (target.core_time_short && !inspSubParts.length) {
                 summaryText += `（狙い目 ${target.core_time_short}）`;
             }
 
@@ -4669,20 +4741,20 @@
                         <div class="cmi-counts-row">
                             <div class="cmi-counts-pair">
                                 <div>
-                                    <div class="cmi-count-lbl">女性</div>
+                                    <div class="cmi-count-lbl">女性人数</div>
                                     <div class="cmi-count-val is-w"><span class="cmi-num">${w}</span><span class="cmi-count-unit">名</span></div>
                                 </div>
                                 <div>
-                                    <div class="cmi-count-lbl">男性</div>
+                                    <div class="cmi-count-lbl">男性人数</div>
                                     <div class="cmi-count-val is-m"><span class="cmi-num">${m}</span><span class="cmi-count-unit">名</span></div>
                                 </div>
                             </div>
                             <div style="text-align:right;">
-                                <div class="cmi-count-lbl">男女バランス</div>
-                                <div class="cmi-curve-val">${tot === 0 ? '営業時間外' : (tot < 10 ? '少人数のため参考値' : `女性 ${wPct}%`)}</div>
+                                <div class="cmi-count-lbl">${isWomenView ? '男性比率' : '女性比率'}</div>
+                                <div class="cmi-curve-val cmi-ratio-big">${tot === 0 ? '営業時間外' : (tot < 10 ? '少人数のため参考値' : `${isWomenView ? mPct : wPct}%`)}</div>
                             </div>
                         </div>
-                        <div class="cmi-ratio-bar">
+                        <div class="cmi-ratio-bar${tot === 0 ? ' is-empty' : ''}">
                             <div class="cmi-bar-w" style="width:${tot > 0 ? wPct : 0}%;"></div>
                             <div class="cmi-bar-m" style="width:${tot > 0 ? mPct : 0}%;"></div>
                         </div>
@@ -4698,11 +4770,11 @@
                 </div>
                 <div class="cmi-actions">
                     ${detailSlug
-                        ? `<a href="/store/${escapeHtml(detailSlug)}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） ›</a>
-                    <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                        ? `<a href="/store/${escapeHtml(detailSlug)}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） →</a>
+                    <button type="button" class="cmi-secondary-btn">曜日・時間帯グラフを見る</button>
                     <a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイトを確認する ${UI_SVG_ARROW_NE}</a>`
                         : `<a href="${escapeHtml(officialUrl)}" target="_blank" rel="noopener noreferrer" class="cmi-primary-cta">公式サイト・店舗詳細を確認する ${UI_SVG_ARROW_NE}</a>
-                    <button type="button" class="cmi-secondary-btn">詳しい曜日・時間帯グラフ＆2軒目を見る</button>`}
+                    <button type="button" class="cmi-secondary-btn">曜日・時間帯グラフを見る</button>`}
                 </div>
             `;
 

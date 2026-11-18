@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=49" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261118_4" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=50" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261119_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -543,9 +543,11 @@
 
             <div id="content" class="content{% if not (initial_status and initial_status.ranking) %} hidden{% endif %}">
 
+                <!-- Plan 2 Unified Omnibar (TableCheck / VACAN integrated area + sort + search surface) -->
+                <div id="plan2-omnibar" class="plan2-omnibar">
                 <!-- 1-Row Persistent Area Quick Chips right under Header -->
                 <div id="area-quick-chips" class="filter-bar area-quick-chips" role="region" aria-label="エリア絞り込み">
-                    <button type="button" class="filter-btn active" data-region="All">全国</button>
+                    <button type="button" class="filter-btn active" data-region="All">{% if not is_staff %}<img src="/static/icons/plan2/icon-pin.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-pin-icon">{% endif %}<span>全国</span></button>
                     <button type="button" class="filter-btn filter-btn-gps" id="quick-nearby-chip" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷</button>
@@ -613,6 +615,7 @@
 
                 <div class="search-sort-container">
                     <div class="search-input-wrap">
+                        {% if not is_staff %}<img src="/static/icons/plan2/icon-search.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-search-icon">{% endif %}
                         <input type="text" id="search-input" placeholder="店舗名・駅名で検索" autocomplete="off" oninput="handleSearch(this.value)">
                         <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="検索文字をクリア" title="検索をクリア" onclick="clearSearchInput()">✕</button>
                     </div>
@@ -625,6 +628,7 @@
                         {% endif %}
                         <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
+                </div>
                 </div>
 
                 <div id="active-filter-summary" class="active-filter-summary hidden" aria-live="polite">
@@ -821,7 +825,7 @@
                     <div class="ranking-item" tabindex="0">
                         <div class="bento-kicker-row">
                             <span class="bento-kicker-label">今夜全国ならここ一択</span>
-                            <span class="bento-verdict-pill is-ok">即入店圏</span>
+                            <span class="bento-verdict-pill is-ok">即相席圏（推定待ち0分）</span>
                         </div>
                         <div class="rank-badge">01</div>
                         <div class="store-info">
@@ -835,7 +839,7 @@
                             <div class="store-title-row">
                                 <h3 class="store-name">Store Name</h3>
                                 <button type="button" class="pin-btn" aria-label="お気に入り" aria-pressed="false" title="お気に入り固定">
-                                    <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    <svg class="star-icon" width="18" height="18" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                         stroke-linecap="round" stroke-linejoin="round">
                                         <polygon
                                             points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
@@ -843,6 +847,7 @@
                                     </svg>
                                 </button>
                             </div>
+                            <p class="plan2-card-sub"></p>
                             <p class="cm-human-line hidden"></p>
                             <div class="store-spec-row hidden">
                                 <span class="spec-text"><span class="spec-price-main"></span><span class="spec-hours-age-extra"></span></span>
@@ -892,6 +897,10 @@
                             <div class="bar-fill-ladies"></div>
                             <div class="bar-fill-men"></div>
                         </div>
+                        <div class="plan2-card-footer">
+                            <span class="plan2-footer-forecast"></span>
+                            <span class="plan2-footer-detail"><span>詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                        </div>
                     </div>
                 </template>
 
@@ -906,12 +915,22 @@
                     <div class="cm-pc-left-col">
                         <!-- Pinned Stores Section -->
                         <div id="pinned-list-container" class="hidden">
-                            <h2 class="section-title">お気に入り店舗</h2>
+                            <div class="plan2-section-head">
+                                <h2 class="section-title">お気に入り店舗</h2>
+                                <span id="pinned-count-note" class="plan2-section-meta"></span>
+                            </div>
                             <div id="pinned-list" class="ranking-list">
                                 <!-- Pinned items will populate here -->
                             </div>
                             <div class="separator"></div>
                         </div>
+
+                        {% if not is_staff %}
+                        <div id="ranking-section-head" class="plan2-section-head">
+                            <span class="plan2-section-title">全国リアルタイム順位</span>
+                            <span class="plan2-section-meta">{% if tp.forecast_verified %}予測誤差 ±{{ tp.forecast_mae_pt }}pt・公式非提携{% else %}1分自動更新・公式非提携{% endif %}</span>
+                        </div>
+                        {% endif %}
 
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
@@ -931,7 +950,7 @@
                             <div class="ranking-item{% if ns_ssr.rendered == 1 %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">今夜全国ならここ一択</span>
-                                    <span class="bento-verdict-pill {{ 'is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0 or s.is_small_sample) else 'is-ok' }}">{% if ssr_tot_num == 0 %}営業時間外{% elif s.is_small_sample %}少人数のため参考値{% elif ssr_wait_m > 0 %}男性待ち目安 {{ ssr_wait_m }}分{% elif s.source_kind == 'jis_pos' %}実測・男性待ち{{ s.jis_wait_m_grp or 0 }}組{% else %}推定・男性待ち0組圏{% endif %}</span>
+                                    <span class="bento-verdict-pill {{ s.plan2_signal_cls or ('is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0) else 'is-ok') }}">{{ s.plan2_signal_text or ('営業時間外' if ssr_tot_num == 0 else ('やや混雑（男性待ち約' ~ ssr_wait_m ~ '分）' if ssr_wait_m > 0 else ('いま待ち0組（公式POS実測）' if s.source_kind == 'jis_pos' else '即相席圏（推定待ち0分）'))) }}</span>
                                 </div>
                                 <div class="rank-badge">{% if not is_staff and s.ssr_rank %}{{ '%02d'|format(s.ssr_rank) }}{% elif s.ssr_rank %}{{ s.ssr_rank }}{% else %}-{% endif %}</div>
                                 <div class="store-info">
@@ -957,13 +976,14 @@
                                         {% endif %}
                                     </div>
                                     <div class="store-title-row">
-                                        <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                                        <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% elif s.plan2_needs_brand_pfx %}<span class="store-brand-prefix is-plan2-brand">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_title }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
                                         <button type="button" class="pin-btn" aria-label="お気に入り（{{ s.ssr_title }}）" aria-pressed="false" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
-                                            <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <svg class="star-icon" width="18" height="18" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                             </svg>
                                         </button>
                                     </div>
+                                    <p class="plan2-card-sub">{{ s.plan2_sub_text or '' }}</p>
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
                                     <div class="store-spec-row">
                                         <span class="spec-text"><span class="spec-price-main">{{ s.spec_price_short }}</span><span class="spec-hours-age-extra">{% if s.spec_hours_short %} ｜ 営業 {{ s.spec_hours_short }}{% endif %}{% if s.spec_age_short %} ｜ {{ s.spec_age_short }}{% endif %}</span></span>
@@ -1046,6 +1066,10 @@
                                     <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct if ssr_tot_num > 0 else 0 }}%"></div>
                                     <div class="bar-fill-men" style="width: {{ s.ssr_men_pct if ssr_tot_num > 0 else 0 }}%"></div>
                                 </div>
+                                <div class="plan2-card-footer">
+                                    <span class="plan2-footer-forecast">{{ s.plan2_forecast_text or '' }}</span>
+                                    <span class="plan2-footer-detail"><span>詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                                </div>
                             </div>
                             {% endif %}
                             {% endfor %}
@@ -1070,40 +1094,40 @@
                         {% set top_full_name = top_s.ssr_brand if (not top_s.ssr_disp or top_s.ssr_disp == top_s.ssr_brand) else (top_s.ssr_disp if top_s.ssr_disp.startswith(top_s.ssr_brand) else (top_s.ssr_brand ~ ' ' ~ top_s.ssr_disp)) %}
                         <div>
                             <div class="cmi-top-row">
-                                <span class="cmi-status-pill is-ok">選択中の店舗</span>
-                                <span class="cmi-area-pill">{{ top_s.ssr_area or '' }}</span>
+                                <span class="cmi-status-pill {{ top_s.plan2_signal_cls or 'is-ok' }}">{{ top_s.plan2_signal_text or 'いまスムーズに入れます' }}</span>
+                                <span class="cmi-area-pill">{{ (top_s.ssr_area ~ 'エリア') if top_s.ssr_area else '' }}</span>
                             </div>
                             <h3 class="cmi-title">{{ top_full_name }}</h3>
-                            <p class="cmi-summary">左のカードをクリックすると、画面遷移なしで詳細を切り替えて比較できます</p>
+                            <p class="cmi-summary">{{ top_s.plan2_sub_text or '左のカードをクリックすると、画面遷移なしで詳細を切り替えて比較できます' }}</p>
                             <div class="cmi-metrics-box">
                                 <div class="cmi-counts-row">
                                     <div class="cmi-counts-pair">
                                         <div>
-                                            <div class="cmi-count-lbl">女性</div>
-                                            <div class="cmi-count-val is-w">{{ top_s.women or 0 }}<span class="cmi-count-unit">名</span></div>
+                                            <div class="cmi-count-lbl">女性人数</div>
+                                            <div class="cmi-count-val is-w"><span class="cmi-num">{{ top_s.women or 0 }}</span><span class="cmi-count-unit">名</span></div>
                                         </div>
                                         <div>
-                                            <div class="cmi-count-lbl">男性</div>
-                                            <div class="cmi-count-val is-m">{{ top_s.men or 0 }}<span class="cmi-count-unit">名</span></div>
+                                            <div class="cmi-count-lbl">男性人数</div>
+                                            <div class="cmi-count-val is-m"><span class="cmi-num">{{ top_s.men or 0 }}</span><span class="cmi-count-unit">名</span></div>
                                         </div>
                                     </div>
                                     <div style="text-align: right;">
                                         <div class="cmi-count-lbl">女性比率</div>
-                                        <div class="cmi-curve-val">{% if top_s.is_small_sample %}少人数のため参考値{% else %}{{ top_s.ssr_ladies_pct or 0 }}%{% endif %}</div>
+                                        <div class="cmi-curve-val cmi-ratio-big">{% if (top_s.women or 0) + (top_s.men or 0) == 0 %}営業時間外{% elif top_s.is_small_sample %}少人数のため参考値{% else %}{{ top_s.ssr_ladies_pct or 0 }}%{% endif %}</div>
                                     </div>
                                 </div>
-                                <div class="cmi-ratio-bar">
-                                    <div class="cmi-bar-w" style="width: {{ top_s.ssr_ladies_pct or 0 }}%;"></div>
-                                    <div class="cmi-bar-m" style="width: {{ top_s.ssr_men_pct or 0 }}%;"></div>
+                                <div class="cmi-ratio-bar{% if (top_s.women or 0) + (top_s.men or 0) == 0 %} is-empty{% endif %}">
+                                    <div class="cmi-bar-w" style="width: {{ top_s.ssr_ladies_pct if (top_s.women or 0) + (top_s.men or 0) > 0 else 0 }}%;"></div>
+                                    <div class="cmi-bar-m" style="width: {{ top_s.ssr_men_pct if (top_s.women or 0) + (top_s.men or 0) > 0 else 0 }}%;"></div>
                                 </div>
                             </div>
                         </div>
                         {% set top_slug = (top_s.name | store_linkable_slug) %}
                         <div class="cmi-actions">
                             {% if top_slug %}
-                            <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） ›</a>
+                            <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） →</a>
                             {% endif %}
-                            <button type="button" class="cmi-secondary-btn" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">詳しい曜日・時間帯グラフ＆2軒目を見る</button>
+                            <button type="button" class="cmi-secondary-btn" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">曜日・時間帯グラフを見る</button>
                         </div>
                         {% endif %}
                     </aside>
@@ -1137,6 +1161,11 @@
                             };
                             var rb = item.querySelector('.rank-badge');
                             if (rb) rb.textContent = d.rk || '-';
+                            var vp = item.querySelector('.bento-verdict-pill');
+                            if (vp && d.psg) {
+                                vp.className = 'bento-verdict-pill ' + (d.psc || 'is-ok');
+                                vp.textContent = d.psg;
+                            }
                             var bb = item.querySelector('.brand-badge');
                             if (bb) {
                                 bb.className = 'brand-badge' + (d.bc ? ' ' + d.bc : '');
@@ -1188,6 +1217,12 @@
                                     brn.textContent = d.dp || '';
                                     sn.appendChild(brn);
                                 } else {
+                                    if (d.ndp && d.br) {
+                                        var pfx2 = document.createElement('span');
+                                        pfx2.className = 'store-brand-prefix is-plan2-brand';
+                                        pfx2.textContent = d.br + ' ';
+                                        sn.appendChild(pfx2);
+                                    }
                                     var ttl = document.createElement('span');
                                     ttl.className = 'store-branch-name';
                                     ttl.textContent = d.ti || d.n;
@@ -1200,6 +1235,14 @@
                                     if (d.et) evb.title = d.et;
                                     sn.appendChild(evb);
                                 }
+                            }
+                            var p2Sub = item.querySelector('.plan2-card-sub');
+                            if (p2Sub) {
+                                p2Sub.textContent = d.psb || '';
+                            }
+                            var p2Fc = item.querySelector('.plan2-footer-forecast');
+                            if (p2Fc) {
+                                p2Fc.textContent = d.pfc || '';
                             }
                             var hl = item.querySelector('.cm-human-line');
                             if (hl) {
@@ -1390,6 +1433,8 @@
                                             }
                                         }
                                         if (moved + hydratedDeferred > 0) {
+                                            var pNote = document.getElementById('pinned-count-note');
+                                            if (pNote) pNote.textContent = String(moved + hydratedDeferred) + '件ピン留め中';
                                             pCont.classList.remove('hidden');
                                         }
                                         if ((moved + hydratedDeferred > 0) && unhydratedDeferred === 0) {
@@ -3053,7 +3098,7 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261118_4" defer></script>
+    <script src="/static/app.js?v=20261119_1" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -3069,7 +3114,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=116', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=117', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

@@ -17,6 +17,7 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 CLIENT_STATUS_DROP_KEYS = (
     'ssr_title', 'ssr_brand', 'ssr_brand_cls', 'ssr_disp', 'ssr_is_dup', 'ssr_ladies_pct', 'ssr_men_pct',
     'seo_name', 'pos_telemetry',
+    'plan2_signal_text', 'plan2_signal_cls', 'plan2_sub_text', 'plan2_forecast_text', 'plan2_needs_brand_pfx',
 )
 CLIENT_STATUS_DROP_NESTED = {
     'forecast_60m': ('model_version',),
@@ -200,6 +201,10 @@ def get_store_spec_map() -> dict:
                 seo_n = store_master.seo_name(sname)
                 if seo_n:
                     built[seo_n] = entry
+                disp_n = (minfo.get('display_name') or '').strip()
+                if brand_code and disp_n:
+                    brand_ja = {'OLG': 'オリエンタルラウンジ', 'AG': 'ag', 'YATAKOI': 'ヤタコイ'}.get(brand_code, brand_code)
+                    built.setdefault(f"{brand_ja} {disp_n}", entry)
             if built:
                 _SPEC_CACHE = built
                 _SPEC_CACHE_TS = now_m
@@ -547,6 +552,66 @@ def attach_card_ux_metadata(
 
     item['human_line'] = build_dynamic_human_line(item, is_women_view=False, all_closed_mode=all_closed_mode)
     item['human_line_women'] = build_dynamic_human_line(item, is_women_view=True, all_closed_mode=all_closed_mode)
+
+    # Plan 2 (TableCheck / VACAN Signal Card) concise SSR fields
+    est_wait_m = max(0, int(we.get('est_wait_men_min') or 0))
+    jis_wait_grp = max(0, int(item.get('jis_wait_m_grp') or we.get('est_men_wait_groups') or 0))
+    if tot == 0:
+        p2_sig_txt = '営業時間外'
+        p2_sig_cls = 'is-wait is-closed'
+    elif source_kind == 'jis_pos':
+        if jis_wait_grp == 0:
+            p2_sig_txt = 'いま待ち0組（公式POS実測）'
+            p2_sig_cls = 'is-ok'
+        else:
+            p2_sig_txt = f'男性待ち{jis_wait_grp}組（公式POS実測）'
+            p2_sig_cls = 'is-wait'
+    elif est_wait_m > 0:
+        p2_sig_txt = f'やや混雑（男性待ち約{est_wait_m}分）'
+        p2_sig_cls = 'is-wait'
+    elif w == 0 and m > 0:
+        p2_sig_txt = '男性先行中（女性来店待ち）'
+        p2_sig_cls = 'is-wait'
+    else:
+        p2_sig_txt = '即相席圏（推定待ち0分）'
+        p2_sig_cls = 'is-ok'
+    item['plan2_signal_text'] = p2_sig_txt
+    item['plan2_signal_cls'] = p2_sig_cls
+
+    concise_price = re.split(r'[（(｜|]', item['spec_price_short'])[0].strip() or item['spec_price_short']
+    ssr_area_lbl = (item.get('ssr_area') or '').strip()
+    sub_parts = []
+    if ssr_area_lbl and not item['area_redundant_sp']:
+        sub_parts.append(ssr_area_lbl)
+    elif hours_lbl:
+        sub_parts.append(hours_lbl)
+    if concise_price:
+        sub_parts.append(concise_price)
+    elif item['spec_age_short'] and item['spec_age_short'] != '客層データ収集中':
+        sub_parts.append(item['spec_age_short'])
+    item['plan2_sub_text'] = ' ・ '.join(sub_parts)
+
+    if tot == 0:
+        p2_fc_txt = f"本日 {item['open_time_short']} オープン予定" if item['open_time_short'] else '営業時間外（開店後に自動更新）'
+    elif fc and fc.get('pred_60m_wpct') is not None:
+        wp_val = int(fc['pred_60m_wpct'])
+        d_pt = int(fc.get('pred_delta_pt') or 0)
+        fc_sfx = '（好調持続）' if (wp_val >= 65 and d_pt >= -4) else ('（女性上昇傾向）' if d_pt >= 4 else ('（終電・低下注意）' if d_pt <= -8 else '（安定）'))
+        fc_pfx = '60分後予測' if forecast_verified else '60分後目安'
+        p2_fc_txt = f'{fc_pfx}：女性{wp_val}%{fc_sfx}'
+    elif item.get('core_time_short'):
+        p2_fc_txt = f"狙い目時間帯：{item['core_time_short']}"
+    else:
+        p2_fc_txt = freshness_label or '1分ごとに自動更新中'
+    item['plan2_forecast_text'] = p2_fc_txt
+
+    ssr_brand_str = str(item.get('ssr_brand') or '').strip()
+    ssr_title_str = str(item.get('ssr_title') or item.get('ssr_disp') or '').strip()
+    item['plan2_needs_brand_pfx'] = bool(
+        not item.get('ssr_is_dup')
+        and ssr_brand_str
+        and ssr_brand_str.upper() not in ssr_title_str.upper()
+    )
     return item
 
 
@@ -916,6 +981,11 @@ def build_deferred_card_pool(status, is_staff=False, start_idx=20):
             'm': m,
             'wp': int(s.get('ssr_ladies_pct') or 0),
             'mp': int(s.get('ssr_men_pct') or 0),
+            'psg': s.get('plan2_signal_text') or '',
+            'psc': s.get('plan2_signal_cls') or 'is-ok',
+            'psb': s.get('plan2_sub_text') or '',
+            'pfc': s.get('plan2_forecast_text') or '',
+            'ndp': 1 if s.get('plan2_needs_brand_pfx') else 0,
         }
         if s.get('ssr_is_dup'):
             entry['dup'] = 1

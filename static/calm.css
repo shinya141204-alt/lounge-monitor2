@@ -11821,3 +11821,1113 @@ body.theme-light.staff-mode .ranking-item .stat.men .stat-usual.is-up {
         grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)) !important;
     }
 }
+
+/* ==========================================================================
+   30. 案2｜TableCheck・VACAN型：統合オムニバー ＋ 信号バッジ＆人数メーターの余白カードUI
+       - Figma HcbM04chHKPXWxWGmwxL8S (3:6 Mobile Dark / 3:189 Desktop 2-Pane / 3:435 Mobile Light) 準拠
+       - 社内業務モニター（body.staff-mode）および1行リストモード（body.theme-list）は完全分離・無改変
+       - Dark / Light 全要素 WCAG 4.5:1〜5.5:1 以上保証
+   ========================================================================== */
+
+/* 30-A. 社内モニター・リストモードでの案2専用補助ノード隔離 */
+body.staff-mode .plan2-card-sub,
+body.staff-mode .plan2-card-footer,
+body.staff-mode .store-brand-prefix.is-plan2-brand,
+body.staff-mode #pinned-count-note,
+body.staff-mode .plan2-section-head .plan2-section-meta,
+body.theme-list .plan2-card-sub,
+body.theme-list .plan2-card-footer,
+body.theme-list .store-brand-prefix.is-plan2-brand,
+body.theme-list #pinned-count-note,
+body.theme-list #ranking-section-head,
+body.compact-mode .plan2-card-sub,
+body.compact-mode .plan2-card-footer,
+body.compact-mode .store-brand-prefix.is-plan2-brand,
+body.compact-mode #pinned-count-note,
+body.compact-mode #ranking-section-head {
+    display: none !important;
+}
+
+body.staff-mode .plan2-omnibar {
+    display: contents;
+}
+
+/* 30-B. Figma ダウンロード静的SVGアイコン（root width/height 厳守・Dark/Light 明度補正） */
+.plan2-ui-icon {
+    display: block;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+body:not(.theme-light):not(.staff-mode) .filter-btn:not(.active) .plan2-pin-icon {
+    opacity: 0.84;
+}
+
+body:not(.theme-light):not(.staff-mode) .filter-btn.active .plan2-pin-icon {
+    filter: brightness(0.08);
+}
+
+body.theme-light:not(.staff-mode) .filter-btn:not(.active) .plan2-pin-icon {
+    filter: brightness(0.28);
+}
+
+body.theme-light:not(.staff-mode) .filter-btn.active .plan2-pin-icon {
+    filter: none;
+}
+
+body.theme-light:not(.staff-mode) .plan2-search-icon,
+body.theme-light:not(.staff-mode) .plan2-chevron-icon {
+    filter: brightness(0.35);
+}
+
+/* 30-C. 統合オムニバー（UnifiedOmnibar / DesktopOmnibar） */
+body:not(.staff-mode) .plan2-omnibar {
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: 16px;
+    padding: 10px 12px;
+    margin: 0 0 14px 0;
+    background: var(--calm-surface);
+    border: 1px solid var(--calm-border);
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.06);
+    box-shadow: 0 4px 14px rgba(15, 15, 20, 0.05);
+}
+
+body:not(.staff-mode) .plan2-omnibar .area-quick-chips {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    gap: 6px !important;
+    align-items: center;
+}
+
+body:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn,
+body:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 36px;
+    padding: 7px 13px !important;
+    border-radius: 10px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: var(--calm-sub) !important;
+    font-size: 0.79rem !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn,
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger {
+    background: transparent !important;
+    border-color: transparent !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn[data-region="All"]:not(.active),
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger:not(.active) {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn[data-region="All"]:not(.active),
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger:not(.active) {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-text) !important;
+}
+
+@media (hover: hover) {
+    body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn:not(.active):hover,
+    body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger:not(.active):hover {
+        background: var(--calm-surface-2) !important;
+        color: var(--calm-text) !important;
+    }
+
+    body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn:not(.active):hover,
+    body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger:not(.active):hover {
+        background: var(--calm-light-surface-2) !important;
+        color: var(--calm-light-text) !important;
+    }
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn.active,
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn.active,
+body.theme-light:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger.active {
+    background: var(--calm-light-accent) !important;
+    border-color: var(--calm-light-accent) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* 検索ボックス：二重枠なしのへこみ面（Recessed Tonal Input） */
+body:not(.staff-mode) .plan2-omnibar .search-sort-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+body:not(.staff-mode) .plan2-omnibar .search-sort-container .sort-controls {
+    display: none !important;
+}
+
+@supports not selector(:popover-open) {
+    body:not(.staff-mode) .plan2-omnibar .search-sort-container .sort-controls {
+        display: flex !important;
+        margin-top: 6px;
+    }
+}
+
+body:not(.staff-mode) .plan2-omnibar .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+body:not(.staff-mode) .plan2-omnibar .plan2-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar #search-input {
+    width: 100%;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 6px 32px 6px 34px !important;
+    border-radius: 10px !important;
+    border: 1px solid transparent !important;
+    background: var(--calm-surface-2) !important;
+    background-image: none !important;
+    color: var(--calm-text) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar #search-input {
+    width: 100%;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 6px 32px 6px 34px !important;
+    border-radius: 10px !important;
+    border: 1px solid transparent !important;
+    background: var(--calm-light-surface-2) !important;
+    background-image: none !important;
+    color: var(--calm-light-text) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar #search-input::placeholder {
+    color: var(--calm-sub) !important;
+    opacity: 0.85;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar #search-input::placeholder {
+    color: var(--calm-light-sub) !important;
+    opacity: 0.85;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar #search-input:focus-visible {
+    border-color: var(--calm-border-strong) !important;
+    outline: 2px solid var(--calm-text);
+    outline-offset: 1px;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar #search-input:focus-visible {
+    border-color: var(--calm-light-border-strong) !important;
+    outline: 2px solid var(--calm-light-text);
+    outline-offset: 1px;
+}
+
+/* オムニバー内 目線・並び順・補助チップ段 */
+body:not(.staff-mode) .plan2-omnibar #audience-mode-bar {
+    margin: 0 !important;
+    padding: 8px 0 0 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar #audience-mode-bar {
+    border-top-color: var(--calm-light-border) !important;
+}
+
+body:not(.staff-mode) .plan2-omnibar .audience-mode-toggle {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    gap: 6px !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .audience-pill-btn {
+    border-radius: 10px !important;
+    min-height: 34px;
+    padding: 6px 13px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-sub) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .audience-pill-btn {
+    border-radius: 10px !important;
+    min-height: 34px;
+    padding: 6px 13px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-light-sub) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .audience-pill-btn.active {
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .audience-pill-btn.active {
+    background: var(--calm-light-accent) !important;
+    border-color: var(--calm-light-accent) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+body:not(.staff-mode) .plan2-omnibar .mobile-sort-trigger {
+    display: inline-flex;
+}
+
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .compact-concierge-link,
+body:not(.theme-light):not(.staff-mode) .plan2-omnibar .legend-help-trigger {
+    border-radius: 10px !important;
+    min-height: 34px;
+    padding: 5px 11px !important;
+    background: var(--calm-surface-2) !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-text) !important;
+    font-size: 0.76rem !important;
+}
+
+body.theme-light:not(.staff-mode) .plan2-omnibar .compact-concierge-link,
+body.theme-light:not(.staff-mode) .plan2-omnibar .legend-help-trigger {
+    border-radius: 10px !important;
+    min-height: 34px;
+    padding: 5px 11px !important;
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-light-text) !important;
+    font-size: 0.76rem !important;
+}
+
+@media (min-width: 769px) {
+    body:not(.staff-mode) .plan2-omnibar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 248px;
+        grid-template-areas:
+            "areas    search"
+            "audience audience";
+        column-gap: 12px;
+        row-gap: 8px;
+        align-items: center;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar > #area-quick-chips {
+        grid-area: areas;
+        min-width: 0;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar > .search-sort-container {
+        grid-area: search;
+        width: 100%;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar > #audience-mode-bar {
+        grid-area: audience;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .audience-mode-toggle {
+        flex: 0 0 auto !important;
+        width: auto !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .audience-pill-btn {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        padding: 7px 14px !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar #search-input {
+        font-size: 0.79rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    body:not(.staff-mode) .plan2-omnibar {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 6px 8px !important;
+        margin: 0 0 6px 0 !important;
+        border-radius: 14px;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .area-quick-chips {
+        gap: 4px !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .area-quick-chips .filter-btn,
+    body:not(.staff-mode) .plan2-omnibar .area-quick-chips .more-areas-trigger {
+        min-height: 31px !important;
+        height: 31px !important;
+        padding: 0 10px !important;
+        border-radius: 9px !important;
+        font-size: 0.74rem !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar #audience-mode-bar {
+        padding: 5px 0 0 0 !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .audience-pill-btn {
+        min-height: 31px !important;
+        padding: 3px 8px !important;
+        border-radius: 9px !important;
+        font-size: 0.73rem !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar .legend-help-trigger {
+        min-height: 31px !important;
+        padding: 3px 8px !important;
+        border-radius: 9px !important;
+        font-size: 0.71rem !important;
+    }
+
+    body:not(.staff-mode) .plan2-omnibar #search-input {
+        min-height: 33px !important;
+        height: 33px !important;
+        font-size: 16px !important;
+    }
+}
+
+/* 30-D. セクション見出し（お気に入り店舗 ／ 全国リアルタイム順位） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 2px 8px 2px;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-head .section-title::before,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-head .section-title::after {
+    display: none !important;
+    content: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-head .section-title,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-head .section-title,
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-title {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--calm-sub);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-section-meta {
+    color: var(--calm-light-sub);
+}
+
+@media (max-width: 768px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-section-head {
+        display: none !important;
+    }
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list-container .separator {
+    display: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list-container {
+    margin-bottom: 16px !important;
+}
+
+/* 30-E. StoreSignalCard グリッド ＆ 余白カード本体（Mobile 1列 ／ PC・Tablet 2列） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #preopen-ranking-list {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    align-items: stretch;
+}
+
+@media (min-width: 769px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #preopen-ranking-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+    }
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .empty-filter-state,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #ranking-list > .pr-card-item {
+    grid-column: 1 / -1 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item):not(.pr-card-item) {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto auto !important;
+    grid-template-areas:
+        "kicker"
+        "info"
+        "meter"
+        "footer" !important;
+    row-gap: 0 !important;
+    column-gap: 0 !important;
+    align-items: start !important;
+    box-sizing: border-box !important;
+    padding: 16px 18px !important;
+    margin: 0 !important;
+    border-radius: 18px !important;
+    border: 1.5px solid transparent !important;
+    font-variant-numeric: tabular-nums;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item):not(.pr-card-item) {
+    background: var(--calm-surface) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item):not(.pr-card-item) {
+    background: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(15, 15, 20, 0.06) !important;
+}
+
+@media (hover: hover) {
+    body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item):not(.pr-card-item):hover {
+        background: var(--calm-surface) !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        border-radius: 18px !important;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item):not(.pr-card-item):hover {
+        background: #ffffff !important;
+        border-color: rgba(24, 24, 27, 0.15) !important;
+        border-radius: 18px !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item).is-inspector-selected {
+        border-color: rgba(244, 244, 245, 0.45) !important;
+        padding: 16px 18px !important;
+        border-radius: 18px !important;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card), #pinned-list > .ranking-item.pinned-item).is-inspector-selected {
+        border-color: #18181b !important;
+        padding: 16px 18px !important;
+        border-radius: 18px !important;
+        box-shadow: 0 8px 22px rgba(15, 15, 20, 0.09) !important;
+    }
+}
+
+/* 30-F. Chunk 1: CardHeader（VACAN信号バッジ ＋ 店名 ＋ 1行サブタイトル ＋ 36×36丸お気に入り） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .rank-badge,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .card-actions,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .bento-kicker-label,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-meta-row,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .cm-human-line,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-spec-row,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-micro-metrics,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .moat-signals-row {
+    display: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .bento-kicker-row {
+    grid-area: kicker !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0 46px 0 0 !important;
+    margin: 0 0 6px 0 !important;
+    border: none !important;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .bento-verdict-pill,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cmi-status-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 10px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .bento-verdict-pill::before,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cmi-status-pill::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-ok, .cmi-status-pill.is-ok) {
+    background: rgba(52, 211, 153, 0.14) !important;
+    color: #34d399 !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-ok, .cmi-status-pill.is-ok)::before {
+    background: #34d399;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-ok, .cmi-status-pill.is-ok) {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #065f46 !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-ok, .cmi-status-pill.is-ok)::before {
+    background: #10b981;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-wait:not(.is-closed), .cmi-status-pill.is-wait:not(.is-closed)) {
+    background: rgba(251, 191, 36, 0.14) !important;
+    color: #fcd34d !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-wait:not(.is-closed), .cmi-status-pill.is-wait:not(.is-closed))::before {
+    background: #fbbf24;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-wait:not(.is-closed), .cmi-status-pill.is-wait:not(.is-closed)) {
+    background: rgba(245, 158, 11, 0.13) !important;
+    color: #92400e !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-wait:not(.is-closed), .cmi-status-pill.is-wait:not(.is-closed))::before {
+    background: #d97706;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-closed, .cmi-status-pill.is-closed) {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-closed, .cmi-status-pill.is-closed)::before {
+    background: #71717a;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-closed, .cmi-status-pill.is-closed) {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.bento-verdict-pill.is-closed, .cmi-status-pill.is-closed)::before {
+    background: #71717a;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .store-info {
+    grid-area: info !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 0 12px 0 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-title-row {
+    padding-right: 46px !important;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) .store-name {
+    display: block !important;
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    line-height: 1.41 !important;
+    letter-spacing: -0.01em !important;
+    margin: 0 !important;
+    color: var(--calm-text) !important;
+    text-wrap: wrap !important;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-name .store-brand-prefix,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-name .store-branch-name {
+    display: inline !important;
+    font-size: inherit !important;
+    font-weight: 700 !important;
+    opacity: 1 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-name .event-tag-badge {
+    display: inline-flex !important;
+    vertical-align: middle;
+    margin-left: 6px !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) .store-name {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .plan2-card-sub {
+    display: block !important;
+    margin: 0 !important;
+    font-size: 0.75rem !important;
+    font-weight: 400 !important;
+    line-height: 1.42 !important;
+    color: var(--calm-sub) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .plan2-card-sub {
+    color: var(--calm-light-sub) !important;
+}
+
+/* 36×36 円形お気に入りボタン（CardHeader 右上配置） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn {
+    position: absolute !important;
+    top: 16px !important;
+    right: 18px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    min-inline-size: 36px !important;
+    min-block-size: 36px !important;
+    border-radius: 999px !important;
+    border: none !important;
+    z-index: 2;
+}
+
+@media (pointer: coarse) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn::after {
+        content: "";
+        position: absolute;
+        inset: -4px;
+    }
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn {
+    background: var(--calm-surface-2) !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn {
+    background: var(--calm-light-surface-2) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn:hover {
+    background: rgba(24, 24, 27, 0.10) !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn:is(.active, .pinned) {
+    background: var(--calm-surface-2) !important;
+    color: #f59e0b !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn:is(.active, .pinned) {
+    background: #fef3c7 !important;
+    color: #d97706 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .pin-btn .star-icon {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* 30-G. Chunk 2: HeadcountMeter（内側角丸メーター面：女性数 ｜ 女性比% ｜ 男性数 ＋ 6px比率バー） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+    grid-area: meter !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    grid-template-areas: "ladies ratio men" !important;
+    align-items: baseline !important;
+    justify-items: stretch !important;
+    column-gap: 8px !important;
+    row-gap: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 12px 14px 27px 14px !important;
+    border: none !important;
+    border-radius: 13px !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+    background: var(--calm-surface-2) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+    background: #f2f2f5 !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat.ladies .count {
+    color: #9f1239 !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat.men .count {
+    color: #1e40af !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat.ladies {
+    grid-area: ladies !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
+    padding: 0 !important;
+    border: none !important;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .bento-ratio-hero {
+    grid-area: ratio !important;
+    grid-column: auto !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .bento-ratio-hero.is-small-sample .bento-ratio-main {
+    display: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat.men {
+    grid-area: men !important;
+    justify-self: end !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: flex-end !important;
+    gap: 5px !important;
+    padding: 0 !important;
+    border: none !important;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .label {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .label {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat-num-row {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    gap: 4px !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .count {
+    font-family: var(--font-num) !important;
+    font-size: 1.625rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .stat-diff {
+    font-family: var(--font-num) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .stat-diff {
+    background: transparent !important;
+    border: none !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group :is(.bento-ratio-caption, .bento-ratio-num, .bento-ratio-unit) {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group :is(.bento-ratio-caption, .bento-ratio-num, .bento-ratio-unit) {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .bento-ratio-hero:is(.is-small-sample, .is-zero-total) .bento-ratio-caption {
+    font-size: 0.72rem !important;
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .bento-ratio-hero:is(.is-small-sample, .is-zero-total) .bento-ratio-caption {
+    font-size: 0.72rem !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar {
+    grid-area: meter !important;
+    align-self: end !important;
+    justify-self: stretch !important;
+    display: flex !important;
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: auto !important;
+    height: 6px !important;
+    margin: 0 14px 12px 14px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    z-index: 1;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar:not(.is-empty) {
+    background: rgba(147, 197, 253, 0.20) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar:not(.is-empty) {
+    background: rgba(29, 78, 216, 0.14) !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar.is-empty {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar.is-empty {
+    background: rgba(24, 24, 27, 0.09) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar .bar-fill-ladies {
+    opacity: 1 !important;
+    border-radius: 999px;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar .bar-fill-men {
+    background: transparent !important;
+}
+
+/* 30-H. Chunk 3: CardFooter（60分後予測 ＆ 詳細 ›） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item > .plan2-card-footer {
+    grid-area: footer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    margin: 12px 0 0 0 !important;
+    padding: 0 !important;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-footer-forecast {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    color: var(--calm-sub) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-footer-forecast {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-footer-detail {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    flex-shrink: 0;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    color: var(--calm-sub) !important;
+    white-space: nowrap;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .plan2-footer-detail {
+    color: var(--calm-light-sub) !important;
+}
+
+/* 30-I. PC 2ペイン比率 ＆ 右追従インスペクタ（RightStoreInspector 3:406 準拠） */
+@media (min-width: 1024px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .container {
+        max-width: 1200px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-split-layout {
+        grid-template-columns: minmax(0, 784fr) minmax(356px, 388fr) !important;
+        gap: 28px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector {
+        border-radius: 20px !important;
+        padding: 22px !important;
+        gap: 16px;
+        border: 1px solid var(--calm-border) !important;
+        text-align: left !important;
+    }
+
+    body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector {
+        background: #ffffff !important;
+        border: 1px solid rgba(24, 24, 27, 0.06) !important;
+        box-shadow: 0 8px 24px rgba(15, 15, 20, 0.06) !important;
+    }
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-title {
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1.32;
+    text-align: left;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-summary,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-hop-box,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-curve-wrap {
+    text-align: left;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-curve-head {
+    flex-wrap: wrap;
+    row-gap: 2px;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item, #pinned-list > .ranking-item.pinned-item):not(.pr-card-item) {
+    text-align: left !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-metrics-box,
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-hop-box {
+    background: var(--calm-surface-2) !important;
+    border: none !important;
+    border-radius: 14px !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-metrics-box,
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-hop-box {
+    background: #f2f2f5 !important;
+    border: none !important;
+    border-radius: 14px !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-count-val.is-w {
+    color: #9f1239 !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-count-val.is-m {
+    color: var(--calm-men) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-count-val.is-m {
+    color: #1e40af !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-ratio-big {
+    font-family: var(--font-num);
+    font-size: 1.05rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-ratio-bar {
+    height: 8px !important;
+    border-radius: 999px !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-ratio-bar:not(.is-empty) {
+    background: rgba(147, 197, 253, 0.20) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-ratio-bar:not(.is-empty) {
+    background: rgba(29, 78, 216, 0.14) !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-bar-m {
+    background: transparent !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-store-page-link,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-secondary-btn,
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .cm-pc-inspector .cmi-primary-cta {
+    border-radius: 12px !important;
+}
