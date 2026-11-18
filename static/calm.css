@@ -2942,6 +2942,7 @@ body.theme-light .article-box h3,
 body.theme-light .area-point-box h3,
 body.theme-light .tip-card h4,
 body.theme-light .article-highlight-box h4,
+body.theme-light .article-toc h2,
 body.theme-light .article-toc h3,
 body.theme-light .store-meta {
     color: var(--calm-light-accent) !important;
@@ -2990,6 +2991,7 @@ body.theme-light .content-box strong {
 body.theme-light .breadcrumb,
 body.theme-light .article-date,
 body.theme-light .article-meta-line,
+body.theme-light .article-meta-row,
 body.theme-light .aff-link-subtext,
 body.theme-light .best-pick-sub,
 body.theme-light .count-label,
@@ -4592,7 +4594,8 @@ html {
 body:has(.portal-wrap, .article-container, .guide-container, .wrap, .page-wrap) {
     display: block !important;
     width: 100% !important;
-    overflow-x: hidden;
+    margin: 0 !important;
+    overflow-x: clip;
     overflow-y: visible;
     overscroll-behavior-y: auto;
 }
@@ -7984,6 +7987,7 @@ body:not(.staff-mode) .article-content h3::before {
 
 body:not(.theme-light):not(.staff-mode) .article-body h3,
 body:not(.theme-light):not(.staff-mode) .article-content h3,
+body:not(.theme-light):not(.staff-mode) .article-toc h2,
 body:not(.theme-light):not(.staff-mode) .article-toc h3,
 body:not(.theme-light):not(.staff-mode) .toc-title,
 body:not(.theme-light):not(.staff-mode) .apple-spec-store-title,
@@ -7993,11 +7997,20 @@ body:not(.theme-light):not(.staff-mode) .apple-spec-store-title a {
 
 body.theme-light:not(.staff-mode) .article-body h3,
 body.theme-light:not(.staff-mode) .article-content h3,
+body.theme-light:not(.staff-mode) .article-toc h2,
 body.theme-light:not(.staff-mode) .article-toc h3,
 body.theme-light:not(.staff-mode) .toc-title,
 body.theme-light:not(.staff-mode) .apple-spec-store-title,
 body.theme-light:not(.staff-mode) .apple-spec-store-title a {
     color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light) .dialogue-box .dlg-cap {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light .dialogue-box .dlg-cap {
+    color: var(--calm-light-sub) !important;
 }
 
 body:not(.staff-mode) .apple-spec-store-title a {
@@ -9134,8 +9147,8 @@ body.theme-light:not(.staff-mode) .apple-open-section .store-comp-table thead th
 /* 日本語コピー・リンクの1〜2文字孤立改行・語中分割を抑止 */
 .moat-modal-link,
 .card-human-copy,
-.cmi-store-name,
-.cmi-human-copy,
+.cmi-title,
+.cmi-summary,
 body:not(.staff-mode) h1,
 body:not(.staff-mode) h2 {
     word-break: auto-phrase;
@@ -9265,7 +9278,9 @@ body.theme-light [style*="color:#ef4444"] {
 }
 
 body.theme-light [style*="color: #a855f7"],
-body.theme-light [style*="color:#a855f7"] {
+body.theme-light [style*="color:#a855f7"],
+body.theme-light [style*="color: #c084fc"],
+body.theme-light [style*="color:#c084fc"] {
     color: #6b21a8 !important;
 }
 
@@ -9348,6 +9363,19 @@ body:not(.staff-mode) #main-hero-sub {
     font-size: 0.8rem !important;
     line-height: 1.55 !important;
     max-width: 64ch;
+    margin: 6px auto 0;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    body:not(.staff-mode) .header-brand-block #main-hero-sub {
+        max-width: 100%;
+        margin: 4px 0 0 0 !important;
+        text-align: left;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
 }
 
 .masthead-kicker.is-stale {
@@ -9377,7 +9405,17 @@ body.theme-light .masthead-kicker.is-stale {
     color: var(--calm-sub);
     font-size: 0.73rem;
     line-height: 1.5;
+    text-align: left;
     font-variant-numeric: tabular-nums;
+}
+
+.fv-trust-text {
+    text-align: left;
+    word-break: auto-phrase;
+}
+
+.fv-trust-nowrap {
+    white-space: nowrap;
 }
 
 .fv-trust-links {
@@ -9502,6 +9540,9 @@ body.theme-light .more-areas-trigger.active {
 /* ネイティブ Popover（その他エリア ＆ ? 見方）— display は open 時のみ指定 */
 .more-areas-popover,
 .momentum-legend-popover {
+    display: none;
+    box-sizing: border-box;
+    text-align: left;
     margin: auto;
     max-width: min(92vw, 480px);
     width: calc(100vw - 24px);
@@ -9518,6 +9559,32 @@ body.theme-light .more-areas-trigger.active {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.momentum-legend-item,
+.momentum-legend-popover .momentum-legend-hint {
+    display: block;
+    margin: 0;
+    text-align: left;
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: var(--calm-sub);
+    opacity: 1;
+}
+
+body.theme-light .momentum-legend-item,
+body.theme-light .momentum-legend-popover .momentum-legend-hint {
+    color: var(--calm-light-sub);
+}
+
+.momentum-legend-item strong,
+.momentum-legend-popover .momentum-legend-hint strong {
+    color: var(--calm-text);
+}
+
+body.theme-light .momentum-legend-item strong,
+body.theme-light .momentum-legend-popover .momentum-legend-hint strong {
+    color: var(--calm-light-text);
 }
 
 .more-areas-popover::backdrop,
@@ -9872,4 +9939,60 @@ body.theme-light #pwa-install-banner.pwa-install-banner {
 #pwa-install-banner.pwa-install-banner.hidden,
 #pwa-install-banner.pwa-install-banner[hidden] {
     display: none !important;
+}
+
+/* モバイル（<=768px）#2以降店舗カードの2列グリッド整形 ＆ 小ボタンタップ領域確保 */
+@media (max-width: 768px) {
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        grid-template-areas:
+            "rank info stats"
+            "rank info actions";
+        column-gap: 8px;
+        row-gap: 8px;
+        align-items: start;
+        padding: 13px 6px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+        grid-area: rank;
+        margin-right: 0 !important;
+        padding-top: 2px !important;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .store-info {
+        grid-area: info;
+        min-width: 0;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .stats-group {
+        grid-area: stats;
+        margin-left: 0 !important;
+        justify-self: end;
+        align-self: start;
+    }
+
+    body:not(.theme-list):not(.compact-mode):not(.staff-mode) .ranking-item:not(.bento-hero-card) > .card-actions {
+        grid-area: actions;
+        margin: 0 !important;
+        justify-self: end;
+        align-self: end;
+    }
+
+    .sns-compact-pill,
+    .share-pill-btn,
+    .guide-open-btn {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .popover-close-inline {
+        min-width: 38px;
+        min-height: 38px;
+    }
 }

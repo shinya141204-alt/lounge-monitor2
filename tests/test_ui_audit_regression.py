@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=45"
+        expected_calm = "/static/calm.css?v=46"
         expected_portal = "/static/portal.css?v=17"
         expected_app_js = "/static/app.js?v=20261118_1"
         expected_aff_js = "/static/affiliate_config.js?v=18"
-        expected_style = "/static/style.css?v=20261109_2"
-        expected_sw_url = "/sw.js?v=112"
-        expected_cache_name = "aiseki-navi-v112"
+        expected_style = "/static/style.css?v=20261118_1"
+        expected_sw_url = "/sw.js?v=113"
+        expected_cache_name = "aiseki-navi-v113"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2593,6 +2593,288 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertEqual(second_visit["visitCount"], "2")
                     self.assertEqual(second_visit["headerShift"], 0, "Dismissing PWA banner must cause zero layout shift")
                     ctx_m.close()
+                finally:
+                    browser.close()
+
+    def test_playwright_r1_popover_r2_hero_sub_and_r3_sitewide_layout_and_contrast(self):
+        """R1(#metrics-legend-popover開閉), R2(#main-hero-sub中央・モバイル全文), R3(モバイル幅/カード/信頼バー/統計横溢れ/コラムWCAG)をPlaywright実ブラウザで検証"""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed in this Python environment")
+
+        import datetime as _dt
+
+        now_jst = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9)))
+        now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
+        sample_stores = [
+            {
+                "name": "OLG 新宿",
+                "source": "oriental",
+                "region": "Kanto",
+                "women": 28,
+                "men": 18,
+                "total": 46,
+                "ratio": 1.56,
+                "timestamp": now_str,
+                "is_open_now": True,
+                "wait_estimate": {"is_measured": False, "is_standing_free": False, "est_wait_men_min": 0, "wait_tone": "good", "wait_badge_men": "推定:待ち0分圏"},
+                "forecast_60m": {"pred_60m_women": 34, "pred_60m_men": 20, "pred_60m_total": 54, "pred_60m_wpct": 63, "pred_delta_pt": 2.4, "badge_tone": "good", "badge_men": "60分後 予測63%"},
+            },
+            {
+                "name": "OLG 宇都宮",
+                "source": "oriental",
+                "region": "Kanto",
+                "women": 25,
+                "men": 20,
+                "total": 45,
+                "ratio": 1.25,
+                "timestamp": now_str,
+                "is_open_now": True,
+                "wait_estimate": {"is_measured": False, "is_standing_free": False, "est_wait_men_min": 0, "wait_tone": "good", "wait_badge_men": "推定:待ち約0分（即相席圏）"},
+                "forecast_60m": {"pred_60m_women": 27, "pred_60m_men": 21, "pred_60m_total": 48, "pred_60m_wpct": 56, "pred_delta_pt": 1.2, "badge_tone": "good", "badge_men": "60分後も好調維持(予測56%)"},
+            },
+            {
+                "name": "OLG ag渋谷",
+                "source": "oriental",
+                "region": "Kanto",
+                "women": 19,
+                "men": 15,
+                "total": 34,
+                "ratio": 1.27,
+                "timestamp": now_str,
+                "is_open_now": True,
+            },
+        ]
+
+        with app_module.data_lock:
+            app_module.latest_data["full_data"] = copy.deepcopy(sample_stores)
+            app_module.latest_data["top5"] = copy.deepcopy(sample_stores)
+            app_module.latest_data["last_updated"] = now_str
+            app_module.latest_data["status"] = "ok"
+        app_module.clear_fast_http_caches()
+
+        def attach_router(ctx):
+            def handle(route):
+                u = urlparse(route.request.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (("?" + u.query) if u.query else "")
+                headers = {k: v for k, v in route.request.headers.items() if k.lower() not in ("host", "content-length", "cookie")}
+                resp = self.client.open(path_qs, method=route.request.method.upper(), headers=headers, data=route.request.post_data_buffer, follow_redirects=True)
+                resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=resp_headers, body=resp.get_data())
+                resp.close()
+            ctx.route("**/*", handle)
+
+        js_contrast_audit = """() => {
+            function parseColor(s) {
+                const m = s.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)/);
+                if (!m) return null;
+                return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3]), m[4] !== undefined ? parseFloat(m[4]) : 1];
+            }
+            function blend(fg, bg) {
+                const a = fg[3];
+                return [fg[0]*a + bg[0]*(1-a), fg[1]*a + bg[1]*(1-a), fg[2]*a + bg[2]*(1-a), 1];
+            }
+            function lum(rgb) {
+                return [0,1,2].map(i => {
+                    const v = rgb[i]/255;
+                    return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+                }).reduce((acc, v, i) => acc + v * [0.2126, 0.7152, 0.0722][i], 0);
+            }
+            function ratio(c1, c2) {
+                const l1 = lum(c1), l2 = lum(c2);
+                return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+            }
+            function effectiveBg(el) {
+                let stack = [];
+                let cur = el;
+                while (cur && cur.nodeType === 1) {
+                    const bg = parseColor(getComputedStyle(cur).backgroundColor);
+                    if (bg && bg[3] > 0) stack.unshift(bg);
+                    cur = cur.parentElement;
+                }
+                let c = document.body.classList.contains('theme-light') ? [246, 246, 247, 1] : [17, 17, 19, 1];
+                for (const layer of stack) c = blend(layer, c);
+                return c;
+            }
+            const fails = [];
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            let n;
+            const checked = new Set();
+            while ((n = walker.nextNode())) {
+                if (!n.nodeValue.trim()) continue;
+                const el = n.parentElement;
+                if (!el || checked.has(el)) continue;
+                checked.add(el);
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width === 0 || r.height === 0) continue;
+                const fg = parseColor(cs.color);
+                if (!fg) continue;
+                const bg = effectiveBg(el);
+                const fgB = fg[3] < 1 ? blend(fg, bg) : fg;
+                const cr = ratio(fgB, bg);
+                const fs = parseFloat(cs.fontSize);
+                const fw = parseInt(cs.fontWeight) || 400;
+                const minReq = (fs >= 24 || (fs >= 18.66 && fw >= 700)) ? 3.0 : 4.5;
+                if (cr < minReq) {
+                    fails.push({tag: el.tagName, cls: String(el.className), text: n.nodeValue.trim().slice(0, 24), cr: +cr.toFixed(2)});
+                }
+            }
+            return {ov: document.documentElement.scrollWidth - document.documentElement.clientWidth, fails};
+        }"""
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    # 1. PC 1280x900: R1 popover, R2 hero subtitle centering, R3 trust bar & stats overflow
+                    ctx_pc = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    attach_router(ctx_pc)
+                    page = ctx_pc.new_page()
+                    page.goto("http://aiseki.local/", wait_until="domcontentloaded")
+                    page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    page.wait_for_timeout(120)
+
+                    for is_light in (False, True):
+                        page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()}); document.documentElement.classList.toggle('theme-light', {str(is_light).lower()});")
+                        init_pop = page.evaluate("""() => {
+                            const pop = document.getElementById('metrics-legend-popover');
+                            const r = pop.getBoundingClientRect();
+                            return {disp: getComputedStyle(pop).display, open: pop.matches(':popover-open'), h: r.height};
+                        }""")
+                        self.assertEqual(init_pop["disp"], "none", f"R1 popover must start hidden (light={is_light})")
+                        self.assertFalse(init_pop["open"])
+                        self.assertEqual(init_pop["h"], 0)
+
+                        page.click("#legend-help-btn")
+                        open_pop = page.evaluate("""() => {
+                            const pop = document.getElementById('metrics-legend-popover');
+                            const item = pop.querySelector('.momentum-legend-item');
+                            return {
+                                disp: getComputedStyle(pop).display,
+                                open: pop.matches(':popover-open'),
+                                align: item ? getComputedStyle(item).textAlign : '',
+                                itemW: item ? item.getBoundingClientRect().width : 0,
+                            };
+                        }""")
+                        self.assertEqual(open_pop["disp"], "flex")
+                        self.assertTrue(open_pop["open"])
+                        self.assertEqual(open_pop["align"], "left")
+                        self.assertGreater(open_pop["itemW"], 200)
+
+                        # Close via inline button
+                        page.click("#metrics-legend-popover .popover-close-inline")
+                        self.assertEqual(page.evaluate("getComputedStyle(document.getElementById('metrics-legend-popover')).display"), "none")
+
+                        # Close via Escape
+                        page.click("#legend-help-btn")
+                        page.keyboard.press("Escape")
+                        self.assertEqual(page.evaluate("getComputedStyle(document.getElementById('metrics-legend-popover')).display"), "none")
+
+                        # Close via light dismiss (outside click)
+                        page.click("#legend-help-btn")
+                        page.mouse.click(10, 10)
+                        self.assertEqual(page.evaluate("getComputedStyle(document.getElementById('metrics-legend-popover')).display"), "none")
+
+                    # R2 & R3 trust bar on PC (default & theme-list)
+                    for use_list in (False, True):
+                        page.evaluate(f"document.body.classList.toggle('theme-list', {str(use_list).lower()})")
+                        hero_geom = page.evaluate("""() => {
+                            const h1 = document.getElementById('main-hero-h1').getBoundingClientRect();
+                            const sub = document.getElementById('main-hero-sub').getBoundingClientRect();
+                            const tb = document.getElementById('fv-trust-bar');
+                            return {
+                                h1Center: (h1.left + h1.right) / 2,
+                                subCenter: (sub.left + sub.right) / 2,
+                                tbAlign: getComputedStyle(tb).textAlign,
+                                docOV: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                            };
+                        }""")
+                        self.assertLessEqual(abs(hero_geom["subCenter"] - hero_geom["h1Center"]), 2.0, f"R2 #main-hero-sub off-center (list={use_list}): {hero_geom}")
+                        self.assertEqual(hero_geom["tbAlign"], "left")
+                        self.assertLessEqual(hero_geom["docOV"], 0)
+
+                    # R3 guide contrast & /stats/weekend-index + /stats PC zero overflow
+                    for rt in (
+                        "/guide/free-food-reality",
+                        "/guide/weekday-strategy",
+                        "/guide/brand-comparison",
+                        "/guide/price-event-comparison",
+                        "/guide/sunday-lounge-strategy",
+                        "/stats/weekend-index",
+                        "/stats",
+                    ):
+                        for is_light in (False, True):
+                            page.goto("http://aiseki.local" + rt, wait_until="domcontentloaded")
+                            page.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                            page.evaluate(f"document.body.classList.toggle('theme-light', {str(is_light).lower()}); document.documentElement.classList.toggle('theme-light', {str(is_light).lower()});")
+                            page.wait_for_timeout(40)
+                            res = page.evaluate(js_contrast_audit)
+                            self.assertLessEqual(res["ov"], 0, f"PC horizontal overflow on {rt} light={is_light}: {res['ov']}")
+                            self.assertEqual(res["fails"], [], f"WCAG contrast failures on {rt} light={is_light}: {res['fails']}")
+                    ctx_pc.close()
+
+                    # 2. Mobile 390x844: R1/R2/R3 checks
+                    ctx_mob = browser.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+                    attach_router(ctx_mob)
+                    mp = ctx_mob.new_page()
+                    mp.goto("http://aiseki.local/", wait_until="domcontentloaded")
+                    mp.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    mp.wait_for_timeout(120)
+
+                    # R1 closed initially + open width <= 390
+                    self.assertEqual(mp.evaluate("getComputedStyle(document.getElementById('metrics-legend-popover')).display"), "none")
+                    mp.click("#legend-help-btn")
+                    leg_w = mp.evaluate("document.getElementById('metrics-legend-popover').getBoundingClientRect().width")
+                    self.assertLessEqual(leg_w, 390)
+                    mp.click("#metrics-legend-popover .popover-close-inline")
+                    self.assertEqual(mp.evaluate("getComputedStyle(document.getElementById('metrics-legend-popover')).display"), "none")
+
+                    mp.click("#more-areas-btn")
+                    area_w = mp.evaluate("document.getElementById('more-areas-popover').getBoundingClientRect().width")
+                    self.assertLessEqual(area_w, 390)
+                    mp.keyboard.press("Escape")
+
+                    mob_metrics = mp.evaluate("""() => {
+                        const sub = document.getElementById('main-hero-sub');
+                        const c2 = document.querySelectorAll('#ranking-list .ranking-item')[1];
+                        const c2r = c2.getBoundingClientRect();
+                        const si = c2.querySelector('.store-info').getBoundingClientRect();
+                        const mr = c2.querySelector('.store-meta-row');
+                        const visBtns = Array.from(document.querySelectorAll('.sns-compact-pill, .share-pill-btn, .guide-open-btn'))
+                            .filter(el => el.offsetParent !== null)
+                            .map(el => Math.round(el.getBoundingClientRect().height));
+                        return {
+                            docOV: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                            subWS: getComputedStyle(sub).whiteSpace,
+                            subSW: sub.scrollWidth,
+                            subCW: sub.clientWidth,
+                            c2H: Math.round(c2r.height),
+                            c2InfoW: Math.round(si.width),
+                            mrSW: mr.scrollWidth,
+                            mrCW: mr.clientWidth,
+                            minVisBtnH: Math.min(...visBtns),
+                        };
+                    }""")
+                    self.assertLessEqual(mob_metrics["docOV"], 0)
+                    self.assertEqual(mob_metrics["subWS"], "normal")
+                    self.assertLessEqual(mob_metrics["subSW"], mob_metrics["subCW"] + 1)
+                    self.assertGreaterEqual(mob_metrics["c2InfoW"], 180)
+                    self.assertLessEqual(mob_metrics["c2H"], 310)
+                    self.assertLessEqual(mob_metrics["mrSW"], mob_metrics["mrCW"] + 1)
+                    self.assertGreaterEqual(mob_metrics["minVisBtnH"], 38)
+
+                    for rt in ("/stats", "/stats/weekend-index"):
+                        mp.goto("http://aiseki.local" + rt, wait_until="domcontentloaded")
+                        mp.wait_for_timeout(40)
+                        ov = mp.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+                        self.assertLessEqual(ov, 0, f"Mobile 390px horizontal overflow on {rt}: {ov}")
+                    ctx_mob.close()
                 finally:
                     browser.close()
 

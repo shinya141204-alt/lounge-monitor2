@@ -146,8 +146,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261109_2" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=45" fetchpriority="high">
+    <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=46" fetchpriority="high">
     <link rel="preload" href="/static/app.js?v=20261118_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -508,7 +508,7 @@
             <!-- FV 1-Line Data Provenance & Trust Bar -->
             <div id="fv-trust-bar" class="fv-trust-bar" aria-label="データの取得元と運営方針">
                 <span class="fv-trust-text">
-                    JIS（ジス）＝公式POS実測／他ブランド＝公式公開人数を1分間隔取得 ｜ 最終取得 <span id="last-update">{{ tp_last_hm }}</span>{% if tp.raw_snapshots and tp.raw_snapshots > 0 %} ｜ 蓄積 {{ "{:,}".format(tp.raw_snapshots | int) }}件（{{ tp.collection_since }}）{% endif %}{% if tp.forecast_verified %} ｜ 60分後予測誤差 平均±{{ tp.forecast_mae_pt }}pt（直近30日 n={{ "{:,}".format(tp.forecast_resolved_count | int) }}）{% else %} ｜ 60分後＝過去傾向からの目安{% endif %} ｜ 公式非提携・広告収益運営
+                    JIS（ジス）＝公式POS実測／他ブランド＝公式公開人数を1分間隔取得 ｜ 最終取得 <span id="last-update">{{ tp_last_hm }}</span>{% if tp.raw_snapshots and tp.raw_snapshots > 0 %} ｜ 蓄積 {{ "{:,}".format(tp.raw_snapshots | int) }}件（{{ tp.collection_since }}）{% endif %}{% if tp.forecast_verified %} ｜ 60分後予測誤差 平均±{{ tp.forecast_mae_pt }}pt（直近30日 n={{ "{:,}".format(tp.forecast_resolved_count | int) }}）{% else %} ｜ 60分後＝過去傾向からの目安{% endif %} ｜ <span class="fv-trust-nowrap">公式非提携・広告収益運営</span>
                 </span>
                 <span class="fv-trust-links">
                     <a href="/stats#data-provenance" class="fv-trust-link">データの取り方と予測の当たり具合を見る ›</a>
@@ -1413,12 +1413,12 @@
                 {% endif %}
 
                 <!-- On-Demand `? 見方` Metrics Legend Popover -->
-                <div id="metrics-legend-popover" class="momentum-legend-bar momentum-legend-popover" popover="auto" aria-label="表示指標の説明">
+                <div id="metrics-legend-popover" class="momentum-legend-popover" popover="auto" aria-label="表示指標の説明">
                     <div class="legend-popover-head">
                         <strong>カード内の数値・バッジの見方</strong>
                         <button type="button" class="popover-close-inline" popovertarget="metrics-legend-popover" popovertargetaction="hide" aria-label="閉じる">✕</button>
                     </div>
-                    <span class="momentum-legend-pill">・<strong>実測／推定</strong>：JIS（ジス）は公式POS実測の待ち組数、他ブランドは公式公開人数とJIS実測POS相関からの推定値です。</span>
+                    <p class="momentum-legend-item">・<strong>実測／推定</strong>：JIS（ジス）は公式POS実測の待ち組数、他ブランドは公式公開人数とJIS実測POS相関からの推定値です。</p>
                     <span class="momentum-legend-hint">・<strong>いつもより±N人</strong>＝過去30日の同曜日・同時間帯平均との差 ｜ <strong>+数字</strong>＝直近15分の増減 ｜ <strong>少人数のため参考値</strong>＝男女合計10名未満のため比率変動が大きい状態</span>
                 </div>
 
@@ -3017,7 +3017,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=112', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=113', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

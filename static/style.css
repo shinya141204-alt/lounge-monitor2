@@ -32,7 +32,7 @@ body {
     /* Changed from center to allow scrolling */
     /* Enable scrolling */
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: clip;
     overscroll-behavior-y: contain; /* Prevent pull-to-refresh conflict */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);

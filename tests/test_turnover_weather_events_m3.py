@@ -287,11 +287,11 @@ class TestUIAndCachebusterIntegration(unittest.TestCase):
         self.assertIn("イベントサージ", html)
 
     def test_cache_version_108_sync(self):
-        """static/sw.js の CACHE_NAME が aiseki-navi-v112 であること"""
+        """static/sw.js の CACHE_NAME が aiseki-navi-v113 であること"""
         sw_path = os.path.join(os.path.dirname(__file__), "..", "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as f:
             sw_txt = f.read()
-        self.assertIn("const CACHE_NAME = 'aiseki-navi-v112';", sw_txt)
+        self.assertIn("const CACHE_NAME = 'aiseki-navi-v113';", sw_txt)
 
 
 if __name__ == "__main__":
