@@ -1515,6 +1515,9 @@ def staff_youtube_oauth_callback():
             core.restore_latest_data_if_empty()
             yt_sync = sns_insights_loop.collect_youtube_shorts_insights(limit=25)
             synced_cnt = int(yt_sync.get('synced') or 0)
+            if ex_res.get('has_comment_scope'):
+                import youtube_poster
+                youtube_poster.backfill_published_moshimo_comments()
             live_s = _get_visible_live_stores()
             pdca_engine.run_pdca_cycle(
                 live_stores=live_s,
@@ -1569,6 +1572,10 @@ def api_pdca_youtube_auto_post():
     payload = request.get_json(silent=True) or {}
     if not isinstance(payload, dict):
         return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+
+    if str(payload.get('action') or '').strip().lower() == 'backfill_comments':
+        bf = youtube_poster.backfill_published_moshimo_comments()
+        return jsonify(bf), (200 if bf.get('ok') else 400)
 
     enabled = payload.get('enabled') if 'enabled' in payload else None
     priv = payload.get('privacy_status') if 'privacy_status' in payload else None

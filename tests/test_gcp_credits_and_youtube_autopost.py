@@ -611,6 +611,124 @@ class TestGcpCreditsAndYouTubeAutoPost(unittest.TestCase):
         self.assertEqual(gd["new_pages_count"], 1)
         self.assertEqual(gd["new_w2_clicks"], 6)
 
+    def test_youtube_official_comment_autopost_dedup_and_backfill(self):
+        # 1) Sanitization enforces brand rules and strips `/link/`
+        clean_cm = youtube_poster.sanitize_youtube_comment("OLG梅田の詳細 https://aiseki-navi.com/link/pcmax")
+        self.assertIn("オリエンタルラウンジ梅田", clean_cm)
+        self.assertNotIn("/link/", clean_cm)
+
+        # 2) Upload STILL succeeds cleanly when ONLY `youtube.upload` is granted (no `youtube.force-ssl` yet)
+        youtube_analytics_sync.save_oauth_client_credentials(
+            "500762809036-test.apps.googleusercontent.com",
+            "GOCSPX-TestSecretUpload123",
+        )
+        job_state.set_value(youtube_analytics_sync.YOUTUBE_REFRESH_TOKEN_STATE_KEY, "1//0rt_up_only")
+        upload_only_scopes = list(youtube_analytics_sync.YOUTUBE_READONLY_SCOPES) + [youtube_analytics_sync.YOUTUBE_UPLOAD_SCOPE]
+        youtube_analytics_sync._merge_and_save_meta({
+            "client_id": "500762809036-test.apps.googleusercontent.com",
+            "channel_id": "UCAWNbuYB19Hk32J_YM57iNg",
+            "granted_scopes": upload_only_scopes,
+            "has_upload_scope": True,
+            "has_comment_scope": False,
+        })
+
+        def fake_post_upload_only(url, **kw):
+            if "oauth2.googleapis.com/token" in url:
+                return _FakeHttpResp(200, {"access_token": "ya29.up_only", "scope": " ".join(upload_only_scopes)})
+            if "/upload/youtube/v3/videos" in url:
+                return _FakeHttpResp(200, {}, headers={"Location": "https://www.googleapis.com/upload/youtube/v3/videos?upload_id=up_only_1"})
+            raise AssertionError(f"Should not call commentThreads without force-ssl scope: {url}")
+
+        def fake_put_public(url, **kw):
+            return _FakeHttpResp(200, {"id": "VidEp4Pub11", "status": {"uploadStatus": "uploaded", "privacyStatus": "public"}})
+
+        with (
+            patch("requests.post", side_effect=fake_post_upload_only),
+            patch("requests.put", side_effect=fake_put_public),
+        ):
+            res_up = youtube_poster.publish_moshimo_episode_to_youtube(
+                ep_id="ep4_last_train",
+                slot_label="20:00",
+                force=True,
+            )
+        self.assertTrue(res_up["ok"])
+        self.assertEqual(res_up["video_id"], "VidEp4Pub11")
+        self.assertFalse(youtube_poster.is_episode_youtube_commented("ep4_last_train")[0])
+
+        # 3) Once `youtube.force-ssl` is authorized, `backfill_published_moshimo_comments` comments on published videos
+        #    while skipping any video that already has a comment from `UCAWNbuYB19Hk32J_YM57iNg`
+        full_scopes = list(youtube_analytics_sync.YOUTUBE_FULL_SCOPES)
+        youtube_analytics_sync._merge_and_save_meta({
+            "granted_scopes": full_scopes,
+            "has_upload_scope": True,
+            "has_comment_scope": True,
+        })
+        # Also mark ep3 as published in job_state with an existing manual comment on YouTube
+        job_state.mark_done(f"{youtube_poster.YOUTUBE_EPISODE_DONE_PREFIX}ep3_women_free")
+        job_state.set_value(f"{youtube_poster.YOUTUBE_EPISODE_VID_PREFIX}ep3_women_free", "D-UDwCqzxm8")
+
+        inserted_comments = []
+
+        def fake_get_threads(url, params=None, **kw):
+            vid = (params or {}).get("videoId")
+            if vid == "D-UDwCqzxm8":
+                return _FakeHttpResp(200, {
+                    "items": [{
+                        "id": "UgxExistingThreadEp3",
+                        "snippet": {
+                            "topLevelComment": {
+                                "id": "UgxExistingCommentEp3",
+                                "snippet": {"authorChannelId": {"value": "UCAWNbuYB19Hk32J_YM57iNg"}},
+                            }
+                        },
+                    }]
+                })
+            return _FakeHttpResp(200, {"items": []})
+
+        def fake_post_with_comments(url, params=None, data=None, **kw):
+            if "oauth2.googleapis.com/token" in url:
+                return _FakeHttpResp(200, {"access_token": "ya29.full_tok", "scope": " ".join(full_scopes)})
+            if "/youtube/v3/commentThreads" in url:
+                body = json.loads(data.decode("utf-8"))
+                inserted_comments.append(body)
+                vid = body["snippet"]["videoId"]
+                return _FakeHttpResp(200, {"id": f"UgxNewComment_{vid}"})
+            if "/upload/youtube/v3/videos" in url:
+                return _FakeHttpResp(200, {}, headers={"Location": "https://www.googleapis.com/upload/youtube/v3/videos?upload_id=ep5_up"})
+            raise AssertionError(f"Unexpected POST: {url}")
+
+        def fake_put_ep5(url, **kw):
+            return _FakeHttpResp(200, {"id": "VidEp5Pub22", "status": {"uploadStatus": "uploaded", "privacyStatus": "public"}})
+
+        with (
+            patch("requests.get", side_effect=fake_get_threads),
+            patch("requests.post", side_effect=fake_post_with_comments),
+        ):
+            bf = youtube_poster.backfill_published_moshimo_comments()
+
+        self.assertTrue(bf["ok"])
+        self.assertEqual(bf["commented_count"], 1)
+        self.assertEqual(bf["commented"][0]["ep_id"], "ep4_last_train")
+        self.assertIn("ep3_women_free", bf["already_done"])
+        self.assertEqual(len(inserted_comments), 1)
+        self.assertIn("終電なんで", inserted_comments[0]["snippet"]["topLevelComment"]["snippet"]["textOriginal"])
+
+        # 4) Subsequent new episode upload (`ep5_crowd_paradox`) automatically posts its official comment immediately!
+        with (
+            patch("requests.get", side_effect=fake_get_threads),
+            patch("requests.post", side_effect=fake_post_with_comments),
+            patch("requests.put", side_effect=fake_put_ep5),
+        ):
+            res_ep5 = youtube_poster.publish_moshimo_episode_to_youtube(
+                ep_id="ep5_crowd_paradox",
+                slot_label="20:00",
+                force=True,
+            )
+        self.assertTrue(res_ep5["ok"])
+        self.assertTrue(res_ep5.get("comment_result", {}).get("ok"))
+        self.assertEqual(res_ep5["comment_result"]["comment_id"], "UgxNewComment_VidEp5Pub22")
+        self.assertTrue(youtube_poster.is_episode_youtube_commented("ep5_crowd_paradox")[0])
+
 
 if __name__ == "__main__":
     unittest.main()

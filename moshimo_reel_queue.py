@@ -346,6 +346,7 @@ def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
             "duration_sec": dur_val,
             "related_column_path": str(c_ep.get("related_column_path") or "/columns"),
             "thumb_offset_ms": thumb_val,
+            "pinned_comment": str(c_ep.get("pinned_comment") or ""),
             "caption": str(c_ep.get("caption") or ""),
         }
         out.append(item)
@@ -463,11 +464,14 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
         if last_ts and last_ts > latest_posted_ts:
             latest_posted_ts = last_ts
         yt_done, yt_vid, yt_ts = False, "", ""
+        yt_comm_done, yt_comm_id = False, ""
         try:
             import youtube_poster
             yt_done, yt_vid, yt_ts = youtube_poster.find_synced_youtube_video_for_episode(ep, allow_blocking=allow_blocking)
+            yt_comm_done, yt_comm_id, _ = youtube_poster.is_episode_youtube_commented(ep["ep_id"], allow_blocking=allow_blocking)
         except Exception:
             yt_done, yt_vid, yt_ts = False, "", ""
+            yt_comm_done, yt_comm_id = False, ""
         if yt_done:
             yt_posted_count += 1
         local_path = resolve_episode_local_path(ep)
@@ -475,6 +479,7 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
         file_bytes = os.path.getsize(local_path) if file_exists else 0
         yt_title = str(ep.get("youtube_title") or f"{ep['title']} #もしもシリーズ #雑学")
         yt_desc = build_youtube_shorts_description(ep)
+        yt_pinned = build_youtube_shorts_pinned_comment(ep)
         entry = {
             "ep_id": ep["ep_id"],
             "order": ep["order"],
@@ -482,6 +487,7 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
             "title": ep["title"],
             "youtube_title": yt_title,
             "youtube_description": yt_desc,
+            "youtube_pinned_comment": yt_pinned,
             "caption": ep["caption"],
             "duration_sec": float(ep.get("duration_sec") or 30.0),
             "related_column_path": str(ep.get("related_column_path") or "/columns"),
@@ -493,6 +499,8 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
             "yt_video_id": yt_vid,
             "yt_shorts_url": f"https://www.youtube.com/shorts/{yt_vid}" if yt_vid else "",
             "yt_last_posted_at": yt_ts,
+            "yt_commented": yt_comm_done,
+            "yt_comment_id": yt_comm_id,
             "file_exists": file_exists,
             "file_size_mb": round(file_bytes / (1024 * 1024), 2) if file_bytes else 0.0,
         }

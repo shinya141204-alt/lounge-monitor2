@@ -1096,6 +1096,11 @@ def api_moshimo_reel_queue():
         st['youtube_enabled'] = bool((st.get('youtube_auto_post') or {}).get('enabled'))
         return jsonify({'ok': True, **st})
 
+    if action == 'backfill_youtube_comments':
+        import youtube_poster
+        bf_res = youtube_poster.backfill_published_moshimo_comments()
+        return jsonify(bf_res), (200 if bf_res.get('ok') else 400)
+
     if action == 'publish_youtube':
         import youtube_poster
         ep_id = str(payload.get('ep_id') or request.args.get('ep_id') or '').strip() or None

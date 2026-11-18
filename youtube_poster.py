@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
 
 YOUTUBE_RESUMABLE_UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
+YOUTUBE_COMMENT_THREADS_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
 MAX_YOUTUBE_UPLOAD_BYTES = 128 * 1024 * 1024  # 128 MB safety ceiling for Shorts MP4
 
 YOUTUBE_AUTO_POST_ENABLED_KEY = "youtube_shorts_auto_post_enabled"
@@ -53,6 +54,9 @@ YOUTUBE_UPLOAD_HISTORY_KEY = "youtube_shorts_upload_history_v1"
 YOUTUBE_EPISODE_DONE_PREFIX = "yt_moshimo_posted:"
 YOUTUBE_EPISODE_VID_PREFIX = "yt_moshimo_vid:"
 YOUTUBE_EPISODE_TS_PREFIX = "yt_moshimo_last_ts:"
+YOUTUBE_EPISODE_COMMENT_DONE_PREFIX = "yt_moshimo_commented:"
+YOUTUBE_EPISODE_COMMENT_ID_PREFIX = "yt_moshimo_cid:"
+YOUTUBE_EPISODE_COMMENT_TS_PREFIX = "yt_moshimo_cts:"
 YOUTUBE_DATE_POSTED_PREFIX = "yt_moshimo_posted_date:"
 YOUTUBE_SLOT_PREFIX = "yt_short_slot:"
 YOUTUBE_RESUMABLE_SESSION_PREFIX = "yt_resumable_url:"
@@ -84,9 +88,13 @@ def _business_dt(now_jst: Optional[datetime.datetime] = None) -> datetime.dateti
     return _now_jst(now_jst) - datetime.timedelta(hours=7)
 
 
+def _is_fn_mocked(fn: Any) -> bool:
+    return bool(fn is not None and (hasattr(fn, "assert_called") or type(fn).__module__.startswith("unittest.mock")))
+
+
 def _is_requests_mocked() -> bool:
-    for fn in (getattr(requests, "post", None), getattr(requests, "put", None)):
-        if fn is not None and (hasattr(fn, "assert_called") or type(fn).__module__.startswith("unittest.mock")):
+    for fn in (getattr(requests, "post", None), getattr(requests, "put", None), getattr(requests, "get", None)):
+        if _is_fn_mocked(fn):
             return True
     return False
 
@@ -207,6 +215,37 @@ def sanitize_youtube_description(raw_description: str, ensure_shorts_tag: bool =
     if len(encoded) > 4800:
         txt = encoded[:4800].decode("utf-8", errors="ignore").rstrip()
     return txt
+
+
+def sanitize_youtube_comment(raw_comment: str) -> str:
+    """
+    Sanitize top-level official comment text (`commentThreads.insert`):
+      - Official brand naming (`オリエンタルラウンジ`)
+      - Strips any `/link/` affiliate paths (`AGENTS.md §4`)
+      - Clamps UTF-8 byte length `<= 4500` bytes
+    """
+    txt = _normalize_youtube_brand_text(str(raw_comment or "").strip())
+    txt = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+", "", txt)
+    txt = _ANY_LINK_PATH_RE.sub("https://aiseki-navi.com/?s=short_bio", txt)
+    encoded = txt.encode("utf-8")
+    if len(encoded) > 4500:
+        txt = encoded[:4500].decode("utf-8", errors="ignore").rstrip()
+    return txt
+
+
+def is_episode_youtube_commented(ep_id: str, allow_blocking: bool = False) -> Tuple[bool, str, str]:
+    clean_ep_id = str(ep_id or "").strip()
+    if not clean_ep_id:
+        return False, "", ""
+    if job_state.is_done(f"{YOUTUBE_EPISODE_COMMENT_DONE_PREFIX}{clean_ep_id}"):
+        cid = str(
+            job_state.get_value(f"{YOUTUBE_EPISODE_COMMENT_ID_PREFIX}{clean_ep_id}", allow_blocking=allow_blocking, default="") or ""
+        ).strip()
+        ts = str(
+            job_state.get_value(f"{YOUTUBE_EPISODE_COMMENT_TS_PREFIX}{clean_ep_id}", allow_blocking=allow_blocking, default="") or ""
+        ).strip()
+        return True, cid, ts
+    return False, "", ""
 
 
 def _sanitize_youtube_tags(tags: Optional[List[str]] = None) -> List[str]:
@@ -680,6 +719,267 @@ def _check_connected_with_upload_scope() -> bool:
     return False
 
 
+def _check_connected_with_comment_scope() -> bool:
+    yt_st = youtube_analytics_sync.get_youtube_sync_status(allow_blocking=True)
+    if not yt_st.get("connected"):
+        return False
+    if yt_st.get("has_comment_scope"):
+        return True
+    if _is_youtube_network_blocked_in_tests():
+        return False
+    try:
+        meta = youtube_analytics_sync._load_meta(allow_blocking=True)
+        if "has_comment_scope" not in meta:
+            youtube_analytics_sync.get_valid_youtube_access_token(require_upload_scope=False)
+            yt_st = youtube_analytics_sync.get_youtube_sync_status(allow_blocking=True)
+            return bool(yt_st.get("connected") and yt_st.get("has_comment_scope"))
+    except Exception:
+        pass
+    return False
+
+
+def _find_existing_channel_comment_id(video_id: str, access_token: str, channel_id: str) -> str:
+    """
+    Check whether `@aiseki_navi` (`channel_id`) has ALREADY posted a top-level comment on `video_id`
+    via `commentThreads.list`, preventing duplicate official comments even across manual + auto runs.
+    """
+    if not video_id or not access_token or not channel_id:
+        return ""
+    in_test_env = bool(os.environ.get("DISABLE_SHEETS") == "1" or os.environ.get("PYTEST_CURRENT_TEST"))
+    if in_test_env and os.environ.get("ALLOW_YOUTUBE_UPLOAD_IN_TESTS") != "1" and not _is_fn_mocked(getattr(requests, "get", None)):
+        return ""
+    try:
+        resp = requests.get(
+            YOUTUBE_COMMENT_THREADS_URL,
+            params={"part": "snippet", "videoId": video_id, "maxResults": "25"},
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=12,
+        )
+        if resp.status_code >= 400:
+            return ""
+        items = (resp.json() or {}).get("items") or []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            top = ((item.get("snippet") or {}).get("topLevelComment") or {})
+            author_ch = str(((top.get("snippet") or {}).get("authorChannelId") or {}).get("value") or "").strip()
+            if author_ch and author_ch == channel_id:
+                return str(top.get("id") or item.get("id") or "existing")
+    except Exception as exc:
+        logger.debug(f"[youtube_poster] existing comment check warning on {video_id}: {exc}")
+    return ""
+
+
+def post_youtube_top_level_comment(
+    video_id: str,
+    comment_text: str,
+    retry_delays: Tuple[float, ...] = (0.0, 2.5, 5.0),
+) -> Dict[str, Any]:
+    """
+    Post an official top-level comment on `video_id` via YouTube Data API v3 (`commentThreads.insert`).
+    Note: Official YouTube Data API v3 does not expose a comment-pinning endpoint, so posting the
+    first official comment makes copy-paste unnecessary (and stays on top initially until 1-tap pinned in Studio).
+    """
+    if _is_youtube_network_blocked_in_tests():
+        return {
+            "ok": False,
+            "status": "blocked_in_test",
+            "error": "テスト環境での実YouTube API送信はブロックされています",
+        }
+
+    clean_vid = str(video_id or "").strip()
+    clean_text = sanitize_youtube_comment(comment_text)
+    if not clean_vid or not clean_text:
+        return {"ok": False, "status": "error", "error": "video_id またはコメント本文が空です"}
+
+    access_token, meta, tok_err = youtube_analytics_sync.get_valid_youtube_access_token(require_comment_scope=True)
+    if tok_err or not access_token:
+        return {"ok": False, "status": "missing_comment_scope", "error": tok_err or "YouTubeコメント権限トークン取得失敗"}
+
+    channel_id = str((meta or {}).get("channel_id") or "").strip()
+    existing_cid = _find_existing_channel_comment_id(clean_vid, access_token, channel_id)
+    if existing_cid:
+        return {
+            "ok": True,
+            "status": "already_exists",
+            "comment_id": existing_cid,
+            "video_id": clean_vid,
+            "text": clean_text,
+            "studio_comments_url": f"https://studio.youtube.com/video/{clean_vid}/comments",
+        }
+
+    body = {
+        "snippet": {
+            "videoId": clean_vid,
+            "topLevelComment": {
+                "snippet": {
+                    "textOriginal": clean_text,
+                }
+            },
+        }
+    }
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; charset=UTF-8",
+    }
+
+    last_status = 0
+    last_text = ""
+    is_mock_post = _is_fn_mocked(getattr(requests, "post", None))
+    delays = retry_delays if retry_delays else (0.0,)
+
+    for idx, delay_sec in enumerate(delays):
+        if delay_sec > 0 and not is_mock_post:
+            time.sleep(delay_sec)
+        try:
+            resp = requests.post(
+                YOUTUBE_COMMENT_THREADS_URL,
+                params={"part": "snippet"},
+                headers=headers,
+                data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                timeout=15,
+            )
+        except Exception as exc:
+            if idx + 1 < len(delays):
+                continue
+            return {"ok": False, "status": "network_error", "error": f"YouTubeコメント送信通信エラー: {type(exc).__name__}"}
+
+        last_status = resp.status_code
+        last_text = resp.text or ""
+        if resp.status_code in (200, 201):
+            try:
+                rjson = resp.json() or {}
+            except Exception:
+                rjson = {}
+            cid = str(
+                rjson.get("id")
+                or (((rjson.get("snippet") or {}).get("topLevelComment") or {}).get("id"))
+                or "posted"
+            ).strip()
+            return {
+                "ok": True,
+                "status": "success",
+                "comment_id": cid,
+                "video_id": clean_vid,
+                "text": clean_text,
+                "studio_comments_url": f"https://studio.youtube.com/video/{clean_vid}/comments",
+            }
+
+        # Newly uploaded Shorts can briefly return 404/5xx while YouTube indexes the video
+        if resp.status_code in (404, 500, 502, 503, 504) and idx + 1 < len(delays):
+            continue
+        break
+
+    err_msg = _classify_youtube_upload_error(last_status, last_text)
+    return {
+        "ok": False,
+        "status": "api_error",
+        "http_status": last_status,
+        "error": err_msg,
+        "video_id": clean_vid,
+    }
+
+
+def ensure_moshimo_episode_youtube_comment(
+    ep: Dict[str, Any],
+    video_id: str = "",
+    custom_comment: str = "",
+    force: bool = False,
+    now_jst: Optional[datetime.datetime] = None,
+) -> Dict[str, Any]:
+    """Idempotently post the episode's `pinned_comment` as an official top-level comment on YouTube."""
+    import moshimo_reel_queue
+
+    ep_id = str((ep or {}).get("ep_id") or "").strip()
+    if not ep_id:
+        return {"ok": False, "status": "skipped", "reason": "missing_ep_id"}
+
+    already_c, existing_cid, existing_cts = is_episode_youtube_commented(ep_id, allow_blocking=True)
+    if already_c and not force:
+        return {
+            "ok": True,
+            "status": "already_commented",
+            "ep_id": ep_id,
+            "comment_id": existing_cid,
+            "commented_at": existing_cts,
+        }
+
+    vid = str(video_id or "").strip()
+    if not vid:
+        _, vid, _ = find_synced_youtube_video_for_episode(ep, allow_blocking=True)
+    if not vid:
+        return {"ok": False, "status": "skipped", "ep_id": ep_id, "reason": "video_not_published_yet"}
+
+    if not turbo_store.acquire_distributed_lock(f"yt_comment_claim:{ep_id}:{vid}", ttl_sec=90, fail_open=True):
+        return {"ok": False, "status": "skipped", "ep_id": ep_id, "reason": "comment_lock_busy"}
+
+    comment_txt = (custom_comment or moshimo_reel_queue.build_youtube_shorts_pinned_comment(ep)).strip()
+    res = post_youtube_top_level_comment(vid, comment_txt)
+    res["ep_id"] = ep_id
+    if res.get("ok"):
+        ts_str = _now_jst(now_jst).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            job_state.mark_done(f"{YOUTUBE_EPISODE_COMMENT_DONE_PREFIX}{ep_id}")
+            job_state.set_value(f"{YOUTUBE_EPISODE_COMMENT_ID_PREFIX}{ep_id}", str(res.get("comment_id") or "posted"))
+            job_state.set_value(f"{YOUTUBE_EPISODE_COMMENT_TS_PREFIX}{ep_id}", ts_str)
+        except Exception as exc:
+            logger.warning(f"[youtube_poster] comment state save warning for {ep_id}: {exc}")
+    return res
+
+
+def backfill_published_moshimo_comments(now_jst: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    """
+    Scan all published Moshimo YouTube Shorts (`#1..#10` + custom) and post official top-level
+    comments on any video that does not yet have one. Safe & idempotent to run on OAuth callback or cron.
+    """
+    import moshimo_reel_queue
+
+    if not _check_connected_with_comment_scope():
+        return {
+            "ok": False,
+            "status": "missing_comment_scope",
+            "reason": "YouTube自動コメント権限（youtube.force-ssl）が未認可です",
+            "commented": [],
+            "already_done": [],
+            "errors": [],
+        }
+
+    now_dt = _now_jst(now_jst)
+    commented: List[Dict[str, Any]] = []
+    already_done: List[str] = []
+    errors: List[Dict[str, Any]] = []
+
+    for ep in moshimo_reel_queue.get_all_moshimo_episodes(allow_blocking=True):
+        posted, vid, _ = find_synced_youtube_video_for_episode(ep, allow_blocking=True)
+        if not posted or not vid:
+            continue
+        c_res = ensure_moshimo_episode_youtube_comment(ep, video_id=vid, force=False, now_jst=now_dt)
+        st = str(c_res.get("status") or "")
+        if st in ("already_commented", "already_exists"):
+            already_done.append(ep["ep_id"])
+        elif c_res.get("ok"):
+            commented.append(
+                {
+                    "ep_id": ep["ep_id"],
+                    "video_id": vid,
+                    "comment_id": c_res.get("comment_id") or "",
+                    "studio_comments_url": c_res.get("studio_comments_url") or f"https://studio.youtube.com/video/{vid}/comments",
+                }
+            )
+        else:
+            errors.append({"ep_id": ep["ep_id"], "video_id": vid, "error": c_res.get("error") or c_res.get("reason") or st})
+
+    return {
+        "ok": len(errors) == 0,
+        "status": "success" if not errors else ("partial" if commented or already_done else "error"),
+        "commented_count": len(commented),
+        "already_done_count": len(already_done),
+        "commented": commented,
+        "already_done": already_done,
+        "errors": errors,
+    }
+
+
 def publish_moshimo_episode_to_youtube(
     ep_id: Optional[str] = None,
     slot_label: str = "20:00",
@@ -791,8 +1091,21 @@ def publish_moshimo_episode_to_youtube(
                 except Exception:
                     pass
 
-            # 2) Secondary analytics/history registration (`H-3`: never register locked_private as public post)
+            # 2) Auto-post official top-level comment (`pinned_comment`) when public/unlisted & comment scope granted
             is_locked = bool(up_res.get("privacy_locked"))
+            if not is_locked and up_res.get("privacy_status") in ("public", "unlisted") and _check_connected_with_comment_scope():
+                try:
+                    c_res = ensure_moshimo_episode_youtube_comment(
+                        ep,
+                        video_id=vid,
+                        force=is_recycle,
+                        now_jst=now_dt,
+                    )
+                    up_res["comment_result"] = c_res
+                except Exception as c_exc:
+                    logger.warning(f"[youtube_poster] auto-comment warning for {resolved_ep_id} ({vid}): {c_exc}")
+
+            # 3) Secondary analytics/history registration (`H-3`: never register locked_private as public post)
             try:
                 import sns_editorial
                 if is_locked:
@@ -879,13 +1192,25 @@ def dispatch_scheduled_youtube_short(
     now_dt = _now_jst(now_jst)
     due_ep = select_due_youtube_moshimo_episode(now_jst=now_dt)
     if due_ep is not None:
-        return publish_moshimo_episode_to_youtube(
+        pub_res = publish_moshimo_episode_to_youtube(
             ep_id=due_ep["ep_id"],
             slot_label=slot_label,
             force=False,
             allow_recycle=bool(due_ep.get("is_evergreen_recycle")),
             now_jst=now_dt,
         )
+        if _check_connected_with_comment_scope():
+            try:
+                backfill_published_moshimo_comments(now_jst=now_dt)
+            except Exception:
+                pass
+        return pub_res
+
+    if _check_connected_with_comment_scope():
+        try:
+            backfill_published_moshimo_comments(now_jst=now_dt)
+        except Exception:
+            pass
 
     # Optional live-data Reel cross-posting to YouTube Shorts (OFF by default to keep channel curated)
     if is_youtube_live_reels_enabled(allow_blocking=True) and stores and not is_seed:
@@ -941,6 +1266,7 @@ def get_youtube_auto_post_status(allow_blocking: bool = False) -> Dict[str, Any]
 
     connected = bool(yt_oauth.get("connected"))
     has_upload_scope = bool(yt_oauth.get("has_upload_scope"))
+    has_comment_scope = bool(yt_oauth.get("has_comment_scope"))
     ready = bool(connected and has_upload_scope and enabled and not privacy_locked)
 
     return {
@@ -950,6 +1276,7 @@ def get_youtube_auto_post_status(allow_blocking: bool = False) -> Dict[str, Any]
         "supported_privacy_statuses": list(SUPPORTED_PRIVACY_STATUSES),
         "connected": connected,
         "has_upload_scope": has_upload_scope,
+        "has_comment_scope": has_comment_scope,
         "ready": ready,
         "channel_title": yt_oauth.get("channel_title") or "",
         "custom_url": yt_oauth.get("custom_url") or "",

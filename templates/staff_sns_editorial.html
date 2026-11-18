@@ -1657,6 +1657,14 @@
                 <strong>Google未審査プロジェクトの非公開ロック検知：</strong>
                 アップロード動画が「非公開（ロック）」になった場合は、<a href="https://support.google.com/youtube/contact/yt_api_form" target="_blank" rel="noopener noreferrer" style="color:inherit; font-weight:800; text-decoration:underline;">YouTube API 審査フォーム</a>（提出用回答シート作成済）を送信すると公開制限が解除されます。
             </div>
+            {% elif not _yt_auto.get('has_comment_scope') %}
+            <div style="margin-top:12px; padding:10px 14px; border-radius:10px; background:var(--surface-2); border:1px solid var(--border-strong); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div style="font-size:0.78rem; color:var(--text); line-height:1.5;">
+                    <strong>YouTube公式コメント自動書き込み（commentThreads.insert）がスタンバイ完了しています：</strong>
+                    右ボタンから1回だけコメント権限（<code>youtube.force-ssl</code>）を追加承認すると、<strong>公開済みの#1〜#4への一括コメント自動書き込み</strong>と<strong>明日20:00以降の新作公開時の自動コメント投稿</strong>が同時に有効化されます（※ピン留め操作のみYouTubeアプリで1タップ）。
+                </div>
+                <a href="/staff/youtube/oauth/start?scope=upload&next=sns_editorial" class="moshimo-action-btn primary" style="text-decoration:none; white-space:nowrap;">公式コメント自動投稿を1クリック認可</a>
+            </div>
             {% endif %}
 
             <div class="moshimo-kpi-row">
@@ -1721,6 +1729,9 @@
                         <a id="moshimo-download-link" href="{{ _mq_init.static_rel_path }}" download="{{ _mq_init.ep_id }}.mp4" class="moshimo-action-btn primary">MP4を保存（Shorts用）</a>
                         <button type="button" id="moshimo-publish-now-btn" class="moshimo-action-btn">この回を今すぐIG公開</button>
                         <button type="button" id="moshimo-publish-yt-btn" class="moshimo-action-btn">この回を今すぐYouTube公開</button>
+                        {% if _yt_auto.get('has_comment_scope') %}
+                        <button type="button" id="moshimo-backfill-yt-comments-btn" class="moshimo-action-btn">公開済動画にコメント一括反映</button>
+                        {% endif %}
                         <div id="moshimo-op-status" role="status" aria-live="polite" style="font-size:0.75rem; color:var(--sub); line-height:1.45;"></div>
                     </div>
                     <div style="min-width:0;">
@@ -1737,13 +1748,24 @@
 
                         <div class="moshimo-field">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-                                <label for="moshimo-yt-desc-field">YouTube概要欄・固定コメント（@aiseki_navi 誘導済）</label>
+                                <label for="moshimo-yt-desc-field">YouTube概要欄（@aiseki_navi 誘導済）</label>
                                 <span style="display:inline-flex; align-items:center; gap:6px;">
                                     <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-yt-desc-field">概要欄をコピー</button>
                                     <span class="moshimo-copy-tip" role="status"></span>
                                 </span>
                             </div>
-                            <textarea id="moshimo-yt-desc-field" class="moshimo-textarea" rows="5" readonly>{{ _mq_init.youtube_description }}</textarea>
+                            <textarea id="moshimo-yt-desc-field" class="moshimo-textarea" rows="4" readonly>{{ _mq_init.youtube_description }}</textarea>
+                        </div>
+
+                        <div class="moshimo-field">
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                                <label for="moshimo-yt-comment-field">YouTube公式1コメ目・固定コメント原稿（公開時に自動投稿）</label>
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <button type="button" class="moshimo-action-btn" command="--copy" commandfor="moshimo-yt-comment-field">コメントをコピー</button>
+                                    <span class="moshimo-copy-tip" role="status"></span>
+                                </span>
+                            </div>
+                            <textarea id="moshimo-yt-comment-field" class="moshimo-textarea" rows="2" readonly>{{ _mq_init.youtube_pinned_comment }}</textarea>
                         </div>
 
                         <div class="moshimo-field" style="margin-block-end:0;">
@@ -4047,6 +4069,8 @@
             if (ytTitle) ytTitle.value = ep.youtube_title || "";
             var ytDesc = document.getElementById("moshimo-yt-desc-field");
             if (ytDesc) ytDesc.value = ep.youtube_description || "";
+            var ytComm = document.getElementById("moshimo-yt-comment-field");
+            if (ytComm) ytComm.value = ep.youtube_pinned_comment || "";
             var igCap = document.getElementById("moshimo-ig-cap-field");
             if (igCap) igCap.value = ep.caption || "";
             var opSt = document.getElementById("moshimo-op-status");
@@ -4055,7 +4079,7 @@
                     ? ("IG済(" + (ep.last_posted_at || "完了") + ")")
                     : ("IG予定:" + ep.scheduled_date + " 20:00");
                 var ytTxt = ep.yt_posted
-                    ? (" / YouTube済" + (ep.yt_video_id ? " (" + ep.yt_video_id + ")" : ""))
+                    ? (" / YouTube済" + (ep.yt_video_id ? " (" + ep.yt_video_id + ")" : "") + (ep.yt_commented ? "・コメ済" : ""))
                     : " / YouTube未公開";
                 opSt.textContent = igTxt + ytTxt;
             }
@@ -4200,6 +4224,32 @@
                         if (opSt) opSt.textContent = "YouTube公開エラー: " + (e.message || "通信失敗");
                     } finally {
                         pubYtBtn.disabled = false;
+                    }
+                });
+            }
+            var bfYtBtn = document.getElementById("moshimo-backfill-yt-comments-btn");
+            if (bfYtBtn) {
+                bfYtBtn.addEventListener("click", async function() {
+                    bfYtBtn.disabled = true;
+                    var opSt = document.getElementById("moshimo-op-status");
+                    if (opSt) opSt.textContent = "公開済みYouTubeショートへ公式コメントを一括反映中...";
+                    try {
+                        var resp = await fetch("/api/moshimo-reel-queue", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                            body: JSON.stringify({ action: "backfill_youtube_comments" })
+                        });
+                        var data = await resp.json();
+                        if (!resp.ok || !data.ok) {
+                            throw new Error((data && (data.error || data.reason)) || "コメント一括反映に失敗しました");
+                        }
+                        if (opSt) {
+                            opSt.textContent = "公式コメント一括反映完了（新規 " + (data.commented_count || 0) + "件 / 既済 " + (data.already_done_count || 0) + "件）";
+                        }
+                    } catch (e) {
+                        if (opSt) opSt.textContent = "コメント反映エラー: " + (e.message || "通信失敗");
+                    } finally {
+                        bfYtBtn.disabled = false;
                     }
                 });
             }

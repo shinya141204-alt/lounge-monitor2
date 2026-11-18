@@ -1690,12 +1690,14 @@
                             <strong>連携中チャンネル：</strong>{{ yt_oauth_info.channel_title or '@aiseki_navi' }}
                             {% if yt_oauth_info.custom_url %}<code>{{ yt_oauth_info.custom_url }}</code>{% endif %}
                             ｜ <strong>最終同期：</strong>{{ yt_oauth_info.last_sync_at or '連携済' }}（{{ yt_oauth_info.last_synced_count|default(0) }}本）
-                            ｜ <strong>自動投稿権限：</strong>{% if yt_oauth_info.has_upload_scope %}<span style="color:var(--green-ink); font-weight:700;">認可済（youtube.upload）</span>{% else %}<span style="color:var(--amber); font-weight:700;">未認可（読み取り専用）</span>{% endif %}
+                            ｜ <strong>自動投稿権限：</strong>{% if yt_oauth_info.has_upload_scope and yt_oauth_info.has_comment_scope %}<span style="color:var(--green-ink); font-weight:700;">認可済（動画公開＋自動コメント）</span>{% elif yt_oauth_info.has_upload_scope %}<span style="color:var(--amber); font-weight:700;">動画公開認可済（自動コメント未認可）</span>{% else %}<span style="color:var(--amber); font-weight:700;">未認可（読み取り専用）</span>{% endif %}
                             {% if yt_oauth_info.last_error %}<br><span style="color:var(--rose);">注意：{{ yt_oauth_info.last_error }}</span>{% endif %}
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             {% if not yt_oauth_info.has_upload_scope %}
                             <a href="/staff/youtube/oauth/start?scope=upload" class="run-btn" style="text-decoration:none; display:inline-flex; align-items:center; width:auto; min-height:38px; padding:6px 14px;">YouTube自動投稿を認可</a>
+                            {% elif not yt_oauth_info.has_comment_scope %}
+                            <a href="/staff/youtube/oauth/start?scope=upload" class="run-btn" style="text-decoration:none; display:inline-flex; align-items:center; width:auto; min-height:38px; padding:6px 14px;">自動コメント権限も1クリック認可</a>
                             {% else %}
                             <a href="/staff/youtube/oauth/start?scope=upload" class="mini-btn" style="text-decoration:none;">チャンネル再選択・再認可</a>
                             {% endif %}

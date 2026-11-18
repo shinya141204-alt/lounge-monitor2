@@ -61,7 +61,17 @@ YOUTUBE_READONLY_SCOPES = (
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 )
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
-YOUTUBE_FULL_SCOPES = YOUTUBE_READONLY_SCOPES + (YOUTUBE_UPLOAD_SCOPE,)
+YOUTUBE_COMMENT_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl"
+YOUTUBE_BROAD_SCOPE = "https://www.googleapis.com/auth/youtube"
+YOUTUBE_FULL_SCOPES = YOUTUBE_READONLY_SCOPES + (YOUTUBE_UPLOAD_SCOPE, YOUTUBE_COMMENT_SCOPE)
+
+
+def _scopes_have_upload(scopes: List[str]) -> bool:
+    return YOUTUBE_UPLOAD_SCOPE in scopes or YOUTUBE_BROAD_SCOPE in scopes
+
+
+def _scopes_have_comment(scopes: List[str]) -> bool:
+    return YOUTUBE_COMMENT_SCOPE in scopes or YOUTUBE_BROAD_SCOPE in scopes
 
 MAX_SHORTS_DURATION_SEC = 185  # YouTube Shorts max duration is 180s (+5s container rounding tolerance)
 
@@ -201,11 +211,13 @@ def get_youtube_sync_status(base_url: Optional[str] = None, allow_blocking: bool
         granted_scopes = [str(s) for s in raw_granted if s]
     else:
         granted_scopes = list(YOUTUBE_READONLY_SCOPES) if connected else []
-    has_upload = bool(meta.get("has_upload_scope") or (YOUTUBE_UPLOAD_SCOPE in granted_scopes))
+    has_upload = bool(meta.get("has_upload_scope") or _scopes_have_upload(granted_scopes))
+    has_comment = bool(meta.get("has_comment_scope") or _scopes_have_comment(granted_scopes))
     return {
         "has_client_credentials": has_client,
         "connected": connected,
         "has_upload_scope": bool(connected and has_upload),
+        "has_comment_scope": bool(connected and has_comment),
         "granted_scopes": granted_scopes,
         "client_id_masked": _mask_client_id(creds["client_id"]),
         "client_id": creds["client_id"],
@@ -285,6 +297,7 @@ def save_oauth_client_credentials(client_id: str, client_secret: str) -> Dict[st
         job_state.set_value(YOUTUBE_REFRESH_TOKEN_STATE_KEY, "")
         updates["granted_scopes"] = []
         updates["has_upload_scope"] = False
+        updates["has_comment_scope"] = False
         updates["connected_at"] = ""
     _merge_and_save_meta(updates)
     job_state.set_value(YOUTUBE_CLIENT_SECRET_STATE_KEY, csec)
@@ -406,7 +419,8 @@ def exchange_code_and_save(
         granted_scopes = [s.strip() for s in raw_scope.split() if s.strip()]
     else:
         granted_scopes = list(YOUTUBE_FULL_SCOPES if requested_upload else YOUTUBE_READONLY_SCOPES)
-    has_upload = YOUTUBE_UPLOAD_SCOPE in granted_scopes
+    has_upload = _scopes_have_upload(granted_scopes)
+    has_comment = _scopes_have_comment(granted_scopes)
 
     if not access_token:
         return {"ok": False, "error": "アクセストークンを取得できませんでした"}
@@ -444,6 +458,7 @@ def exchange_code_and_save(
             "uploads_playlist_id": ch_info["uploads_playlist_id"],
             "granted_scopes": granted_scopes,
             "has_upload_scope": has_upload,
+            "has_comment_scope": has_comment,
             "disconnected_explicit": False,
             "connected_at": _now_jst_str(),
             "last_error": "",
@@ -455,6 +470,7 @@ def exchange_code_and_save(
         "channel_title": ch_info["channel_title"],
         "custom_url": ch_info["custom_url"],
         "has_upload_scope": has_upload,
+        "has_comment_scope": has_comment,
     }
 
 
@@ -479,6 +495,7 @@ def disconnect_youtube_oauth(clear_client_credentials: bool = False) -> Dict[str
         "uploads_playlist_id": "",
         "granted_scopes": [],
         "has_upload_scope": False,
+        "has_comment_scope": False,
         "disconnected_explicit": True,
     }
     if clear_client_credentials:
@@ -531,10 +548,13 @@ def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str
     return tok, err
 
 
-def get_valid_youtube_access_token(require_upload_scope: bool = False) -> Tuple[str, Dict[str, Any], str]:
+def get_valid_youtube_access_token(
+    require_upload_scope: bool = False,
+    require_comment_scope: bool = False,
+) -> Tuple[str, Dict[str, Any], str]:
     """
     Mint a fresh OAuth2 access token for `@aiseki_navi`, syncing `granted_scopes` metadata.
-    When `require_upload_scope=True`, verifies that `youtube.upload` was granted before attempting upload.
+    When `require_upload_scope=True` or `require_comment_scope=True`, verifies that the required scope was granted.
     """
     creds = _get_effective_credentials(allow_blocking=True)
     meta = _load_meta(allow_blocking=True)
@@ -548,18 +568,38 @@ def get_valid_youtube_access_token(require_upload_scope: bool = False) -> Tuple[
         return "", meta, err or "YouTubeトークン更新に失敗しました"
 
     if refreshed_scopes:
-        has_up = YOUTUBE_UPLOAD_SCOPE in refreshed_scopes
-        if meta.get("granted_scopes") != refreshed_scopes or bool(meta.get("has_upload_scope")) != has_up:
-            meta = _merge_and_save_meta({"granted_scopes": refreshed_scopes, "has_upload_scope": has_up})
+        has_up = _scopes_have_upload(refreshed_scopes)
+        has_cm = _scopes_have_comment(refreshed_scopes)
+        if (
+            meta.get("granted_scopes") != refreshed_scopes
+            or bool(meta.get("has_upload_scope")) != has_up
+            or bool(meta.get("has_comment_scope")) != has_cm
+        ):
+            meta = _merge_and_save_meta(
+                {
+                    "granted_scopes": refreshed_scopes,
+                    "has_upload_scope": has_up,
+                    "has_comment_scope": has_cm,
+                }
+            )
 
+    known_scopes = meta.get("granted_scopes") or []
     if require_upload_scope:
-        known_scopes = meta.get("granted_scopes") or []
-        has_up_now = bool(meta.get("has_upload_scope") or (YOUTUBE_UPLOAD_SCOPE in known_scopes))
+        has_up_now = bool(meta.get("has_upload_scope") or _scopes_have_upload(known_scopes))
         if not has_up_now:
             return (
                 "",
                 meta,
                 "YouTube自動投稿の権限（youtube.upload）がまだ認可されていません。『YouTube自動投稿を認可』ボタンから1クリック承認してください。",
+            )
+
+    if require_comment_scope:
+        has_cm_now = bool(meta.get("has_comment_scope") or _scopes_have_comment(known_scopes))
+        if not has_cm_now:
+            return (
+                "",
+                meta,
+                "YouTube自動コメントの権限（youtube.force-ssl）がまだ認可されていません。『公式コメント自動投稿を1クリック認可』ボタンから承認してください。",
             )
 
     return access_token, meta, ""
