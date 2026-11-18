@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=48"
+        expected_calm = "/static/calm.css?v=49"
         expected_portal = "/static/portal.css?v=19"
-        expected_app_js = "/static/app.js?v=20261118_3"
+        expected_app_js = "/static/app.js?v=20261118_4"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=115"
-        expected_cache_name = "aiseki-navi-v115"
+        expected_sw_url = "/sw.js?v=116"
+        expected_cache_name = "aiseki-navi-v116"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -3142,6 +3142,159 @@ class UiAuditRegressionTests(unittest.TestCase):
                     pc.goto("http://aiseki.local/about", wait_until="domcontentloaded")
                     self.assertLessEqual(pc.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth"), 0)
                     ctx_pc.close()
+                finally:
+                    browser.close()
+
+    def test_pc_plan1_sp_plan_a_1col_and_staff_monitor_fix(self):
+        """PC案1（1列お気に入り・店名横★・右端「女性/男性＋比率バー」）・スマホ確定（案A・1列維持）・PC社内業務モニター縦割れ根絶をPlaywright実ブラウザで検証"""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed in this Python environment")
+
+        import datetime as _dt
+        now_str = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+        stores = [
+            {"name": "JIS 新宿", "source": "jis", "region": "Kanto", "women": 56, "men": 3, "total": 59, "women_diff": 11, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+            {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 49, "men": 6, "total": 55, "women_diff": 6, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+            {"name": "相席ラウンジALFA 広島", "source": "alfa", "region": "Chugoku", "women": 24, "men": 6, "total": 30, "women_diff": 2, "men_diff": 2, "is_open_now": True, "timestamp": now_str},
+            {"name": "相席CLOVERS 広島", "source": "clovers", "region": "Chugoku", "women": 15, "men": 7, "total": 22, "women_diff": 2, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+            {"name": "OLG 宮崎", "source": "oriental", "region": "Kyushu", "women": 6, "men": 2, "total": 8, "women_diff": 0, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+        ]
+        with app_module.data_lock:
+            app_module.latest_data["full_data"] = copy.deepcopy(stores)
+            app_module.latest_data["top5"] = copy.deepcopy(stores[:3])
+            app_module.latest_data["last_updated"] = now_str
+            app_module.latest_data["status"] = "ok"
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_router(ctx, client):
+            def handle(route):
+                u = urlparse(route.request.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (("?" + u.query) if u.query else "")
+                headers = {k: v for k, v in route.request.headers.items() if k.lower() not in ("host", "content-length", "cookie")}
+                resp = client.open(path_qs, method=route.request.method.upper(), headers=headers, data=route.request.post_data_buffer, follow_redirects=True)
+                resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=resp_headers, body=resp.get_data())
+                resp.close()
+            ctx.route("**/*", handle)
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None), \
+             patch("logger.get_client", return_value=None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    # 1) PC Public (1280x900) - PC Plan 1
+                    ctx_pc = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    attach_router(ctx_pc, self.client)
+                    pc = ctx_pc.new_page()
+                    pc.goto(base + "/", wait_until="domcontentloaded")
+                    pc.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    pc.wait_for_timeout(120)
+
+                    # Click inline star next to store name on ALFA Hiroshima
+                    alfa_pin = pc.locator('#ranking-list .ranking-item[data-store*="ALFA"] .store-title-row .pin-btn')
+                    self.assertEqual(alfa_pin.get_attribute("aria-pressed"), "false")
+                    alfa_pin.click()
+                    pc.wait_for_timeout(80)
+
+                    pc_fav_state = pc.evaluate("""() => {
+                        const pinCard = document.querySelector('#pinned-list .ranking-item.pinned-item');
+                        if (!pinCard) return null;
+                        const cr = pinCard.getBoundingClientRect();
+                        const rr = pinCard.querySelector('.rank-badge').getBoundingClientRect();
+                        const pb = pinCard.querySelector('.store-title-row .pin-btn');
+                        const wLbl = pinCard.querySelector('.stat.ladies .label')?.innerText.trim();
+                        const mLbl = pinCard.querySelector('.stat.men .label')?.innerText.trim();
+                        const barH = pinCard.querySelector('.occupancy-bar').getBoundingClientRect().height;
+                        return {
+                            cardW: Math.round(cr.width),
+                            rankTopOffset: Math.round(rr.top - cr.top),
+                            pressed: pb ? pb.getAttribute('aria-pressed') : '',
+                            wLbl,
+                            mLbl,
+                            barH: Math.round(barH),
+                        };
+                    }""")
+                    self.assertIsNotNone(pc_fav_state)
+                    self.assertGreaterEqual(pc_fav_state["cardW"], 500, f"PC Plan 1 pinned card must stay 1-column full width: {pc_fav_state}")
+                    self.assertLessEqual(pc_fav_state["rankTopOffset"], 26, f"Rank badge must be top-aligned, not floating mid-card: {pc_fav_state}")
+                    self.assertEqual(pc_fav_state["pressed"], "true")
+                    self.assertEqual(pc_fav_state["wLbl"], "女性")
+                    self.assertEqual(pc_fav_state["mLbl"], "男性")
+                    self.assertGreaterEqual(pc_fav_state["barH"], 4)
+                    ctx_pc.close()
+
+                    # 2) Mobile Public (390x844) - Mobile Plan A (1-column Favorites)
+                    ctx_sp = browser.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+                    attach_router(ctx_sp, self.client)
+                    sp = ctx_sp.new_page()
+                    sp.goto(base + "/", wait_until="domcontentloaded")
+                    sp.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    sp.wait_for_timeout(120)
+                    sp.locator('#ranking-list .ranking-item[data-store="オリエンタルラウンジ 宮崎"] .store-title-row .pin-btn').click()
+                    sp.wait_for_timeout(80)
+
+                    sp_fav_state = sp.evaluate("""() => {
+                        const pinCard = document.querySelector('#pinned-list .ranking-item.pinned-item');
+                        const cr = pinCard.getBoundingClientRect();
+                        const sn = pinCard.querySelector('.store-name');
+                        const caDisp = getComputedStyle(pinCard.querySelector('.card-actions')).display;
+                        return {
+                            cardW: Math.round(cr.width),
+                            snH: Math.round(sn.getBoundingClientRect().height),
+                            caDisp,
+                            docOV: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                        };
+                    }""")
+                    self.assertGreaterEqual(sp_fav_state["cardW"], 340, f"Mobile Favorites must stay 1-column full width: {sp_fav_state}")
+                    self.assertLessEqual(sp_fav_state["snH"], 28, f"オリエンタルラウンジ 宮崎 must fit on 1 line on 390px: {sp_fav_state}")
+                    self.assertEqual(sp_fav_state["caDisp"], "none")
+                    self.assertLessEqual(sp_fav_state["docOV"], 0)
+                    ctx_sp.close()
+
+                    # 3) PC Staff Monitor (1280x900, /staff) - Zero crushed store names, zero spec row, zero duplicate theme bar
+                    app_module.clear_fast_http_caches()
+                    with self.client.session_transaction() as sess:
+                        sess["is_staff"] = True
+                        sess["is_master"] = True
+                    ctx_st = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    attach_router(ctx_st, self.client)
+                    st = ctx_st.new_page()
+                    st.goto(base + "/staff", wait_until="domcontentloaded")
+                    st.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    st.wait_for_timeout(120)
+
+                    staff_state = st.evaluate("""() => {
+                        const hdrThemeBar = document.querySelector('header .theme-switcher-bar');
+                        const clovers = Array.from(document.querySelectorAll('#ranking-list .ranking-item'))
+                            .find(el => (el.getAttribute('data-store') || '').includes('CLOVERS'));
+                        const cr = clovers.getBoundingClientRect();
+                        const sn = clovers.querySelector('.store-name').getBoundingClientRect();
+                        const specDisp = getComputedStyle(clovers.querySelector('.store-spec-row')).display;
+                        const wRect = clovers.querySelector('.stat.ladies .count').getBoundingClientRect();
+                        const mRect = clovers.querySelector('.stat.men .count').getBoundingClientRect();
+                        return {
+                            hdrThemeBarDisp: hdrThemeBar ? getComputedStyle(hdrThemeBar).display : 'none',
+                            specDisp,
+                            snW: Math.round(sn.width),
+                            snH: Math.round(sn.height),
+                            countsInsideCard: (wRect.left >= cr.left - 1) && (mRect.right <= cr.right + 1) && (wRect.width > 0) && (mRect.width > 0),
+                            docOV: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                        };
+                    }""")
+                    self.assertEqual(staff_state["hdrThemeBarDisp"], "none", "Duplicate theme bar must be hidden in staff header")
+                    self.assertEqual(staff_state["specDisp"], "none", "Consumer .store-spec-row must be hidden in staff-mode")
+                    self.assertGreaterEqual(staff_state["snW"], 140, f"CLOVERS store name must not be crushed: {staff_state}")
+                    self.assertLessEqual(staff_state["snH"], 32, f"CLOVERS store name must stay 1 line, not wrap 4 chars: {staff_state}")
+                    self.assertTrue(staff_state["countsInsideCard"], f"Staff card counts clipped outside card: {staff_state}")
+                    self.assertLessEqual(staff_state["docOV"], 0)
+                    ctx_st.close()
                 finally:
                     browser.close()
 

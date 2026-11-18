@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=48" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261118_3" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=49" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261118_4" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -481,7 +481,8 @@
                     {% else %}
                     {% if not is_master %}
                     <a href="/staff?switch=1" class="header-btn labeled-btn staff-master-switch-btn" title="マスター権限パスコードでログイン">
-                        <span>👑 マスター切替</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <span>マスター切替</span>
                     </a>
                     {% endif %}
                     <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
@@ -831,7 +832,17 @@
                                 <span class="area-tag">東京</span>
                                 <span class="card-freshness-tag hidden"><span class="card-freshness-full"></span><span class="card-freshness-sp"></span></span>
                             </div>
-                            <h3 class="store-name">Store Name</h3>
+                            <div class="store-title-row">
+                                <h3 class="store-name">Store Name</h3>
+                                <button type="button" class="pin-btn" aria-label="お気に入り" aria-pressed="false" title="お気に入り固定">
+                                    <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                        </polygon>
+                                    </svg>
+                                </button>
+                            </div>
                             <p class="cm-human-line hidden"></p>
                             <div class="store-spec-row hidden">
                                 <span class="spec-text"><span class="spec-price-main"></span><span class="spec-hours-age-extra"></span></span>
@@ -845,15 +856,7 @@
                         </div>
                         <!-- Card Actions -->
                         <div class="card-actions">
-                            <button class="pin-btn" aria-label="お気に入り" title="お気に入り固定">
-                                <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon
-                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
-                                    </polygon>
-                                </svg>
-                            </button>
-                            <button class="analysis-btn" aria-label="分析（曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析">
+                            <button type="button" class="analysis-btn" aria-label="分析（曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析">
                                 <svg class="chart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="20" x2="18" y2="10"></line>
                                     <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -863,25 +866,25 @@
                             </button>
                         </div>
                         <div class="stats-group">
-                            <div class="bento-ratio-hero">
-                                <div class="bento-ratio-main"><span class="bento-ratio-num">0</span><span class="bento-ratio-unit">%</span></div>
-                                <span class="bento-ratio-caption">女性比</span>
-                            </div>
                             <div class="stat ladies">
+                                <span class="label">女性</span>
                                 <div class="stat-num-row">
                                     <span class="count">0</span>
                                     <span class="stat-diff hidden"></span>
                                 </div>
-                                <span class="label">LADIES</span>
                                 <span class="stat-usual hidden"></span>
                             </div>
                             <div class="stat men">
+                                <span class="label">男性</span>
                                 <div class="stat-num-row">
                                     <span class="count">0</span>
                                     <span class="stat-diff hidden"></span>
                                 </div>
-                                <span class="label">MEN</span>
                                 <span class="stat-usual hidden"></span>
+                            </div>
+                            <div class="bento-ratio-hero">
+                                <span class="bento-ratio-caption">女性比</span>
+                                <div class="bento-ratio-main"><span class="bento-ratio-num">0</span><span class="bento-ratio-unit">%</span></div>
                             </div>
                         </div>
                         <!-- Gender ratio visual bar -->
@@ -953,7 +956,14 @@
                                         <span class="card-freshness-tag hidden"><span class="card-freshness-full"></span><span class="card-freshness-sp"></span></span>
                                         {% endif %}
                                     </div>
-                                    <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                                    <div class="store-title-row">
+                                        <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
+                                        <button type="button" class="pin-btn" aria-label="お気に入り（{{ s.ssr_title }}）" aria-pressed="false" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                            <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                            </svg>
+                                        </button>
+                                    </div>
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
                                     <div class="store-spec-row">
                                         <span class="spec-text"><span class="spec-price-main">{{ s.spec_price_short }}</span><span class="spec-hours-age-extra">{% if s.spec_hours_short %} ｜ 営業 {{ s.spec_hours_short }}{% endif %}{% if s.spec_age_short %} ｜ {{ s.spec_age_short }}{% endif %}</span></span>
@@ -985,12 +995,7 @@
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <button class="pin-btn" aria-label="お気に入り（{{ s.ssr_title }}）" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
-                                        <svg class="star-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                                        </svg>
-                                    </button>
-                                    <button class="analysis-btn" aria-label="分析（{{ s.ssr_title }}の曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                    <button type="button" class="analysis-btn" aria-label="分析（{{ s.ssr_title }}の曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
                                         <svg class="chart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                             <line x1="18" y1="20" x2="18" y2="10"></line>
                                             <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -1000,11 +1005,8 @@
                                     </button>
                                 </div>
                                 <div class="stats-group">
-                                    <div class="bento-ratio-hero{% if s.is_small_sample %} is-small-sample{% endif %}">
-                                        <div class="bento-ratio-main"><span class="bento-ratio-num">{{ s.ssr_ladies_pct if ssr_tot_num > 0 else 0 }}</span><span class="bento-ratio-unit">%</span></div>
-                                        <span class="bento-ratio-caption">{% if s.is_small_sample %}少人数のため参考値{% else %}女性比{% endif %}</span>
-                                    </div>
                                     <div class="stat ladies">
+                                        <span class="label">女性</span>
                                         <div class="stat-num-row">
                                             <span class="count">{{ s.women or 0 }}</span>
                                             {% if (s.women_diff or 0) > 0 %}
@@ -1013,7 +1015,6 @@
                                             <span class="stat-diff hidden"></span>
                                             {% endif %}
                                         </div>
-                                        <span class="label">LADIES</span>
                                         {% if s.usual_w_plain %}
                                         <span class="stat-usual{% if (s.usual_w_diff or 0) > 0 %} is-up{% elif (s.usual_w_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">{{ s.usual_w_plain }}</span>
                                         {% else %}
@@ -1021,6 +1022,7 @@
                                         {% endif %}
                                     </div>
                                     <div class="stat men">
+                                        <span class="label">男性</span>
                                         <div class="stat-num-row">
                                             <span class="count">{{ s.men or 0 }}</span>
                                             {% if (s.men_diff or 0) > 0 %}
@@ -1029,17 +1031,20 @@
                                             <span class="stat-diff hidden"></span>
                                             {% endif %}
                                         </div>
-                                        <span class="label">MEN</span>
                                         {% if s.usual_m_plain %}
                                         <span class="stat-usual{% if (s.usual_m_diff or 0) > 0 %} is-up{% elif (s.usual_m_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">{{ s.usual_m_plain }}</span>
                                         {% else %}
                                         <span class="stat-usual hidden"></span>
                                         {% endif %}
                                     </div>
+                                    <div class="bento-ratio-hero{% if s.is_small_sample %} is-small-sample{% elif ssr_tot_num == 0 %} is-zero-total{% endif %}">
+                                        <span class="bento-ratio-caption">{% if ssr_tot_num == 0 %}{{ '現在 0名' if s.is_open_now else '営業時間外' }}{% elif s.is_small_sample %}少人数のため参考値{% else %}女性比{% endif %}</span>
+                                        <div class="bento-ratio-main"><span class="bento-ratio-num">{{ s.ssr_ladies_pct if ssr_tot_num > 0 else 0 }}</span><span class="bento-ratio-unit">%</span></div>
+                                    </div>
                                 </div>
-                                <div class="occupancy-bar">
-                                    <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct }}%"></div>
-                                    <div class="bar-fill-men" style="width: {{ s.ssr_men_pct }}%"></div>
+                                <div class="occupancy-bar{% if ssr_tot_num == 0 %} is-empty{% endif %}">
+                                    <div class="bar-fill-ladies" style="width: {{ s.ssr_ladies_pct if ssr_tot_num > 0 else 0 }}%"></div>
+                                    <div class="bar-fill-men" style="width: {{ s.ssr_men_pct if ssr_tot_num > 0 else 0 }}%"></div>
                                 </div>
                             </div>
                             {% endif %}
@@ -1262,6 +1267,7 @@
                             var pb = item.querySelector('.pin-btn');
                             if (pb) {
                                 pb.classList.add('active');
+                                pb.setAttribute('aria-pressed', 'true');
                                 if (d.t || d.n) pb.setAttribute('aria-label', 'お気に入り（' + (d.t || d.n) + '）');
                                 pb.onclick = function (ev) {
                                     ev.stopPropagation();
@@ -1278,12 +1284,16 @@
                             }
                             var wNum = Number(d.w || 0);
                             var mNum = Number(d.m || 0);
+                            var totNum = wNum + mNum;
                             var bHero = item.querySelector('.bento-ratio-hero');
                             var bCap = item.querySelector('.bento-ratio-caption');
-                            if (bHero) bHero.classList.toggle('is-small-sample', Boolean(d.ss));
-                            if (bCap) bCap.textContent = d.ss ? '少人数のため参考値' : '女性比';
+                            if (bHero) {
+                                bHero.classList.toggle('is-small-sample', Boolean(d.ss));
+                                bHero.classList.toggle('is-zero-total', totNum <= 0);
+                            }
+                            if (bCap) bCap.textContent = totNum <= 0 ? '営業時間外' : (d.ss ? '少人数のため参考値' : '女性比');
                             var brNum = item.querySelector('.bento-ratio-num');
-                            if (brNum) brNum.textContent = String((wNum + mNum) > 0 ? (d.wp || 0) : 0);
+                            if (brNum) brNum.textContent = String(totNum > 0 ? (d.wp || 0) : 0);
                             var lc = item.querySelector('.stat.ladies .count');
                             if (lc) lc.textContent = String(wNum);
                             var ld = item.querySelector('.stat.ladies .stat-diff');
@@ -1316,10 +1326,12 @@
                                 mu.textContent = d.umd > 0 ? ('いつもより男性+' + d.umd + '人') : (d.umd < 0 ? ('いつもより男性' + Math.abs(d.umd) + '人少なめ') : 'いつも並み');
                                 mu.title = '普段の' + (d.usl || '') + '平均(' + (d.um !== undefined && d.um !== null ? d.um : 0) + '名)との差';
                             }
+                            var occBar = item.querySelector('.occupancy-bar');
+                            if (occBar) occBar.classList.toggle('is-empty', totNum <= 0);
                             var lb = item.querySelector('.bar-fill-ladies');
-                            if (lb) lb.style.width = (d.wp || 0) + '%';
+                            if (lb) lb.style.width = (totNum > 0 ? (d.wp || 0) : 0) + '%';
                             var mb = item.querySelector('.bar-fill-men');
-                            if (mb) mb.style.width = (d.mp || 0) + '%';
+                            if (mb) mb.style.width = (totNum > 0 ? (d.mp || 0) : 0) + '%';
                             return item;
                         }
                         try {
@@ -1344,7 +1356,10 @@
                                                 c.classList.remove('rank-1', 'rank-2', 'rank-3', 'bento-hero-card');
                                                 c.classList.add('pinned-item');
                                                 var pb = c.querySelector('.pin-btn');
-                                                if (pb) pb.classList.add('active');
+                                                if (pb) {
+                                                    pb.classList.add('active');
+                                                    pb.setAttribute('aria-pressed', 'true');
+                                                }
                                                 pList.appendChild(c);
                                                 moved++;
                                             }
@@ -3038,7 +3053,7 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261118_3" defer></script>
+    <script src="/static/app.js?v=20261118_4" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -3054,7 +3069,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=115', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=116', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

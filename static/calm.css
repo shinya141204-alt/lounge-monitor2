@@ -6596,7 +6596,7 @@ body.theme-light.audience-women:not(.staff-mode) {
 
 /* --- 26-B. Apple Global Ribbon（全ページ共通1行クリーンナビ）＆ トップヘッダー引き算 --- */
 /* トップページの重複テーマ切替バーを引き算（右上のライト切替＆表示切替に一本化・メニューモーダル内は維持） */
-body:not(.staff-mode) header .theme-switcher-bar {
+header .theme-switcher-bar {
     display: none !important;
 }
 
@@ -9760,6 +9760,10 @@ body.theme-light .bento-ratio-hero.is-small-sample .bento-ratio-caption {
 
 body.theme-list .store-spec-row,
 body.compact-mode .store-spec-row,
+body.staff-mode .store-spec-row,
+body.staff-mode .bento-kicker-row,
+body.staff-mode .store-micro-metrics,
+body.staff-mode .moat-signals-row,
 body.theme-list .card-freshness-tag,
 body.compact-mode .card-freshness-tag {
     display: none !important;
@@ -11124,4 +11128,696 @@ body:not(.theme-light):not(.staff-mode) .portal-footer-sitemap {
 .portal-footer-links a:not(.hidden),
 .portal-footer-sns a:not(.hidden) {
     display: inline-block;
+}
+
+/* ==========================================================================
+   29. PC案1 ＆ スマホ確定（案A・1列お気に入り維持） ＆ PC社内業務モニター修正
+       - 店名横インライン★（36px丸枠撤廃＋タッチ余白拡張＋aria-pressed連動）
+       - お気に入り店舗はスマホ・PCともに1列フル幅維持＋左アンバーアクセント
+       - 右カラム「女性 / 男性 ＋ 女性比% ＋ 5px比率バー」構造化で0.5秒判読
+       - 社内業務モニター（body.staff-mode）の料金文混入・店名4文字縦割れ・重複バー根絶
+   ========================================================================== */
+
+/* 29-A. 店名＋インライン★行（.store-title-row / .pin-btn） */
+.store-title-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.store-title-row .store-name {
+    min-width: 0;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+body.theme-list .store-title-row,
+body.compact-mode .store-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+}
+
+.ranking-item .pin-btn,
+body:not(.theme-light) .ranking-item .pin-btn,
+body.theme-light .ranking-item .pin-btn {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    min-inline-size: 24px !important;
+    min-block-size: 24px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    flex-shrink: 0;
+}
+
+@media (pointer: coarse) {
+    .ranking-item .pin-btn::after {
+        content: "";
+        position: absolute;
+        inset: -7px;
+    }
+}
+
+body:not(.theme-light) .ranking-item .pin-btn {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light .ranking-item .pin-btn {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light) .ranking-item .pin-btn:hover {
+    background: rgba(255, 255, 255, 0.07) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light .ranking-item .pin-btn:hover {
+    background: rgba(24, 24, 27, 0.06) !important;
+    color: var(--calm-light-text) !important;
+}
+
+.ranking-item .pin-btn .star-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
+    pointer-events: none;
+}
+
+body:not(.theme-light) .ranking-item .pin-btn.active,
+body:not(.theme-light) .ranking-item .pin-btn.pinned {
+    color: #fbbf24 !important;
+    background: transparent !important;
+}
+
+body:not(.theme-light) .ranking-item .pin-btn.active .star-icon,
+body:not(.theme-light) .ranking-item .pin-btn.pinned .star-icon {
+    fill: #fbbf24 !important;
+    stroke: #f59e0b !important;
+}
+
+body.theme-light .ranking-item .pin-btn.active,
+body.theme-light .ranking-item .pin-btn.pinned {
+    color: #d97706 !important;
+    background: transparent !important;
+}
+
+body.theme-light .ranking-item .pin-btn.active .star-icon,
+body.theme-light .ranking-item .pin-btn.pinned .star-icon {
+    fill: #f59e0b !important;
+    stroke: #b45309 !important;
+}
+
+/* 0名（営業時間外）の空バー表示および比率非表示ガード */
+.bento-ratio-hero.is-zero-total .bento-ratio-main {
+    display: none !important;
+}
+
+body:not(.theme-light) .occupancy-bar.is-empty {
+    background: var(--calm-surface-2) !important;
+}
+
+body.theme-light .occupancy-bar.is-empty {
+    background: var(--calm-light-surface-2) !important;
+}
+
+/* 29-B. お気に入り店舗セクション（スマホ・PC共通で1列フル幅維持＋左アンバーライン） */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list > .ranking-item.pinned-item {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-left: 3px solid #fbbf24 !important;
+    border-radius: 14px !important;
+    padding: 12px 15px !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list > .ranking-item.pinned-item {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-left: 3px solid #d97706 !important;
+    border-radius: 14px !important;
+    padding: 12px 15px !important;
+    box-shadow: 0 2px 10px rgba(24, 24, 27, 0.04) !important;
+}
+
+#pinned-list-container .separator {
+    margin: 10px 0 12px !important;
+}
+
+/* 29-C. 公開画面（PC案1 ＆ スマホ案A）右カラム「女性 / 男性 ＋ 女性比% ＋ 比率バー」構造化 */
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+    grid-area: stats !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    column-gap: 10px !important;
+    row-gap: 4px !important;
+    align-items: end !important;
+    justify-items: stretch !important;
+    justify-self: stretch !important;
+    align-self: stretch !important;
+    margin: 0 !important;
+    padding-left: 14px;
+    padding-bottom: 10px;
+    border-left: 1px solid var(--calm-border-strong);
+    min-width: 158px;
+    font-variant-numeric: tabular-nums;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+    border-left-color: var(--calm-light-border-strong);
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat {
+    grid-area: auto !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat.ladies {
+    padding-right: 6px;
+    border-right: 1px solid var(--calm-border);
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat.ladies {
+    border-right-color: var(--calm-light-border);
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 2px;
+    white-space: nowrap !important;
+    opacity: 1 !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat-num-row {
+    justify-content: center;
+    gap: 2px;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .count {
+    font-family: var(--font-num);
+    font-size: 1.38rem !important;
+    font-weight: 800 !important;
+    line-height: 1.05 !important;
+    font-variant-numeric: tabular-nums;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card > .stats-group .stat .count {
+    font-size: 1.54rem !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat-usual {
+    display: none !important;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .bento-ratio-hero {
+    grid-area: auto !important;
+    grid-column: 1 / -1;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px;
+    padding-top: 3px;
+    margin-top: 1px;
+    border-top: 1px solid var(--calm-border);
+    line-height: 1.2;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .bento-ratio-hero {
+    border-top-color: var(--calm-light-border);
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-caption {
+    font-size: 0.67rem;
+    font-weight: 700;
+    margin: 0;
+    white-space: nowrap;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-num {
+    font-size: 0.82rem !important;
+    font-weight: 800;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-unit {
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar {
+    display: flex !important;
+    grid-area: stats !important;
+    align-self: end;
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    height: 5px !important;
+    margin: 0 0 0 14px !important;
+    width: calc(100% - 14px) !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+}
+
+body:not(.theme-light):not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar:not(.is-empty) {
+    background: rgba(147, 197, 253, 0.24) !important;
+}
+
+body.theme-light:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar:not(.is-empty) {
+    background: rgba(29, 78, 216, 0.16) !important;
+}
+
+/* PC公開画面（>=769px）：順位上揃え・料金&地図1行インライン化・重複定型文整理 */
+@media (min-width: 769px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card {
+        grid-template-columns: minmax(0, 1fr) 174px !important;
+        grid-template-rows: auto auto !important;
+        grid-template-areas:
+            "kicker actions"
+            "info   stats" !important;
+        column-gap: 16px !important;
+        row-gap: 10px !important;
+        align-items: start !important;
+        border-radius: 24px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) {
+        display: grid !important;
+        grid-template-columns: 26px minmax(0, 1fr) 168px !important;
+        grid-template-rows: auto auto !important;
+        grid-template-areas:
+            "rank info stats"
+            "rank info actions" !important;
+        column-gap: 12px !important;
+        row-gap: 6px !important;
+        align-items: start !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+        grid-area: rank;
+        align-self: start !important;
+        margin-right: 0 !important;
+        padding-top: 3px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) > .store-info {
+        grid-area: info;
+        min-width: 0;
+        gap: 4px;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) > .card-actions {
+        grid-area: actions;
+        justify-self: end;
+        align-self: end;
+        margin: 0 !important;
+    }
+
+    /* 10名以上営業中カードは右カラムに男女数・比率・バーがあるため重複する定型説明文を整理（少人数・営業前は残す） */
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(:has(.bento-ratio-hero.is-small-sample)):not(:has(.bento-ratio-hero.is-zero-total)):not(:has(.moat-signals-row.hidden)) .cm-human-line {
+        display: none;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .store-spec-row:not(.hidden) {
+        display: block;
+        margin: 1px 0;
+        font-size: 0.74rem;
+        line-height: 1.48;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .spec-links {
+        display: inline;
+        margin-left: 6px;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .spec-links a + a {
+        margin-left: 6px;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .card-map-link,
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item .card-price-link {
+        padding: 0 !important;
+        min-height: 0 !important;
+        min-block-size: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        font-size: 0.74rem !important;
+        font-weight: 700 !important;
+        text-decoration: underline !important;
+        text-underline-offset: 2px;
+    }
+}
+
+/* スマホ公開画面（<=768px）：案A（お気に入り1列フル幅維持・右下36px丸ボタン行を完全撤去） */
+@media (max-width: 768px) {
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) #pinned-list > .ranking-item.pinned-item {
+        padding: 9px 10px !important;
+        border-radius: 12px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .card-actions {
+        display: none !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card {
+        grid-template-columns: minmax(0, 1fr) 118px !important;
+        grid-template-rows: auto auto !important;
+        grid-template-areas:
+            "kicker kicker"
+            "info   stats" !important;
+        column-gap: 9px !important;
+        row-gap: 6px !important;
+        align-items: center !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) {
+        grid-template-columns: 20px minmax(0, 1fr) 108px !important;
+        grid-template-rows: auto !important;
+        grid-template-areas: "rank info stats" !important;
+        column-gap: 7px !important;
+        row-gap: 0 !important;
+        align-items: center !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) > .rank-badge {
+        align-self: start !important;
+        padding-top: 2px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item:not(.bento-hero-card) .store-name {
+        font-size: 0.89rem !important;
+        line-height: 1.26 !important;
+    }
+
+    /* モバイルは右カラムに「少人数のため参考値」が表示されるため、ピル行がある営業中カードの重複説明文を省略（営業前0名のみ表示） */
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)):not(:has(.moat-signals-row.hidden)) .cm-human-line {
+        display: none !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group {
+        column-gap: 6px !important;
+        row-gap: 3px !important;
+        padding-left: 9px !important;
+        padding-bottom: 8px !important;
+        min-width: 108px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group > .stat.ladies {
+        padding-right: 4px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .label {
+        font-size: 0.62rem !important;
+        margin-bottom: 1px !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .stat .count {
+        font-size: 1.18rem !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) .ranking-item.bento-hero-card > .stats-group .stat .count {
+        font-size: 1.32rem !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-caption {
+        font-size: 0.6rem !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-num {
+        font-size: 0.74rem !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .stats-group .bento-ratio-unit {
+        font-size: 0.62rem !important;
+    }
+
+    body:not(.staff-mode):not(.theme-list):not(.compact-mode) :is(.ranking-item.bento-hero-card, .ranking-item:not(.bento-hero-card)) > .occupancy-bar {
+        height: 4px !important;
+        margin: 0 0 0 9px !important;
+        width: calc(100% - 9px) !important;
+    }
+}
+
+/* 29-D. 社内業務モニター（body.staff-mode）：3〜4列現場カードボード＆WCAG 5.5:1保証 */
+body.staff-mode .ranking-item .area-tag.is-redundant-on-sp,
+body.staff-mode .card-freshness-tag .card-freshness-full {
+    display: none !important;
+}
+
+body.staff-mode .card-freshness-tag .card-freshness-sp {
+    display: inline !important;
+}
+
+body.staff-mode .store-name {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) #ranking-list,
+body.staff-mode:not(.theme-list):not(.compact-mode) #pinned-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)) !important;
+    gap: 10px !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+        "rank info"
+        "stats stats"
+        "bar bar"
+        "actions actions";
+    column-gap: 8px;
+    row-gap: 6px;
+    align-items: start;
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    font-variant-numeric: tabular-nums;
+}
+
+body:not(.theme-light).staff-mode:not(.theme-list):not(.compact-mode) .ranking-item {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+}
+
+body.theme-light.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+}
+
+body:not(.theme-light).staff-mode:not(.theme-list):not(.compact-mode) .ranking-item.pinned-item {
+    border-left: 3px solid #fbbf24 !important;
+}
+
+body.theme-light.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item.pinned-item {
+    border-left: 3px solid #d97706 !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .rank-badge {
+    grid-area: rank;
+    margin: 1px 0 0 !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .store-info {
+    grid-area: info;
+    min-width: 0;
+    gap: 3px;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item .store-meta-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item .card-freshness-tag {
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item .store-title-row {
+    justify-content: space-between;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item .store-name {
+    font-size: 0.98rem !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group {
+    grid-area: stats;
+    width: 100%;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding-top: 8px;
+    border-top: 1px solid var(--calm-border);
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: baseline;
+    gap: 8px;
+}
+
+body.theme-light.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group {
+    border-top-color: var(--calm-light-border);
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group > .stat.ladies {
+    align-items: flex-start;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group > .stat.ladies .stat-num-row {
+    justify-content: flex-start;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group > .bento-ratio-hero {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline;
+    justify-content: center;
+    gap: 3px;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group .bento-ratio-caption {
+    font-size: 0.68rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group .bento-ratio-num {
+    font-size: 0.86rem !important;
+    font-weight: 800;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group .bento-ratio-unit {
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group > .stat.men {
+    align-items: flex-end;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .stats-group .stat .count {
+    font-family: var(--font-num);
+    font-size: 1.32rem !important;
+    font-weight: 800 !important;
+    line-height: 1.05 !important;
+    text-shadow: none !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar {
+    grid-area: bar;
+    display: flex !important;
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: 5px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+}
+
+body:not(.theme-light).staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar:not(.is-empty) {
+    background: rgba(147, 197, 253, 0.24) !important;
+}
+
+body.theme-light.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .occupancy-bar:not(.is-empty) {
+    background: rgba(29, 78, 216, 0.16) !important;
+}
+
+body.staff-mode:not(.theme-list):not(.compact-mode) .ranking-item > .card-actions {
+    grid-area: actions;
+    justify-self: end;
+    margin: 0 !important;
+}
+
+/* 社内業務モニター 全文字ノード WCAG AA+ (>= 5.5:1) ダーク／ライト保証 */
+body.staff-mode .ranking-item .stat .label,
+body.staff-mode .ranking-item .stat-usual,
+body.staff-mode .ranking-item .stat-diff,
+body.staff-mode .ranking-item .card-freshness-tag,
+body.staff-mode .ranking-item .bento-ratio-caption,
+body.staff-mode .ranking-item .bento-ratio-unit,
+body.staff-mode .ranking-item .analysis-btn {
+    opacity: 1 !important;
+}
+
+body:not(.theme-light).staff-mode .ranking-item .stat .label,
+body:not(.theme-light).staff-mode .ranking-item .stat-usual,
+body:not(.theme-light).staff-mode .ranking-item .card-freshness-tag,
+body:not(.theme-light).staff-mode .ranking-item .bento-ratio-caption,
+body:not(.theme-light).staff-mode .ranking-item .bento-ratio-unit {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light.staff-mode .ranking-item .stat .label,
+body.theme-light.staff-mode .ranking-item .stat-usual,
+body.theme-light.staff-mode .ranking-item .card-freshness-tag,
+body.theme-light.staff-mode .ranking-item .bento-ratio-caption,
+body.theme-light.staff-mode .ranking-item .bento-ratio-unit {
+    color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light).staff-mode .ranking-item .stat.ladies .count,
+body:not(.theme-light).staff-mode .ranking-item .stat.ladies .stat-diff,
+body:not(.theme-light).staff-mode .ranking-item .stat.ladies .stat-usual.is-up {
+    color: var(--calm-women) !important;
+    text-shadow: none !important;
+}
+
+body.theme-light.staff-mode .ranking-item .stat.ladies .count,
+body.theme-light.staff-mode .ranking-item .stat.ladies .stat-diff,
+body.theme-light.staff-mode .ranking-item .stat.ladies .stat-usual.is-up {
+    color: var(--calm-light-women) !important;
+    text-shadow: none !important;
+}
+
+body:not(.theme-light).staff-mode .ranking-item .stat.men .count,
+body:not(.theme-light).staff-mode .ranking-item .stat.men .stat-diff,
+body:not(.theme-light).staff-mode .ranking-item .stat.men .stat-usual.is-up {
+    color: var(--calm-men) !important;
+    text-shadow: none !important;
+}
+
+body.theme-light.staff-mode .ranking-item .stat.men .count,
+body.theme-light.staff-mode .ranking-item .stat.men .stat-diff,
+body.theme-light.staff-mode .ranking-item .stat.men .stat-usual.is-up {
+    color: var(--calm-light-men) !important;
+    text-shadow: none !important;
+}
+
+@media (min-width: 769px) {
+    body.staff-mode.theme-list #ranking-list,
+    body.staff-mode.theme-list .ranking-list,
+    body.staff-mode.compact-mode #ranking-list,
+    body.staff-mode.compact-mode .ranking-list {
+        grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)) !important;
+    }
 }

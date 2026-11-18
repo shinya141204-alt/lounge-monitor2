@@ -1404,11 +1404,14 @@
                 menUsualEl: item.querySelector('.stat.men .stat-usual'),
                 ladiesBar: item.querySelector('.bar-fill-ladies'),
                 menBar: item.querySelector('.bar-fill-men'),
+                occBarEl: item.querySelector('.occupancy-bar'),
                 bentoRatioHero: item.querySelector('.bento-ratio-hero'),
                 bentoKickerLabel: item.querySelector('.bento-kicker-label'),
                 bentoVerdictPill: item.querySelector('.bento-verdict-pill'),
                 bentoRatioNum: item.querySelector('.bento-ratio-num'),
                 bentoRatioCaption: item.querySelector('.bento-ratio-caption'),
+                ladiesLabelEl: item.querySelector('.stat.ladies .label'),
+                menLabelEl: item.querySelector('.stat.men .label'),
             };
             return item._refs;
         }
@@ -2349,7 +2352,9 @@
             }
 
             if (pinBtn) {
-                pinBtn.classList.toggle('active', pinnedStores.includes(store.name));
+                const isPinnedNow = pinnedStores.includes(store.name);
+                pinBtn.classList.toggle('active', isPinnedNow);
+                pinBtn.setAttribute('aria-pressed', isPinnedNow ? 'true' : 'false');
             }
 
             const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
@@ -2709,10 +2714,14 @@
                 ladiesBar.style.width = '0%';
                 menBar.style.width = '0%';
             }
+            if (refs.occBarEl) {
+                refs.occBarEl.classList.toggle('is-empty', totalCount === 0);
+            }
 
             const isWomenBentoView = (!IS_STAFF && currentAudience === 'women');
             if (refs.bentoRatioHero) {
                 refs.bentoRatioHero.classList.toggle('is-small-sample', isSmallSample);
+                refs.bentoRatioHero.classList.toggle('is-zero-total', totalCount === 0);
             }
             if (refs.bentoRatioNum) {
                 const targetRatioPct = isWomenBentoView ? menPct : ladiesPct;
@@ -2730,7 +2739,11 @@
                 }
             }
             if (refs.bentoRatioCaption) {
-                refs.bentoRatioCaption.textContent = isSmallSample ? '少人数のため参考値' : (isWomenBentoView ? '男性比' : '女性比');
+                if (totalCount === 0) {
+                    refs.bentoRatioCaption.textContent = store.is_open_now ? '現在 0名' : '営業時間外';
+                } else {
+                    refs.bentoRatioCaption.textContent = isSmallSample ? '少人数のため参考値' : (isWomenBentoView ? '男性比' : '女性比');
+                }
             }
             if (refs.bentoKickerLabel) {
                 refs.bentoKickerLabel.textContent = getLocalizedBentoKicker(isWomenBentoView);
