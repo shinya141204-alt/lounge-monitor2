@@ -119,7 +119,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=18">
+    <link rel="stylesheet" href="/static/portal.css?v=19">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -429,6 +429,12 @@
             background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
         }
+        .ratio-bar.is-empty {
+            background: var(--border-subtle) !important;
+        }
+        .ratio-bar.is-empty .ratio-fill-w {
+            width: 0 !important;
+        }
         .ratio-fill-w {
             height: 100%;
             background: var(--women);
@@ -623,7 +629,7 @@
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=47">
+    <link rel="stylesheet" href="/static/calm.css?v=48">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -726,7 +732,7 @@
             <div class="live-stores-grid">
                 {% for s in selected_area.stores %}
                 {% set tot = s.women + s.men %}
-                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
                 <a href="/store/{{ s.slug or (s.name | store_slug) }}" style="text-decoration: none; color: inherit; display: block;">
                 <div class="live-store-card" data-store-name="{{ s.seo_name or (s.name | seo_store_name) }}">
                     <div class="live-store-name">
@@ -742,7 +748,7 @@
                         <span></span>
                         {% endif %}
                     </div>
-                    <div class="ratio-bar">
+                    <div class="ratio-bar{% if tot <= 0 %} is-empty{% endif %}">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                 </div>
@@ -897,7 +903,7 @@
             <div class="live-stores-grid">
                 {% for s in item.stores[:6] %}
                 {% set tot = s.women + s.men %}
-                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+                {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
                 <a href="/store/{{ s.slug or (s.name | store_slug) }}" style="text-decoration: none; color: inherit; display: block;">
                 <div class="live-store-card" data-store-name="{{ s.seo_name or (s.name | seo_store_name) }}">
                     <div class="live-store-name">
@@ -913,7 +919,7 @@
                         <span></span>
                         {% endif %}
                     </div>
-                    <div class="ratio-bar">
+                    <div class="ratio-bar{% if tot <= 0 %} is-empty{% endif %}">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                 </div>

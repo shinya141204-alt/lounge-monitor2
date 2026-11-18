@@ -3640,7 +3640,7 @@
             if (we) {
                 const rawModalWTone = isWomenView ? (we.wait_tone_women || we.wait_tone) : we.wait_tone;
                 const wTone = escapeHtml(rawModalWTone || 'neutral');
-                let srcLabel = 'JIS実測学習AI推論';
+                let srcLabel = '推定（JIS実測相関）';
                 let srcCls = 'is-inferred';
                 if (we.is_standing_free) {
                     srcLabel = '自由回遊スタンディング';

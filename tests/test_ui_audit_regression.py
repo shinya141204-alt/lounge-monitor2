@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=47"
-        expected_portal = "/static/portal.css?v=18"
-        expected_app_js = "/static/app.js?v=20261118_2"
+        expected_calm = "/static/calm.css?v=48"
+        expected_portal = "/static/portal.css?v=19"
+        expected_app_js = "/static/app.js?v=20261118_3"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=114"
-        expected_cache_name = "aiseki-navi-v114"
+        expected_sw_url = "/sw.js?v=115"
+        expected_cache_name = "aiseki-navi-v115"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -2942,6 +2942,208 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertTrue(ssr_payload.is_area_redundant_with_branch("東京・新宿", "新宿"))
         self.assertFalse(ssr_payload.is_area_redundant_with_branch("京都・河原町", "東京都庁前"))
         self.assertFalse(ssr_payload.is_area_redundant_with_branch("大阪・キタ", "梅田"))
+
+    def test_full_site_craft_overhaul_primitives_and_zero_overflow(self):
+        """Verify Fable 5.2 Primitives A-D, 2-col PC theme-list, 0px embed/about mobile overflow, aria-current, and honest 0-ratio bars."""
+        import copy
+        # 1. Static SSR checks: aria-current="page", deduplicated PR heading, honest empty ratio bars, ARIA responsive table
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None):
+            with app_module.data_lock:
+                app_module.latest_data["full_data"] = []
+                app_module.latest_data["top5"] = []
+                app_module.latest_data["last_updated"] = "2026-11-18 12:00:00"
+                app_module.latest_data["status"] = "ok"
+            app_module.clear_fast_http_caches()
+
+            home_html = self.client.get("/?staff_test=1").get_data(as_text=True)
+            self.assertIn('class="portal-nav-link active" aria-current="page"', home_html)
+            self.assertNotIn('<span class="pr-alternatives-title">PR｜', home_html)
+            self.assertIn('<span class="pr-alternatives-title">相席以外の選択肢', home_html)
+            self.assertNotIn("💡 ベストタイミング", home_html)
+            self.assertNotIn("💄 女性限定・LIVE連動", home_html)
+
+            grooming_html = self.client.get("/grooming?staff_test=1").get_data(as_text=True)
+            self.assertIn('aria-current="page">服装・事前準備</a>', grooming_html)
+
+            about_html = self.client.get("/about?staff_test=1").get_data(as_text=True)
+            self.assertIn('role="rowheader"', about_html)
+            self.assertIn('role="cell"', about_html)
+
+            # Closed store (0:0, is_open_now=False) must render .is-empty 0% bar (never fake 50%) and preserve hours
+            closed_stores = [
+                {
+                    "name": "OLG 新宿",
+                    "source": "oriental",
+                    "region": "Kanto",
+                    "women": 0,
+                    "men": 0,
+                    "total": 0,
+                    "ratio": 0.0,
+                    "timestamp": "2026-11-18 12:00:00",
+                    "is_open_now": False,
+                }
+            ]
+            with app_module.data_lock:
+                app_module.latest_data["full_data"] = copy.deepcopy(closed_stores)
+                app_module.latest_data["top5"] = copy.deepcopy(closed_stores)
+                app_module.latest_data["last_updated"] = "2026-11-18 12:00:00"
+                app_module.latest_data["status"] = "ok"
+            app_module.clear_fast_http_caches()
+
+            sd_closed = self.client.get("/store/oriental-lounge-shinjuku?staff_test=1").get_data(as_text=True)
+            self.assertIn('class="ratio-bar-lg is-empty"', sd_closed)
+            self.assertIn('id="hero-ratio-fill" style="width: 0%;"', sd_closed)
+            brand_closed = self.client.get("/oriental-lounge?staff_test=1").get_data(as_text=True)
+            self.assertIn('class="ratio-bar is-empty"', brand_closed)
+            self.assertNotIn('class="ratio-fill-w" style="width: 50%;"', brand_closed)
+
+            # 2. Real Chromium layout & Dark/Light/Audience contrast checks
+            try:
+                from playwright.sync_api import sync_playwright
+            except Exception:
+                self.skipTest("playwright not available")
+
+            sample_stores = [
+                {
+                    "name": "OLG 新宿",
+                    "source": "oriental",
+                    "region": "Kanto",
+                    "women": 28,
+                    "men": 18,
+                    "total": 46,
+                    "ratio": 1.55,
+                    "timestamp": "2026-11-18 21:15:00",
+                    "is_open_now": True,
+                },
+                {
+                    "name": "JIS 札幌",
+                    "source": "jis",
+                    "region": "Hokkaido",
+                    "women": 22,
+                    "men": 15,
+                    "total": 37,
+                    "ratio": 1.46,
+                    "timestamp": "2026-11-18 21:15:00",
+                    "is_open_now": True,
+                },
+            ]
+            with app_module.data_lock:
+                app_module.latest_data["full_data"] = copy.deepcopy(sample_stores)
+                app_module.latest_data["top5"] = copy.deepcopy(sample_stores)
+                app_module.latest_data["last_updated"] = "2026-11-18 21:15:00"
+                app_module.latest_data["status"] = "ok"
+            app_module.clear_fast_http_caches()
+
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                try:
+                    def bind_client(ctx):
+                        def _route(route):
+                            url = route.request.url
+                            if not url.startswith("http://aiseki.local"):
+                                return route.abort()
+                            path = url.replace("http://aiseki.local", "") or "/"
+                            if path.startswith("/api/events"):
+                                return route.fulfill(
+                                    status=200,
+                                    body=json.dumps({"events": [{"store_name": "オリエンタルラウンジ 宇都宮", "brand": "ORIENTAL_LOUNGE", "title": "U24イベント", "category": "DISCOUNT", "url": "https://oriental-lounge.com/"}]}),
+                                    headers={"Content-Type": "application/json"},
+                                )
+                            sep = "&" if "?" in path else "?"
+                            if "staff_test=" not in path and not path.startswith("/static/") and not path.startswith("/sw.js"):
+                                path = f"{path}{sep}staff_test=1"
+                            resp = self.client.get(path, follow_redirects=True)
+                            route.fulfill(
+                                status=resp.status_code,
+                                body=resp.data,
+                                headers={"Content-Type": resp.headers.get("Content-Type", "text/html")},
+                            )
+                        ctx.route("**/*", _route)
+
+                    ctx_sp = browser.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
+                    bind_client(ctx_sp)
+                    sp = ctx_sp.new_page()
+                    for rt in ("/embed/heatmap?theme=dark", "/embed/heatmap?theme=light", "/about", "/grooming", "/guide/shinjuku", "/oriental-lounge"):
+                        sp.goto("http://aiseki.local" + rt, wait_until="domcontentloaded")
+                        sp.wait_for_timeout(40)
+                        ov = sp.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+                        self.assertLessEqual(ov, 0, f"Mobile 390px overflow on {rt}: {ov}")
+
+                    # H-2: Inverted CTA pills maintain distinct fg/bg in both Dark and Light modes
+                    for rt, sel in (("/grooming", ".audience-switch-bar a"), ("/oriental-lounge", ".brand-tab.active"), ("/store/oriental-lounge-shinjuku", ".btn-primary")):
+                        sp.goto("http://aiseki.local" + rt, wait_until="domcontentloaded")
+                        for is_light in (False, True):
+                            sp.evaluate(f"document.documentElement.classList.toggle('theme-light', {str(is_light).lower()}); document.body.classList.toggle('theme-light', {str(is_light).lower()});")
+                            pair = sp.evaluate(f"""() => {{
+                                const el = document.querySelector({json.dumps(sel)});
+                                const cs = getComputedStyle(el);
+                                return {{fg: cs.color, bg: cs.backgroundColor}};
+                            }}""")
+                            self.assertNotEqual(pair["fg"], pair["bg"], f"Inverted CTA invisible on {rt} light={is_light}: {pair}")
+
+                    # Mobile menu & events modal open/close + single 2px focus ring (transparent border + 2px outline) + audience-women unified header
+                    sp.goto("http://aiseki.local/", wait_until="domcontentloaded")
+                    sp.wait_for_timeout(80)
+                    sp.evaluate("openMenuModal()")
+                    sp.wait_for_timeout(40)
+                    menu_check = sp.evaluate("""() => {
+                        const bar = document.querySelector('#menu-modal .menu-theme-bar');
+                        const closeBtn = document.querySelector('#menu-modal .close-btn-pill');
+                        const cs = getComputedStyle(closeBtn);
+                        return {
+                            barDisplay: getComputedStyle(bar).display,
+                            barH: Math.round(bar.getBoundingClientRect().height),
+                            outlineWidth: parseFloat(cs.outlineWidth || '0'),
+                            borderTopColor: cs.borderTopColor,
+                        };
+                    }""")
+                    self.assertIn(menu_check["barDisplay"], ("grid", "flex"))
+                    self.assertGreaterEqual(menu_check["barH"], 38)
+                    self.assertEqual(menu_check["outlineWidth"], 2.0)
+                    self.assertIn(menu_check["borderTopColor"], ("rgba(0, 0, 0, 0)", "transparent"))
+                    sp.evaluate("closeMenuModal(); openEventsModal();")
+                    sp.wait_for_timeout(80)
+                    ev_bg = sp.evaluate("getComputedStyle(document.querySelector('#events-modal .modal-content')).backgroundColor")
+                    self.assertEqual(ev_bg, "rgb(26, 26, 30)")
+                    sp.evaluate("document.body.classList.add('theme-light', 'audience-women')")
+                    women_hdr = sp.evaluate("""() => ({
+                        mc: getComputedStyle(document.querySelector('#events-modal .modal-content')).backgroundColor,
+                        mh: getComputedStyle(document.querySelector('#events-modal .modal-header')).backgroundColor,
+                    })""")
+                    self.assertEqual(women_hdr["mc"], "rgb(255, 255, 255)")
+                    self.assertEqual(women_hdr["mh"], "rgb(255, 255, 255)")
+                    sp.evaluate("closeEventsModal()")
+                    self.assertTrue(sp.evaluate("document.getElementById('events-modal').classList.contains('hidden')"))
+                    ctx_sp.close()
+
+                    # PC 1280px & 640px tablet about-table + theme-list store name unclipped
+                    ctx_pc = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    bind_client(ctx_pc)
+                    pc = ctx_pc.new_page()
+                    pc.goto("http://aiseki.local/", wait_until="domcontentloaded")
+                    pc.wait_for_timeout(80)
+                    pc.evaluate("setViewTheme('list', false)")
+                    pc.wait_for_timeout(60)
+                    list_check = pc.evaluate("""() => {
+                        const sn = document.querySelector('#ranking-list .ranking-item .store-name');
+                        const kr = document.querySelector('#ranking-list .ranking-item .bento-kicker-row');
+                        return {
+                            text: sn ? sn.innerText.trim() : '',
+                            storeNameW: sn ? Math.round(sn.getBoundingClientRect().width) : 0,
+                            clipped: sn ? (sn.scrollWidth > sn.clientWidth + 1) : true,
+                            kickerDisplay: kr ? getComputedStyle(kr).display : 'none',
+                        };
+                    }""")
+                    self.assertIn("新宿", list_check["text"])
+                    self.assertGreaterEqual(list_check["storeNameW"], 40)
+                    self.assertFalse(list_check["clipped"])
+                    self.assertEqual(list_check["kickerDisplay"], "none")
+                    pc.set_viewport_size({"width": 620, "height": 800})
+                    pc.goto("http://aiseki.local/about", wait_until="domcontentloaded")
+                    self.assertLessEqual(pc.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth"), 0)
+                    ctx_pc.close()
+                finally:
+                    browser.close()
 
 
 if __name__ == "__main__":

@@ -93,7 +93,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=18">
+    <link rel="stylesheet" href="/static/portal.css?v=19">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <link rel="stylesheet" href="/static/style.css?v=20261118_1">
@@ -175,7 +175,7 @@
 
         .live-hero-card {
             background: var(--card-bg);
-            border: 1px solid var(--border-gold);
+            border: 1px solid var(--border-subtle);
             border-radius: 14px;
             padding: 24px 22px;
             margin-bottom: 16px;
@@ -230,9 +230,9 @@
             font-weight: 700;
             padding: 3px 12px;
             border-radius: 999px;
-            background: rgba(200, 164, 110, 0.12);
-            color: var(--accent-text);
-            border: 1px solid rgba(200, 164, 110, 0.32);
+            background: var(--card-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border-subtle);
         }
         .live-hero-card h1 {
             margin: 0 0 16px;
@@ -244,16 +244,17 @@
 
         .big-counts-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
             margin: 18px 0;
         }
         .count-box {
             background: var(--card-elevated);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 15px 12px;
             text-align: center;
+            min-width: 0;
         }
         .count-label {
             font-size: 0.77rem;
@@ -265,10 +266,61 @@
             font-weight: 800;
             margin-top: 4px;
             font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+        }
+        .count-closed-sub {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.76rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .nowrap-token {
+            display: inline-block;
+            white-space: nowrap;
         }
         .w-color { color: var(--women); }
         .m-color { color: var(--men); }
-        .r-color { color: var(--accent-text); }
+        .r-color { color: var(--text-main); }
+
+        @media (max-width: 520px) {
+            .live-hero-card {
+                padding: 18px 15px;
+            }
+            .live-hero-card h1 {
+                font-size: 1.16rem;
+                margin-bottom: 12px;
+            }
+            .big-counts-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                margin: 12px 0;
+            }
+            .count-box {
+                padding: 12px 10px;
+            }
+            .big-counts-grid .count-box:nth-child(3) {
+                grid-column: 1 / -1;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 6px 12px;
+                padding: 10px 14px;
+                text-align: left;
+            }
+            .big-counts-grid .count-box:nth-child(3) .count-num {
+                margin-top: 0;
+                font-size: 1.35rem;
+                display: flex;
+                align-items: baseline;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 4px 10px;
+                text-align: right;
+            }
+        }
 
         .ratio-bar-lg {
             height: 8px;
@@ -276,6 +328,12 @@
             background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
             margin: 12px 0 16px;
+        }
+        .ratio-bar-lg.is-empty {
+            background: var(--border-subtle) !important;
+        }
+        .ratio-bar-lg.is-empty .ratio-fill-lg {
+            width: 0 !important;
         }
         .ratio-fill-lg {
             height: 100%;
@@ -293,18 +351,22 @@
             align-items: center;
             gap: 6px;
             padding: 9px 18px;
-            border-radius: 8px;
-            background: rgba(200, 164, 110, 0.14);
-            border: 1px solid rgba(200, 164, 110, 0.42);
-            color: var(--accent-text);
+            border-radius: 999px;
+            background: #f4f4f5 !important;
+            border: 1px solid #f4f4f5 !important;
+            color: #111113 !important;
             font-weight: 700;
             font-size: 0.84rem;
-            text-decoration: none;
-            transition: background 0.18s ease, border-color 0.18s ease;
+            text-decoration: none !important;
+            transition: opacity 0.16s ease;
         }
         .btn-primary:hover {
-            background: rgba(200, 164, 110, 0.22);
-            border-color: rgba(200, 164, 110, 0.6);
+            opacity: 0.88;
+        }
+        body.theme-light .btn-primary {
+            background: #18181b !important;
+            border-color: #18181b !important;
+            color: #ffffff !important;
         }
         .btn-secondary {
             display: inline-flex;
@@ -918,7 +980,7 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=47">
+    <link rel="stylesheet" href="/static/calm.css?v=48">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -957,11 +1019,12 @@
 
         <main>
         <article class="live-hero-card" data-hero-store="{{ store.seo_name }}" data-hero-seo="{{ store.seo_name }}" data-hours-spec='{{ store.hours_spec | tojson }}'>
+            {% set hide_dup_hours = store.crowd_comment and ((store.hours_label and store.hours_label in store.crowd_comment) or (store.today_hours_label and store.today_hours_label in store.crowd_comment)) %}
             <div class="badge-row">
                 <span class="area-badge">{{ store.area_label }}</span>
                 <span class="area-badge">{{ store.brand_label }}</span>
                 <span class="status-badge" id="hero-status-badge">{{ store.crowd_comment }}</span>
-                <span class="hero-hours-meta">営業時間 {{ store.hours_label }}</span>
+                <span class="hero-hours-meta" id="hero-hours-meta"{% if hide_dup_hours %} style="display:none;"{% endif %}>営業時間 {{ store.hours_label }}</span>
             </div>
 
             <h1><span style="word-break: keep-all;">{{ store.seo_name }}</span>のリアルタイム人数・男女比・混雑状況</h1>
@@ -969,20 +1032,20 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">男性人数</div>
-                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>{% endif %}</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">女性比率</div>
-                    <div class="count-num r-color" id="hero-wpct-num">{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}{% if store.core_time_short %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 {{ store.core_time_short }}{% if store.midnight_retention_pct is not none and store.midnight_retention_pct is number %} ｜ 終電後 {{ store.midnight_retention_pct }}%{% endif %}</div>{% endif %}</div>
+                    <div class="count-num r-color" id="hero-wpct-num"><span>{% if store.total > 0 %}{{ store.wpct }}<span style="font-size:0.95rem;">%</span>{% else %}--<span style="font-size:0.95rem;">%</span>{% endif %}</span>{% if store.core_time_short %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;"><span class="nowrap-token">狙い目 {{ store.core_time_short }}</span>{% if store.midnight_retention_pct is not none and store.midnight_retention_pct is number %} ｜ <span class="nowrap-token">終電後 {{ store.midnight_retention_pct }}%</span>{% endif %}</div>{% endif %}</div>
                 </div>
             </div>
 
-            <div class="ratio-bar-lg">
-                <div class="ratio-fill-lg" id="hero-ratio-fill" style="width: {{ store.wpct if store.total > 0 else 50 }}%;"></div>
+            <div class="ratio-bar-lg{% if store.total <= 0 %} is-empty{% endif %}" id="hero-ratio-bar">
+                <div class="ratio-fill-lg" id="hero-ratio-fill" style="width: {{ store.wpct if store.total > 0 else 0 }}%;"></div>
             </div>
 
             <p id="hero-live-summary" style="margin: 0; font-size: 0.88rem; color: var(--text-sub);">
@@ -1080,7 +1143,7 @@
                     <div class="moat-detail-card">
                         <div class="moat-detail-eyebrow">
                             <span>リアル待ち時間・稼働解析</span>
-                            <span class="moat-detail-chip">{% if we and we.is_standing_free %}自由回遊スタンディング{% elif we and we.is_measured %}JIS公式公開実測{% else %}JIS実測学習AI推論{% endif %}</span>
+                            <span class="moat-detail-chip">{% if not we %}集計中{% elif we.is_standing_free %}自由回遊スタンディング{% elif we.is_measured %}JIS公式公開実測{% else %}推定（JIS実測相関）{% endif %}</span>
                         </div>
                         <div class="moat-detail-main">{{ (we.wait_badge_men | clean_badge) if we else '稼働データ集計中' }}</div>
                         {% if we and we.pos_summary_short %}<p class="moat-detail-sub">{{ we.pos_summary_short }}</p>{% endif %}
@@ -1122,7 +1185,7 @@
                     {# 女性待ち逆転アラート / 待機通知 #}
                     {% if pt.get('is_reverse_waiting') %}
                     <div class="jis-alert-banner is-reverse-warning" role="alert">
-                        <div class="jis-alert-icon" aria-hidden="true">⚡</div>
+                        <div class="jis-alert-icon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
                         <div class="jis-alert-content">
                             <div class="jis-alert-title">女性待ち逆転発生中（男性即相席チャンス）</div>
                             <div class="jis-alert-desc">現在、女性の待機組数（{{ pt.get('women_waiting_groups') or 0 }}組・{{ pt.get('women_waiting_guests') or 0 }}名）が男性待機を上回っています。男性は入店後すぐに相席案内される確率が極めて高い状態です。</div>
@@ -2457,6 +2520,11 @@
                             else if (w > m) badgeEl.textContent = '女性優位・好バランス（女性+' + (w - m) + '名）';
                             else if (w === m) badgeEl.textContent = '男女比1:1 バランス良好';
                             else badgeEl.textContent = '男性先行・近隣店舗との比較推奨';
+                            const hmEl = document.getElementById('hero-hours-meta');
+                            if (hmEl) {
+                                const hasDupH = heroHours.todayHoursLabel && badgeEl.textContent.indexOf(heroHours.todayHoursLabel) !== -1;
+                                hmEl.style.display = hasDupH ? 'none' : '';
+                            }
                         }
 
                         const canRollHero = Boolean(_prevHeroLive.ts && payload.timestamp && payload.timestamp !== _prevHeroLive.ts && tot > 0);
@@ -2480,7 +2548,7 @@
                             } else if (heroHours.isOpenNow) {
                                 wEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>';
                             } else {
-                                wEl.innerHTML = '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>';
+                                wEl.innerHTML = '--<span class="count-closed-sub">（時間外）</span>';
                             }
                         }
                         const mEl = document.getElementById('hero-men-num');
@@ -2496,27 +2564,29 @@
                             } else if (heroHours.isOpenNow) {
                                 mEl.innerHTML = '0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 ' + todayHoursSafe + '</div>';
                             } else {
-                                mEl.innerHTML = '--<span style="font-size:0.82rem; color: var(--text-sub); font-weight:500;">（時間外）</span>';
+                                mEl.innerHTML = '--<span class="count-closed-sub">（時間外）</span>';
                             }
                         }
                         const rEl = document.getElementById('hero-wpct-num');
                         if (rEl) {
                             const midPctLive = numOrNull(live.midnight_retention_pct);
                             const coreSub = live.core_time_short
-                                ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">狙い目 ' + esc(live.core_time_short) + (midPctLive !== null ? (' ｜ 終電後 ' + Math.round(midPctLive) + '%') : '') + '</div>')
+                                ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;"><span class="nowrap-token">狙い目 ' + esc(live.core_time_short) + '</span>' + (midPctLive !== null ? (' ｜ <span class="nowrap-token">終電後 ' + Math.round(midPctLive) + '%</span>') : '') + '</div>')
                                 : '';
                             if (tot > 0) {
-                                rEl.innerHTML = '<span class="hero-odo-r" style="display:inline-block; line-height:1;">' + wpct + '</span><span style="font-size:0.95rem;">%</span>' + coreSub;
+                                rEl.innerHTML = '<span><span class="hero-odo-r" style="display:inline-block; line-height:1;">' + wpct + '</span><span style="font-size:0.95rem;">%</span></span>' + coreSub;
                                 if (canRollHero && _prevHeroLive.wpct !== null && _prevHeroLive.wpct !== wpct) {
                                     _rollHeroDigits(rEl.querySelector('.hero-odo-r'), _prevHeroLive.wpct, wpct);
                                 }
                             } else {
-                                rEl.innerHTML = '--<span style="font-size:0.95rem;">%</span>' + coreSub;
+                                rEl.innerHTML = '<span>--<span style="font-size:0.95rem;">%</span></span>' + coreSub;
                             }
                         }
                         if (payload.timestamp) {
                             _prevHeroLive = { ts: payload.timestamp, w: tot > 0 ? w : null, m: tot > 0 ? m : null, wpct: tot > 0 ? wpct : null };
                         }
+                        const barEl = document.getElementById('hero-ratio-bar');
+                        if (barEl) barEl.classList.toggle('is-empty', !(tot > 0));
                         const fillEl = document.getElementById('hero-ratio-fill');
                         // 0:0 → 0% (no fabricated 50:50 bar)
                         if (fillEl) fillEl.style.width = (tot > 0 ? wpct : 0) + '%';
@@ -2614,7 +2684,7 @@
                                     } else {
                                         fcHtml = '<div class="moat-detail-card"><div class="moat-detail-eyebrow"><span>60分後のAI男女比予測</span></div><div class="moat-detail-main">現在少人数（6名以上で自動予測）</div><p class="moat-detail-sub">男女合計が6名以上になると表示します。 <a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">答え合わせ検証ログ ›</a></p></div>';
                                     }
-                                    let srcTxt = 'JIS実測学習AI推論';
+                                    let srcTxt = !we ? '集計中' : '推定（JIS実測相関）';
                                     if (we && we.is_standing_free) srcTxt = '自由回遊スタンディング';
                                     else if (we && we.is_measured) srcTxt = 'JIS公式公開実測';
                                     const rawWeBadge = String(we ? (we.wait_badge_men || '') : '稼働データ集計中').replace(/^[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2197\u2198\uFE0E\uFE0F\s]+/gu, '').replace(/^推定:\s*/, '');
@@ -3387,7 +3457,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=114', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=115', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

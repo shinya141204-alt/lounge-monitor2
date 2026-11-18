@@ -64,7 +64,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=18">
+    <link rel="stylesheet" href="/static/portal.css?v=19">
     <style>
         :root {
             --bg-dark: #111113;
@@ -136,11 +136,14 @@
             border-radius: 14px;
             padding: 28px 24px;
         }
-        .content-box a:not(.rec-btn):not(.grooming-jump-chip) {
+        .content-box a:not(.rec-btn):not(.grooming-jump-chip):not(.editorial-bridge-btn):not(.audience-switch-link) {
             color: var(--text-main);
             font-weight: 600;
             text-decoration: underline;
             text-underline-offset: 3px;
+        }
+        .audience-switch-bar a {
+            text-decoration: none !important;
         }
         h1 {
             font-size: 1.45rem;
@@ -152,8 +155,8 @@
             font-size: 1.14rem;
             color: var(--text-main);
             margin: 34px 0 12px;
-            padding-left: 10px;
-            border-left: 3px solid var(--accent-gold);
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
             scroll-margin-top: 16px;
         }
         p {
@@ -267,7 +270,7 @@
             margin-bottom: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=47">
+    <link rel="stylesheet" href="/static/calm.css?v=48">
 </head>
 
 <body>
@@ -293,7 +296,7 @@
             {% endif %}
             <aside class="audience-switch-bar" aria-label="女性向けガイドへの案内">
                 <span>女性ペア向けの「待ち時間ゼロ店舗ボード・席替えフレーズ・限定特典」は専用ページで公開しています。</span>
-                <a href="/for-women">女性向け実践ガイドを見る ›</a>
+                <a class="audience-switch-link" href="/for-women">女性向け実践ガイドを見る ›</a>
             </aside>
             <nav class="grooming-mode-bar" aria-label="目的別クイック移動と現在人数ボード">
                 <p class="grooming-mode-title">{% if active_mode == 'waiting' %}いま満席・男性待機中の方へ：代替アプリ・近隣穴場へすぐ切り替えられます{% elif active_mode == 'second' %}2軒目・次回デートの空席確保セクションへ移動できます{% else %}いまの状況に合わせて必要な項目へ移動できます{% endif %}</p>

@@ -17,7 +17,7 @@
     <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=18">
+    <link rel="stylesheet" href="/static/portal.css?v=19">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <script type="application/ld+json">
@@ -105,10 +105,37 @@
         .about-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 16px; font-variant-numeric: tabular-nums; }
         .about-table th, .about-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); vertical-align: top; }
         body.theme-light .about-table th, body.theme-light .about-table td { border-bottom-color: #e4e4e7; }
-        .about-table th { width: 32%; font-weight: 600; white-space: nowrap; }
+        .about-table th { width: 32%; font-weight: 600; white-space: normal; word-break: auto-phrase; }
+        @media (max-width: 560px) {
+            .about-table, .about-table tbody { display: block; width: 100%; }
+            .about-table tr {
+                display: block;
+                width: 100%;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            body.theme-light .about-table tr { border-bottom-color: #e4e4e7; }
+            .about-table th, .about-table td {
+                display: block;
+                width: 100%;
+                padding: 0;
+                border-bottom: none;
+                white-space: normal;
+            }
+            .about-table th {
+                font-size: 0.76rem;
+                color: #a1a1aa;
+                margin-bottom: 3px;
+            }
+            body.theme-light .about-table th { color: #52525b; }
+            .about-table td {
+                font-size: 0.88rem;
+                line-height: 1.6;
+            }
+        }
         .about-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=47">
+    <link rel="stylesheet" href="/static/calm.css?v=48">
 </head>
 
 <body>
@@ -129,15 +156,15 @@
             <p>相席ナビ（AISEKI NAVI）は、{% if total_stores %}全{{ total_stores }}店舗（国内{{ domestic_stores }}店舗＋韓国{{ overseas_stores }}店舗）の{% else %}全国主要都市およびソウルの{% endif %}相席ラウンジ・相席バーが公式サイトで公開している「現在の男女人数」を定期的に記録し、混雑の傾向や男女比の推移を見やすく整理している非公式の統計・情報サイトです。来店前に「いまどの店が入りやすいか」「何時ごろ・何曜日に混みやすいか」を判断する材料を、実際の記録にもとづいて提供することを目的にしています。</p>
 
             <h2>運営者情報・編集体制</h2>
-            <table class="about-table">
-                <tbody>
-                    <tr><th>サイト名</th><td>相席ナビ（AISEKI NAVI）</td></tr>
-                    <tr><th>URL</th><td><a class="about-link" href="https://aiseki-navi.com/">https://aiseki-navi.com/</a></td></tr>
-                    <tr><th>運営・編集主体</th><td>相席ナビ編集部（編集長：くわもん ／ データ集計・検証担当：相席ナビ データ分析班）</td></tr>
-                    <tr><th>運営背景・専門性</th><td>Webエンジニアリングと Python / PostgreSQL による時系列データ分析を専門とし、{% if total_stores %}全{{ total_stores }}店舗・{% endif %}{% if historical_rows and historical_rows >= 10000 %}累計{{ (historical_rows // 10000) }}万件以上{% elif historical_rows and historical_rows > 0 %}{{ "{:,}".format(historical_rows) }}件{% else %}1分間隔で継続蓄積中{% endif %}の公開人数ログを継続観測・統計検証しています。すべてのコラム記事・統計データ白書は編集長およびデータ分析班の同一基準で執筆・校閲しています。</td></tr>
-                    <tr><th>お問い合わせ・訂正窓口</th><td><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の誤り訂正、店舗関係者様からの掲載変更・削除依頼は最優先で確認・対応いたします）</td></tr>
-                    <tr><th>公式SNS</th><td><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer">Instagram</a> ／ <a class="about-link" href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer">Threads</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
-                    <tr><th>姉妹メディア</th><td><a class="about-link" href="https://machinavi-data.com/" target="_blank" rel="noopener">マチナビ（街コン・婚活パーティー・合コン「残席傾向×実質コスパ」横断ナビ）</a></td></tr>
+            <table class="about-table" role="table">
+                <tbody role="rowgroup">
+                    <tr role="row"><th scope="row" role="rowheader">サイト名</th><td role="cell">相席ナビ（AISEKI NAVI）</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">URL</th><td role="cell"><a class="about-link" href="https://aiseki-navi.com/">https://aiseki-navi.com/</a></td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">運営・編集主体</th><td role="cell">相席ナビ編集部（編集長：くわもん ／ データ集計・検証担当：相席ナビ データ分析班）</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">運営背景・専門性</th><td role="cell">Webエンジニアリングと Python / PostgreSQL による時系列データ分析を専門とし、{% if total_stores %}全{{ total_stores }}店舗・{% endif %}{% if historical_rows and historical_rows >= 10000 %}累計{{ (historical_rows // 10000) }}万件以上{% elif historical_rows and historical_rows > 0 %}{{ "{:,}".format(historical_rows) }}件{% else %}1分間隔で継続蓄積中{% endif %}の公開人数ログを継続観測・統計検証しています。すべてのコラム記事・統計データ白書は編集長およびデータ分析班の同一基準で執筆・校閲しています。</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">お問い合わせ・訂正窓口</th><td role="cell"><a class="about-link" href="/contact">お問い合わせフォーム</a>（掲載内容の誤り訂正、店舗関係者様からの掲載変更・削除依頼は最優先で確認・対応いたします）</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">公式SNS</th><td role="cell"><a class="about-link" href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer">X（@aiseki_navi）</a> ／ <a class="about-link" href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer">Instagram</a> ／ <a class="about-link" href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer">Threads</a> ／ <a class="about-link" href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer">note</a></td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">姉妹メディア</th><td role="cell"><a class="about-link" href="https://machinavi-data.com/" target="_blank" rel="noopener">マチナビ（街コン・婚活パーティー・合コン「残席傾向×実質コスパ」横断ナビ）</a></td></tr>
                 </tbody>
             </table>
 
@@ -153,13 +180,13 @@
             </ul>
 
             <h2>更新頻度</h2>
-            <table class="about-table">
-                <tbody>
-                    <tr><th>現在人数（夜間 17時〜翌7時）</th><td>約1分ごとに取得・表示を更新</td></tr>
-                    <tr><th>現在人数（日中 7時〜17時）</th><td>多くの店舗が営業時間外のため約10分ごと</td></tr>
-                    <tr><th>曜日・時間帯ごとの傾向</th><td>直近30日間の記録から定期的に再計算</td></tr>
-                    <tr><th>店舗ページの分析文</th><td>直近4週間の記録から自動生成（記録が少ない店舗では表示しません）</td></tr>
-                    <tr><th>コラム記事</th><td>公開時点の記録をもとに執筆し、算出方法を記事内に明記</td></tr>
+            <table class="about-table" role="table">
+                <tbody role="rowgroup">
+                    <tr role="row"><th scope="row" role="rowheader">現在人数（夜間 17時〜翌7時）</th><td role="cell">約1分ごとに取得・表示を更新</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">現在人数（日中 7時〜17時）</th><td role="cell">多くの店舗が営業時間外のため約10分ごと</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">曜日・時間帯ごとの傾向</th><td role="cell">直近30日間の記録から定期的に再計算</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">店舗ページの分析文</th><td role="cell">直近4週間の記録から自動生成（記録が少ない店舗では表示しません）</td></tr>
+                    <tr role="row"><th scope="row" role="rowheader">コラム記事</th><td role="cell">公開時点の記録をもとに執筆し、算出方法を記事内に明記</td></tr>
                 </tbody>
             </table>
 

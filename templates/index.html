@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=47" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261118_2" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=48" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261118_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -501,7 +501,7 @@
             {% if not is_staff %}
             <!-- Compact 3-Primary-Item Global Navigation (Remaining 6 items stored in Menu Drawer) -->
             <nav class="portal-global-nav portal-global-nav-compact" aria-label="サイト内メニュー">
-                <a href="/" class="portal-nav-link active">今の順位</a>
+                <a href="/" class="portal-nav-link active" aria-current="page">今の順位</a>
                 <a href="/price-comparison" class="portal-nav-link">料金比較</a>
                 <a href="/for-women" class="portal-nav-link">初めての女性向け安心ガイド</a>
                 <button type="button" class="portal-nav-link portal-nav-more-btn" onclick="openMenuModal()" aria-haspopup="dialog">メニュー（3秒診断・記事・白書）</button>
@@ -1399,7 +1399,7 @@
                 <section id="pr-alternatives-section" class="pr-alternatives-section" aria-label="PR｜相席以外の選択肢">
                     <div class="pr-alternatives-head">
                         <span class="pr-disclosure-pill">PR</span>
-                        <span class="pr-alternatives-title">PR｜相席以外の選択肢（1対1デート・2軒目予約・身だしなみ）</span>
+                        <span class="pr-alternatives-title">相席以外の選択肢（1対1デート・2軒目予約・身だしなみ）</span>
                     </div>
                     <div id="pr-alternatives-grid" class="pr-alternatives-grid">
                         <aside class="context-lead-row pr-card-item" data-context-slot="rank4_context" data-context-mode="evening_1on1" data-context-href="/link/dating_bachelor" aria-label="プロモーションおよび比較ガイド">
@@ -1460,7 +1460,7 @@
                 <div class="official-sns-hero-card official-sns-compact">
                     <span class="sns-compact-label">公式SNSも更新中</span>
                     <div class="sns-compact-links">
-                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">𝕏 公式X</a>
+                        <a href="https://x.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">公式X</a>
                         <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Threads</a>
                         <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Instagram</a>
                         <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">note</a>
@@ -1485,10 +1485,10 @@
                     <!-- Portal Featured Articles Showcase -->
                     <div class="seo-guide-header">
                         <h2>特集コラム・ブランド比較ガイド</h2>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="/for-women" class="guide-open-btn" style="text-decoration: none;">初めての女性向け安心ガイド ›</a>
-                            <a href="/columns" class="guide-open-btn" style="text-decoration: none;">コラム一覧を見る ›</a>
-                            <a href="/areas" class="guide-open-btn" style="text-decoration: none;">エリア別ガイド ›</a>
+                        <div class="seo-guide-header-actions">
+                            <a href="/columns" class="guide-open-btn is-primary" style="text-decoration: none;">コラム一覧を見る ›</a>
+                            <a href="/for-women" class="guide-open-btn is-secondary" style="text-decoration: none;">初めての女性向け安心ガイド ›</a>
+                            <a href="/areas" class="guide-open-btn is-secondary" style="text-decoration: none;">エリア別ガイド ›</a>
                         </div>
                     </div>
 
@@ -1810,8 +1810,8 @@
                         <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
                         <li><a href="/stats/year-end-2026">年末・ドーム公演連動 統計白書</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
-                        <li><a href="/privacy">運営者情報・プライバシーポリシー</a></li>
-                        <li><a href="/about">相席ナビについて（データの取得方法）</a></li>
+                        <li><a href="/about">相席ナビについて（運営者情報・取得方法）</a></li>
+                        <li><a href="/privacy">プライバシーポリシー・免責事項</a></li>
                         <li><a href="/contact">お問い合わせ</a></li>
                         <li><a href="https://machinavi-data.com/" target="_blank" rel="noopener">姉妹サイト：マチナビ（街コン・婚活比較）</a></li>
                         <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
@@ -1838,7 +1838,9 @@
             <!-- Bottom Row: Clean Legal & Copyright -->
             <div class="footer-bottom-meta">
                 <div class="footer-legal-links">
-                    <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">運営者情報・プライバシーポリシー・免責事項</a>
+                    <a href="/about" class="footer-sub-link" style="text-decoration: none;">運営者情報</a>
+                    <span class="footer-divider" style="opacity: 0.3;">|</span>
+                    <a href="/privacy" class="footer-sub-link" style="text-decoration: none;">プライバシーポリシー・免責事項</a>
                     <span class="footer-divider" style="opacity: 0.3;">|</span>
                     <a href="/staff" class="footer-sub-link footer-staff-link">社内業務モニター</a>
                 </div>
@@ -1975,7 +1977,7 @@
                         <a href="/guide/second-venue" class="second-venue-guide-link" target="_blank" rel="noopener noreferrer">誘い方コラム ›</a>
                     </div>
                     <div id="modal-second-venue-timing-badge" class="second-venue-timing-badge" onclick="toggleSecondTimingDetails()">
-                        <span class="timing-badge-tag">💡 ベストタイミング</span>
+                        <span class="timing-badge-tag">ベストタイミング</span>
                         <span class="timing-badge-text">着席40〜50分後 / 23:10前</span>
                         <span class="timing-toggle-arrow" id="timing-toggle-arrow">▾ 理由を見る</span>
                     </div>
@@ -2143,7 +2145,7 @@
                                 <source srcset="/static/eyecatch-beauty-stage.webp?v=3" type="image/webp">
                                 <img src="/static/eyecatch-beauty-stage.jpg?v=3" alt="女性のための相席ラウンジ完全裏ガイド" width="640" height="360" decoding="async" loading="lazy">
                             </picture>
-                            <span class="article-card-badge">💄 女性限定・LIVE連動</span>
+                            <span class="article-card-badge">女性限定・LIVE連動</span>
                         </div>
                         <div class="article-card-info">
                             <div class="article-card-meta">
@@ -3036,7 +3038,7 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261118_2" defer></script>
+    <script src="/static/app.js?v=20261118_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -3052,7 +3054,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=114', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=115', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

@@ -6595,8 +6595,8 @@ body.theme-light.audience-women:not(.staff-mode) {
 }
 
 /* --- 26-B. Apple Global Ribbon（全ページ共通1行クリーンナビ）＆ トップヘッダー引き算 --- */
-/* トップページの重複テーマ切替バーを引き算（右上のライト切替＆表示切替に一本化） */
-body:not(.staff-mode) .theme-switcher-bar {
+/* トップページの重複テーマ切替バーを引き算（右上のライト切替＆表示切替に一本化・メニューモーダル内は維持） */
+body:not(.staff-mode) header .theme-switcher-bar {
     display: none !important;
 }
 
@@ -10701,4 +10701,427 @@ body.theme-light .mqs-meta-row {
         min-width: 38px;
         min-height: 38px;
     }
+}
+
+/* ==========================================================================
+   29. 全サイト横断クラフトマンシップ統一（Fable 5.2 Primitives A–D + List/Editorial/Footer）
+       - Primitive A: 全モーダル完全不透明サーフェス（裏透けゼロ）＆4重ボックス解消
+       - Primitive B: モーダル内アクティブタブのモノクロソリッド統一＆スマホメニュー2列Bento化
+       - Primitive C: 共有・PR・特集ヘッダーのピル境界線・主従階層・左揃え統一
+       - Primitive D: クリック時の不要な二重リング抑止（:focus-visible 限定）
+       - Layout #2: PC リストモード（theme-list）2列ワイド化＆1位店舗名の潰れ完全解消
+       - Editorial #9/#10: モバイル記事本文の1行22〜24文字化（外枠ボックス解放）
+       - Footer #12: 旧スレート青（#0f172a）の完全ニュートラル黒化＆単語途中改行防止
+   ========================================================================== */
+
+/* --- Primitive A: 全モーダル共通・不透明サーフェス（#events-modal 等の裏透け・半透明フェード残像根絶） --- */
+body:not(.staff-mode) .modal:not(.hidden) {
+    opacity: 1 !important;
+    transition: none !important;
+}
+
+body:not(.staff-mode) .modal:not(#analysis-modal):not(.hidden) .modal-content {
+    opacity: 1 !important;
+    transition: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .modal {
+    background: rgba(0, 0, 0, 0.86) !important;
+}
+
+body.theme-light:not(.staff-mode) .modal {
+    background: rgba(24, 24, 27, 0.56) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .modal .modal-content,
+body:not(.theme-light):not(.staff-mode) .articles-modal-content {
+    background: #1a1a1e !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) .modal .modal-content,
+body.theme-light:not(.staff-mode) .articles-modal-content {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) #events-modal .event-item-card {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+}
+
+body.theme-light:not(.staff-mode) #events-modal .event-item-card {
+    background: #f6f6f7 !important;
+    border: 1px solid var(--calm-light-border) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) #events-modal .event-cta-btn {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) #events-modal .event-cta-btn {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .modal .modal-header {
+    background: #1a1a1e !important;
+    box-shadow: 0 -24px 0 0 #1a1a1e !important;
+}
+
+body.theme-light:not(.staff-mode) .modal .modal-header,
+body.theme-light.audience-women:not(.staff-mode) .modal .modal-header,
+body.theme-light.audience-women:not(.staff-mode) #analysis-modal .modal-header {
+    background: #ffffff !important;
+    box-shadow: 0 -24px 0 0 #ffffff !important;
+}
+
+/* #analysis-modal 内の4重ネスト（modal > modal-moat-box > moat-modal-card > moat-acc-track）を1階層カードへ整理 */
+#modal-moat-forecast-box.modal-moat-box {
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px solid var(--calm-border) !important;
+    border-radius: 0 !important;
+    padding: 12px 0 4px !important;
+    margin: 8px 0 12px !important;
+    box-shadow: none !important;
+}
+
+body.theme-light #modal-moat-forecast-box.modal-moat-box {
+    border-top-color: var(--calm-light-border) !important;
+}
+
+body:not(.theme-light) .moat-modal-title {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light .moat-modal-title {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light) .moat-modal-card {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: 12px !important;
+}
+
+body.theme-light .moat-modal-card {
+    background: #f6f6f7 !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: 12px !important;
+}
+
+body:not(.theme-light) .moat-modal-card.tone-safe {
+    border-color: rgba(110, 231, 183, 0.28) !important;
+}
+
+body:not(.theme-light) .moat-modal-card.tone-warn {
+    border-color: rgba(251, 191, 36, 0.28) !important;
+}
+
+body:not(.theme-light) .moat-modal-card.tone-danger {
+    border-color: rgba(244, 168, 184, 0.30) !important;
+}
+
+#analysis-modal .moat-acc-track {
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px dashed var(--calm-border) !important;
+    border-radius: 0 !important;
+    padding: 6px 0 0 !important;
+    margin-top: 6px !important;
+}
+
+body.theme-light #analysis-modal .moat-acc-track {
+    border-top-color: var(--calm-light-border) !important;
+}
+
+/* --- Primitive B: モーダル内タブのモノクロソリッド統一 ＆ #menu-modal 2列 Bento --- */
+body:not(.theme-light):not(.staff-mode) .events-tab-btn.active,
+body:not(.theme-light):not(.staff-mode) .sns-tab-btn.active,
+body:not(.theme-light):not(.staff-mode) .guide-tab-pill.active,
+body:not(.theme-light):not(.staff-mode) .guide-cat-btn.active,
+body:not(.theme-light):not(.staff-mode) .theme-pill-btn.active,
+body:not(.theme-light):not(.staff-mode) .chart-filter-btn.active,
+body:not(.theme-light):not(.staff-mode) .second-tab-btn.active {
+    background: #f4f4f5 !important;
+    border-color: #f4f4f5 !important;
+    color: #111113 !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .events-tab-btn.active,
+body.theme-light:not(.staff-mode) .sns-tab-btn.active,
+body.theme-light:not(.staff-mode) .guide-tab-pill.active,
+body.theme-light:not(.staff-mode) .guide-cat-btn.active,
+body.theme-light:not(.staff-mode) .theme-pill-btn.active,
+body.theme-light:not(.staff-mode) .chart-filter-btn.active,
+body.theme-light:not(.staff-mode) .second-tab-btn.active {
+    background: #18181b !important;
+    border-color: #18181b !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+body:not(.staff-mode) #menu-modal .menu-theme-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+}
+
+body.theme-light:not(.staff-mode) #menu-modal .menu-theme-bar {
+    background: #f6f6f7 !important;
+    border-color: var(--calm-light-border) !important;
+}
+
+#menu-modal .menu-theme-bar .theme-pill-btn {
+    min-height: 38px;
+    padding: 6px 8px;
+    border-radius: 8px !important;
+    font-size: 0.8rem;
+    font-weight: 700;
+    justify-content: center;
+    text-align: center;
+}
+
+@media (min-width: 360px) {
+    #menu-modal .menu-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+}
+
+#menu-modal .menu-grid-item {
+    padding: 10px 11px !important;
+    border-radius: 12px !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    min-height: 56px;
+}
+
+#menu-modal .menu-grid-text strong {
+    display: block;
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2px;
+}
+
+#menu-modal .menu-grid-text span {
+    display: block;
+    font-size: 0.7rem !important;
+    line-height: 1.35 !important;
+}
+
+/* --- Primitive C: 共有ピル境界線の完全統一・PR左揃え・特集ヘッダー主従階層 --- */
+.pr-alternatives-section,
+.pr-alternatives-section .pr-card-item,
+.pr-alternatives-section .pr-context-body {
+    text-align: left !important;
+    word-break: auto-phrase;
+}
+
+body:not(.theme-light):not(.staff-mode) .share-banner-buttons .share-pill-btn,
+body:not(.theme-light):not(.staff-mode) .modal-top-share-actions .share-pill-btn,
+body:not(.theme-light):not(.staff-mode) .modal-share-actions .share-pill-btn,
+body:not(.theme-light):not(.staff-mode) .sns-modal-actions .share-pill-btn {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: 999px !important;
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .share-banner-buttons .share-pill-btn,
+body.theme-light:not(.staff-mode) .modal-top-share-actions .share-pill-btn,
+body.theme-light:not(.staff-mode) .modal-share-actions .share-pill-btn,
+body.theme-light:not(.staff-mode) .sns-modal-actions .share-pill-btn {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    border-radius: 999px !important;
+    min-height: 38px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+
+.seo-guide-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+body:not(.theme-light):not(.staff-mode) .guide-open-btn.is-secondary {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    font-weight: 600 !important;
+}
+
+body.theme-light:not(.staff-mode) .guide-open-btn.is-secondary {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    font-weight: 600 !important;
+}
+
+/* --- Primitive D: 二重フォーカスリング抑止 ＆ キーボード/Forced-Colors 対応の単一2pxリング --- */
+.close-btn-pill:focus:not(:focus-visible),
+.modal-bottom-close-btn:focus:not(:focus-visible),
+.modal a:focus:not(:focus-visible),
+.modal button:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+.close-btn-pill:focus:not(:focus-visible),
+.modal-bottom-close-btn:focus:not(:focus-visible) {
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .modal .close-btn-pill:focus-visible,
+body:not(.theme-light) .modal .modal-bottom-close-btn:focus-visible,
+body:not(.theme-light) .close-btn-pill:focus-visible,
+body:not(.theme-light) .modal-bottom-close-btn:focus-visible {
+    border-color: transparent !important;
+    box-shadow: none !important;
+    outline: 2px solid currentColor !important;
+    outline-offset: 0px !important;
+    background: var(--calm-surface-2) !important;
+    transition: none !important;
+}
+
+body.theme-light .modal .close-btn-pill:focus-visible,
+body.theme-light .modal .modal-bottom-close-btn:focus-visible,
+body.theme-light .close-btn-pill:focus-visible,
+body.theme-light .modal-bottom-close-btn:focus-visible {
+    border-color: transparent !important;
+    box-shadow: none !important;
+    outline: 2px solid currentColor !important;
+    outline-offset: 0px !important;
+    background: var(--calm-light-surface-2) !important;
+    transition: none !important;
+}
+
+/* --- Layout #2: PC リストモード（body.theme-list）での1位店舗名 0px 潰れ・バッジ切れ根絶 --- */
+body.theme-list .bento-kicker-row,
+body.compact-mode .bento-kicker-row,
+body.theme-list .bento-ratio-hero,
+body.compact-mode .bento-ratio-hero {
+    display: none !important;
+}
+
+@media (min-width: 769px) {
+    body:not(.staff-mode).theme-list #ranking-list,
+    body:not(.staff-mode).theme-list .ranking-list,
+    body:not(.staff-mode).compact-mode #ranking-list,
+    body:not(.staff-mode).compact-mode .ranking-list {
+        grid-template-columns: repeat(auto-fill, minmax(min(460px, 100%), 1fr)) !important;
+    }
+}
+
+body.theme-list .brand-badge,
+body.compact-mode .brand-badge {
+    flex-shrink: 0 !important;
+}
+
+body.theme-list .store-info,
+body.compact-mode .store-info {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+body.theme-list .store-name,
+body.compact-mode .store-name {
+    min-width: 4.5em;
+}
+
+/* --- Editorial #9 & #10: 記事・ガイド・規約ページのボタン下線漏れ防止＆モバイル本文幅拡張 --- */
+:where(.article-box, .article-body, .article-content, .content-box) a:where(.cta-btn, .rec-btn, .grooming-jump-chip, .editorial-bridge-btn, .audience-switch-link, .btn-primary, .btn-secondary, [class*="-btn"], [class*="-pill"]) {
+    text-decoration: none !important;
+}
+
+:where(.article-box, .article-body, .article-content, .content-box) :where(.data-table-wrap, .table-wrap) {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 600px) {
+    body:not(.staff-mode) :is(.article-wrap, .article-container, .guide-container) {
+        padding-inline: 14px !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) :is(article.article-box, article.article-body, article.article-content, article.content-box, .article-box, .content-box),
+    body.theme-light:not(.staff-mode) :is(article.article-box, article.article-body, article.article-content, article.content-box, .article-box, .content-box) {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        padding: 4px 0 20px !important;
+    }
+
+    body:not(.theme-light):not(.staff-mode) .article-box > .lead-box {
+        background: transparent !important;
+        border: none !important;
+        border-left: 2px solid var(--calm-border-strong) !important;
+        border-radius: 0 !important;
+        padding: 2px 0 2px 12px !important;
+    }
+
+    body.theme-light:not(.staff-mode) .article-box > .lead-box {
+        background: transparent !important;
+        border: none !important;
+        border-left: 2px solid var(--calm-light-border-strong) !important;
+        border-radius: 0 !important;
+        padding: 2px 0 2px 12px !important;
+    }
+
+    body.theme-light:not(.staff-mode) :is(.article-box, .article-body, .article-content, .content-box) :is([style*="color:#71717a"], [style*="color: #71717a"]) {
+        color: #52525b !important;
+    }
+}
+
+/* --- Footer #12: フッターサイトマップの旧スレート青（#0f172a）除去＆単語途中改行防止 --- */
+body:not(.theme-light):not(.staff-mode) .portal-footer-sitemap {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    box-shadow: none !important;
+}
+
+.footer-legal-links a {
+    text-decoration: none !important;
+}
+
+.footer-legal-links a:not(.hidden),
+.portal-footer-links a:not(.hidden),
+.portal-footer-sns a:not(.hidden) {
+    display: inline-block;
 }

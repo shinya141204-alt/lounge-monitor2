@@ -74,7 +74,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=18">
+    <link rel="stylesheet" href="/static/portal.css?v=19">
     <style>
         :root {
             --bg-dark: #0f1014;
@@ -130,43 +130,69 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
+        }
+        @media (max-width: 859px) {
+            .brand-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding: 2px 28px 6px 0;
+                margin-bottom: 14px;
+                -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent 100%);
+                mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent 100%);
+            }
+            .brand-tabs::-webkit-scrollbar {
+                display: none;
+            }
         }
         .brand-tab {
             display: inline-flex;
             align-items: center;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            min-height: 36px;
             gap: 6px;
-            padding: 7px 15px;
-            border-radius: 8px;
-            font-size: 0.82rem;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.81rem;
             font-weight: 600;
             text-decoration: none;
             color: var(--text-sub);
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            transition: all 0.18s ease;
+            transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
         }
         .brand-tab:hover {
-            border-color: rgba(200, 164, 110, 0.4);
+            border-color: rgba(255, 255, 255, 0.24);
             color: var(--text-main);
         }
+        body.theme-light .brand-tab:hover {
+            border-color: rgba(24, 24, 27, 0.28);
+        }
         .brand-tab.active {
-            background: rgba(200, 164, 110, 0.14);
-            border-color: rgba(200, 164, 110, 0.45);
-            color: var(--accent-text);
+            background: #f4f4f5 !important;
+            border-color: #f4f4f5 !important;
+            color: #111113 !important;
             font-weight: 700;
+        }
+        body.theme-light .brand-tab.active {
+            background: #18181b !important;
+            border-color: #18181b !important;
+            color: #ffffff !important;
         }
 
         .hero-card {
             background: var(--card-bg);
-            border: 1px solid rgba(200, 164, 110, 0.3);
+            border: 1px solid var(--border-subtle);
             border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 22px;
+            padding: 22px;
+            margin-bottom: 20px;
         }
         .hero-card h1 {
             margin: 0 0 10px;
-            font-size: 1.38rem;
+            font-size: 1.34rem;
             color: var(--text-main);
             line-height: 1.4;
         }
@@ -174,18 +200,25 @@
             display: inline-flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 14px;
-            background: #1b1c22;
-            padding: 7px 15px;
-            border-radius: 999px;
+            gap: 6px 14px;
+            background: #18181c;
+            padding: 8px 14px;
+            border-radius: 10px;
             border: 1px solid var(--border-subtle);
-            font-size: 0.85rem;
+            font-size: 0.83rem;
             font-weight: 600;
+            font-variant-numeric: tabular-nums;
             color: var(--text-sub);
             margin-bottom: 14px;
         }
+        body.theme-light .totals-bar {
+            background: #f6f6f7;
+            border-color: rgba(24, 24, 27, 0.10);
+        }
         .tot-w { color: var(--women); font-weight: 700; }
         .tot-m { color: var(--men); font-weight: 700; }
+        body.theme-light .tot-w { color: #be123c !important; }
+        body.theme-light .tot-m { color: #1d4ed8 !important; }
 
         .stores-grid {
             display: grid;
@@ -221,6 +254,7 @@
             font-size: 0.96rem;
             font-weight: 700;
             color: var(--text-main);
+            word-break: auto-phrase;
         }
         .store-area-badge {
             font-size: 0.71rem;
@@ -245,6 +279,12 @@
             background: rgba(147, 177, 201, 0.28);
             overflow: hidden;
         }
+        .ratio-bar.is-empty {
+            background: var(--border-subtle) !important;
+        }
+        .ratio-bar.is-empty .ratio-fill-w {
+            width: 0 !important;
+        }
         .ratio-fill-w {
             height: 100%;
             background: var(--women);
@@ -253,6 +293,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
             font-size: 0.75rem;
             color: var(--text-sub);
         }
@@ -276,7 +317,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=47">
+    <link rel="stylesheet" href="/static/calm.css?v=48">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -302,12 +343,13 @@
 
         <main>
         <div class="brand-tabs">
-            <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}">オリエンタルラウンジ全店</a>
-            <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}">ag（アグ）全店</a>
-            <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}">JIS（ジス）全店</a>
-            <a href="/asobibar" class="brand-tab {% if brand.slug == 'asobibar' %}active{% endif %}">ASOBIBAR（アソビバー）全店</a>
+            <a href="/oriental-lounge" class="brand-tab {% if brand.slug == 'oriental-lounge' %}active{% endif %}"{% if brand.slug == 'oriental-lounge' %} aria-current="page"{% endif %}>オリエンタルラウンジ全店</a>
+            <a href="/ag" class="brand-tab {% if brand.slug == 'ag' %}active{% endif %}"{% if brand.slug == 'ag' %} aria-current="page"{% endif %}>ag（アグ）全店</a>
+            <a href="/jis" class="brand-tab {% if brand.slug == 'jis' %}active{% endif %}"{% if brand.slug == 'jis' %} aria-current="page"{% endif %}>JIS（ジス）全店</a>
+            <a href="/asobibar" class="brand-tab {% if brand.slug == 'asobibar' %}active{% endif %}"{% if brand.slug == 'asobibar' %} aria-current="page"{% endif %}>ASOBIBAR（アソビバー）全店</a>
             <a href="/" class="brand-tab">全国総合ランキングへ戻る</a>
         </div>
+        <script>try{var _bt=document.querySelector('.brand-tabs'),_ab=_bt&&_bt.querySelector('.brand-tab.active');if(_bt&&_ab&&_bt.scrollWidth>_bt.clientWidth){_bt.scrollLeft=Math.max(0,_ab.offsetLeft-12);}}catch(e){}</script>
 
         <section class="hero-card">
             <h1>{{ brand.h1 }}</h1>
@@ -325,7 +367,7 @@
         <div class="stores-grid">
             {% for s in stores %}
             {% set tot = s.women + s.men %}
-            {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 50 %}
+            {% set wpct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
             <a href="/store/{{ s.slug }}" class="store-card-link">
                 <div class="store-card">
                     <div class="store-title-row">
@@ -341,7 +383,7 @@
                         <span style="color: var(--text-sub); font-size: 0.78rem;">本日 {{ s.today_hours_label }}</span>
                         {% endif %}
                     </div>
-                    <div class="ratio-bar">
+                    <div class="ratio-bar{% if tot <= 0 %} is-empty{% endif %}">
                         <div class="ratio-fill-w" style="width: {{ wpct }}%;"></div>
                     </div>
                     <div class="store-footer-row">
@@ -352,7 +394,7 @@
                         {% else %}
                         <span>営業時間：{{ s.hours_label }}</span>
                         {% endif %}
-                        <span style="color: var(--accent-text); font-weight: 600;">店舗詳細・料金比較 ›</span>
+                        <span style="color: var(--text-main); font-weight: 600; white-space: nowrap; flex-shrink: 0;">店舗詳細・料金比較 ›</span>
                     </div>
                 </div>
             </a>
