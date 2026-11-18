@@ -2006,6 +2006,8 @@ def _jinja_brand_ja(val):
         return 'ヤタコイ'
     if su == 'AG':
         return 'ag'
+    if su in ('JIS', 'ASOBIBAR', 'XIX', 'ALFA', 'CLOVERS'):
+        return su
     return s
 
 

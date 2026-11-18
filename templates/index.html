@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=50" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261119_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=51" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261119_2" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -547,7 +547,7 @@
                 <div id="plan2-omnibar" class="plan2-omnibar">
                 <!-- 1-Row Persistent Area Quick Chips right under Header -->
                 <div id="area-quick-chips" class="filter-bar area-quick-chips" role="region" aria-label="エリア絞り込み">
-                    <button type="button" class="filter-btn active" data-region="All">{% if not is_staff %}<img src="/static/icons/plan2/icon-pin.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-pin-icon">{% endif %}<span>全国</span></button>
+                    <button type="button" class="filter-btn active" data-region="All"><img src="/static/icons/plan2/icon-pin.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-pin-icon"><span>全国</span></button>
                     <button type="button" class="filter-btn filter-btn-gps" id="quick-nearby-chip" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷</button>
@@ -615,7 +615,7 @@
 
                 <div class="search-sort-container">
                     <div class="search-input-wrap">
-                        {% if not is_staff %}<img src="/static/icons/plan2/icon-search.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-search-icon">{% endif %}
+                        <img src="/static/icons/plan2/icon-search.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-search-icon">
                         <input type="text" id="search-input" placeholder="店舗名・駅名で検索" autocomplete="off" oninput="handleSearch(this.value)">
                         <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="検索文字をクリア" title="検索をクリア" onclick="clearSearchInput()">✕</button>
                     </div>
@@ -925,12 +925,10 @@
                             <div class="separator"></div>
                         </div>
 
-                        {% if not is_staff %}
                         <div id="ranking-section-head" class="plan2-section-head">
                             <span class="plan2-section-title">全国リアルタイム順位</span>
-                            <span class="plan2-section-meta">{% if tp.forecast_verified %}予測誤差 ±{{ tp.forecast_mae_pt }}pt・公式非提携{% else %}1分自動更新・公式非提携{% endif %}</span>
+                            <span class="plan2-section-meta">{% if is_staff %}全{{ tp_total_stores }}店舗・現場業務モニター{% elif tp.forecast_verified %}予測誤差 ±{{ tp.forecast_mae_pt }}pt・公式非提携{% else %}1分自動更新・公式非提携{% endif %}</span>
                         </div>
-                        {% endif %}
 
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
@@ -983,7 +981,7 @@
                                             </svg>
                                         </button>
                                     </div>
-                                    <p class="plan2-card-sub">{{ s.plan2_sub_text or '' }}</p>
+                                    <p class="plan2-card-sub">{{ (s.plan2_staff_sub_text if is_staff else s.plan2_sub_text) or '' }}</p>
                                     <p class="cm-human-line">{{ ssr_human_copy }}</p>
                                     <div class="store-spec-row">
                                         <span class="spec-text"><span class="spec-price-main">{{ s.spec_price_short }}</span><span class="spec-hours-age-extra">{% if s.spec_hours_short %} ｜ 営業 {{ s.spec_hours_short }}{% endif %}{% if s.spec_age_short %} ｜ {{ s.spec_age_short }}{% endif %}</span></span>
@@ -3098,7 +3096,7 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261119_1" defer></script>
+    <script src="/static/app.js?v=20261119_2" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -3114,7 +3112,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=117', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=118', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

@@ -2529,24 +2529,42 @@
             const hrsShort = store.spec_hours_short || store.today_hours_label || '';
             const ageShort = store.spec_age_short || '';
             if (refs.plan2SubEl) {
-                const isWomenSub = (!IS_STAFF && currentAudience === 'women');
-                const concisePrice = isWomenSub
-                    ? (store.is_flat_rate ? (priceShort.split(/[｜|]/)[1] || '女性定額').trim() : '女性チャージ0円・飲み放題無料')
-                    : (priceShort.split(/[（(｜|]/)[0] || '').trim();
-                const subSegs = [];
-                if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
-                    subSegs.push(store._distKm < 1.0 ? `現在地から${Math.round(store._distKm * 1000)}m` : `現在地から${store._distKm.toFixed(1)}km`);
-                } else if (brandInfo.areaLabel && !(Boolean(store.area_redundant_sp) || isAreaRedundantSpJs(brandInfo.areaLabel, baseName))) {
-                    subSegs.push(brandInfo.areaLabel);
-                } else if (hrsShort) {
-                    subSegs.push(hrsShort);
+                if (IS_STAFF) {
+                    const staffSegs = [];
+                    const fShort = formatStoreFreshnessShortJs(store) || formatStoreFreshnessJs(store);
+                    if (fShort) staffSegs.push(fShort);
+                    const totNow = (Number(store.women) || 0) + (Number(store.men) || 0);
+                    const uWPlain = (totNow > 0 && store.usual_w_diff !== null && store.usual_w_diff !== undefined)
+                        ? (store.usual_w_plain || formatUsualDiffPlainJs(store.usual_w_diff, '女性'))
+                        : '';
+                    if (uWPlain) {
+                        staffSegs.push(uWPlain);
+                    } else if (brandInfo.areaLabel && !(Boolean(store.area_redundant_sp) || isAreaRedundantSpJs(brandInfo.areaLabel, baseName))) {
+                        staffSegs.push(brandInfo.areaLabel);
+                    } else if (hrsShort) {
+                        staffSegs.push(`営業 ${hrsShort}`);
+                    }
+                    refs.plan2SubEl.textContent = staffSegs.join(' ・ ');
+                } else {
+                    const isWomenSub = currentAudience === 'women';
+                    const concisePrice = isWomenSub
+                        ? (store.is_flat_rate ? (priceShort.split(/[｜|]/)[1] || '女性定額').trim() : '女性チャージ0円・飲み放題無料')
+                        : (priceShort.split(/[（(｜|]/)[0] || '').trim();
+                    const subSegs = [];
+                    if (currentSort === 'nearby' && typeof store._distKm === 'number' && userLocation) {
+                        subSegs.push(store._distKm < 1.0 ? `現在地から${Math.round(store._distKm * 1000)}m` : `現在地から${store._distKm.toFixed(1)}km`);
+                    } else if (brandInfo.areaLabel && !(Boolean(store.area_redundant_sp) || isAreaRedundantSpJs(brandInfo.areaLabel, baseName))) {
+                        subSegs.push(brandInfo.areaLabel);
+                    } else if (hrsShort) {
+                        subSegs.push(hrsShort);
+                    }
+                    if (concisePrice) {
+                        subSegs.push(concisePrice);
+                    } else if (ageShort && ageShort !== '客層データ収集中') {
+                        subSegs.push(ageShort);
+                    }
+                    refs.plan2SubEl.textContent = subSegs.join(' ・ ');
                 }
-                if (concisePrice) {
-                    subSegs.push(concisePrice);
-                } else if (ageShort && ageShort !== '客層データ収集中') {
-                    subSegs.push(ageShort);
-                }
-                refs.plan2SubEl.textContent = subSegs.join(' ・ ');
             }
             if (specRowEl) {
                 if (priceShort || hrsShort) {

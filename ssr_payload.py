@@ -17,7 +17,7 @@ JST = datetime.timezone(datetime.timedelta(hours=9))
 CLIENT_STATUS_DROP_KEYS = (
     'ssr_title', 'ssr_brand', 'ssr_brand_cls', 'ssr_disp', 'ssr_is_dup', 'ssr_ladies_pct', 'ssr_men_pct',
     'seo_name', 'pos_telemetry',
-    'plan2_signal_text', 'plan2_signal_cls', 'plan2_sub_text', 'plan2_forecast_text', 'plan2_needs_brand_pfx',
+    'plan2_signal_text', 'plan2_signal_cls', 'plan2_sub_text', 'plan2_staff_sub_text', 'plan2_forecast_text', 'plan2_needs_brand_pfx',
 )
 CLIENT_STATUS_DROP_NESTED = {
     'forecast_60m': ('model_version',),
@@ -591,6 +591,17 @@ def attach_card_ux_metadata(
         sub_parts.append(item['spec_age_short'])
     item['plan2_sub_text'] = ' ・ '.join(sub_parts)
 
+    staff_sub_parts = []
+    if freshness_short or freshness_label:
+        staff_sub_parts.append(freshness_short or freshness_label)
+    if tot > 0 and item['usual_w_plain']:
+        staff_sub_parts.append(item['usual_w_plain'])
+    elif ssr_area_lbl and not item['area_redundant_sp']:
+        staff_sub_parts.append(ssr_area_lbl)
+    elif hours_lbl:
+        staff_sub_parts.append(f'営業 {hours_lbl}')
+    item['plan2_staff_sub_text'] = ' ・ '.join(staff_sub_parts)
+
     if tot == 0:
         p2_fc_txt = f"本日 {item['open_time_short']} オープン予定" if item['open_time_short'] else '営業時間外（開店後に自動更新）'
     elif fc and fc.get('pred_60m_wpct') is not None:
@@ -983,7 +994,7 @@ def build_deferred_card_pool(status, is_staff=False, start_idx=20):
             'mp': int(s.get('ssr_men_pct') or 0),
             'psg': s.get('plan2_signal_text') or '',
             'psc': s.get('plan2_signal_cls') or 'is-ok',
-            'psb': s.get('plan2_sub_text') or '',
+            'psb': (s.get('plan2_staff_sub_text') if is_staff else s.get('plan2_sub_text')) or '',
             'pfc': s.get('plan2_forecast_text') or '',
             'ndp': 1 if s.get('plan2_needs_brand_pfx') else 0,
         }

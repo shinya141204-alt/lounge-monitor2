@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=50"
+        expected_calm = "/static/calm.css?v=51"
         expected_portal = "/static/portal.css?v=19"
-        expected_app_js = "/static/app.js?v=20261119_1"
+        expected_app_js = "/static/app.js?v=20261119_2"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=117"
-        expected_cache_name = "aiseki-navi-v117"
+        expected_sw_url = "/sw.js?v=118"
+        expected_cache_name = "aiseki-navi-v118"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -3321,16 +3321,29 @@ class UiAuditRegressionTests(unittest.TestCase):
 
                     staff_state = st.evaluate("""() => {
                         const hdrThemeBar = document.querySelector('header .theme-switcher-bar');
+                        const rl = document.getElementById('ranking-list');
+                        const omnibar = document.getElementById('plan2-omnibar');
                         const clovers = Array.from(document.querySelectorAll('#ranking-list .ranking-item'))
                             .find(el => (el.getAttribute('data-store') || '').includes('CLOVERS'));
                         const cr = clovers.getBoundingClientRect();
                         const sn = clovers.querySelector('.store-name').getBoundingClientRect();
                         const specDisp = getComputedStyle(clovers.querySelector('.store-spec-row')).display;
+                        const subTxt = clovers.querySelector('.plan2-card-sub')?.innerText.trim() || '';
+                        const pbRect = clovers.querySelector('.pin-btn').getBoundingClientRect();
+                        const barH = clovers.querySelector('.occupancy-bar').getBoundingClientRect().height;
+                        const meterBg = getComputedStyle(clovers.querySelector('.stats-group')).backgroundColor;
                         const wRect = clovers.querySelector('.stat.ladies .count').getBoundingClientRect();
                         const mRect = clovers.querySelector('.stat.men .count').getBoundingClientRect();
                         return {
                             hdrThemeBarDisp: hdrThemeBar ? getComputedStyle(hdrThemeBar).display : 'none',
+                            gridCols: rl ? getComputedStyle(rl).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+                            omnibarDisplay: omnibar ? getComputedStyle(omnibar).display : 'none',
+                            cardRadius: getComputedStyle(clovers).borderTopLeftRadius,
                             specDisp,
+                            subTxt,
+                            pinBtnW: Math.round(pbRect.width),
+                            barH: Math.round(barH),
+                            meterBg,
                             snW: Math.round(sn.width),
                             snH: Math.round(sn.height),
                             countsInsideCard: (wRect.left >= cr.left - 1) && (mRect.right <= cr.right + 1) && (wRect.width > 0) && (mRect.width > 0),
@@ -3338,7 +3351,14 @@ class UiAuditRegressionTests(unittest.TestCase):
                         };
                     }""")
                     self.assertEqual(staff_state["hdrThemeBarDisp"], "none", "Duplicate theme bar must be hidden in staff header")
+                    self.assertEqual(staff_state["gridCols"], 3, f"Staff PC must keep 3-column StoreSignalCard grid: {staff_state}")
+                    self.assertEqual(staff_state["omnibarDisplay"], "grid")
+                    self.assertEqual(staff_state["cardRadius"], "18px")
                     self.assertEqual(staff_state["specDisp"], "none", "Consumer .store-spec-row must be hidden in staff-mode")
+                    self.assertNotIn("¥", staff_state["subTxt"], f"Consumer pricing must not leak into staff subtitle: {staff_state}")
+                    self.assertEqual(staff_state["pinBtnW"], 36)
+                    self.assertEqual(staff_state["barH"], 6)
+                    self.assertEqual(staff_state["meterBg"], "rgb(35, 35, 41)")
                     self.assertGreaterEqual(staff_state["snW"], 140, f"CLOVERS store name must not be crushed: {staff_state}")
                     self.assertLessEqual(staff_state["snH"], 32, f"CLOVERS store name must stay 1 line, not wrap 4 chars: {staff_state}")
                     self.assertTrue(staff_state["countsInsideCard"], f"Staff card counts clipped outside card: {staff_state}")
