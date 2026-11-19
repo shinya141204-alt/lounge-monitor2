@@ -377,3 +377,127 @@ def to_internal_store_name(name_or_slug: str) -> str:
         return from_slug
     return _resolve_alias_without_slug_lookup(name_clean)
 
+
+def romanized_name(store_name: str) -> str:
+    """
+    全63店舗に対して決定的なローマ字表記（例: 'ag HIROSHIMA', 'JIS SHINJUKU', 'ASOBIBAR SHINJUKU',
+    'ORIENTAL LOUNGE SHINJUKU'）を返す。AGENTS.md §3 規約により 'OLG' や 'YATAKOI' は絶対に出力しない。
+    """
+    internal = to_internal_store_name(store_name)
+    if not internal:
+        return ""
+    slug = str(slug_of(internal) or "").strip()
+    if not slug:
+        return ""
+    info = get(internal) or {}
+    brand = info.get("brand") or ""
+
+    # AGENTS.md §3: never expose internal code 'OLG' or English 'YATAKOI' publicly
+    if brand == "ヤタコイ" or slug.startswith("yatakoi-"):
+        return ""
+
+    if slug.startswith("ag-"):
+        branch = slug[len("ag-"):].replace("-", " ").upper()
+        return f"ag {branch}".strip()
+    if slug.startswith("jis-"):
+        branch = slug[len("jis-"):].replace("-", " ").upper()
+        return f"JIS {branch}".strip()
+    if slug.startswith("asobibar-"):
+        branch = slug[len("asobibar-"):].replace("-", " ").upper()
+        return f"ASOBIBAR {branch}".strip()
+    if slug.startswith("oriental-lounge-"):
+        branch = slug[len("oriental-lounge-"):].replace("-", " ").upper()
+        return f"ORIENTAL LOUNGE {branch}".strip()
+    if slug.startswith("xix-"):
+        branch = slug[len("xix-"):].replace("-", " ").upper()
+        return f"XIX {branch}".strip()
+    if slug.startswith("clovers-"):
+        branch = slug[len("clovers-"):].replace("-", " ").upper()
+        return f"CLOVERS {branch}".strip()
+    if slug.startswith("alfa-"):
+        branch = slug[len("alfa-"):].replace("-", " ").upper()
+        return f"ALFA {branch}".strip()
+    return ""
+
+
+def title_romanized_alias(store_name: str) -> str:
+    """
+    <title> / <meta description> / Hero へ自然に併記する短いローマ字エイリアスを返す。
+    検索クエリ比率の高い ag / JIS（例: ag HIROSHIMA, JIS MATSUYAMA）は <title> にも併記し、
+    長名ブランド（ASOBIBAR / ORIENTAL LOUNGE 等）は description / keywords / JSON-LD alternateName で網羅して
+    title 文字数上限（<=72文字）を厳守する。
+    """
+    internal = to_internal_store_name(store_name)
+    if not internal:
+        return ""
+    info = get(internal) or {}
+    brand = info.get("brand") or ""
+    if brand in ("ag", "JIS"):
+        return romanized_name(internal)
+    return ""
+
+
+def search_aliases(store_name: str) -> list:
+    """
+    Schema.org `LocalBusiness.alternateName` および検索メタ向けに、実在の検索ゆれ表記一覧を返す。
+    AGENTS.md §3 禁止略称（OLG / YATAKOI / オリラジ / 単体オリエンタル）は絶対に含めない。
+    """
+    internal = to_internal_store_name(store_name)
+    if not internal:
+        return []
+    info = get(internal) or {}
+    brand = info.get("brand") or ""
+    disp = str(info.get("display_name") or "").strip()
+    rom = romanized_name(internal)
+    out = []
+
+    def _add(val: str):
+        v = str(val or "").strip()
+        if v and v not in out:
+            out.append(v)
+
+    if rom:
+        _add(rom)
+        if brand == "ag":
+            _add(rom.lower())
+            if disp:
+                _clean_disp = disp[2:].strip() if disp.lower().startswith("ag") else disp
+                if _clean_disp:
+                    _add(f"ag{_clean_disp}")
+                    _add(f"ag {_clean_disp}")
+                    _add(f"アグ {_clean_disp}")
+        elif brand == "JIS":
+            if disp:
+                _clean_disp = disp[3:].strip() if disp.upper().startswith("JIS") else disp
+                if _clean_disp:
+                    _add(f"JIS {_clean_disp}")
+                    _add(f"ジス {_clean_disp}")
+        elif brand == "ASOBIBAR":
+            if disp:
+                _clean_disp = disp[8:].strip() if disp.upper().startswith("ASOBIBAR") else disp
+                if _clean_disp:
+                    _add(f"アソビバー {_clean_disp}")
+                    _add(f"ASOBIBAR {_clean_disp}")
+        elif brand == "XIX":
+            if disp:
+                _add(f"ジックス {disp}")
+                _add(f"XIX（ジックス）{disp}")
+        elif brand == "CLOVERS":
+            if disp:
+                _add(f"クローバーズ {disp}")
+            if internal == "CLOVERS HIROSHIMA":
+                _add("CLOVERS 本店")
+        elif brand == "ALFA":
+            if disp:
+                _add(f"アルファ {disp}")
+                _add(f"相席 アルファ {disp}")
+        elif brand == "OLG":
+            if disp:
+                _add(f"オリエンタルラウンジ{disp}")
+    elif brand == "ヤタコイ" and disp:
+        _add(f"ヤタコイ {disp}")
+        _add(f"ヤタコイ{disp}")
+
+    return out
+
+

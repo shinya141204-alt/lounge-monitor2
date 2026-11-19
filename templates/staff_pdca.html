@@ -758,6 +758,8 @@
         }
         .gap-card.critical { border-color: var(--red); }
         .gap-card.high { border-color: var(--rose); }
+        .gap-card.deferred_phase1 { border-style: dashed; border-color: var(--border-strong); }
+        .gap-card.deferred_phase1 .gap-rx-box { background: var(--inner-card); border-color: var(--border-strong); }
         .gap-card:last-child { margin-bottom: 0; }
         .gap-rx-box {
             margin-top: 8px;
@@ -1252,22 +1254,22 @@
                     <div class="kpi-cell">
                         <div class="kpi-label">外部純新規流入（前週比）</div>
                         <div class="kpi-val">{{ '{:,}'.format(ins.external_inflow_total|default(sns_eff.total_tracked_inflows|default(0, true), true)|int) }}件</div>
-                        <div class="kpi-sub">{{ iwow.short_label|default('比較ログ蓄積中', true) }}</div>
+                        <div class="kpi-sub">{{ iwow.short_label|default('比較ログ蓄積中', true) }}{% if ins.gsc_wow is defined and ins.gsc_wow %} ｜ GSC {{ ins.gsc_wow.short_label }}{% endif %}</div>
                     </div>
                     <div class="kpi-cell">
-                        <div class="kpi-label">1日平均PV ／ 直近{{ days }}日総PV</div>
+                        <div class="kpi-label">{% if ins.pv_basis == 'human_pv' %}実ブラウザ1日PV（人間実測）{% else %}1日平均PV ／ 直近{{ days }}日総PV{% endif %}</div>
                         <div class="kpi-val">{{ ins.daily_pv|default(0, true) }} <small style="font-size:0.74rem; font-weight:700;">PV/日</small></div>
-                        <div class="kpi-sub">総PV {{ '{:,}'.format(fn.pv_total|default(0, true)|int) }}（記事 {{ '{:,}'.format(fn.article_views|default(0, true)|int) }}回）</div>
+                        <div class="kpi-sub">{% if ins.pv_basis == 'human_pv' %}直近{{ ins.human_pv_span_days|default(days, true) }}日実ブラウザ計 {{ '{:,}'.format(ins.human_pv_total|default(0, true)|int) }}（参考生PV {{ ins.raw_daily_pv|default(0, true) }}/日）{% else %}総PV {{ '{:,}'.format(fn.pv_total|default(0, true)|int) }}（記事 {{ '{:,}'.format(fn.article_views|default(0, true)|int) }}回）{% endif %}</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kpi-label">検索SEO ＆ ショート動画流入</div>
                         <div class="kpi-val">検索 {{ ins.search_inflow_total|default(sns_eff.total_search_visits|default(0, true), true) }} ／ 動画 {{ ins.short_video_inflow_total|default(0, true) }}</div>
-                        <div class="kpi-sub">{% if ins.gsc_impressions is defined and ins.gsc_impressions is not none %}GSC表示 {{ '{:,}'.format(ins.gsc_impressions|int) }}回{% else %}最優先2大集客チャネル{% endif %}</div>
+                        <div class="kpi-sub">{% if ins.gsc_impressions is defined and ins.gsc_impressions is not none %}GSC表示 {{ '{:,}'.format(ins.gsc_impressions|int) }}回{% if ins.gsc_clicks is defined and ins.gsc_clicks is not none %}・{{ ins.gsc_clicks }}Click{% endif %}{% else %}最優先2大集客チャネル{% endif %}</div>
                     </div>
                     <div class="kpi-cell">
-                        <div class="kpi-label">SNS <code>?s=</code> 流入 ／ 回遊</div>
+                        <div class="kpi-label">SNS <code>?s=</code> 流入 ／ 実操作率</div>
                         <div class="kpi-val">{{ sns_eff.total_sns_visits|default(0, true) }}回</div>
-                        <div class="kpi-sub">回遊 {{ fn.engagement_rate_pct|default(0, true) }}% ｜ 24h以内CV {{ sns_eff.total_sns_conversions|default(0, true) }}件</div>
+                        <div class="kpi-sub">{% if fn.human_engagement_rate_pct is defined and fn.human_engagement_rate_pct is not none %}人間操作率 {{ fn.human_engagement_rate_pct }}%{% else %}回遊 {{ fn.engagement_rate_pct|default(0, true) }}%{% endif %} ｜ 24h以内CV {{ sns_eff.total_sns_conversions|default(0, true) }}件</div>
                     </div>
                 </div>
                 {% set axes_list = d.score_axes if d.score_axes is defined and d.score_axes is iterable and d.score_axes is not string and d.score_axes is not mapping and d.score_axes else [] %}
@@ -1497,10 +1499,10 @@
                         </div>
                         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:0.73rem; color:var(--sub); margin-bottom:4px;">
                             <span>主発生元：{% set _tsp = ofr.top_source_path|default('', true) %}{% if _tsp is string and _tsp.startswith('/') and not _tsp.startswith('//') and not _tsp.startswith('/@') and '\\' not in _tsp and '\n' not in _tsp and '\r' not in _tsp and '\t' not in _tsp and '\x00' not in _tsp and '%5c' not in _tsp|lower %}<a href="{{ _tsp }}" target="_blank" rel="noopener noreferrer" style="color:var(--blue); text-decoration:none;">{{ _tsp }} ↗</a>{% elif ofr.clicks|default(0, true) > 0 and ofr.top_source_title %}{{ ofr.top_source_title }}{% else %}これから配置{% endif %}</span>
-                            <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0, true)|int) }}</span>
+                            <span>{% if ofr.clicks_7d|default(0, true) > 0 %}参考試算（仮定EPC・未確定）：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0, true)|int) }}{% else %}ASP確定値未連携（直近7日 0件）{% endif %}</span>
                         </div>
                         {% if ofr.winning_pitch %}
-                        <div style="font-size:0.74rem; color:var(--green-ink);">勝ち筋：{{ ofr.winning_pitch }}</div>
+                        <div style="font-size:0.74rem; color:var(--sub);">訴求仮説（検証中）：{{ ofr.winning_pitch }}</div>
                         {% endif %}
                     </div>
                     {% endfor %}

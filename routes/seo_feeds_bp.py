@@ -265,12 +265,18 @@ def _get_or_build_llms_bundle() -> _DocBundle:
         stores = [s for s in stores if not _is_hidden_with((s or {}).get('name') or '', hb, hs)]
     pub_items = core.scheduled_articles.get_published_articles()
     db_key = core.local_db._active_db_key()
+    try:
+        waveforms_30d = core.local_db.get_all_stores_hourly_waveforms(allow_blocking=False) or {}
+    except Exception:
+        waveforms_30d = {}
+    has_waveforms = bool(waveforms_30d)
     is_volatile_empty = bool(is_s or not stores)
     cache_key = (
         core._live_data_signature(stores, last_u, is_s),
         tuple(it.get('slug') for it in pub_items),
         db_key,
         (tuple(sorted(hb)), tuple(sorted(hs))),
+        has_waveforms,
     )
     llms_cache = core._llms_txt_cache
     with core._aux_doc_cache_lock:
@@ -310,6 +316,19 @@ def _get_or_build_llms_bundle() -> _DocBundle:
                     return vol_b
 
         hist_records, hist_data_status = _get_hist_records_cached(db_key, force_refresh=force_hist)
+        # H2/M-2 (AGENTS.md §9): If historical DB rows exist but non-blocking 30d waveform cache is still cold,
+        # treat this build as volatile (5s TTL) AND serve from _VOLATILE_BUNDLE_CACHE within 5s so it neither
+        # locks in waveform_status='insufficient' nor rebuilds on every single concurrent request.
+        effective_volatile = bool(is_volatile_empty or (hist_records > 0 and not has_waveforms))
+        if effective_volatile and not is_volatile_empty:
+            with core._aux_doc_cache_lock:
+                vol_b2 = _VOLATILE_BUNDLE_CACHE.get('bundle')
+                if (
+                    vol_b2 is not None
+                    and _VOLATILE_BUNDLE_CACHE.get('key') == cache_key
+                    and (time.monotonic() - float(_VOLATILE_BUNDLE_CACHE.get('mono') or 0.0)) < 5.0
+                ):
+                    return vol_b2
         bundle = _assemble_llms_bundle(
             cache_key=cache_key,
             stores=stores,
@@ -320,10 +339,11 @@ def _get_or_build_llms_bundle() -> _DocBundle:
             pub_items=pub_items,
             hist_records=hist_records,
             hist_data_status=hist_data_status,
-            is_volatile_empty=is_volatile_empty,
+            is_volatile_empty=effective_volatile,
+            waveforms_30d=waveforms_30d,
         )
         with core._aux_doc_cache_lock:
-            if not is_volatile_empty:
+            if not effective_volatile:
                 _DOC_BUNDLE_STATE['bundle'] = bundle
                 llms_cache['key'] = cache_key
                 llms_cache['short'] = bundle.short
@@ -348,6 +368,7 @@ def _assemble_llms_bundle(
     hist_records,
     hist_data_status,
     is_volatile_empty,
+    waveforms_30d=None,
 ) -> _DocBundle:
     import column_editorial
     import price_comparison
@@ -362,8 +383,8 @@ def _assemble_llms_bundle(
     total_stores = len(master_map)
     domestic_master_count = sum(1 for m in master_map.values() if (m or {}).get('region') != 'Korea')
     overseas_master_count = max(0, total_stores - domestic_master_count)
-    hist_label_md = f'累計{hist_records:,}件超の' if hist_records > 0 else '1分間隔の継続実測による'
-    hist_bullet_md = f'{hist_records:,} 件（実測DB集計値）' if hist_records > 0 else '継続蓄積中（/stats 参照）'
+    hist_label_md = f'直近90日・{hist_records:,}件超の' if hist_records > 0 else '1分間隔の継続実測による'
+    hist_bullet_md = f'{hist_records:,} 件（直近90日ローリング実測DB集計値）' if hist_records > 0 else '継続蓄積中（/stats 参照）'
 
     active_stores = []
     total_w = 0
@@ -676,6 +697,13 @@ def _assemble_llms_bundle(
     )
 
     live_by_name = {s.get('name'): s for s in stores if s.get('name')}
+    if waveforms_30d is None:
+        try:
+            waveforms_30d = core.local_db.get_all_stores_hourly_waveforms(allow_blocking=False) or {}
+        except Exception:
+            waveforms_30d = {}
+    cutoff_7d_str = (now_jst.date() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+    today_jst_str = now_jst.strftime('%Y-%m-%d')
     all_store_lines = []
     all_store_facts = []
     overseas_store_facts = []
@@ -714,12 +742,63 @@ def _assemble_llms_bundle(
             w = m = tot = fp = None
             live_status = 'no_data'
         fp_md = f'{fp}%' if fp is not None else '—（営業時間外・計測待機中）'
+        rom_n = store_master.romanized_name(sname)
+        s_aliases = store_master.search_aliases(sname)
+        wf_raw = waveforms_30d.get(sname) if isinstance(waveforms_30d, dict) else None
+        wf_compact = {}
+        last_act_date = None
+        if isinstance(wf_raw, dict):
+            raw_lad = str(wf_raw.get('last_active_date') or '').strip()
+            if len(raw_lad) >= 10:
+                last_act_date = raw_lad[:10]
+            for hk in ('h19', 'h20', 'h21', 'h22', 'h23', 'h00', 'h01'):
+                pt = wf_raw.get(hk)
+                if (
+                    isinstance(pt, dict)
+                    and isinstance(pt.get('w'), (int, float))
+                    and isinstance(pt.get('m'), (int, float))
+                ):
+                    raw_n = pt.get('n') if isinstance(pt.get('n'), (int, float)) else pt.get('samples')
+                    if isinstance(raw_n, (int, float)) and int(raw_n) < 2:
+                        continue
+                    pt_w = round(float(pt['w']), 1)
+                    pt_m = round(float(pt['m']), 1)
+                    pt_tot = pt_w + pt_m
+                    pt_wpct = round(float(pt['wpct']), 1) if (pt_tot > 0 and isinstance(pt.get('wpct'), (int, float))) else None
+                    slot_obj = {
+                        'avg_women': pt_w,
+                        'avg_men': pt_m,
+                        'female_ratio_pct': pt_wpct,
+                    }
+                    if isinstance(raw_n, (int, float)):
+                        slot_obj['samples'] = int(raw_n)
+                    wf_compact[hk] = slot_obj
+        _st_fetched_at = st_live.get('fetched_at') if isinstance(st_live, dict) else None
+        _st_stale = bool(
+            isinstance(_st_fetched_at, (int, float))
+            and (_st_fetched_at <= 0.0 or (time.time() - float(_st_fetched_at) > 1800))
+        )
+        is_live_now = bool(not is_s and not _st_stale and tot is not None and tot > 0)
+        measured_within_7d = bool(last_act_date and last_act_date >= cutoff_7d_str)
+        if is_live_now:
+            op_status_val = 'live_now'
+            last_measured_date_val = today_jst_str
+        elif measured_within_7d:
+            op_status_val = 'measured_within_7d'
+            last_measured_date_val = last_act_date
+        else:
+            op_status_val = 'unverified'
+            last_measured_date_val = last_act_date
         fact_entry = {
             'store_name': seo_n,
+            'romanized_name': rom_n or None,
+            'search_aliases': s_aliases,
             'slug': slug,
             'url': f'https://aiseki-navi.com/store/{slug}',
             'brand': brand_label,
             'area': area_label,
+            'operating_status': op_status_val,
+            'last_measured_date': last_measured_date_val,
             'women': w,
             'men': m,
             'total': tot,
@@ -728,6 +807,8 @@ def _assemble_llms_bundle(
             'business_hours': bh_label,
             'male_rate_20_22_per_10m': bspec.get('slot_20_22') or '',
             'solo_entry_policy': bspec.get('solo_rule') or '',
+            'waveform_status': 'ok' if wf_compact else 'insufficient',
+            'hourly_waveform_30d': wf_compact if wf_compact else None,
         }
         if dossier:
             fact_entry['dossier_catch'] = dossier.get('catch') or ''
@@ -862,6 +943,7 @@ def _assemble_llms_bundle(
             'monitored_overseas_stores': len(overseas_store_facts),
             'historical_log_records': hist_records if hist_records > 0 else None,
             'historical_data_status': hist_data_status,
+            'measurement_unit_note': 'historical_log_records は稼働DB内の直近90日ローリング生ログ件数（1時間粒度永久ロールアップへ自動集約）。個別コラム記載の抽出件数（例：9.6万件など）は各検証記事の固定抽出期間における実測母数を示します。',
             'update_interval_seconds': 60,
             'active_stores_now': len(active_stores),
             'national_live_women': total_w,

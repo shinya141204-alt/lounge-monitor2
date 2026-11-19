@@ -277,11 +277,19 @@
             const store = (typeof currentModalStoreName !== 'undefined' && currentModalStoreName) || '';
             if (id === 'modal-map-cafe-btn') trackEvent('map_cafe', store);
             else if (id === 'modal-map-bar-btn') trackEvent('map_bar', store);
+            else if (id === 'modal-map-shisha-btn') trackEvent('map_bar', store ? `${store}:shisha` : 'shisha');
+            else if (id === 'modal-map-yokocho-btn') trackEvent('map_bar', store ? `${store}:yokocho` : 'yokocho');
+            else if (a.classList && a.classList.contains('map-btn') && a.closest('#modal-second-venue-cards')) {
+                const vCard = a.closest('.second-venue-card');
+                const vCat = vCard ? (vCard.getAttribute('data-category') || '') : '';
+                const mapLbl = (vCat && vCat !== 'cafe' && vCat !== 'bar') ? (store ? `${store}:${vCat}` : vCat) : store;
+                trackEvent(vCat === 'cafe' ? 'map_cafe' : 'map_bar', mapLbl);
+            }
             else if (id === 'modal-official-link' || id === 'modal-top-official-link') trackEvent('official_click', store);
             else if (href.includes('x.com/aiseki_navi')) trackEvent('sns_click', 'x');
-            else if (href.includes('threads.net')) trackEvent('sns_click', 'threads');
-            else if (href.includes('instagram.com')) trackEvent('sns_click', 'instagram');
-            else if (href.includes('note.com/')) trackEvent('sns_click', 'note');
+            else if (href.includes('threads.net/@aiseki_navi1') || href.includes('threads.com/@aiseki_navi1')) trackEvent('sns_click', 'threads');
+            else if (href.includes('instagram.com/aiseki_navi1')) trackEvent('sns_click', 'instagram');
+            else if (href.includes('note.com/aiseki_navi')) trackEvent('sns_click', 'note');
         }, true);
 
         // --- Store Events & Campaign State ---

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set _eng_alias = store.title_alias or '' %}
     {% if store.slug == 'oriental-lounge-seoul-gangnam' %}
     <title>{{ store.seo_name }}（韓国ソウル江南・カンナム）現在人数・男女比｜客層・日本の店舗との違い｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（韓国・ソウル江南／カンナム）のいまの人数・男女比を会員登録なしで毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。日本のオリエンタルラウンジとの料金・システムの違い、パスポート等の身分証ルール、ソウル弘大（ホンデ）店との比較も解説。{% else %}{{ store.seo_name }}（韓国・ソウル江南／カンナム）のいまの人数・男女比を会員登録なしで毎分更新。日本のオリエンタルラウンジとの料金・システムの違い、パスポート等の顔写真付き身分証ルール、江南（カンナム）・弘大（ホンデ）2店舗の客層比較を実測データで解説します。{% endif %}">
@@ -11,20 +12,19 @@
     <title>{{ store.seo_name }}（韓国ソウル弘大・ホンデ）現在人数・男女比｜営業時間・客層・韓国ソウルの入店条件｜相席ナビ</title>
     <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（{{ store.area_label }}・ホンデ）のリアルタイム男女人数・男女比を会員登録なしで毎分更新（現在女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業時間・定休日・客層（年齢層）・パスポート等の入店条件や江南（カンナム）店との比較も掲載。{% else %}{{ store.seo_name }}（{{ store.area_label }}・ホンデ）のリアルタイム男女人数・男女比を会員登録なしで毎分更新。営業時間・定休日・客層（年齢層）・パスポート等の顔写真付き身分証ルールや、江南（カンナム）・弘大2店舗の使い分けも実測データで解説。{% endif %}">
     {% elif store.slug == 'oriental-lounge-oita' %}
-    <title>{{ store.seo_name }} 現在人数・客層・レビュー・評判｜料金・1人入店・現地待ち時間｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。現場ワンタップ状況レポート（待ち時間・盛り上がり実測）や客層・口コミ・レビュー・評判傾向、時間帯別の料金・メニュー、男性1人入店の可否まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を会員登録なしで毎分更新。現場ワンタップ状況レポートや実測データから見た客層・口コミ・レビュー・評判傾向、曜日・時間帯別の料金・メニュー・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・客層・レビュー評判｜営業・料金・1人入店｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業状況・現場ワンタップ状況レポートや客層・口コミ・レビュー・評判傾向、時間帯別の料金・メニュー、男性1人入店の可否まで掲載。{% else %}{{ store.seo_name }}（大分・都町）のいまの人数・男女比・営業状況を会員登録なしで毎分更新。現場ワンタップ状況レポートや実測データから見た客層・口コミ・レビュー・評判傾向、曜日・時間帯別の料金・メニュー・単独待機料、男性1人入店の可否、待ち時間の目安を詳しくまとめています。{% endif %}">
     {% elif store.slug == 'oriental-lounge-fukuoka' %}
-    <title>{{ store.seo_name }} 現在人数・男女比｜JIS（ジス）比較・料金・客層・レビュー・評判｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との料金・客層・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を会員登録なしで毎分更新。現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・客層・営業状況｜JIS比較・料金・レビュー評判｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業状況・現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との料金・客層・1人入店条件の違いも比較できます。{% else %}{{ store.seo_name }}（福岡・天神）のいまの人数・男女比・営業状況を会員登録なしで毎分更新。現場状況レポートや徒歩圏内のJIS（ジス）福岡・ASOBIBAR（アソビバー）福岡天神との時間帯別の混み方・料金・客層・1人入店可否の違いを実測データで比較できます。{% endif %}">
     {% elif store.slug == 'asobibar-shinjuku' %}
-    <title>{{ store.seo_name }} 現在人数・男女比｜料金・客層・1人入店・新宿店比較｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。カラーバンド制スタンディングバーの料金システム、男性1人入店のしやすさ、新宿エリア他店舗との比較も掲載。{% else %}{{ store.seo_name }}（歌舞伎町）のいまの人数・男女比を会員登録なしで毎分更新。10分課金なしのカラーバンド制料金システム、男性1人（ソロ）入店のしやすさ、オリエンタルラウンジ新宿・JIS（ジス）新宿との使い分けを解説します。{% endif %}">
+    <title>{{ store.seo_name }} 現在人数・客層・営業・レビュー｜料金・1人入店・新宿比較｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}（ASOBIBAR SHINJUKU・歌舞伎町）のいまの人数・男女比を会員登録なしで毎分更新（ただいま女性{{ store.women }}名・男性{{ store.men }}名／女性比{{ store.wpct }}%）。営業状況・カラーバンド制スタンディングバーの料金システム、男性1人入店のしやすさ、新宿エリア他店舗との比較も掲載。{% else %}{{ store.seo_name }}（ASOBIBAR SHINJUKU・歌舞伎町）のいまの人数・男女比・営業状況を会員登録なしで毎分更新。10分課金なしのカラーバンド制料金システム、男性1人（ソロ）入店のしやすさ、オリエンタルラウンジ新宿・JIS（ジス）新宿との使い分けを解説します。{% endif %}">
     {% else %}
-    {% set _eng_alias = {'ag-hiroshima': 'ag HIROSHIMA', 'ag-umeda': 'ag UMEDA', 'ag-shibuya': 'ag SHIBUYA', 'ag-ueno': 'ag UENO', 'ag-nagoya': 'ag NAGOYA', 'ag-sendai': 'ag SENDAI', 'jis-shinjuku': 'JIS SHINJUKU', 'jis-umeda': 'JIS UMEDA', 'jis-matsuyama': 'JIS MATSUYAMA'}.get(store.slug, '') %}
-    <title>{{ store.seo_name }}{% if store.slug == 'xix-okayama' %}（ジックス）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ）{% elif store.slug == 'alfa-hiroshima' %}（アルファ）{% endif %} 現在人数・客層・レビュー・評判｜料金・1人入店・待ち時間検証｜相席ナビ</title>
-    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を会員登録なしで毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。現場ワンタップ状況レポートや時間帯別の料金・待機料・1人入店可否・客層・口コミ・レビュー・評判傾向・近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を会員登録なしで毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。現場状況レポート・料金・1人入店可否・客層・口コミ・レビュー・評判傾向も掲載。{% else %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% endif %}（{{ store.area_label }}）のいまの人数・男女比を会員登録なしで毎分更新。現場ワンタップ状況レポート・時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・口コミ・レビュー・評判傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
+    <title>{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ）{% elif store.slug == 'alfa-hiroshima' %}（アルファ）{% endif %} 現在人数・客層・レビュー評判｜営業・料金・1人入店｜相席ナビ</title>
+    <meta name="description" content="{% if store.total > 0 %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% elif store.romanized_name %}（{{ store.romanized_name }}）{% endif %}（{{ store.area_label }}）のいまの人数・男女比・営業状況を会員登録なしで毎分更新。ただいま女性{{ store.women }}名・男性{{ store.men }}名（女性比{{ store.wpct }}%）。実測データに基づく客層・レビュー・評判傾向、時間帯別の料金・待機料・1人入店可否・近隣店比較も掲載。{% elif store_analytics and store_analytics.max_7d_women > 0 %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% elif store.romanized_name %}（{{ store.romanized_name }}）{% endif %}（{{ store.area_label }}）のいまの人数・男女比・営業状況を会員登録なしで毎分更新。直近7日間の最高女性数は{{ store_analytics.max_7d_women }}名{% if store_analytics.best_slot_name %}（狙い目は{{ store_analytics.best_slot_name }}{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}・平均女性比{{ store_analytics.best_slot_pct }}%{% endif %}）{% endif %}。料金・1人入店可否・客層・口コミ・レビュー・評判傾向も掲載。{% else %}{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% elif store.slug == 'xix-okayama' %}（ジックス岡山）{% elif store.slug == 'clovers-hiroshima' %}（クローバーズ広島）{% elif store.slug == 'alfa-hiroshima' %}（アルファ広島）{% elif store.romanized_name %}（{{ store.romanized_name }}）{% endif %}（{{ store.area_label }}）の営業状況・いまの人数・男女比を会員登録なしで毎分更新。現場状況レポート・時間帯別の料金システム・単独待機料・男性1人入店の可否・客層（年齢層）・口コミ・レビュー・評判傾向や近隣ラウンジ比較をまとめて確認できます。{% endif %}">
     {% endif %}
-    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} レビュー,{{ store.seo_name }} 口コミ,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.seo_name }} 待ち時間,{{ store.brand_label }}{% if store.slug == 'clovers-hiroshima' %},クローバーズ 広島,相席CLOVERS本店 レビュー,広島 相席 クローバー{% elif store.slug == 'xix-okayama' %},ジックス 岡山{% elif store.slug == 'alfa-hiroshima' %},アルファ 広島,相席 アルファ{% elif store.slug == 'ag-hiroshima' %},ag hiroshima レビュー,ag広島{% elif store.slug == 'ag-umeda' %},ag umeda レビュー,ag梅田{% elif store.slug == 'oriental-lounge-seoul-gangnam' %},オリエンタルラウンジ 韓国,オリエンタルラウンジ カンナム{% endif %},相席ラウンジ,相席ナビ">
+    <meta name="keywords" content="{{ store.seo_name }},{{ store.seo_name }} 人数,{{ store.seo_name }} 営業,{{ store.seo_name }} 料金,{{ store.seo_name }} 客層,{{ store.seo_name }} 評判,{{ store.seo_name }} レビュー,{{ store.seo_name }} 口コミ,{{ store.seo_name }} 男女比,{{ store.seo_name }} 1人,{{ store.brand_label }}{% for al in (store.search_aliases or [])[:4] %},{{ al }}{% endfor %},相席ラウンジ,相席ナビ">
     <link rel="canonical" href="https://aiseki-navi.com/store/{{ store.slug }}">
     {% include '_head_llmo.html' %}
     {% if has_sufficient_store_data %}
@@ -71,8 +71,9 @@
       {
         "@context": "https://schema.org",
         "@type": ["LocalBusiness", "BarOrPub"],
-        "name": {{ store.seo_name | tojson }},
-        "description": {{ (store.seo_name ~ 'のリアルタイム男女人数・男女比・混雑状況・待ち時間推移') | tojson }},
+        "name": {{ store.seo_name | tojson }},{% if store.search_aliases %}
+        "alternateName": {{ store.search_aliases | tojson }},{% endif %}
+        "description": {{ (store.seo_name ~ 'のリアルタイム男女人数・男女比・営業状況・混雑傾向・料金比較') | tojson }},
         "url": {{ ('https://aiseki-navi.com/store/' ~ store.slug) | tojson }},
         "priceRange": {{ (store.price_range or ("女性 無料 / 男性 時間制" if ('ソウル' in store.name) else "女性 無料 / 男性 店舗別料金")) | tojson }},
         "openingHoursSpecification": {{ store.opening_hours_specification | tojson }},
@@ -173,6 +174,79 @@
             min-height: 40px !important;
             border-radius: 12px !important;
         }
+        .store-instant-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+        @media (max-width: 680px) {
+            .store-instant-strip {
+                grid-template-columns: 1fr;
+            }
+        }
+        .store-instant-cell {
+            padding: 9px 11px;
+            border-radius: 12px;
+            background: var(--calm-surface-2, #232329);
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: var(--text-sub);
+            font-variant-numeric: tabular-nums;
+        }
+        body.theme-light .store-instant-cell {
+            background: var(--calm-light-surface-2, #f2f2f5);
+        }
+        .store-instant-k {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--accent-text);
+            margin-bottom: 2px;
+        }
+        .store-instant-v {
+            display: block;
+            font-size: 0.81rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .hero-walk-bridge {
+            margin: 8px 0 0;
+            font-size: 0.81rem;
+            color: var(--text-sub);
+        }
+        .hero-walk-bridge a {
+            color: var(--accent-text);
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .store-faq-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .store-faq-item {
+            padding: 12px 14px;
+            border-radius: 13px;
+            background: var(--calm-surface-2, #232329);
+        }
+        body.theme-light .store-faq-item {
+            background: var(--calm-light-surface-2, #f2f2f5);
+        }
+        .store-faq-q {
+            margin: 0 0 5px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.45;
+        }
+        .store-faq-a {
+            margin: 0;
+            font-size: 0.82rem;
+            color: var(--text-sub);
+            line-height: 1.62;
+        }
     </style>
     <link rel="expect" href="#portal-shell" blocking="render">
 </head>
@@ -216,7 +290,7 @@
                 <span class="hero-hours-meta" id="hero-hours-meta"{% if hide_dup_hours %} style="display:none;"{% endif %}>営業時間 {{ store.hours_label }}</span>
             </div>
 
-            <h1><span style="word-break: keep-all;">{{ store.seo_name }}</span>のリアルタイム人数・男女比・混雑状況</h1>
+            <h1><span style="word-break: keep-all;">{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% endif %}</span>のリアルタイム人数・男女比・混雑状況</h1>
 
             <div class="big-counts-grid">
                 <div class="count-box">
@@ -260,6 +334,38 @@
             {% if store_insight and store_insight.summary_citation %}
             <p id="hero-rollup-citation" style="margin: 6px 0 0; font-size: 0.78rem; color: var(--text-sub); line-height: 1.55;">{{ store_insight.summary_citation }}。</p>
             {% endif %}
+            {% if 'ソウル' not in store.name %}
+            <p class="hero-walk-bridge">
+                <a href="/concierge{% if area_slug %}?area={{ area_slug }}{% endif %}" data-cushion="1">いまの店が合わないとき、徒歩圏の現在人数を見る ›</a>
+            </p>
+            {% endif %}
+
+            {% set _hero_spec = (nearby_comparison.stores | selectattr('is_current_store') | list | first) if (nearby_comparison and nearby_comparison.stores) else none %}
+            <div class="store-instant-strip" aria-label="{{ store.seo_name }}の営業状況・実測ピーク・料金要点">
+                <div class="store-instant-cell">
+                    <span class="store-instant-k">営業時間・稼働状況</span>
+                    <span class="store-instant-v">{{ store.operating_status.badge if store.operating_status is defined and store.operating_status else '営業状況確認中' }}</span>
+                    <span>{% if store.today_hours_label %}本日 {{ store.today_hours_label }}{% else %}営業時間は公式サイト要確認{% endif %}</span>
+                </div>
+                <div class="store-instant-cell">
+                    <span class="store-instant-k">実測ピーク・レビュー傾向</span>
+                    {% if store_waveform_summary is defined and store_waveform_summary and store_waveform_summary.peak_label and store_waveform_summary.peak_avg_w is not none and store_waveform_summary.peak_avg_m is not none %}
+                    <span class="store-instant-v">{{ store_waveform_summary.peak_label }}（平均 女{{ store_waveform_summary.peak_avg_w }} : 男{{ store_waveform_summary.peak_avg_m }}）</span>
+                    <span>{% if store_waveform_summary.peak_wpct is not none %}女性比 {{ store_waveform_summary.peak_wpct }}% ・ {% endif %}実測{{ store_waveform_summary.n_days }}日分</span>
+                    {% elif store_analytics and store_analytics.max_7d_women and store_analytics.max_7d_women > 0 %}
+                    <span class="store-instant-v">{% if store_analytics.best_slot_name %}{{ store_analytics.best_slot_name }}（最高女性{{ store_analytics.max_7d_women }}名）{% else %}直近7日 最高女性{{ store_analytics.max_7d_women }}名{% endif %}</span>
+                    <span>{% if store_analytics.best_slot_pct is not none and store_analytics.best_slot_pct is number %}平均女性比 {{ store_analytics.best_slot_pct }}%{% else %}直近7日実測{% endif %}</span>
+                    {% else %}
+                    <span class="store-instant-v">毎分リアルタイム計測中</span>
+                    <span>{% if store_dossier and store_dossier.catch %}{% set _c0 = store_dossier.catch.split('。')[0] %}{{ _c0 }}{% if not _c0.endswith(('。', '！', '？', '!', '?')) %}。{% endif %}{% else %}曜日・時間帯別傾向を蓄積中{% endif %}</span>
+                    {% endif %}
+                </div>
+                <div class="store-instant-cell">
+                    <span class="store-instant-k">料金・1名（ソロ）入店</span>
+                    <span class="store-instant-v">{{ store.price_range or ('女性 無料 / 男性 時間制' if 'ソウル' in store.name else '女性 無料 / 男性 店舗別料金') }}</span>
+                    <span>{% if _hero_spec and _hero_spec.solo_rule %}ソロ：{{ _hero_spec.solo_rule }}{% else %}最新条件は公式サイト要確認{% endif %}</span>
+                </div>
+            </div>
 
             {% set we = store.wait_estimate %}
             {% set fc = store.forecast_60m %}
@@ -572,7 +678,7 @@
                 <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="btn-secondary">近隣ライバル店と料金・イベント比較</a>
                 {% endif %}
                 {% if store.official_url %}
-                <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">公式サイトで最新情報を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary" data-track-event="official_click" data-track-label="{{ store.name }}">公式サイトで最新情報を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                 {% endif %}
                 {% if store.map_url %}
                 <a href="{{ store.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Googleマップで場所を確認</a>
@@ -617,7 +723,7 @@
                 </div>
                 <div class="store-inspector-actions">
                     {% if store.official_url %}
-                    <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="store-inspector-btn-primary">公式サイトで最新条件を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                    <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="store-inspector-btn-primary" data-track-event="official_click" data-track-label="{{ store.name }}">公式サイトで最新条件を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                     {% endif %}
                     <div class="store-inspector-btn-grid">
                         {% if store.map_url %}
@@ -919,7 +1025,7 @@
         <aside class="official-notice-box" aria-label="ご利用上の注意事項" style="margin-bottom: 20px;">
             <span class="official-notice-title">料金・イベント情報および人数評価に関するご注意</span>
             <div>
-                ・料金・営業時間・入店条件・イベントは公開情報をもとに整理しています。変更される場合があるため、来店前に<a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-text);">公式サイト</a>でご確認ください。<br>
+                ・料金・営業時間・入店条件・イベントは公開情報をもとに整理しています。変更される場合があるため、来店前に<a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" data-track-event="official_click" data-track-label="{{ store.name }}" style="color: var(--accent-text);">公式サイト</a>でご確認ください。<br>
                 ・推奨評価は<strong>女性10名以上</strong>の店舗が対象です。営業時間内に0名の店舗は<strong>「0 : 0」（営業中）</strong>と表記します。
             </div>
         </aside>
@@ -1245,7 +1351,7 @@
                                 <div data-nearby-verdict-comment>{{ st.verdict_comment }}</div>
                                 <div style="margin-top: 5px;">営業時間：{{ st.hours_label }}<br>{{ st.age_range }} ｜ {{ st.vibe_short }}</div>
                                 <div style="margin-top: 5px;">
-                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                                    <a href="{{ st.official_url }}" target="_blank" rel="noopener noreferrer" class="official-ext-link" data-track-event="official_click" data-track-label="{{ st.name or st.seo_name }}">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                                 </div>
                             </div>
                         </details>
@@ -1299,13 +1405,13 @@
         {% endif %}
 
         <!-- 2nd Venue Guide & Recommended Spots Section -->
-        <section class="section-card cv-defer-section" id="store-second-venue-section">
+        <section class="section-card cv-defer-section" id="store-second-venue-section" data-store-name="{{ store.name }}">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
                 <h2 style="margin: 0; font-size: 1.15rem;">{{ store.seo_name }} 近くの厳選2軒目＆切り出しTips</h2>
                 <a href="/guide/second-venue" style="color: var(--accent-text); font-size: 0.82rem; text-decoration: none; font-weight: 600;">2軒目の誘い方コラム ›</a>
             </div>
             <p style="margin: 0 0 12px; font-size: 0.83rem; color: var(--text-sub); line-height: 1.55;">
-                {{ store.seo_name }}から歩いて行ける夜カフェ・バー・シーシャを、Googleマップのルート付きで表示します。
+                このあと落ち着いて話せる店を徒歩圏で探す — {{ store.seo_name }}から歩いて行ける夜カフェ・バー・シーシャを、Googleマップのルート付きで案内します。
             </p>
 
             <!-- Timing rules live on /guide/second-venue (kept off store pages to avoid duplicated boilerplate) -->
@@ -1389,6 +1495,21 @@
             </div>
             {% endif %}
         </section>
+
+        {% if store_faq_items is defined and store_faq_items %}
+        <section class="section-card cv-defer-section" id="store-faq-section" aria-labelledby="store-faq-heading">
+            <h2 id="store-faq-heading" style="margin:0 0 4px;">{{ store.seo_name }}{% if _eng_alias %}（{{ _eng_alias }}）{% endif %}に関するよくある質問（営業状況・人数・レビュー・料金）</h2>
+            <p style="margin:0 0 10px; font-size:0.8rem; color:var(--text-sub);">相席ナビの毎分計測データおよび公開店舗情報をもとに、来店前によく調べられるポイントを整理しています。</p>
+            <div class="store-faq-list">
+                {% for fq in store_faq_items %}
+                <div class="store-faq-item">
+                    <h3 class="store-faq-q">Q. {{ fq.q }}</h3>
+                    <p class="store-faq-a">{{ fq.a }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
 
         {% if not is_staff and not session.get('is_staff') %}
         <section class="section-card" aria-label="来店前の関連データと立ち回りガイド">
@@ -2751,7 +2872,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=121', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=122', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

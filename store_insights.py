@@ -466,7 +466,8 @@ def build_store_insight(store_name: str, seo_name: str, area_label: str = '', ar
     weekday_rows = [r for r in st['weekday_table']]
     hourly_rows = [
         {'label': _fmt_hour(x['hour']) + '台', 'avg_w': x['avg_w'], 'avg_m': x['avg_m'],
-         'wpct': round(x['avg_w'] / (x['avg_w'] + x['avg_m']) * 100) if (x['avg_w'] + x['avg_m']) > 0 else None}
+         'wpct': round(x['avg_w'] / (x['avg_w'] + x['avg_m']) * 100) if (x['avg_w'] + x['avg_m']) > 0 else None,
+         'n': x.get('n')}
         for x in st['hourly']
     ]
     avg_pw = st.get('avg_peak_w')

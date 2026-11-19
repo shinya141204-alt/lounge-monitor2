@@ -219,7 +219,7 @@ class TestM3UiSecurityAndCls(unittest.TestCase):
         self.assertIn("if (IS_STAFF_VIEW || hasStaffTestQuery()) return;", nav_txt)
         self.assertIn("destUrl.searchParams.set('staff_test', '1')", nav_txt)
         self.assertNotIn("touchstart", nav_txt)
-        self.assertIn("/sw.js?v=121", nav_txt)
+        self.assertIn("/sw.js?v=122", nav_txt)
         self.assertNotRegex(nav_txt, r"(sessionStorage|localStorage)\.(setItem|getItem)\([^)]*staff_test")
 
     def test_m3_p1_04_guide_externalization_and_metadata_preserved(self):

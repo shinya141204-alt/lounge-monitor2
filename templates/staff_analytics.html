@@ -1200,9 +1200,10 @@
 
     <div class="ws-bridge-bar" aria-label="主要流入・収益KPIとクイック移動">
         <div class="ws-bridge-metrics">
-            <span class="ws-bridge-metric">総PV<strong>{{ "{:,}".format(f.pv_total) }}</strong> ({{ (f.pv_total / (days if days > 0 else 1))|round(1) }} PV/日)</span>
+            <span class="ws-bridge-metric">実ブラウザPV<strong>{{ "{:,}".format(f.human_pv_total|default(0, true)) }}</strong> (参考生PV {{ "{:,}".format(f.pv_total) }})</span>
             <span class="ws-bridge-metric">アフィリエイトClick<strong>{{ "{:,}".format(f.aff_total) }}</strong>{% if (f.aff_impressions_total or 0) > 0 %} ({{ f.aff_slot_ctr_pct }}%){% endif %}</span>
-            <span class="ws-bridge-metric">推定収益<strong>¥{{ "{:,}".format(rev.est_total_yen) }}</strong> (月換算 ¥{{ "{:,}".format(rev.est_monthly_pace_yen) }})</span>
+            {% set _bridge_yen = (rev.est_confirmed_total_yen if rev.est_confirmed_total_yen is defined and rev.est_confirmed_total_yen is not none else (rev.est_total_yen if rev.est_total_yen is defined and rev.est_total_yen is not none else none)) %}
+            <span class="ws-bridge-metric">ASP収益<strong>{% if f.aff_total == 0 %}クリック0件{% elif _bridge_yen is not none %}仮定EPC試算 ¥{{ "{:,}".format(_bridge_yen|int) }}{% else %}集計中{% endif %}</strong> (ASP確定値未連携)</span>
             {% if pdca_directives and pdca_directives.growth_phase_label %}
             <span class="ws-bridge-metric">現在PDCA<strong>{{ pdca_directives.growth_phase_label }}</strong></span>
             {% endif %}
@@ -1284,15 +1285,28 @@
         </div>
 
         <div class="funnel-card highlight-gold">
-            <span class="step-badge step-rev">収益換算シミュレーター（目安）</span>
-            <div class="funnel-label">期間内の推定収益（AdSense＋アフィリエイト期待値）</div>
+            <span class="step-badge step-rev">仮定EPC参考試算（ASP確定値未連携）</span>
+            <div class="funnel-label">アフィリエイト承認後目安（30円/click仮定・未確定）</div>
             <div class="funnel-num-row">
-                <span class="funnel-big" style="color: var(--gold);">¥{{ "{:,}".format(rev.est_total_yen) }}</span>
-                <span class="funnel-rate" style="color: var(--gold-ink);">月換算 約¥{{ "{:,}".format(rev.est_monthly_pace_yen) }}/月</span>
+                {% if f.aff_total == 0 %}
+                <span class="funnel-big" style="color: var(--sub);">未確定</span>
+                <span class="funnel-rate" style="color: var(--sub);">期間クリック0件・ASP未連携</span>
+                {% else %}
+                {% set _conf_tot = rev.est_confirmed_aff_yen if rev.est_confirmed_aff_yen is defined and rev.est_confirmed_aff_yen is not none else none %}
+                {% set _pace_den = (rev.pace_denom_days if rev.pace_denom_days is defined and rev.pace_denom_days else days|default(14, true)) %}
+                {% if _conf_tot is not none %}
+                {% set _conf_mo = ((_conf_tot / _pace_den) * 30)|round|int %}
+                <span class="funnel-big" style="color: var(--gold);">¥{{ "{:,}".format(_conf_tot|int) }}</span>
+                <span class="funnel-rate" style="color: var(--gold-ink);">参考月換算 約¥{{ "{:,}".format(_conf_mo) }}/月</span>
+                {% else %}
+                <span class="funnel-big" style="color: var(--sub);">未確定</span>
+                <span class="funnel-rate" style="color: var(--sub);">ASP確定値未連携</span>
+                {% endif %}
+                {% endif %}
             </div>
             <div class="funnel-breakdown">
-                <span>AdSense目安: <strong>¥{{ "{:,}".format(rev.est_adsense_yen) }}</strong> <small>(0.35円/PV)</small></span>
-                <span>アフィリ期待値: <strong>¥{{ "{:,}".format(rev.est_aff_yen) }}</strong> <small>({{ f.aff_total }}click)</small></span>
+                <span>実ブラウザPV: <strong>{{ "{:,}".format(f.human_pv_total|default(0, true)) }}</strong> <small>(生PV {{ "{:,}".format(f.pv_total) }})</small></span>
+                <span>広告クリック: <strong>{{ f.aff_total }}</strong> <small>(発生仮定 ¥{{ "{:,}".format(rev.est_aff_yen) }}{% if rev.adsense_enabled %} ／ AdSense目安 ¥{{ "{:,}".format(rev.est_adsense_yen) }}{% endif %})</small></span>
             </div>
         </div>
     </div>

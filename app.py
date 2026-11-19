@@ -1029,7 +1029,7 @@ def prewarm_ssr_and_status_caches():
                 'User-Agent': 'aiseki-internal-prewarm-bot/1.0',
                 'Accept-Encoding': 'gzip',
             }
-            paths = ('/api/status', '/', '/for-women', '/price-comparison') if do_html else ('/api/status', '/')
+            paths = ('/api/status', '/', '/for-women', '/price-comparison', '/stats', '/stats') if do_html else ('/api/status', '/')
             with app.test_client() as client:
                 for path in paths:
                     try:
@@ -1762,6 +1762,7 @@ def track_page_views(response):
 _BEACON_ALLOWED_EVENTS = frozenset({
     'human_pv', 'affiliate_impression', 'cushion_click', 'store_open', 'map_cafe', 'map_bar',
     'official_click', 'sns_click', 'share', 'vote', 'hashigo_intent',
+    'co_view', 'sister_bridge_impression', 'sister_bridge_click',
 })
 
 
@@ -1798,7 +1799,7 @@ def track_event():
     if ev_name == 'cushion_click':
         analytics.track_sns_cushion_attribution(clean_lbl, request.cookies.get('an_src'))
     resp = app.response_class('', status=204)
-    if ev_name != 'affiliate_impression':
+    if ev_name not in ('affiliate_impression', 'sister_bridge_impression', 'co_view'):
         if request.cookies.get('an_hp') != '1':
             resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
         if not verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', '')):

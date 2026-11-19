@@ -4706,6 +4706,7 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
             print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
             return None
 
+    last_active_date_by_store = {}
     for (sname, d_str, h), (sum_w, sum_m, cnt) in grouped_acc.items():
         if not sname or not d_str or len(d_str) < 10 or cnt <= 0:
             continue
@@ -4722,6 +4723,8 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
 
         biz_wd = d_info[1] if h <= 6 else d_info[0]
         stores_seen.add(sname)
+        if (sum_w + sum_m) > 0 and d_str > last_active_date_by_store.get(sname, ""):
+            last_active_date_by_store[sname] = d_str
 
         b_wh = by_wd_hour[sname][(biz_wd, h)]
         b_wh[0] += sum_w
@@ -4834,6 +4837,7 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
         "by_hour": by_hour,
         "by_wd_peak": by_wd_peak,
         "static_per_store": static_per_store,
+        "last_active_date_by_store": last_active_date_by_store,
     }
 
 
@@ -5084,6 +5088,7 @@ def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blo
                 archetype_ja = "20〜22時が中心で終電前に落ち着く1軒目ピーク型"
 
         st_meta = static_per_store.get(sname) or {}
+        last_act_d = (base_data.get("last_active_date_by_store") or {}).get(sname)
         profiles[sname] = {
             "h20": p20,
             "h22": p22,
@@ -5096,6 +5101,7 @@ def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blo
             "waveform_archetype_ja": archetype_ja,
             "data_status": data_status,
             "midnight_retention_pct": st_meta.get("midnight_retention_pct"),
+            "last_active_date": last_act_d,
         }
     return profiles
 

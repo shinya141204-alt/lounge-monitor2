@@ -95,10 +95,17 @@ def _normalize_growth_phase_mode(raw_mode: str) -> str:
     return m if m in VALID_GROWTH_PHASE_MODES else "auto"
 
 
-def resolve_growth_phase(daily_pv: float, mode: str = "auto") -> dict:
+def resolve_growth_phase(
+    daily_pv: float,
+    mode: str = "auto",
+    pv_basis: str = "raw_pv_fallback",
+    raw_daily_pv: float = None,
+) -> dict:
     """Resolve active Growth Phase (auto by daily PV milestone or explicit manual override)."""
     norm_mode = _normalize_growth_phase_mode(mode)
     dpv = max(0.0, float(daily_pv or 0.0))
+    raw_dpv = max(0.0, float(raw_daily_pv)) if raw_daily_pv is not None else dpv
+    basis_tag = "実ブラウザPV基準" if pv_basis == "human_pv" else "生PV基準"
     is_auto = norm_mode == "auto"
     if is_auto:
         if dpv < 300.0:
@@ -119,12 +126,12 @@ def resolve_growth_phase(daily_pv: float, mode: str = "auto") -> dict:
     if active_phase == "phase1_inflow":
         if dpv < 100.0:
             rem = max(1, int(round(100.0 - dpv)))
-            hint = f"まずは初期突破ライン 100 PV/日（月間3,000PV）まであと {rem} PV/日"
+            hint = f"まずは初期突破ライン 100 PV/日（{basis_tag}・月間3,000PV）まであと {rem} PV/日"
         elif dpv < 300.0:
             rem = max(1, int(round(300.0 - dpv)))
-            hint = f"100 PV/日達成！Phase 2移行ライン（300 PV/日・月間1万PV）まであと {rem} PV/日"
+            hint = f"100 PV/日達成（{basis_tag}）！Phase 2移行ライン（300 PV/日・月間1万PV）まであと {rem} PV/日"
         else:
-            hint = "300 PV/日を達成済み（自動判定またはPhase 2へ移行可能）"
+            hint = f"300 PV/日を達成済み（{basis_tag}・自動判定またはPhase 2へ移行可能）"
     elif active_phase == "phase2_engagement":
         if dpv < 1000.0:
             rem = max(1, int(round(1000.0 - dpv)))
@@ -142,7 +149,10 @@ def resolve_growth_phase(daily_pv: float, mode: str = "auto") -> dict:
         "short_label": spec["short_label"],
         "is_auto": is_auto,
         "mode_badge": "自動判定" if is_auto else "手動固定",
+        "pv_basis": pv_basis,
+        "pv_basis_label": basis_tag,
         "daily_pv": round(dpv, 1),
+        "raw_daily_pv": round(raw_dpv, 1),
         "monthly_pv_pace": int(round(dpv * 30.0)),
         "step1_target_daily_pv": int(step1_pv),
         "target_daily_pv": int(target_pv),
@@ -275,7 +285,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 110,
         "primary_link": "/link/dating_instant",
         "default_priority": 5,
-        "winning_pitch": "「男余り・入場待ちの夜に90分粘って課金するより、今日すぐ会える恋活枠・審査制1対1へ切り替える」混雑回避文脈が最強です。",
+        "winning_pitch": "男余り・入場待ちの夜に代替選択肢として提示する混雑回避文脈の検証枠です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "orbis",
@@ -286,7 +296,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 95,
         "primary_link": "/link/orbis",
         "default_priority": 4,
-        "winning_pitch": "「間接照明×ソファ席70cmでは夕方の肌テカリ・乾燥が残酷に見える」という女性目線の本音パート直後が鉄板の勝ち筋です。",
+        "winning_pitch": "間接照明・ソファ席距離70cmの身だしなみ解説パートと相性が高い想定の2ステップ検証枠です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "hair_removal",
@@ -297,7 +307,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 160,
         "primary_link": "/link/hair_removal",
         "default_priority": 3,
-        "winning_pitch": "仕事帰りの「19時以降の青ヒゲ減点」と絡め、初回体験トライアル枠として /grooming や乾杯10分コラムで訴求すると高単価CVに繋がります。",
+        "winning_pitch": "仕事帰りの夕方の青ヒゲ対策と絡め、/grooming 内の初回体験比較枠として反応を検証中です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "spu",
@@ -308,7 +318,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 120,
         "primary_link": "/link/spu",
         "default_priority": 2,
-        "winning_pitch": "「ハイブランドのロゴより、シワのない無地ジャストサイズが一番モテる」文脈で /grooming 服装セクション直下に置くと高CTRが出ます。",
+        "winning_pitch": "入店時のドレスコード・服装チェック文脈で /grooming 服装セクション直下に配置している検証枠です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "women",
@@ -319,7 +329,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 105,
         "primary_link": "/link/women_second_venue",
         "default_priority": 1,
-        "winning_pitch": "Threads・Instagramの『女子組・待ちゼロ速報』から /for-women へ誘導し、0次会・女子会一休レストラン予約や美肌クリニック枠をセット提示すると伸びます。",
+        "winning_pitch": "女性向け待ちゼロ店舗ページ（/for-women）内で、0次会・女子会レストラン予約や無料デート枠の需要を検証中です。",
     },
     {
         "category_key": "supplement",
@@ -330,7 +340,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 90,
         "primary_link": "/link/night_care_supplement",
         "default_priority": 3,
-        "winning_pitch": "飲み放題・2軒目バーの乾杯前ルーティン＆『会話のきっかけになる個包装シェア術』として /grooming と /for-women で訴求すると男女双方から安定CVが出ます。",
+        "winning_pitch": "飲み放題・2軒目バーの乾杯前ルーティン文脈として /grooming・/for-women で男女双方のクリック反応を検証中です。",
     },
     {
         "category_key": "second_venue",
@@ -341,7 +351,7 @@ OFFER_CATEGORIES = [
         "epc_yen": 95,
         "primary_link": "/link/second_venue_reservation",
         "default_priority": 3,
-        "winning_pitch": "着席40〜50分目の2軒目移動や連絡先交換後の次回デート店選び文脈で、全店舗2軒目セクション・/grooming・/for-women から送客すると高成約率が出ます。",
+        "winning_pitch": "退店後の2軒目移動や後日デート店選び文脈で、全店舗2軒目セクション・/grooming・/for-women の送客反応を検証中です。",
     },
 ]
 _OFFER_META_BY_KEY = {c["category_key"]: c for c in OFFER_CATEGORIES}
@@ -632,6 +642,8 @@ def _detect_monetization_gaps(
     aff_by_ref_path: dict,
     known_cols: list,
     cushion_by_ref_path: dict = None,
+    active_phase: str = "phase1_inflow",
+    effective_daily_pv: float = None,
 ) -> list:
     """
     Auto-detect "High PV × Low CVR" opportunity-loss pages (`monetization_gaps`) and prescribe
@@ -701,7 +713,16 @@ def _detect_monetization_gaps(
         effective_pct = max(cvr_pct, round(bridge_rate_pct * 0.3, 2)) if p.startswith("/guide") else cvr_pct
         gap_score = round(pv * max(0.4, target_cvr - effective_pct) * intent_weight, 2)
 
-        if pv >= 10 and aff == 0 and cush == 0:
+        defer_in_phase1 = (
+            active_phase == "phase1_inflow"
+            and effective_daily_pv is not None
+            and float(effective_daily_pv) < 50.0
+            and pv < 50
+        )
+        if defer_in_phase1:
+            sev = "deferred_phase1"
+            sev_badge = "⏸ Phase 1 保留（流入50PV/日到達後に着手）"
+        elif pv >= 10 and aff == 0 and cush == 0:
             sev = "critical"
             sev_badge = "🔥 最優先（高PV・CVゼロ）"
         elif pv >= 8 and effective_pct < target_cvr * 0.5:
@@ -1205,7 +1226,7 @@ def _build_flywheel_status(
         f"もし『{hub_name}の徒歩4分先』の男女比が頭の上に数字で見えたら？（街別ギャップ検証）",
         "もし相席ラウンジの『19時ディナー帯』と『22時二次会帯』が別の扉だったら？（タダ飯論争の真実）",
         (
-            f"もし検索急上昇『{opp_q}』の答えを25万件ログで30秒再現したら？"
+            f"もし検索急上昇『{opp_q}』の答えを実測混雑ログで30秒再現したら？"
             if opp_q
             else "もしマッチングアプリの『2週間メッセージ』が対面の乾杯3秒に短縮されたら？（アプリ疲れ検証）"
         ),
@@ -1376,6 +1397,8 @@ def _compute_inflow_north_star(
     stats_14d: dict,
     days: int,
     closed_loop_feedback: dict = None,
+    effective_daily_pv: float = None,
+    pv_basis: str = None,
 ) -> dict:
     """Build North Star external inflow & WoW growth telemetry for the PDCA hero & diagnostics."""
     win_inf = _sum_external_inflow_visits(stats_window)
@@ -1386,33 +1409,81 @@ def _compute_inflow_north_star(
     prev_7d_search = max(0, inf_14d["search"] - inf_7d["search"])
     prev_7d_short = max(0, inf_14d["short_video"] - inf_7d["short_video"])
 
-    pv_7d = int(((stats_7d or {}).get("funnel") or {}).get("pv_total") or 0)
-    pv_14d = int(((stats_14d or {}).get("funnel") or {}).get("pv_total") or 0)
+    f_win = (stats_window or {}).get("funnel") or {}
+    f_7d = (stats_7d or {}).get("funnel") or {}
+    f_14d = (stats_14d or {}).get("funnel") or {}
+
+    pv_7d = int(f_7d.get("pv_total") or 0)
+    pv_14d = int(f_14d.get("pv_total") or 0)
     prev_7d_pv = max(0, pv_14d - pv_7d)
+
+    hpv_win = int(f_win.get("human_pv_total") or 0)
+    hpv_days = int(f_win.get("human_pv_days") or 0)
+    hpv_7d = int(f_7d.get("human_pv_total") or 0)
+    hpv_14d = int(f_14d.get("human_pv_total") or 0)
+    prev_7d_hpv = max(0, hpv_14d - hpv_7d)
 
     inflow_wow = _compute_wow_delta(inf_7d["total"], prev_7d_inflow)
     pv_wow = _compute_wow_delta(pv_7d, prev_7d_pv)
+    human_pv_wow = _compute_wow_delta(hpv_7d, prev_7d_hpv)
     search_wow = _compute_wow_delta(inf_7d["search"], prev_7d_search)
+    if search_wow.get("status") == "new_growth":
+        search_wow["detail_label"] = f"前週 0（リファラ計測開始前含む）→ 直近7日 {inf_7d['search']:,}件"
     short_wow = _compute_wow_delta(inf_7d["short_video"], prev_7d_short)
 
     gsc_diag = dict(((closed_loop_feedback or {}).get("gsc_diagnostics")) or {})
     yt_diag = dict(((closed_loop_feedback or {}).get("youtube_shorts_diagnostics")) or {})
 
-    days_norm = max(1.0, float(days or 14))
-    pv_tot = int(((stats_window or {}).get("funnel") or {}).get("pv_total") or 0)
+    gsc_w1 = gsc_diag.get("w1_clicks")
+    gsc_w2 = gsc_diag.get("w2_clicks")
+    gsc_wow = None
+    if gsc_w1 is not None and gsc_w2 is not None:
+        try:
+            gsc_wow = _compute_wow_delta(int(round(float(gsc_w2))), int(round(float(gsc_w1))))
+        except (TypeError, ValueError):
+            gsc_wow = None
+
+    days_int = max(1, int(days or 14))
+    days_norm = float(days_int)
+    pv_tot = int(f_win.get("pv_total") or 0)
+    raw_daily_pv = round(pv_tot / days_norm, 1)
+    hpv_span = int(f_win.get("human_pv_span_days") or 0)
+    if hpv_win > 0:
+        raw_hpv_span = max(1, min(days_int, hpv_span if hpv_span > 0 else max(1, hpv_days)))
+        eff_hpv_span = max(min(days_int, 7), raw_hpv_span)
+        human_daily_pv = round(hpv_win / float(eff_hpv_span), 1)
+    else:
+        eff_hpv_span = 0
+        human_daily_pv = None
+
+    resolved_pv_basis = pv_basis or ("human_pv" if hpv_win > 0 else "raw_pv_fallback")
+    if effective_daily_pv is not None:
+        headline_daily_pv = round(float(effective_daily_pv), 1)
+    elif human_daily_pv is not None:
+        headline_daily_pv = human_daily_pv
+    else:
+        headline_daily_pv = raw_daily_pv
 
     return {
-        "window_days": int(days or 14),
+        "window_days": days_int,
         "external_inflow_total": win_inf["total"],
         "daily_external_inflow": round(win_inf["total"] / days_norm, 1),
         "search_inflow_total": win_inf["search"],
         "short_video_inflow_total": win_inf["short_video"],
         "social_text_inflow_total": win_inf["social_text"],
-        "daily_pv": round(pv_tot / days_norm, 1),
+        "daily_pv": headline_daily_pv,
+        "human_daily_pv": human_daily_pv,
+        "human_pv_span_days": eff_hpv_span,
+        "raw_daily_pv": raw_daily_pv,
+        "human_pv_total": hpv_win,
+        "raw_pv_total": pv_tot,
+        "pv_basis": resolved_pv_basis,
         "inflow_wow": inflow_wow,
         "pv_wow": pv_wow,
+        "human_pv_wow": human_pv_wow,
         "search_wow": search_wow,
         "short_video_wow": short_wow,
+        "gsc_wow": gsc_wow,
         "gsc_impressions": gsc_diag.get("total_impressions"),
         "gsc_clicks": gsc_diag.get("total_clicks"),
         "gsc_opportunity_count": len(gsc_diag.get("opportunity_queries") or []),
@@ -1462,7 +1533,11 @@ def _compute_phase_calibrated_scores(
     yt_views = int(inflow_ns.get("yt_shorts_views") or 0)
 
     inf_wow = inflow_ns.get("inflow_wow") or {}
-    pv_wow = inflow_ns.get("pv_wow") or {}
+    pv_wow = (
+        (inflow_ns.get("human_pv_wow") or {})
+        if inflow_ns.get("pv_basis") == "human_pv"
+        else (inflow_ns.get("pv_wow") or {})
+    )
     best_wow_pct = inf_wow.get("wow_pct") if inf_wow.get("wow_pct") is not None else pv_wow.get("wow_pct")
     has_new_growth = (inf_wow.get("status") == "new_growth") or (pv_wow.get("status") == "new_growth")
 
@@ -1494,8 +1569,8 @@ def _compute_phase_calibrated_scores(
         ch_div_pts = min(4, active_sns_channels + (1 if style_diversity_count >= 2 else 0))
         ax_sns = min(25, short_visit_pts + social_visit_pts + video_pipe_pts + ch_div_pts)
 
-        # 4. Engaged Site Circulation & Readiness (max 10pt — no penalty for low affiliate CV in Phase 1)
-        eng_pts = 5 if eng_rate >= 20.0 else (3 if eng_rate >= 10.0 else (1 if eng_rate > 0 else 0))
+        # 4. Engaged Site Circulation & Readiness (max 10pt — requires >=15 PV sample for full eng_pts)
+        eng_pts = 5 if (pv_tot >= 15 and eng_rate >= 20.0) else (3 if (pv_tot >= 10 and eng_rate >= 10.0) else (1 if eng_rate > 0 else 0))
         cush_pts = 3 if cushion_total >= 5 else (2 if cushion_total >= 1 else 0)
         ready_pts = 2 if (aff_tot > 0 or pv_tot >= 30) else 1
         ax_ret = min(10, eng_pts + cush_pts + ready_pts)
@@ -1915,7 +1990,7 @@ def _detect_hot_cluster_and_topic(
         rec_topic = f"{hub}で終電後に客層コホートが入れ替わる「深夜第2波」の構造と2軒目ラウンジ選別法"
     elif wd in (0, 1, 2, 3):  # Mon-Thu: weekday structural advantage or solo/female lens
         weekday_pool = [
-            ("weekday_anaba", f"{hub}の平日夜になぜ『真剣対話層』が残るのか——27万件ログで見る火〜木曜・雨天の需給優位性"),
+            ("weekday_anaba", f"{hub}の平日夜になぜ『真剣対話層』が残るのか——実測混雑ログで見る火〜木曜・雨天の需給優位性"),
             ("female_real_voice", f"{hub}の女性ペアが支払う『準備90分の機会費用』と、男女で真逆になる最適店舗のカラクリ"),
             ("solo_trip", f"出張・1人飲みの夜に{hub}で浮かない理由——ペア合意形成と1名入店規定の構造解剖"),
             ("first_talk_clean", f"{hub}の間接照明と距離70cmで最初の3分に起きている『非言語減点』の正体"),
@@ -2027,10 +2102,30 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     store_opens = all_labels.get("store_open") or {}
     funnel = stats.get("funnel") or {}
 
-    days_norm = max(1.0, float(days or 14))
+    days_int = max(1, int(days or 14))
+    days_norm = float(days_int)
     pv_tot = int(funnel.get("pv_total") or 0)
-    daily_pv = pv_tot / days_norm
-    growth_phase = resolve_growth_phase(daily_pv=daily_pv, mode=settings.get("growth_phase_mode", "auto"))
+    human_pv_tot = int(funnel.get("human_pv_total") or 0)
+    human_pv_days = int(funnel.get("human_pv_days") or 0)
+    human_pv_span_days = int(funnel.get("human_pv_span_days") or 0)
+    raw_daily_pv = pv_tot / days_norm
+    if human_pv_tot > 0:
+        raw_hpv_span = max(1, min(days_int, human_pv_span_days if human_pv_span_days > 0 else max(1, human_pv_days)))
+        # M1: Clamp denominator to at least min(days_int, 7) days so a 1-day burst cannot inflate daily_pv
+        # and prematurely auto-promote Phase 1 -> Phase 2 before a 7-day baseline is observed.
+        eff_hpv_span = max(min(days_int, 7), raw_hpv_span)
+        daily_pv = human_pv_tot / float(eff_hpv_span)
+        pv_basis = "human_pv"
+    else:
+        eff_hpv_span = 0
+        daily_pv = raw_daily_pv
+        pv_basis = "raw_pv_fallback"
+    growth_phase = resolve_growth_phase(
+        daily_pv=daily_pv,
+        mode=settings.get("growth_phase_mode", "auto"),
+        pv_basis=pv_basis,
+        raw_daily_pv=raw_daily_pv,
+    )
     active_phase = growth_phase["active_phase"]
     is_inflow_first = active_phase in ("phase1_inflow", "phase2_engagement")
 
@@ -2283,6 +2378,8 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         aff_by_ref_path,
         known_cols,
         cushion_by_ref_path=cushion_by_ref_path,
+        active_phase=active_phase,
+        effective_daily_pv=daily_pv,
     )
     yt_shorts_logged = int(((closed_loop_feedback.get("sample_counts") or {}).get("youtube_shorts_with_metrics")) or 0)
     sns_channel_efficiency = _build_sns_channel_efficiency(
@@ -2311,6 +2408,8 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         stats_14d=stats_14d,
         days=days,
         closed_loop_feedback=closed_loop_feedback,
+        effective_daily_pv=daily_pv,
+        pv_basis=pv_basis,
     )
     weekly_growth_actions = _build_weekly_growth_actions(
         demand_gap=demand_gap,
@@ -2380,31 +2479,42 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     issues = []
 
     aff_tot = sum(item["clicks"] for item in offer_breakdown) or funnel.get("aff_total", 0)
+    aff_clicks_7d = sum(int(item.get("clicks_7d") or 0) for item in offer_breakdown)
     eng_rate = funnel.get("engagement_rate_pct", 0.0)
+    human_eng_rate = funnel.get("human_engagement_rate_pct")
+    effective_eng_rate = human_eng_rate if (human_pv_tot > 0 and human_eng_rate is not None) else eng_rate
     ext_tot = inflow_north_star["external_inflow_total"]
     inf_wow = inflow_north_star["inflow_wow"]
 
     if ext_tot > 0:
+        gsc_wow = inflow_north_star.get("gsc_wow")
+        gsc_wow_note = f" ／ GSC実測 {gsc_wow['short_label']}" if isinstance(gsc_wow, dict) else ""
         wins.append({
-            "title": f"外部純新規流入が稼働中：計 {ext_tot:,}件（{inf_wow['short_label']}｜検索 {inflow_north_star['search_inflow_total']}・動画 {inflow_north_star['short_video_inflow_total']}）",
+            "title": f"外部純新規流入が稼働中：計 {ext_tot:,}件（{inf_wow['short_label']}{gsc_wow_note}｜検索 {inflow_north_star['search_inflow_total']}・動画 {inflow_north_star['short_video_inflow_total']}）",
             "detail": f"最上位流入枠は『{(inflow_cohorts[0]['label'] if inflow_cohorts else sns_channel_efficiency['top_channel_label'])}』。流入実績の高い切り口をSNS鬼デスクの採点へ自動加点しています。",
         })
     if pv_tot > 0:
-        wins.append({
-            "title": f"サイト訪問・店舗比較が稼働中（直近{days}日 PV {pv_tot:,}回 ／ 1日平均 {inflow_north_star['daily_pv']} PV ／ 回遊率 {eng_rate}%）",
-            "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・記事閲覧 {funnel.get('article_views', 0)}回が発生し、直帰せず比較ツールとして使われています。",
-        })
-    if aff_tot > 0 and article_perf_by_score and article_perf_by_score[0]["aff_clicks"] > 0:
+        if human_pv_tot > 0:
+            wins.append({
+                "title": f"実ブラウザ訪問・店舗比較が稼働中（実測 {inflow_north_star['daily_pv']} PV/日・期間計 {human_pv_tot:,} PV ／ 人間操作率 {effective_eng_rate}%）",
+                "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・2ステップ遷移 {funnel.get('cushion_clicks_total', 0)}回・マップ/公式 {funnel.get('map_total', 0) + funnel.get('official_total', 0)}回（参考：クローラ等含む生PV計 {pv_tot:,}回）。",
+            })
+        else:
+            wins.append({
+                "title": f"サイト訪問・店舗比較が稼働中（直近{days}日 PV {pv_tot:,}回 ／ 1日平均 {inflow_north_star['daily_pv']} PV ／ 回遊率 {eng_rate}%）",
+                "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・記事閲覧 {funnel.get('article_views', 0)}回が発生し、直帰せず比較ツールとして使われています。",
+            })
+    if aff_clicks_7d > 0 and aff_tot > 0 and article_perf_by_score and article_perf_by_score[0]["aff_clicks"] > 0:
         top_art = article_perf_by_score[0]
         wins.append({
-            "title": f"収益牽引コンテンツ：『{top_art['title'][:26]}…』（広告クリック {top_art['aff_clicks']}件 / CTR {top_art['ctr_pct']}%）",
-            "detail": f"全体でアフィリエイト送客 {aff_tot}件（CTR {funnel.get('aff_ctr_pct', 0)}%）。高反応記事をXリプ欄の優先紹介リストへ自動セットしました。",
+            "title": f"送客反応コンテンツ：『{top_art['title'][:26]}…』（広告クリック {top_art['aff_clicks']}件 / CTR {top_art['ctr_pct']}%）",
+            "detail": f"全体でアフィリエイト送客 {aff_tot}件（直近7日 {aff_clicks_7d}件・ASP確定値は別管理）。高反応記事を優先紹介リストへ自動セットしました。",
         })
-    elif aff_tot > 0 and offer_breakdown:
+    elif aff_clicks_7d > 0 and aff_tot > 0 and offer_breakdown:
         top_off = offer_breakdown[0]
         wins.append({
-            "title": f"収益送客が稼働中：『{top_off['short_label']}』を筆頭に計{aff_tot}件クリック（全体CTR {funnel.get('aff_ctr_pct', 0)}%）",
-            "detail": f"首位カテゴリは {top_off['clicks']}件（シェア {top_off['share_pct']}%）。ページ別クリック計測（?from= 属性）でハブ・記事別の寄与を追跡中です。",
+            "title": f"収益送客が稼働中：『{top_off['short_label']}』を筆頭に計{aff_tot}件クリック（直近7日 {aff_clicks_7d}件）",
+            "detail": f"首位カテゴリは {top_off['clicks']}件（シェア {top_off['share_pct']}%）。ASP確定成果の実測蓄積を継続中です。",
         })
     wins.append({
         "title": f"検索SEO＆AI引用の基盤コラム {col_audit['total_columns']}本が監査クリア（平均 {col_audit['avg_desk_score']}点）",
@@ -2419,8 +2529,15 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             "action_taken": "SNS編集部（/staff/sns-editorial）でトークン状態・直近配信ログを確認してください。",
         })
 
-    if leaky_articles:
-        lk = leaky_articles[0]
+    high_pv_leaky = [a for a in leaky_articles if int(a.get("pv") or 0) >= int(growth_phase.get("min_pv_for_funnel_action") or 50)]
+    if active_phase == "phase1_inflow" and daily_pv < 100.0 and pv_basis == "human_pv":
+        issues.append({
+            "title": f"初期グロース第1関門（100 PV/日・実ブラウザPV基準）まであと {max(1, int(round(100.0 - daily_pv)))} PV/日（現在 {inflow_north_star['daily_pv']} PV/日）",
+            "detail": "いまはアフィリエイトCV率を追うより、①Google/AI検索（店名×人数・レビュー・営業状況）と ②X週末実況・縦型ショート動画からの純新規着地を増やすことが最優先です。",
+            "action_taken": f"TOP3提案と自動加点を『流入拡大最優先』へ統一し、優先紹介記事に『{priority_column_paths[0]}』などをセットしました。",
+        })
+    elif high_pv_leaky or (leaky_articles and (active_phase != "phase1_inflow" or pv_basis != "human_pv")):
+        lk = (high_pv_leaky or leaky_articles)[0]
         issues.append({
             "title": f"導線ボトルネック記事：『{lk['title'][:26]}…』（{lk['pv']} PVあるのに広告クリック0件）",
             "detail": "記事への流入は取れていますが、読了後に離脱しています。2ステップ原則に沿った /concierge・/grooming・/for-women への回遊ブリッジ強化が有効です。",
@@ -2428,15 +2545,15 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         })
     elif active_phase == "phase1_inflow" and daily_pv < 100.0:
         issues.append({
-            "title": f"初期グロース第1関門（100 PV/日）まであと {max(1, int(round(100.0 - daily_pv)))} PV/日（現在 {inflow_north_star['daily_pv']} PV/日）",
+            "title": f"初期グロース第1関門（100 PV/日・生PV基準）まであと {max(1, int(round(100.0 - daily_pv)))} PV/日（現在 {inflow_north_star['daily_pv']} PV/日）",
             "detail": "いまはアフィリエイトCV率を追うより、①Google/AI検索（店舗・エリア・ドーム終演）と ②縦型ショート動画（3Dもしも＆15秒街別ギャップ）からの純新規着地を増やすことが最優先です。",
-            "action_taken": f"TOP3提案と自動加点を『流入拡大最優先』へ統一し、X 18:00枠に『{priority_column_paths[0]}』など検索・SNS両取り記事をセットしました。",
+            "action_taken": f"TOP3提案と自動加点を『流入拡大最優先』へ統一し、優先紹介記事に『{priority_column_paths[0]}』などをセットしました。",
         })
     elif aff_tot == 0 and active_phase != "phase1_inflow":
         issues.append({
             "title": "アフィリエイト遷移データがまだ少なめ（記事・ガイドへの2ステップ送客強化）",
             "detail": "トップページの人数確認だけで離脱するユーザーを /concierge・/grooming・/for-women へ回遊させる余地があります。",
-            "action_taken": f"X 18:00枠・リプ欄の優先紹介コラムに『{priority_column_paths[0]}』などキラー記事4本を自動セットしました。",
+            "action_taken": f"優先紹介コラムに『{priority_column_paths[0]}』などキラー記事4本を自動セットしました。",
         })
 
     sleeping_articles = [a for a in article_perf if a["pv"] <= 2]
@@ -2469,7 +2586,10 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         })
 
     # 5. Phase-Calibrated 4-Axis 100-Point Score
-    daily_aff = aff_tot / days_norm
+    classified_clicks_present = sum(int(o.get("clicks") or 0) for o in offer_breakdown) > 0
+    aff_clicks_7d_eff = aff_clicks_7d if classified_clicks_present else int(((stats_7d or {}).get("funnel") or {}).get("aff_total") or 0)
+    eff_aff_tot = aff_clicks_7d_eff if human_pv_tot > 0 else aff_tot
+    eff_daily_aff = (eff_aff_tot / 7.0) if human_pv_tot > 0 else (aff_tot / days_norm)
     attributed_aff = sum(cnt for rp, cnt in aff_by_ref_path.items() if rp and rp != "-")
     active_offer_cats = sum(1 for o in offer_breakdown if o.get("clicks", 0) > 0)
     active_sns_channels = sum(
@@ -2481,14 +2601,23 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     moshimo_enabled = bool(((flywheel_status.get("moshimo_queue") or {}).get("enabled", True)))
     sleeping_ratio = (len(sleeping_articles) / max(1, len(article_perf))) if article_perf else 0.0
 
+    eff_pv_for_score = human_pv_tot if human_pv_tot > 0 else pv_tot
+    hpv_7d = int(((stats_7d or {}).get("funnel") or {}).get("human_pv_total") or 0)
+    ctr_pv_denom = hpv_7d if (human_pv_tot > 0 and hpv_7d > 0) else eff_pv_for_score
+    eff_aff_ctr_pct = (
+        round((eff_aff_tot / ctr_pv_denom) * 100.0, 2)
+        if ctr_pv_denom > 0
+        else float(funnel.get("aff_ctr_pct") or 0.0)
+    )
+
     overall_score, score_breakdown, score_axes = _compute_phase_calibrated_scores(
         active_phase=active_phase,
-        pv_tot=pv_tot,
+        pv_tot=eff_pv_for_score,
         daily_pv=daily_pv,
-        eng_rate=eng_rate,
-        aff_tot=aff_tot,
-        daily_aff=daily_aff,
-        aff_ctr_pct=float(funnel.get("aff_ctr_pct") or 0.0),
+        eng_rate=effective_eng_rate,
+        aff_tot=eff_aff_tot,
+        daily_aff=eff_daily_aff,
+        aff_ctr_pct=eff_aff_ctr_pct,
         attributed_aff=attributed_aff,
         active_offer_cats=active_offer_cats,
         cushion_total=int(funnel.get("cushion_clicks_total") or 0),
@@ -2522,17 +2651,34 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     raw_rev = dict(stats.get("revenue") or {})
     classified_clicks = sum(int(o.get("clicks") or 0) for o in offer_breakdown)
     weighted_aff_yen = sum(int(o.get("est_revenue_yen") or 0) for o in offer_breakdown)
-    est_adsense_yen = int(raw_rev.get("est_adsense_yen") if "est_adsense_yen" in raw_rev else round(pv_tot * 0.35))
+    est_adsense_yen = int(raw_rev.get("est_adsense_yen") if "est_adsense_yen" in raw_rev else 0)
     est_aff_yen = weighted_aff_yen if classified_clicks > 0 else int(raw_rev.get("est_aff_yen") or round(aff_tot * 90))
     est_total_yen = est_adsense_yen + est_aff_yen
     pace_denom_days = max(1, int(raw_rev.get("pace_denom_days") or days_norm))
-    reconciled_revenue = {
-        "est_adsense_yen": est_adsense_yen,
-        "est_aff_yen": est_aff_yen,
-        "est_total_yen": est_total_yen,
-        "est_monthly_pace_yen": round((est_total_yen / pace_denom_days) * 30),
-        "pace_denom_days": pace_denom_days,
-    }
+    if aff_clicks_7d_eff == 0 or aff_tot == 0:
+        reconciled_revenue = {
+            "est_adsense_yen": est_adsense_yen,
+            "est_aff_yen": 0,
+            "est_total_yen": est_adsense_yen,
+            "est_monthly_pace_yen": None,
+            "pace_denom_days": pace_denom_days,
+            "epc_basis": "assumed_fixed",
+            "aff_clicks_7d": aff_clicks_7d_eff,
+            "revenue_status": "unverified_accumulating",
+            "revenue_status_label": "ASP確定値未連携（直近7日クリック0件・月額試算停止中）",
+        }
+    else:
+        reconciled_revenue = {
+            "est_adsense_yen": est_adsense_yen,
+            "est_aff_yen": est_aff_yen,
+            "est_total_yen": est_total_yen,
+            "est_monthly_pace_yen": round((est_total_yen / pace_denom_days) * 30),
+            "pace_denom_days": pace_denom_days,
+            "epc_basis": "assumed_fixed",
+            "aff_clicks_7d": aff_clicks_7d_eff,
+            "revenue_status": "assumed_epc_only",
+            "revenue_status_label": "仮定EPC参考試算（ASP確定値未連携）",
+        }
 
     return {
         "days": days,

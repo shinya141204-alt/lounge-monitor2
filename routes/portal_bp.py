@@ -333,6 +333,7 @@ def store_detail_page(store_slug):
     with core.data_lock:
         raw_copy = list(core.latest_data.get('full_data') or [])
         last_updated = core.latest_data.get('last_updated') or '--:--'
+        is_seed_live = bool(core.latest_data.get('is_seed'))
     raw_stores = ops_governance.filter_visible_stores(raw_copy)
 
     sname = store_master.store_by_slug(store_slug, live_stores=raw_stores)
@@ -486,6 +487,9 @@ def store_detail_page(store_slug):
             'map_anchor': map_anchor,
             'pos_telemetry': s_live.get('pos_telemetry'),
             'price_range': '女性 無料 / 男性 時間制' if ('ソウル' in sname) else '女性 無料 / 男性 店舗別料金',
+            'romanized_name': store_master.romanized_name(sname),
+            'title_alias': store_master.title_romanized_alias(sname),
+            'search_aliases': store_master.search_aliases(sname),
         }
         try:
             core._attach_store_benchmarks(store_obj, sname, women, men, core.local_db.get_all_stores_live_benchmarks(allow_blocking=False))
@@ -501,6 +505,7 @@ def store_detail_page(store_slug):
 
         hb, hs = _gov_hidden_sets()
         nearby_comparison = None
+        self_prof = None
         try:
             import price_comparison
             nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
@@ -694,6 +699,198 @@ def store_detail_page(store_slug):
         except Exception as e:
             logging.warning(f"[second_venues] {sname}: {e}")
 
+        # Derive verified operating status, waveform summary & visible FAQ strictly from real measured logs & schedule (AGENTS.md §1)
+        store_waveform_summary = None
+        store_faq_items = []
+        try:
+            last_updated_safe = str(last_updated or '').strip()
+            if last_updated_safe in ('', '--:--', 'None'):
+                last_updated_safe = ''
+            today_hours_safe = str(hours_info.get('today_hours_label') or '').strip()
+            if today_hours_safe in ('', 'None'):
+                today_hours_safe = '公式サイト要確認'
+            hours_safe = str(hours_info.get('hours_label') or '').strip()
+            if hours_safe in ('', 'None'):
+                hours_safe = today_hours_safe
+            import time as _time
+            _fetched_at = s_live.get('fetched_at')
+            is_stale_store = bool(
+                is_seed_live
+                or s_live.get('is_stale')
+                or s_live.get('stale')
+                or (
+                    isinstance(_fetched_at, (int, float))
+                    and (_fetched_at <= 0.0 or (_time.time() - float(_fetched_at) > 1800))
+                )
+            )
+            live_fresh_guests = (not is_stale_store) and (tot > 0)
+            has_recent_7d_activity = bool(
+                live_fresh_guests
+                or (
+                    isinstance(store_analytics, dict)
+                    and (
+                        int(store_analytics.get('max_7d_women') or 0) > 0
+                        or int(store_analytics.get('max_7d_men') or 0) > 0
+                    )
+                )
+            )
+            if live_fresh_guests and hours_info['is_open_now']:
+                ts_note = f"{last_updated_safe}時点・" if last_updated_safe else ""
+                op_status_code = 'active_open'
+                op_badge = '計測中（営業時間内）'
+                op_summary = f"直近計測（{ts_note}本日 {today_hours_safe}）で女性{women}名・男性{men}名を記録しています（通常 {hours_safe}）"
+            elif live_fresh_guests:
+                ts_note = f"{last_updated_safe}時点" if last_updated_safe else "直近"
+                op_status_code = 'active_off_hours_stale'
+                op_badge = '直近計測あり（通常時間外）'
+                op_summary = f"{ts_note}の取得データでは女性{women}名・男性{men}名ですが、現在は通常営業時間外（本日 {today_hours_safe}）のため最新状況は公式サイトをご確認ください"
+            elif (live_data_missing or is_stale_store) and hours_info['is_open_now']:
+                op_status_code = 'open_pending'
+                op_badge = '公式営業時間内（取得待機中）'
+                op_summary = f"公式営業時間内（本日 {today_hours_safe}）ですが、現在リアルタイム人数を取得待機中です"
+            elif hours_info['is_open_now']:
+                op_status_code = 'open_zero'
+                op_badge = '公式営業時間内（現在 0 : 0）'
+                op_summary = f"公式営業時間内（本日 {today_hours_safe}）で現在の表示人数は 0 : 0 です（開店直後や臨時休業の可能性もあるため最新状況は公式サイトをご確認ください）"
+            elif has_recent_7d_activity:
+                op_status_code = 'active_off_hours'
+                op_badge = '直近7日稼働ログ確認済（現在は時間外）'
+                op_summary = f"直近7日間の集計期間内に稼働ログを確認しています（現在は営業時間外｜本日 {today_hours_safe}・通常 {hours_safe}）"
+            else:
+                op_status_code = 'unverified'
+                op_badge = '営業状況確認中（現在は時間外）'
+                op_summary = f"現在は通常営業時間外（本日 {today_hours_safe}・通常 {hours_safe}）です。直近7日間の稼働ログが未確認のため、最新の営業状況は公式サイトをご確認ください"
+            store_obj['operating_status'] = {
+                'status': op_status_code,
+                'has_recent_activity': has_recent_7d_activity,
+                'is_open_now': bool(hours_info['is_open_now']),
+                'badge': op_badge,
+                'summary': op_summary,
+            }
+
+            if (
+                isinstance(store_insight, dict)
+                and int(store_insight.get('n_days') or 0) >= 3
+                and store_insight.get('hourly_rows')
+            ):
+                wf_rows = [
+                    r for r in store_insight['hourly_rows']
+                    if isinstance(r, dict)
+                    and isinstance(r.get('avg_w'), (int, float))
+                    and isinstance(r.get('avg_m'), (int, float))
+                    and (r.get('n') is None or (isinstance(r.get('n'), (int, float)) and int(r.get('n')) >= 2))
+                ]
+                if wf_rows:
+                    peak_row = max(
+                        wf_rows,
+                        key=lambda r: (float(r['avg_w']) + float(r['avg_m']), float(r['avg_w'])),
+                    )
+                    store_waveform_summary = {
+                        'peak_label': str(peak_row.get('label') or '').strip(),
+                        'peak_avg_w': peak_row['avg_w'],
+                        'peak_avg_m': peak_row['avg_m'],
+                        'peak_wpct': peak_row.get('wpct') if isinstance(peak_row.get('wpct'), (int, float)) else None,
+                        'n_days': int(store_insight.get('n_days') or 0),
+                    }
+
+            _faq_alias = f"（{store_obj['title_alias']}）" if store_obj.get('title_alias') else ''
+            _faq_name = f"{store_obj['seo_name']}{_faq_alias}"
+            _faq_op_ans = (
+                f"{store_obj['operating_status']['summary']}。"
+                "臨時休業や特別営業・最新の入店条件は来店前に公式サイトでご確認ください。"
+            )
+            _faq_crowd_parts = []
+            if live_fresh_guests:
+                _ts_pfx = f"{last_updated_safe}時点の" if last_updated_safe else "直近取得時点の"
+                if op_status_code == 'active_off_hours_stale':
+                    _faq_crowd_parts.append(
+                        f"{_ts_pfx}取得データ（現在は通常時間外）では女性{women}名・男性{men}名（女性比{wpct}%）です。"
+                    )
+                else:
+                    _faq_crowd_parts.append(
+                        f"{_ts_pfx}現在人数は女性{women}名・男性{men}名（女性比{wpct}%）です。"
+                    )
+            if store_waveform_summary and store_waveform_summary.get('peak_label'):
+                _pw = store_waveform_summary['peak_avg_w']
+                _pm = store_waveform_summary['peak_avg_m']
+                _pp = store_waveform_summary.get('peak_wpct')
+                _pp_txt = f"女性比{_pp}%" if _pp is not None else "実測集計"
+                _faq_crowd_parts.append(
+                    f"直近の実測{store_waveform_summary['n_days']}日分のデータでは{store_waveform_summary['peak_label']}が最も人数が集まりやすく、平均女性{_pw}名・男性{_pm}名（{_pp_txt}）の傾向があります。"
+                )
+            elif isinstance(store_analytics, dict) and int(store_analytics.get('max_7d_women') or 0) > 0:
+                _bs_name = str(store_analytics.get('best_slot_name') or '').strip()
+                _bs_pct = store_analytics.get('best_slot_pct')
+                _bs_txt = f"（平均女性比{_bs_pct}%）" if isinstance(_bs_pct, (int, float)) else ""
+                if _bs_name and _bs_name != 'None':
+                    _faq_crowd_parts.append(
+                        f"直近7日間の最高女性数は{store_analytics['max_7d_women']}名で、狙い目は{_bs_name}{_bs_txt}です。"
+                    )
+                else:
+                    _faq_crowd_parts.append(
+                        f"直近7日間の最高女性数は{store_analytics['max_7d_women']}名です。"
+                    )
+            if isinstance(store_dossier, dict) and store_dossier.get('catch'):
+                _faq_crowd_parts.append(f"客層・評判傾向：{store_dossier['catch']}")
+            if not _faq_crowd_parts:
+                _faq_crowd_parts.append(
+                    f"{_faq_name}の店内人数は営業時間中1分ごとに自動更新しています。曜日・時間帯別の詳細波形は本ページの統計セクションをご確認ください。"
+                )
+
+            if 'ソウル' in sname:
+                _faq_price_ans = (
+                    f"{_faq_name}は韓国・ソウル所在店舗のため、料金体系やパスポート等の顔写真付き身分証ルールが日本国内店と異なります。"
+                    "最新の料金・入店規定は公式サイトでご確認ください。"
+                )
+            elif isinstance(self_prof, dict):
+                _solo_r = str(self_prof.get('solo_rule') or '').strip()
+                _wait_s = str(self_prof.get('wait_fee_str') or '').strip()
+                _s2022 = str(self_prof.get('slot_20_22') or '').strip()
+                _price_parts = [f"料金目安は「{store_obj['price_range']}」です。"]
+                if _s2022:
+                    _rate_unit = '' if (self_prof.get('is_flat_rate') or '10分' in _s2022) else '/10分'
+                    _price_parts.append(f"男性20〜22時枠は{_s2022}{_rate_unit}。")
+                if _wait_s:
+                    _price_parts.append(f"単独待機は{_wait_s}。")
+                if _solo_r:
+                    _price_parts.append(f"男性1名（ソロ）入店は「{_solo_r}」です。")
+                _price_parts.append("特別料金日や最新規定は公式サイトをご確認ください。")
+                _faq_price_ans = ''.join(_price_parts)
+            else:
+                _faq_price_ans = (
+                    f"料金目安は「{store_obj['price_range']}」です。"
+                    "時間帯別の詳細料金や1名入店規定は、本ページの料金比較セクションおよび公式サイトでご確認ください。"
+                )
+
+            _q1_text = (
+                f"{_faq_name}の営業時間と最新の営業状況（休業・閉店確認）は？"
+                if store_obj['slug'] == 'jis-matsuyama'
+                else f"{_faq_name}の営業時間・本日の営業状況は？"
+            )
+            store_faq_items = [
+                {
+                    'q': _q1_text,
+                    'a': _faq_op_ans,
+                },
+                {
+                    'q': f"{_faq_name}の現在人数・混みやすい時間帯やレビュー・評判傾向は？",
+                    'a': ' '.join(_faq_crowd_parts),
+                },
+                {
+                    'q': f"{_faq_name}の料金や男性1人（ソロ）入店の可否は？",
+                    'a': _faq_price_ans,
+                },
+            ]
+        except Exception as _faq_err:
+            logging.warning(f"[store_faq] {sname}: {_faq_err}")
+            store_obj.setdefault('operating_status', {
+                'status': 'unverified',
+                'has_recent_activity': False,
+                'is_open_now': bool(hours_info.get('is_open_now')),
+                'badge': '営業状況確認中',
+                'summary': '最新の営業状況は公式サイトをご確認ください',
+            })
+
         import datetime as _dt
         now_og_jst = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=9)))
         og_bucket = f"{now_og_jst.strftime('%Y%m%d_%H')}{(now_og_jst.minute // 15) * 15:02d}"
@@ -705,6 +902,8 @@ def store_detail_page(store_slug):
             store_analytics=store_analytics,
             store_insight=store_insight,
             store_dossier=store_dossier,
+            store_waveform_summary=store_waveform_summary,
+            store_faq_items=store_faq_items,
             has_sufficient_store_data=has_sufficient_store_data,
             store_smart_cta=store_smart_cta,
             store_second_venues=store_second_venues,

@@ -102,12 +102,91 @@
         return Boolean(anchor.closest('.editorial-bridge-box, .editorial-bridge-actions, .cta-row, .share-bar-row, .related-article-card, .pr-context-foot, .surface-smart-foot, .ladies-pr-section, article, main'));
     }
 
+    function getCurrentStoreLabel(anchor) {
+        if (anchor) {
+            var explicit = anchor.getAttribute('data-track-label');
+            if (explicit) return String(explicit).trim().slice(0, 80);
+            var sec = anchor.closest && anchor.closest('[data-store-name]');
+            if (sec && sec.getAttribute('data-store-name')) {
+                return String(sec.getAttribute('data-store-name')).trim().slice(0, 80);
+            }
+        }
+        var hero = document.querySelector('[data-hero-store]');
+        if (hero) {
+            var hn = hero.getAttribute('data-hero-store') || hero.getAttribute('data-hero-seo');
+            if (hn) return String(hn).trim().slice(0, 80);
+        }
+        return ((window.location && window.location.pathname) ? window.location.pathname : '/').slice(0, 80);
+    }
+
     function onDocumentClick(ev) {
         if (!ev || !ev.target || typeof ev.target.closest !== 'function') return;
         if (document.body && document.body.classList.contains('staff-mode')) return;
         var anchor = ev.target.closest('a[href]');
         if (!anchor) return;
-        var targetHub = extractCushionTarget(anchor.getAttribute('href') || '');
+
+        var id = anchor.id || '';
+        var rawHref = anchor.getAttribute('href') || '';
+        var explicitEv = anchor.getAttribute('data-track-event') || '';
+
+        // 1) Explicit official store link clicks across /store/* and portal cards (avoid double-counting `/` modal links)
+        if (explicitEv === 'official_click') {
+            if (id === 'modal-official-link' || id === 'modal-top-official-link') return;
+            postTrackPayload('official_click', getCurrentStoreLabel(anchor));
+            return;
+        }
+
+        // 2) Store detail 2nd-venue map quick buttons (cafe / bar / shisha / yokocho)
+        if (id === 'detail-map-cafe-btn') {
+            postTrackPayload('map_cafe', getCurrentStoreLabel(anchor));
+            return;
+        }
+        if (id === 'detail-map-bar-btn') {
+            postTrackPayload('map_bar', getCurrentStoreLabel(anchor));
+            return;
+        }
+        if (id === 'detail-map-shisha-btn') {
+            postTrackPayload('map_bar', (getCurrentStoreLabel(anchor) + ':shisha').slice(0, 80));
+            return;
+        }
+        if (id === 'detail-map-yokocho-btn') {
+            postTrackPayload('map_bar', (getCurrentStoreLabel(anchor) + ':yokocho').slice(0, 80));
+            return;
+        }
+
+        // 3) Specific curated 2nd-venue spot Google Maps links on /store/*
+        if (anchor.classList && anchor.classList.contains('map-btn') && anchor.closest('#detail-second-venue-cards')) {
+            var vCard = anchor.closest('.second-venue-card');
+            var vCat = vCard ? (vCard.getAttribute('data-category') || '') : '';
+            var evType = (vCat === 'cafe') ? 'map_cafe' : 'map_bar';
+            var baseStore = getCurrentStoreLabel(anchor);
+            var spotLbl = vCat && vCat !== 'cafe' && vCat !== 'bar' ? (baseStore + ':' + vCat) : baseStore;
+            postTrackPayload(evType, spotLbl.slice(0, 80));
+            return;
+        }
+
+        // 4) Non-home official Aiseki-Navi SNS footer/header links (exact official handles only; avoid double-counting on `/`)
+        if (typeof window.trackEvent !== 'function') {
+            if (rawHref.indexOf('x.com/aiseki_navi') !== -1) {
+                postTrackPayload('sns_click', 'x');
+                return;
+            }
+            if (rawHref.indexOf('threads.net/@aiseki_navi1') !== -1 || rawHref.indexOf('threads.com/@aiseki_navi1') !== -1) {
+                postTrackPayload('sns_click', 'threads');
+                return;
+            }
+            if (rawHref.indexOf('instagram.com/aiseki_navi1') !== -1) {
+                postTrackPayload('sns_click', 'instagram');
+                return;
+            }
+            if (rawHref.indexOf('note.com/aiseki_navi') !== -1) {
+                postTrackPayload('sns_click', 'note');
+                return;
+            }
+        }
+
+        // 5) 2-step internal cushion bridge clicks
+        var targetHub = extractCushionTarget(rawHref);
         if (!targetHub || !isEditorialBridgeAnchor(anchor, targetHub)) return;
         var srcPath = ((window.location && window.location.pathname) ? window.location.pathname : '/').slice(0, 48);
         var dedupKey = 'cushion:' + targetHub + ' @ ' + srcPath;

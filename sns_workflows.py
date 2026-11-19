@@ -536,11 +536,11 @@ def execute_scheduled_x_search_catcher_post(
         return {"status": "skipped", "reason": "Already posted search-catcher for this slot"}
 
     if not force:
-        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=90, now_jst=now_jst)
+        in_cd, cd_reason = x_poster.check_x_auto_post_cooldown(min_interval_minutes=55, now_jst=now_jst)
         if in_cd:
             logging.info(f"Deferring X search-catcher post ({slot_label}): {cd_reason}")
             return {"status": "skipped", "reason": cd_reason}
-        over_b, b_reason = x_poster.check_x_daily_post_budget(max_daily=3, now_jst=now_jst)
+        over_b, b_reason = x_poster.check_x_daily_post_budget(max_daily=4, now_jst=now_jst)
         if over_b:
             logging.info(f"Skipping X search-catcher post ({slot_label}): {b_reason}")
             return {"status": "skipped", "reason": b_reason}
@@ -582,9 +582,12 @@ def execute_scheduled_x_search_catcher_post(
     png_bytes = None
     try:
         import inspect
+        import re as _re
         import ogp_generator
+        _hh_m = _re.search(r"(\d{1,2})", str(slot_label or ""))
+        slot_hh = (_hh_m.group(1) if _hh_m else "22").zfill(2)
         ogp_kwargs = {
-            "s_param": f"x22_search_{biz_dt.strftime('%Y%m%d')}",
+            "s_param": f"x{slot_hh}_search_{biz_dt.strftime('%Y%m%d')}",
             "now_jst": now_jst,
         }
         if "focus_text" in inspect.signature(ogp_generator.generate_live_ogp_png).parameters:

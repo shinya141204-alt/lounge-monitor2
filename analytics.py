@@ -1856,7 +1856,24 @@ def summary(days=7, allow_blocking=True):
     share_total = by_event.get('share', 0)
     vote_total = by_event.get('vote', 0)
 
+    human_pv_dates = [d_str for d_str, d_evs in by_day.items() if int(d_evs.get('human_pv', 0) or 0) > 0]
+    human_pv_days = len(human_pv_dates)
+    if human_pv_dates:
+        try:
+            first_hpv_dt = datetime.date.fromisoformat(min(human_pv_dates))
+            human_pv_span_days = max(1, min(days, (today_date - first_hpv_dt).days + 1))
+        except ValueError:
+            human_pv_span_days = max(1, min(days, human_pv_days))
+    else:
+        human_pv_span_days = 0
     engagement_total = store_open_total + article_views + vote_total
+    human_engagement_total = (
+        store_open_total + vote_total + cushion_clicks_total + map_total + official_total + share_total
+    )
+    human_engagement_rate_pct = (
+        min(100.0, round((human_engagement_total / human_pv_total) * 100, 1))
+        if human_pv_total > 0 else None
+    )
     action_total = aff_total + map_total + official_total + sns_total + share_total
 
     cushion_by_source = defaultdict(int)
@@ -1910,10 +1927,14 @@ def summary(days=7, allow_blocking=True):
     funnel = {
         'pv_total': pv_total,
         'human_pv_total': human_pv_total,
+        'human_pv_days': human_pv_days,
+        'human_pv_span_days': human_pv_span_days,
         'article_views': article_views,
         'store_open_total': store_open_total,
         'engagement_total': engagement_total,
         'engagement_rate_pct': min(100.0, round((engagement_total / pv_total) * 100, 1)) if pv_total > 0 else 0.0,
+        'human_engagement_total': human_engagement_total,
+        'human_engagement_rate_pct': human_engagement_rate_pct,
         'action_total': action_total,
         'action_rate_pct': round((action_total / pv_total) * 100, 1) if pv_total > 0 else 0.0,
         'aff_total': aff_total,
@@ -1958,7 +1979,8 @@ def summary(days=7, allow_blocking=True):
     #   - Gross expected value (`est_aff_yen`): ~90 yen/click (occurrence basis across high-ticket trials & apps)
     #   - Net confirmed value (`est_confirmed_aff_yen`): ~30 yen/click conservative industry median after approval rate
     adsense_enabled = bool((os.environ.get('ADSENSE_CLIENT_ID') or os.environ.get('ADSENSE_PUB_ID') or '').strip())
-    est_adsense_yen = round(pv_total * 0.35) if adsense_enabled else 0
+    adsense_pv_base = human_pv_total if human_pv_total > 0 else pv_total
+    est_adsense_yen = round(adsense_pv_base * 0.35) if adsense_enabled else 0
     est_aff_yen = round(aff_total * 90)
     est_confirmed_epc_yen = 30
     est_confirmed_aff_yen = round(aff_total * est_confirmed_epc_yen)
@@ -1988,7 +2010,10 @@ def summary(days=7, allow_blocking=True):
         'est_confirmed_monthly_pace_yen': est_confirmed_monthly_pace_yen,
         'epc_sample_status': 'sample_sufficient' if aff_total >= 500 else 'accumulating',
         'epc_basis': 'assumed_fixed',
-        'epc_note': '発生期待EPC 90円/click・承認考慮後の実勢確定EPC目安 25〜35円/click（基準30円）',
+        'is_unverified_assumption': True,
+        'confirmed_conversions': None,
+        'revenue_status': 'unverified_accumulating' if aff_total == 0 else 'assumed_epc_only',
+        'epc_note': '仮定EPC参考値（発生目安 90円 / 承認後目安 30円・ASP確定値未連携）',
         'pace_denom_days': pace_denom_days,
     }
 

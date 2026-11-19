@@ -46,6 +46,7 @@ def _refresh_weekly_report_async():
 
 
 def generate_weekly_report():
+    global _report_cache_db_path
     now_utc = datetime.datetime.now()
     cached_data = _report_cache.get('data')
     cached_lf = _report_cache.get('last_fetched')
@@ -58,6 +59,36 @@ def generate_weekly_report():
         if age < REPORT_CACHE_DURATION * 4:
             _refresh_weekly_report_async()
             return cached_data
+
+    # Cross-process Redis cache lookup (worker -> web Gunicorn workers) to avoid cold /stats latency
+    skip_redis = (os.environ.get('DISABLE_SHEETS') == '1') or (os.environ.get('TESTING') == '1')
+    if not skip_redis:
+        try:
+            import turbo_store
+            db_key = local_db._active_db_key() if hasattr(local_db, '_active_db_key') else str(local_db.DB_PATH)
+            shared = turbo_store.get_ai_cache('weekly_report_v2', db_key)
+            if (
+                isinstance(shared, dict)
+                and isinstance(shared.get('report'), dict)
+                and 'error' not in shared['report']
+                and shared['report'].get('stores')
+            ):
+                rep_shared = shared['report']
+                gen_ts = shared.get('generated_at_epoch')
+                if isinstance(gen_ts, (int, float)) and gen_ts > 0:
+                    try:
+                        inherited_lf = datetime.datetime.fromtimestamp(float(gen_ts))
+                    except Exception:
+                        inherited_lf = now_utc
+                else:
+                    inherited_lf = now_utc
+                with _report_lock:
+                    _report_cache['data'] = rep_shared
+                    _report_cache['last_fetched'] = inherited_lf
+                    _report_cache_db_path = local_db.DB_PATH
+                return rep_shared
+        except Exception:
+            pass
 
     # Compute outside global lock so slow gviz HTTP calls never freeze other threads
     return _compute_weekly_report(now_utc)
@@ -426,7 +457,23 @@ def _compute_weekly_report(now_utc: datetime.datetime):
         })
 
     if should_cache_report:
-        _report_cache['data'] = report
-        _report_cache['last_fetched'] = datetime.datetime.now()
-        _report_cache_db_path = local_db.DB_PATH
+        now_done = datetime.datetime.now()
+        with _report_lock:
+            _report_cache['data'] = report
+            _report_cache['last_fetched'] = now_done
+            _report_cache_db_path = local_db.DB_PATH
+        skip_redis = (os.environ.get('DISABLE_SHEETS') == '1') or (os.environ.get('TESTING') == '1')
+        # AGENTS.md §9: never persist empty weekly reports into shared Redis cache
+        if not skip_redis and isinstance(report, dict) and report.get('stores') and int(report.get('total_records') or 0) > 0:
+            try:
+                import turbo_store
+                db_key = local_db._active_db_key() if hasattr(local_db, '_active_db_key') else str(local_db.DB_PATH)
+                turbo_store.set_ai_cache(
+                    'weekly_report_v2',
+                    db_key,
+                    {'generated_at_epoch': now_done.timestamp(), 'report': report},
+                    ttl_sec=REPORT_CACHE_DURATION + 600,
+                )
+            except Exception:
+                pass
     return report

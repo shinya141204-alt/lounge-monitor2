@@ -1543,7 +1543,14 @@ def build_x_search_catcher_post(
     if not picked:
         return "", ""
 
-    header = f"{ts_naive.month}/{ts_naive.day}({wd_ja}) {hhmm}時点 主要エリアの店内人数メモ"
+    _hh_m = re.search(r"(\d{1,2})", str(slot_label or ""))
+    slot_hh = (_hh_m.group(1) if _hh_m else "22").zfill(2)
+    if slot_hh == "20":
+        header = f"{ts_naive.month}/{ts_naive.day}({wd_ja}) {hhmm}時点 主要エリアの立ち上がり人数メモ"
+    elif slot_hh == "23":
+        header = f"{ts_naive.month}/{ts_naive.day}({wd_ja}) {hhmm}時点 終電前〜深夜帯の店内人数メモ"
+    else:
+        header = f"{ts_naive.month}/{ts_naive.day}({wd_ja}) {hhmm}時点 主要エリアの店内人数メモ"
     body_lines = [header, ""]
     for _, s in picked:
         w = int(s.get("women") or 0)
@@ -1559,7 +1566,23 @@ def build_x_search_catcher_post(
         s for s in dom
         if int(s.get("men") or 0) >= 12 and int(s.get("men") or 0) >= int(s.get("women") or 0) + 4
     ]
-    if tf_w >= tf_m + 5:
+    if slot_hh == "20":
+        if tf_w >= tf_m + 5:
+            obs = "20時台は女性先行で立ち上がる店舗が多く、男性も待ち時間を抑えて1軒目に入りやすい時間帯です。"
+        elif male_lead:
+            ml_name = format_official_searchable_store_name(male_lead[0].get("name", ""))
+            obs = f"立ち上がりから男性先行の{ml_name}あたりは、女性グループが待ち時間を抑えて入りやすい状況です。"
+        else:
+            obs = "20時台は徐々に人数が動き出しやすい時間帯。1軒目で並ばず徒歩圏の別店舗と比較するとスムーズです。"
+    elif slot_hh == "23":
+        if tf_w >= tf_m + 5:
+            obs = "終電前後は1回転目の入れ替わりで男女比が大きく動くため、徒歩圏の別店舗を見比べると外しにくいです。"
+        elif male_lead:
+            ml_name = format_official_searchable_store_name(male_lead[0].get("name", ""))
+            obs = f"深夜帯に向けて男性先行の{ml_name}あたりは、2軒目の女性グループが待ち時間を抑えて入りやすい状況です。"
+        else:
+            obs = "23時台は終電帰宅と深夜第2波が入れ替わる境目。向かう直前の現在人数チェックが効きます。"
+    elif tf_w >= tf_m + 5:
         obs = "同じ街でも店舗間で男女比が割れているので、男性待ちが出ている店は徒歩圏の別店舗へ回る方が早いです。"
     elif male_lead:
         ml_name = format_official_searchable_store_name(male_lead[0].get("name", ""))
@@ -1581,6 +1604,6 @@ def build_x_search_catcher_post(
     biz_ymd = (ts_naive - datetime.timedelta(hours=7)).strftime("%Y%m%d")
     reply_text = (
         f"出典・全国60店舗超のリアルタイム人数推移\n"
-        f"{site_url}/?s=x22_search_{biz_ymd}"
+        f"{site_url}/?s=x{slot_hh}_search_{biz_ymd}"
     )
     return main_text, reply_text

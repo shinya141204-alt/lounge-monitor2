@@ -360,6 +360,22 @@ def _sheets_retention_job():
         logger.error(f"[worker] Scheduled Google Sheets retention job failed: {err}")
 
 
+def _stats_cache_prewarm_job():
+    """Keep /stats statistical dependencies warm in Redis & worker memory to eliminate cold latency."""
+    if not turbo_store.acquire_distributed_lock("cron:stats_cache_prewarm", ttl_sec=180):
+        return
+    try:
+        import embed_widgets
+        import weekly_report
+        weekly_report.generate_weekly_report()
+        local_db.get_forecast_accuracy_report(days=90, limit_recent=20, allow_blocking=True, auto_backfill=False)
+        local_db.get_forecast_accuracy_report(days=30, limit_recent=5, allow_blocking=True, auto_backfill=False)
+        local_db.get_moat_coverage_summary()
+        embed_widgets.get_heatmap_payload(scope="all", days=90, metric="ratio", theme="dark")
+    except Exception as err:
+        logger.warning(f"[worker] /stats cache prewarm warning: {err}")
+
+
 def _daily_token_and_db_maintenance_job():
     if not turbo_store.acquire_distributed_lock("cron:daily_maint", ttl_sec=300):
         return
@@ -435,6 +451,17 @@ def build_worker_scheduler() -> BackgroundScheduler:
         executor="sns_ai",
     )
     scheduler.add_job(
+        id="x_search_2015",
+        func=_x_search_catcher_job,
+        trigger="cron",
+        day_of_week="sat",
+        hour=11,
+        minute="17,21,25,29,33,38",
+        jitter=60,
+        args=["20:15"],
+        executor="sns_ai",
+    )
+    scheduler.add_job(
         id="x_search_2200",
         func=_x_search_catcher_job,
         trigger="cron",
@@ -443,6 +470,17 @@ def build_worker_scheduler() -> BackgroundScheduler:
         minute="2,6,10,14,18,22,27",
         jitter=60,
         args=["22:00"],
+        executor="sns_ai",
+    )
+    scheduler.add_job(
+        id="x_search_2330",
+        func=_x_search_catcher_job,
+        trigger="cron",
+        day_of_week="fri,sat",
+        hour=14,
+        minute="32,36,40,44,48,53",
+        jitter=60,
+        args=["23:30"],
         executor="sns_ai",
     )
     # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows
@@ -479,6 +517,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="sheets_retention", func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
     scheduler.add_job(id="daily_token_db_maint", func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
     scheduler.add_job(id="rescue_orphan_sns_jobs", func=_rescue_orphaned_sns_jobs, trigger="interval", minutes=5)
+    scheduler.add_job(id="stats_cache_prewarm_20m", func=_stats_cache_prewarm_job, trigger="interval", minutes=20)
 
     return scheduler
 
@@ -595,6 +634,10 @@ def _worker_staggered_warmup(stop_event: threading.Event):
     # Note: Do NOT precompute AI editorial / column drafts on worker boot to prevent unnecessary Claude Opus token burn.
     if stop_event.wait(15.0 if has_disk_events else 8.0):
         return
+    try:
+        _stats_cache_prewarm_job()
+    except Exception as stats_warm_err:
+        logger.warning(f"[worker] Warmup /stats cache warning: {stats_warm_err}")
     try:
         _crawl_events_job()
     except Exception as crawl_err:

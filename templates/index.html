@@ -148,7 +148,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261119_1" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=52" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261119_5" as="script">
+    <link rel="preload" href="/static/app.js?v=20261120_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -3220,9 +3220,9 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261119_5" defer></script>
+    <script src="/static/app.js?v=20261120_1" defer></script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=7"></script>
+    <script defer src="/static/cta_tracker.js?v=8"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
