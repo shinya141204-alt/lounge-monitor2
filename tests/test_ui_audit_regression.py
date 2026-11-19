@@ -105,13 +105,13 @@ class UiAuditRegressionTests(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_cache_busting_sync_across_templates_and_service_worker(self):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
-        expected_calm = "/static/calm.css?v=51"
-        expected_portal = "/static/portal.css?v=19"
-        expected_app_js = "/static/app.js?v=20261119_2"
+        expected_calm = "/static/calm.css?v=52"
+        expected_portal = "/static/portal.css?v=20"
+        expected_app_js = "/static/app.js?v=20261119_3"
         expected_aff_js = "/static/affiliate_config.js?v=18"
-        expected_style = "/static/style.css?v=20261118_1"
-        expected_sw_url = "/sw.js?v=118"
-        expected_cache_name = "aiseki-navi-v118"
+        expected_style = "/static/style.css?v=20261119_1"
+        expected_sw_url = "/sw.js?v=119"
+        expected_cache_name = "aiseki-navi-v119"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
@@ -157,7 +157,8 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertGreaterEqual(portal_seen, 28)
         self.assertEqual(app_js_seen, 2)  # preload + defer script in index.html
         self.assertEqual(aff_js_seen, 1)  # defer script in index.html
-        self.assertGreaterEqual(style_seen, 34)
+        self.assertGreaterEqual(style_seen, 2)
+        self.assertLessEqual(style_seen, 4, "guide_*.html must remain detached from legacy style.css")
         self.assertEqual(sw_reg_seen, 3)  # index.html + _nav_loader.html + store_detail.html
 
         sw_path = os.path.join(PROJECT_ROOT, "static", "sw.js")
@@ -1306,7 +1307,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                                 }};
                             }}""")
                             self.assertTrue(bento_state["exists"], f"Missing {bento_sel} on {sub_route}")
-                            self.assertEqual(bento_state["radius"], "24px", f"Expected 24px Apple Bento radius for {bento_sel} on {sub_route} (light={is_light})")
+                            self.assertEqual(bento_state["radius"], "18px", f"Expected 18px Plan 2 card radius for {bento_sel} on {sub_route} (light={is_light})")
                             self.assertLessEqual(bento_state["overflowX"], 0)
                     ctx_apple_pc.close()
                 finally:
@@ -2244,12 +2245,12 @@ class UiAuditRegressionTests(unittest.TestCase):
         # 2) Context PR card spans full 2-column grid even in PC list/compact mode
         self.assertIn("body:not(.staff-mode) #ranking-list > .context-lead-row {\n    grid-column: 1 / -1 !important;", calm_txt)
 
-        # 3) /for-women light mode preserves rose-linen editorial palette with WCAG AA+ contrast
+        # 3) /for-women light mode uses Plan 2 neutral canvas (#f6f6f7) + deep rose accent (#9f1239) with WCAG AAA contrast
         self.assertIn("body.theme-light.audience-women:not(.staff-mode)", calm_txt)
-        self.assertIn("--bg-page: #f2eaeb;", calm_txt)
-        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#221b1d"), _parse_hex_or_rgba("#f2eaeb")), 11.0)
-        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#544146"), _parse_hex_or_rgba("#f2eaeb")), 6.0)
-        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#88354b"), _parse_hex_or_rgba("#ffffff")), 5.5)
+        self.assertIn("--bg-page: #f6f6f7;", calm_txt)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#18181b"), _parse_hex_or_rgba("#f6f6f7")), 15.0)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#52525b"), _parse_hex_or_rgba("#f6f6f7")), 6.5)
+        self.assertGreaterEqual(_contrast_ratio(_parse_hex_or_rgba("#9f1239"), _parse_hex_or_rgba("#f2f2f5")), 7.0)
 
         # 4 & 5) 640px responsive stacking and >=40px sublink tap target
         self.assertIn("@media (max-width: 640px)", calm_txt)
@@ -3364,6 +3365,170 @@ class UiAuditRegressionTests(unittest.TestCase):
                     self.assertTrue(staff_state["countsInsideCard"], f"Staff card counts clipped outside card: {staff_state}")
                     self.assertLessEqual(staff_state["docOV"], 0)
                     ctx_st.close()
+                finally:
+                    browser.close()
+
+    def test_site_wide_plan2_unification_and_wcag_all_routes(self):
+        """P0〜P3 サイト全体（全主要ページ・ガイド・統計・共通モーダル・404互換ルート）の案2統一・WCAG・レスポンシブ回帰検証"""
+        import datetime as dt
+        from urllib.parse import urlparse
+
+        # 1) P3 Compatibility 301 Redirects (/price -> /price-comparison, /brand/<slug> -> /<slug>)
+        r_price = self.client.get("/price?staff_test=1", follow_redirects=False)
+        self.assertEqual(r_price.status_code, 301)
+        self.assertTrue(r_price.headers["Location"].endswith("/price-comparison?staff_test=1"))
+
+        r_brand = self.client.get("/brand/oriental-lounge?staff_test=1", follow_redirects=False)
+        self.assertEqual(r_brand.status_code, 301)
+        self.assertTrue(r_brand.headers["Location"].endswith("/oriental-lounge?staff_test=1"))
+
+        r_brand_404 = self.client.get("/brand/unknown-brand-xyz", follow_redirects=False)
+        self.assertEqual(r_brand_404.status_code, 404)
+
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright is not installed")
+
+        now_str = dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+        sample_stores = [
+            {"name": "JIS 新宿", "source": "jis", "region": "Kanto", "women": 48, "men": 8, "total": 56, "women_diff": 6, "men_diff": 0, "is_open_now": True, "timestamp": now_str, "pos_telemetry": {"telemetry_type": "jis_pos", "men_waiting_groups": 0, "women_waiting_groups": 0}},
+            {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 38, "men": 12, "total": 50, "women_diff": 4, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+            {"name": "OLG ag新宿", "source": "ag", "region": "Kanto", "women": 24, "men": 10, "total": 34, "women_diff": 2, "men_diff": 0, "is_open_now": True, "timestamp": now_str},
+            {"name": "ASOBIBAR 新宿", "source": "asobibar", "region": "Kanto", "women": 0, "men": 0, "total": 0, "women_diff": 0, "men_diff": 0, "is_open_now": False, "timestamp": now_str},
+        ]
+        with app_module.data_lock:
+            app_module.latest_data["full_data"] = copy.deepcopy(sample_stores)
+            app_module.latest_data["top5"] = copy.deepcopy(sample_stores[:3])
+            app_module.latest_data["last_updated"] = now_str
+            app_module.latest_data["status"] = "ok"
+        app_module.clear_fast_http_caches()
+
+        base = "http://aiseki.local"
+
+        def attach_router(ctx, client):
+            def handle(route):
+                u = urlparse(route.request.url)
+                if u.netloc != "aiseki.local":
+                    route.abort()
+                    return
+                path_qs = u.path + (("?" + u.query) if u.query else "")
+                headers = {k: v for k, v in route.request.headers.items() if k.lower() not in ("host", "content-length", "cookie")}
+                resp = client.open(path_qs, method=route.request.method.upper(), headers=headers, data=route.request.post_data_buffer, follow_redirects=True)
+                resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")}
+                route.fulfill(status=resp.status_code, headers=resp_headers, body=resp.get_data())
+                resp.close()
+            ctx.route("**/*", handle)
+
+        audit_routes = [
+            "/store/oriental-lounge-shinjuku",
+            "/areas",
+            "/area/shinjuku",
+            "/oriental-lounge",
+            "/for-women",
+            "/price-comparison",
+            "/concierge",
+            "/columns",
+            "/stats",
+            "/stats/weekend-index",
+            "/guide/app-fatigue-vs-lounge",
+            "/guide/dome-live-after-surge",
+            "/guide/free-food-reality",
+        ]
+
+        with patch.object(app_module, "trigger_background_fetch_if_needed", lambda *a, **kw: None), \
+             patch("logger.get_client", return_value=None):
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                try:
+                    ctx_pc = browser.new_context(viewport={"width": 1280, "height": 900}, service_workers="block")
+                    ctx_sp = browser.new_context(viewport={"width": 375, "height": 812}, service_workers="block")
+                    attach_router(ctx_pc, self.client)
+                    attach_router(ctx_sp, self.client)
+                    pc = ctx_pc.new_page()
+                    sp = ctx_sp.new_page()
+
+                    # Check SP #menu-modal bottom sheet r:24px + drag handle
+                    sp.goto(base + "/", wait_until="domcontentloaded")
+                    sp.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                    sp.evaluate("openMenuModal()")
+                    sp.wait_for_timeout(60)
+                    sheet_info = sp.evaluate("""() => {
+                        const mc = document.querySelector('#menu-modal .modal-content');
+                        const dh = document.querySelector('#menu-modal .sheet-drag-handle');
+                        return {
+                            topRadius: mc ? getComputedStyle(mc).borderTopLeftRadius : '',
+                            bottomRadius: mc ? getComputedStyle(mc).borderBottomLeftRadius : '',
+                            hasHandle: Boolean(dh),
+                        };
+                    }""")
+                    self.assertEqual(sheet_info["topRadius"], "24px", f"SP #menu-modal must be 24px bottom sheet: {sheet_info}")
+                    self.assertEqual(sheet_info["bottomRadius"], "0px", f"SP #menu-modal bottom corners must be 0px: {sheet_info}")
+                    self.assertTrue(sheet_info["hasHandle"])
+
+                    for route_path in audit_routes:
+                        # PC Dark + Light
+                        pc.goto(base + route_path, wait_until="domcontentloaded")
+                        pc.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                        pc.evaluate("document.documentElement.classList.remove('theme-light'); document.body.classList.remove('theme-light');")
+                        pc.wait_for_timeout(40)
+                        pc_dark = pc.evaluate("""() => ({
+                            ov: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                            conciergeCols: document.querySelector('.concierge-split-layout') ? getComputedStyle(document.querySelector('.concierge-split-layout')).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+                            storeCols: document.querySelector('.store-detail-layout') ? getComputedStyle(document.querySelector('.store-detail-layout')).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+                            leftBorders: Array.from(document.querySelectorAll('main > h2, .sec-title, .article-body h3, .article-content h3')).filter(el => parseFloat(getComputedStyle(el).borderLeftWidth || '0') >= 2).length,
+                        })""")
+                        self.assertLessEqual(pc_dark["ov"], 1, f"PC Dark overflow on {route_path}: {pc_dark}")
+                        self.assertEqual(pc_dark["leftBorders"], 0, f"Residual 3px border-left on {route_path}: {pc_dark}")
+                        if route_path == "/concierge":
+                            self.assertEqual(pc_dark["conciergeCols"], 2, f"PC /concierge must be 2-pane: {pc_dark}")
+                        if route_path == "/store/oriental-lounge-shinjuku":
+                            self.assertEqual(pc_dark["storeCols"], 2, f"PC /store/<slug> must be 2-pane: {pc_dark}")
+
+                        pc.evaluate("document.documentElement.classList.add('theme-light'); document.body.classList.add('theme-light');")
+                        pc.wait_for_timeout(40)
+                        pc_light = pc.evaluate("""() => {
+                            const hb = document.querySelector('.hero-box');
+                            const hbStyle = hb ? getComputedStyle(hb) : null;
+                            const sct = document.querySelector('.stat-card-title');
+                            const navBtn = document.querySelector('.portal-nav-item');
+                            return {
+                                ov: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                                heroBorderTop: hbStyle ? parseFloat(hbStyle.borderTopWidth || '0') : 0,
+                                heroBg: hbStyle ? hbStyle.backgroundColor : 'rgba(0, 0, 0, 0)',
+                                statTitleColor: sct ? getComputedStyle(sct).color : null,
+                                navBtnH: navBtn ? Math.round(navBtn.getBoundingClientRect().height) : 40,
+                            };
+                        }""")
+                        self.assertLessEqual(pc_light["ov"], 1, f"PC Light overflow on {route_path}: {pc_light}")
+                        self.assertEqual(pc_light["heroBorderTop"], 0.0, f"Light .hero-box white-border regression on {route_path}: {pc_light}")
+                        self.assertIn(pc_light["heroBg"], ("rgba(0, 0, 0, 0)", "transparent"), f"Light .hero-box bg must be transparent on {route_path}: {pc_light}")
+                        self.assertGreaterEqual(pc_light["navBtnH"], 38, f"Nav tap target < 38px on {route_path}: {pc_light}")
+                        if pc_light["statTitleColor"]:
+                            fg = _parse_hex_or_rgba(pc_light["statTitleColor"])
+                            self.assertGreaterEqual(_contrast_ratio(fg, (255, 255, 255)), 5.5, f"Low contrast .stat-card-title on {route_path}: {pc_light['statTitleColor']}")
+
+                        # SP 375px checks (overflow, compare-col width >= 220px, area h1Top <= 280px)
+                        sp.goto(base + route_path, wait_until="domcontentloaded")
+                        sp.add_style_tag(content="*, *::before, *::after { transition: none !important; animation: none !important; }")
+                        sp.wait_for_timeout(40)
+                        sp_metrics = sp.evaluate("""() => {
+                            const cols = Array.from(document.querySelectorAll('.apple-compare-col')).filter(el => el.offsetParent !== null);
+                            const minColW = cols.length ? Math.min(...cols.map(el => Math.round(el.getBoundingClientRect().width))) : 999;
+                            const h1 = document.querySelector('h1');
+                            return {
+                                ov: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                                minColW,
+                                h1Top: h1 ? Math.round(h1.getBoundingClientRect().top) : 0,
+                            };
+                        }""")
+                        self.assertLessEqual(sp_metrics["ov"], 1, f"SP 375px overflow on {route_path}: {sp_metrics}")
+                        self.assertGreaterEqual(sp_metrics["minColW"], 220, f"SP 375px .apple-compare-col squeezed into narrow 2-col on {route_path}: {sp_metrics}")
+                        if route_path in ("/areas", "/area/shinjuku"):
+                            self.assertLessEqual(sp_metrics["h1Top"], 280, f"SP area page h1 pushed too far down on {route_path}: {sp_metrics}")
+
+                    ctx_pc.close()
+                    ctx_sp.close()
                 finally:
                     browser.close()
 

@@ -1,61 +1,61 @@
 {% if iso_map %}
 <style>
     :root {
-        --iso-well-bg: #111217;
-        --iso-card-bg: #16171d;
-        --iso-sub-bg: #1c1e26;
-        --iso-plane-b1: #181a24;
-        --iso-plane-b1-lip: #26221a;
-        --iso-plane-1f: #151822;
-        --iso-plane-1f-lip: #1b2432;
-        --iso-plane-2f: #1e1a24;
-        --iso-plane-2f-lip: #2c1f28;
-        --iso-box-bg: #222533;
-        --iso-store-bg: #291c24;
-        --iso-cafe-bg: #1b2430;
-        --iso-pill-bg: #14161e;
-        --iso-text-main: #f0ede8;
-        --iso-text-sub: #b3ada3;
-        --iso-gold: #c8a46e;
-        --iso-gold-text: #e2c799;
-        --iso-rose: #dfa5af;
-        --iso-blue: #99b8d1;
-        --iso-dash-hi: #fff3d1;
-        --iso-grid-line: rgba(255, 255, 255, 0.05);
-        --iso-border: rgba(255, 255, 255, 0.10);
-        --iso-gold-border: rgba(200, 164, 110, 0.42);
+        --iso-well-bg: var(--calm-bg, #111113);
+        --iso-card-bg: var(--calm-surface, #1a1a1e);
+        --iso-sub-bg: var(--calm-surface-2, #232329);
+        --iso-plane-b1: var(--calm-surface, #1a1a1e);
+        --iso-plane-b1-lip: var(--calm-surface-2, #232329);
+        --iso-plane-1f: var(--calm-surface, #1a1a1e);
+        --iso-plane-1f-lip: var(--calm-surface-2, #232329);
+        --iso-plane-2f: var(--calm-surface, #1a1a1e);
+        --iso-plane-2f-lip: var(--calm-surface-2, #232329);
+        --iso-box-bg: var(--calm-surface-2, #232329);
+        --iso-store-bg: var(--calm-surface-2, #232329);
+        --iso-cafe-bg: var(--calm-surface-2, #232329);
+        --iso-pill-bg: var(--calm-bg, #111113);
+        --iso-text-main: var(--calm-text, #f4f4f5);
+        --iso-text-sub: var(--calm-sub, #b4b4be);
+        --iso-gold: var(--calm-sub, #b4b4be);
+        --iso-gold-text: var(--calm-text, #f4f4f5);
+        --iso-rose: var(--calm-women, #f4a8b8);
+        --iso-blue: var(--calm-men, #93c5fd);
+        --iso-dash-hi: var(--calm-text, #f4f4f5);
+        --iso-grid-line: var(--calm-border, rgba(255, 255, 255, 0.08));
+        --iso-border: var(--calm-border, rgba(255, 255, 255, 0.08));
+        --iso-gold-border: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
     }
     html.theme-light,
     body.theme-light,
     html[data-theme="light"] {
-        --iso-well-bg: #f1efe9;
-        --iso-card-bg: #faf9f6;
-        --iso-sub-bg: #efece4;
-        --iso-plane-b1: #ebe5d8;
-        --iso-plane-b1-lip: #d5cab4;
-        --iso-plane-1f: #e4eaf1;
-        --iso-plane-1f-lip: #c7d4e2;
-        --iso-plane-2f: #f1e4e7;
-        --iso-plane-2f-lip: #dec5cb;
-        --iso-box-bg: #ffffff;
-        --iso-store-bg: #fcf2f4;
-        --iso-cafe-bg: #f1f6fa;
-        --iso-pill-bg: #ffffff;
-        --iso-text-main: #1d1c19;
-        --iso-text-sub: #524d45;
-        --iso-gold: #7a5820;
-        --iso-gold-text: #664714;
-        --iso-rose: #8c3344;
-        --iso-blue: #295070;
-        --iso-dash-hi: #7a5820;
-        --iso-grid-line: rgba(28, 27, 24, 0.06);
-        --iso-border: rgba(28, 27, 24, 0.13);
-        --iso-gold-border: rgba(122, 88, 32, 0.38);
+        --iso-well-bg: var(--calm-light-bg, #f6f6f7);
+        --iso-card-bg: var(--calm-light-surface, #ffffff);
+        --iso-sub-bg: var(--calm-light-surface-2, #f2f2f5);
+        --iso-plane-b1: var(--calm-light-surface-2, #f2f2f5);
+        --iso-plane-b1-lip: rgba(24, 24, 27, 0.12);
+        --iso-plane-1f: var(--calm-light-surface-2, #f2f2f5);
+        --iso-plane-1f-lip: rgba(24, 24, 27, 0.12);
+        --iso-plane-2f: var(--calm-light-surface-2, #f2f2f5);
+        --iso-plane-2f-lip: rgba(24, 24, 27, 0.12);
+        --iso-box-bg: var(--calm-light-surface, #ffffff);
+        --iso-store-bg: var(--calm-light-surface, #ffffff);
+        --iso-cafe-bg: var(--calm-light-surface, #ffffff);
+        --iso-pill-bg: var(--calm-light-surface, #ffffff);
+        --iso-text-main: var(--calm-light-text, #18181b);
+        --iso-text-sub: var(--calm-light-sub, #52525b);
+        --iso-gold: var(--calm-light-sub, #52525b);
+        --iso-gold-text: var(--calm-light-text, #18181b);
+        --iso-rose: var(--calm-light-women-strong, #9f1239);
+        --iso-blue: var(--calm-light-men-strong, #1e40af);
+        --iso-dash-hi: var(--calm-light-text, #18181b);
+        --iso-grid-line: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+        --iso-border: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+        --iso-gold-border: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
     }
     .iso-3d-section {
         background: var(--iso-card-bg);
-        border: 1px solid var(--iso-gold-border);
-        border-radius: 14px;
+        border: 1px solid var(--iso-border);
+        border-radius: 18px;
         padding: 18px;
         margin: 22px 0;
     }
@@ -69,9 +69,9 @@
     }
     .iso-3d-kicker {
         font-size: 0.72rem;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        color: var(--iso-gold-text);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: var(--iso-text-sub);
         margin-bottom: 2px;
     }
     .iso-3d-title {
@@ -88,26 +88,34 @@
     }
     .iso-layer-btn {
         appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
         border: 1px solid var(--iso-border);
         background: var(--iso-sub-bg);
         color: var(--iso-text-main);
         font-size: 0.76rem;
         font-weight: 700;
-        padding: 6px 11px;
-        border-radius: 8px;
+        padding: 7px 12px;
+        border-radius: 10px;
         cursor: pointer;
-        transition: all 0.16s ease;
+        transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
     }
     .iso-layer-btn:hover {
         border-color: var(--iso-gold-border);
     }
     .iso-layer-btn.is-active {
-        background: var(--iso-gold);
-        color: #ffffff;
-        border-color: var(--iso-gold);
+        background: var(--cm-cta-bg, #f4f4f5);
+        color: var(--cm-cta-text, #111113);
+        border-color: var(--cm-cta-bg, #f4f4f5);
     }
-    html:not(.theme-light):not([data-theme="light"]) body:not(.theme-light) .iso-layer-btn.is-active {
-        color: #111216;
+    html.theme-light .iso-layer-btn.is-active,
+    body.theme-light .iso-layer-btn.is-active,
+    html[data-theme="light"] .iso-layer-btn.is-active {
+        background: #18181b;
+        color: #ffffff;
+        border-color: #18181b;
     }
     .iso-3d-body {
         display: flex;
@@ -117,7 +125,7 @@
     .iso-svg-well {
         background: var(--iso-well-bg);
         border: 1px solid var(--iso-border);
-        border-radius: 12px;
+        border-radius: 13px;
         padding: 10px 14px;
         display: flex;
         align-items: center;
@@ -148,23 +156,19 @@
     .iso-step-card {
         background: var(--iso-sub-bg);
         border: 1px solid var(--iso-border);
-        border-radius: 10px;
-        padding: 11px 13px;
+        border-radius: 13px;
+        padding: 12px 13px;
         cursor: pointer;
-        transition: opacity 0.22s ease, border-color 0.22s ease, transform 0.16s ease;
+        transition: opacity 0.22s ease, border-color 0.22s ease;
     }
     .iso-step-card:hover {
         border-color: var(--iso-gold-border);
     }
     .iso-step-card.is-highlighted {
-        border-color: var(--iso-gold);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+        border-color: var(--iso-gold-text);
     }
-    .iso-step-card--b1 { border-left: 3px solid var(--iso-gold); }
-    .iso-step-card--1f { border-left: 3px solid var(--iso-blue); }
-    .iso-step-card--2f { border-left: 3px solid var(--iso-rose); }
     .iso-step-hdr {
-        font-size: 0.81rem;
+        font-size: 0.78rem;
         font-weight: 800;
         margin: 0 0 5px;
         color: var(--iso-text-main);
@@ -172,6 +176,12 @@
         align-items: center;
         justify-content: space-between;
         gap: 6px;
+        line-height: 1.42;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+    }
+    .iso-hdr-keep {
+        display: inline-block;
     }
     .iso-step-desc {
         font-size: 0.77rem;
@@ -179,16 +189,18 @@
         margin: 0;
         line-height: 1.56;
     }
-    @media (max-width: 768px) {
-        .iso-3d-section {
-            padding: 14px 11px;
-        }
-        .iso-svg-well {
-            padding: 6px 4px;
-        }
+    @media (max-width: 900px) {
         .iso-cards-col {
             grid-template-columns: 1fr;
             gap: 8px;
+        }
+    }
+    @media (max-width: 768px) {
+        .iso-3d-section {
+            padding: 14px 12px;
+        }
+        .iso-svg-well {
+            padding: 6px 4px;
         }
     }
 </style>
@@ -303,7 +315,7 @@
                     <text x="68" y="317" text-anchor="middle" fill="var(--iso-gold-text)" font-size="11" font-weight="800">L=-1｜地下B1F</text>
                     <text x="124" y="318" fill="var(--iso-gold-text)" font-size="13" font-weight="800">{{ iso_map.b1_header or iso_map.b1_title }}</text>
                     <rect x="442" y="302" width="142" height="22" rx="6" fill="var(--iso-sub-bg)" stroke="var(--iso-gold)" stroke-width="1.2"/>
-                    <text x="513" y="317" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">☔ 雨・雪0秒 地下直結</text>
+                    <text x="513" y="317" text-anchor="middle" fill="var(--iso-gold-text)" font-size="10.5" font-weight="800">雨・雪0秒 地下直結</text>
 
                     <!-- 3D Isometric Slab with extruded front/right lips -->
                     <polygon points="12,418 572,418 572,424 12,424" fill="var(--iso-plane-b1-lip)"/>
@@ -337,19 +349,19 @@
         <div class="iso-cards-col">
             <div class="iso-step-card iso-step-card--b1" data-iso-card="b1" onclick="window.__setIsoMapLayer(this, 'b1')">
                 <p class="iso-step-hdr" style="color: var(--iso-gold-text);">
-                    <span>① B1F 地下直結・悪天候ルート</span>
+                    <span>① B1F 地下直結・<span class="iso-hdr-keep">悪天候ルート</span></span>
                 </p>
                 <p class="iso-step-desc">{{ iso_map.b1_desc }}</p>
             </div>
             <div class="iso-step-card iso-step-card--1f" data-iso-card="1f" onclick="window.__setIsoMapLayer(this, '1f')">
                 <p class="iso-step-hdr" style="color: var(--iso-blue);">
-                    <span>② 1F 地上ハシゴ・男女比スイッチ</span>
+                    <span>② 1F 地上ハシゴ・<span class="iso-hdr-keep">男女比スイッチ</span></span>
                 </p>
                 <p class="iso-step-desc">{{ iso_map.f1_desc }}</p>
             </div>
             <div class="iso-step-card iso-step-card--2f" data-iso-card="2f" onclick="window.__setIsoMapLayer(this, '2f')">
                 <p class="iso-step-hdr" style="color: var(--iso-rose);">
-                    <span>③ 2F-3F ラウンジ＆2軒目夜カフェ誘導</span>
+                    <span>③ 2F-3F ラウンジ＆<span class="iso-hdr-keep">2軒目夜カフェ誘導</span></span>
                 </p>
                 <p class="iso-step-desc">{{ iso_map.f2_desc }}</p>
             </div>

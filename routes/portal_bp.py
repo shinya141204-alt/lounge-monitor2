@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import math
+import re
 import threading
 import time
 import urllib.parse
@@ -14,6 +15,19 @@ from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 from routes._bridge import core
 
 portal_bp = Blueprint('portal_bp', __name__)
+
+_ANY_EMOJI_RE = re.compile(r'[\U0001F300-\U0001FAFF\u2600-\u27BF\u200D\uFE0E\uFE0F]+')
+_KNOWN_BRAND_REDIRECT_SLUGS = frozenset({
+    'oriental-lounge', 'ag', 'jis', 'asobibar',
+    'xix', 'yatakoi', 'clovers', 'alfa',
+})
+
+
+@portal_bp.app_template_filter('strip_emoji')
+def _jinja_strip_emoji(val):
+    if val is None:
+        return ''
+    return re.sub(r'\s{2,}', ' ', _ANY_EMOJI_RE.sub('', str(val))).strip()
 
 STORE_PAGE_NEARBY_LIMIT = 6
 STORE_PAGE_COMPARE_LIMIT = 4
@@ -166,6 +180,21 @@ def brand_clovers_redirect():
 @portal_bp.route('/alfa')
 def brand_alfa_redirect():
     return core._redirect_preserving_query('/store/alfa-hiroshima', code=301)
+
+
+@portal_bp.route('/brand/<slug>', methods=['GET'])
+def brand_legacy_prefix_redirect(slug):
+    """P3 canonical redirect: /brand/<slug> -> /<slug> (301 preserving query string) for known brands."""
+    norm_slug = (slug or '').strip().lower()
+    if norm_slug in _KNOWN_BRAND_REDIRECT_SLUGS:
+        return core._redirect_preserving_query(f'/{norm_slug}', code=301)
+    abort(404)
+
+
+@portal_bp.route('/price', methods=['GET'])
+def price_legacy_redirect():
+    """P3 canonical redirect: /price -> /price-comparison (301 preserving query string)."""
+    return core._redirect_preserving_query('/price-comparison', code=301)
 
 
 def _render_brand_page(brand_slug):

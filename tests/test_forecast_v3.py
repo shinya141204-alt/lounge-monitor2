@@ -260,10 +260,10 @@ class TestStatsSimulatorUI(unittest.TestCase):
         with open(self.stats_template_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Dark mode wave stroke: #f472b6 (Rose-400 on dark background > 6:1)
-        self.assertIn("#f472b6", content)
-        # Light mode wave stroke: #be185d (Rose-700 on white background > 5:1)
-        self.assertIn("#be185d", content)
+        # Dark mode wave stroke: #f4a8b8 (Plan 2 canonical women token on dark surface > 8:1)
+        self.assertIn("#f4a8b8", content)
+        # Light mode wave stroke: #9f1239 (Plan 2 canonical women-strong token on light surface > 7:1)
+        self.assertIn("#9f1239", content)
         # Light mode container overrides
         self.assertIn("body.theme-light .sim-container", content)
         self.assertIn("body.theme-light .sim-select", content)

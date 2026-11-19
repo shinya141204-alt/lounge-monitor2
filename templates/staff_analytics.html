@@ -6,80 +6,12 @@
     <meta name="color-scheme" content="dark light">
     <meta name="robots" content="noindex, nofollow">
     <title>アクセス集計ダッシュボード（スタッフ専用）｜相席ナビ</title>
+    {% include '_staff_tokens.html' %}
     <style>
-        :root {
-            --bg: #111113;
-            --surface: #18181b;
-            --surface-2: #232329;
-            --card-inner: #131316;
-            --input-bg: #111113;
-            --chip-bg: rgba(255, 255, 255, 0.06);
-            --track-bg: rgba(255, 255, 255, 0.06);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f4f4f5;
-            --sub: #c4c4cc;
-            --gold: #f4f4f5;
-            --gold-soft: rgba(244, 244, 245, 0.09);
-            --gold-border: rgba(244, 244, 245, 0.28);
-            --gold-ink: #f4f4f5;
-            --active-bg: #f4f4f5;
-            --active-ink: #111113;
-            --rose: #f48fb1;
-            --rose-soft: rgba(244, 143, 177, 0.14);
-            --rose-border: rgba(244, 143, 177, 0.38);
-            --rose-ink: #fce4ec;
-            --blue: #7dd3fc;
-            --blue-soft: rgba(125, 211, 252, 0.14);
-            --blue-border: rgba(125, 211, 252, 0.36);
-            --blue-ink: #e0f2fe;
-            --green: #6ee7b7;
-            --green-soft: rgba(110, 231, 183, 0.14);
-            --green-border: rgba(110, 231, 183, 0.38);
-            --green-ink: #d1fae5;
-            --amber: #fcd34d;
-            --amber-soft: rgba(252, 211, 77, 0.14);
-            --amber-border: rgba(252, 211, 77, 0.42);
-            --amber-ink: #fef3c7;
-            --red: #fca5a5;
-            --err-ink: #fecaca;
-        }
+        :root { --bg: #111113; --surface: #1a1a1e; --surface-2: #232329; --text: #f4f4f5; --sub: #b4b4be; }
         body.theme-light {
-            --bg: #f6f6f7;
-            --surface: #ffffff;
-            --surface-2: #ededf0;
-            --card-inner: #f8f8fa;
-            --input-bg: #ffffff;
-            --chip-bg: rgba(24, 24, 27, 0.06);
-            --track-bg: rgba(24, 24, 27, 0.07);
-            --border: rgba(24, 24, 27, 0.10);
-            --border-strong: rgba(24, 24, 27, 0.20);
-            --text: #18181b;
-            --sub: #3f3f46;
-            --gold: #18181b;
-            --gold-soft: rgba(24, 24, 27, 0.06);
-            --gold-border: rgba(24, 24, 27, 0.24);
-            --gold-ink: #18181b;
-            --active-bg: #18181b;
-            --active-ink: #ffffff;
-            --rose: #831843;
-            --rose-soft: rgba(157, 23, 77, 0.09);
-            --rose-border: rgba(157, 23, 77, 0.32);
-            --rose-ink: #831843;
-            --blue: #075985;
-            --blue-soft: rgba(3, 105, 161, 0.09);
-            --blue-border: rgba(3, 105, 161, 0.32);
-            --blue-ink: #0c4a6e;
-            --green: #064e3b;
-            --green-soft: rgba(6, 95, 70, 0.09);
-            --green-border: rgba(6, 95, 70, 0.32);
-            --green-ink: #064e3b;
-            --amber: #78350f;
-            --amber-soft: rgba(146, 64, 14, 0.10);
-            --amber-border: rgba(146, 64, 14, 0.34);
-            --amber-ink: #78350f;
-            --red: #991b1b;
-            --err-ink: #7f1d1d;
+            color-scheme: light;
+            --bg: #f6f6f7; --surface: #ffffff; --surface-2: #f2f2f5; --text: #18181b; --sub: #52525b;
         }
         * { box-sizing: border-box; }
         html {
@@ -124,7 +56,7 @@
         .toast-notice {
             margin-bottom: 14px;
             padding: 10px 14px;
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             background: var(--green-soft);
             border: 1px solid var(--green-border);
             color: var(--green-ink);
@@ -136,7 +68,7 @@
         .header-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 12px;
             display: flex;
@@ -197,7 +129,7 @@
         .funnel-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 16px;
             position: relative;
         }
@@ -272,7 +204,7 @@
         .mini-kpi {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 11px;
+            border-radius: var(--r-inner, 13px);
             padding: 11px 13px;
             min-width: 0;
         }
@@ -292,7 +224,7 @@
         .panel {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 16px 18px;
         }
         .panel h2 {
@@ -319,7 +251,7 @@
         .bar-item {
             background: var(--card-inner);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 9px 12px;
         }
         .bar-item-top {
@@ -565,7 +497,7 @@
             color: var(--sub);
             font-size: 0.82rem;
             background: var(--card-inner);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             border: 1px dashed var(--border-strong);
         }
 
@@ -628,15 +560,14 @@
         }
         .hourly-golden-item {
             background: var(--card-inner);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--border-strong);
-            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-inner, 13px);
             padding: 10px 13px;
             min-width: 0;
             font-variant-numeric: tabular-nums;
         }
         .hourly-golden-item.accent-rose {
-            border-left-color: var(--rose);
+            border-color: var(--rose-border);
         }
         .hourly-golden-k {
             font-size: 0.72rem;
@@ -658,7 +589,7 @@
         .hourly-zone-card {
             background: var(--card-inner);
             border: 1px solid var(--border);
-            border-radius: 11px;
+            border-radius: var(--r-inner, 13px);
             padding: 11px 13px;
             min-width: 0;
             font-variant-numeric: tabular-nums;
@@ -836,7 +767,7 @@
             justify-content: space-between;
             gap: 8px;
             padding: 8px 13px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             background: var(--card-inner);
             border: 1px solid var(--border);
             color: var(--text);
@@ -865,7 +796,7 @@
         .ops-section {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 22px;
         }
@@ -888,7 +819,7 @@
         }
         .dup-banner {
             padding: 11px 14px;
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             margin-bottom: 14px;
             font-size: 0.8rem;
             line-height: 1.5;
@@ -911,7 +842,7 @@
         .aff-slot-card {
             background: var(--card-inner);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             padding: 13px 15px;
         }
         .aff-slot-card.is-dup {
@@ -994,7 +925,7 @@
             background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border-strong);
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             padding: 8px 10px;
             font-size: 0.8rem;
             font-family: inherit;
@@ -1022,7 +953,7 @@
             font-size: 0.76rem;
             font-weight: 700;
             padding: 7px 12px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             font-family: inherit;
             text-decoration: none;
             display: inline-flex;
@@ -1045,7 +976,7 @@
         .cap-meter-box {
             background: var(--card-inner);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             padding: 13px 15px;
             margin-bottom: 12px;
         }
@@ -1082,7 +1013,7 @@
         .ws-chip {
             font-size: 0.72rem;
             padding: 3px 9px;
-            border-radius: 7px;
+            border-radius: var(--r-chip, 10px);
             background: var(--surface);
             border: 1px solid var(--border);
             color: var(--sub);
@@ -1102,7 +1033,7 @@
         .gov-box {
             background: var(--card-inner);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             padding: 14px 15px;
             min-width: 0;
         }
@@ -1119,7 +1050,7 @@
         .inq-item {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 11px 12px;
             margin-bottom: 8px;
         }
@@ -1171,7 +1102,7 @@
         .toggle-chip {
             cursor: pointer;
             padding: 6px 11px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--surface);
             color: var(--text);
@@ -1191,7 +1122,7 @@
             max-height: 230px;
             overflow-y: auto;
             border: 1px solid var(--border);
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             background: var(--surface);
             padding: 6px;
         }
@@ -1289,7 +1220,7 @@
     <div class="overview-grid" id="sec-overview">
         <div class="funnel-card">
             <span class="step-badge step-1">STEP 1｜サイトの集客力</span>
-            <div class="funnel-label">👀 総ページ閲覧数（PV）</div>
+            <div class="funnel-label">総ページ閲覧数（PV）</div>
             <div class="funnel-num-row">
                 <span class="funnel-big">{{ f.pv_total }}</span>
                 <span class="funnel-unit">回閲覧</span>
@@ -1302,7 +1233,7 @@
 
         <div class="funnel-card">
             <span class="step-badge step-2">STEP 2｜興味・掘り下げ</span>
-            <div class="funnel-label">🏪 店舗グラフ表示・記事回遊</div>
+            <div class="funnel-label">店舗グラフ表示・記事回遊</div>
             <div class="funnel-num-row">
                 <span class="funnel-big">{{ f.engagement_total }}</span>
                 <span class="funnel-unit">回</span>
@@ -1317,7 +1248,7 @@
 
         <div class="funnel-card">
             <span class="step-badge step-3">STEP 3｜外部送客・収益行動</span>
-            <div class="funnel-label">🚀 広告・マップ・公式・SNSクリック</div>
+            <div class="funnel-label">広告・マップ・公式・SNSクリック</div>
             <div class="funnel-num-row">
                 <span class="funnel-big">{{ f.action_total }}</span>
                 <span class="funnel-unit">回</span>
@@ -1331,7 +1262,7 @@
         </div>
 
         <div class="funnel-card highlight-gold">
-            <span class="step-badge step-rev">💰 収益換算シミュレーター（目安）</span>
+            <span class="step-badge step-rev">収益換算シミュレーター（目安）</span>
             <div class="funnel-label">期間内の推定収益（AdSense＋アフィリエイト期待値）</div>
             <div class="funnel-num-row">
                 <span class="funnel-big" style="color: var(--gold);">¥{{ "{:,}".format(rev.est_total_yen) }}</span>
@@ -1346,16 +1277,16 @@
 
     <!-- Detailed Action Counters -->
     <div class="mini-kpi-grid">
-        <div class="mini-kpi"><div class="k">👀 ページ閲覧 (PV)</div><div class="v">{{ f.pv_total }}</div></div>
-        <div class="mini-kpi"><div class="k">🏪 店舗カードをタップ</div><div class="v">{{ f.store_open_total }}</div></div>
-        <div class="mini-kpi"><div class="k">👁️ PR枠表示 (Imp)</div><div class="v">{{ f.aff_impressions_total or 0 }}</div></div>
-        <div class="mini-kpi"><div class="k">💰 アフィリエイトクリック</div><div class="v" style="color: var(--gold);">{{ f.aff_total }}{% if (f.aff_impressions_total or 0) > 0 %} <span style="font-size:0.72rem;font-weight:600;color:var(--sub);">({{ f.aff_slot_ctr_pct }}%)</span>{% endif %}</div></div>
-        <div class="mini-kpi"><div class="k">☕ 2軒目：夜カフェ検索</div><div class="v">{{ data.by_event.get('map_cafe', 0) }}</div></div>
-        <div class="mini-kpi"><div class="k">🍸 2軒目：バー検索</div><div class="v">{{ data.by_event.get('map_bar', 0) }}</div></div>
-        <div class="mini-kpi"><div class="k">🌐 店舗公式サイトへ遷移</div><div class="v">{{ f.official_total }}</div></div>
-        <div class="mini-kpi"><div class="k">📣 X / note / Threads へ</div><div class="v">{{ f.sns_total }}</div></div>
-        <div class="mini-kpi"><div class="k">🔗 LINE・Xで友達に共有</div><div class="v">{{ f.share_total }}</div></div>
-        <div class="mini-kpi"><div class="k">🙋 現場レポート投票</div><div class="v">{{ f.vote_total }}</div></div>
+        <div class="mini-kpi"><div class="k">ページ閲覧 (PV)</div><div class="v">{{ f.pv_total }}</div></div>
+        <div class="mini-kpi"><div class="k">店舗カードをタップ</div><div class="v">{{ f.store_open_total }}</div></div>
+        <div class="mini-kpi"><div class="k">PR枠表示 (Imp)</div><div class="v">{{ f.aff_impressions_total or 0 }}</div></div>
+        <div class="mini-kpi"><div class="k">アフィリエイトクリック</div><div class="v" style="color: var(--gold);">{{ f.aff_total }}{% if (f.aff_impressions_total or 0) > 0 %} <span style="font-size:0.72rem;font-weight:600;color:var(--sub);">({{ f.aff_slot_ctr_pct }}%)</span>{% endif %}</div></div>
+        <div class="mini-kpi"><div class="k">2軒目：夜カフェ検索</div><div class="v">{{ data.by_event.get('map_cafe', 0) }}</div></div>
+        <div class="mini-kpi"><div class="k">2軒目：バー検索</div><div class="v">{{ data.by_event.get('map_bar', 0) }}</div></div>
+        <div class="mini-kpi"><div class="k">店舗公式サイトへ遷移</div><div class="v">{{ f.official_total }}</div></div>
+        <div class="mini-kpi"><div class="k">X / note / Threads へ</div><div class="v">{{ f.sns_total }}</div></div>
+        <div class="mini-kpi"><div class="k">LINE・Xで友達に共有</div><div class="v">{{ f.share_total }}</div></div>
+        <div class="mini-kpi"><div class="k">現場レポート投票</div><div class="v">{{ f.vote_total }}</div></div>
     </div>
 
     <!-- Daily Trend Chart & Table -->
@@ -1620,7 +1551,7 @@
     <div class="panel-grid" id="sec-breakdown">
         <!-- 1. Popular Pages & Articles -->
         <div class="panel">
-            <h2>📄 よく読まれているページ・コラム記事</h2>
+            <h2>よく読まれているページ・コラム記事</h2>
             <p class="panel-sub">どのページに人が集まっているか（タップで実際のページを開けます）</p>
             {% set pv_rows = data.by_label_pretty.get('page_view', []) %}
             {% if pv_rows %}
@@ -1656,7 +1587,7 @@
 
         <!-- 2. Popular Stores Opened -->
         <div class="panel">
-            <h2>🏪 注目されている人気店舗ランキング</h2>
+            <h2>注目されている人気店舗ランキング</h2>
             <p class="panel-sub">ユーザーがカードをタップして曜日・時間帯別グラフを確認した店舗</p>
             {% set store_rows = data.by_label_pretty.get('store_open', []) %}
             {% if store_rows %}
@@ -1692,13 +1623,13 @@
 
         <!-- 3. Affiliate Clicks & Surface CTR Breakdown -->
         <div class="panel">
-            <h2>💰 アフィリエイト広告クリック＆表示CTR内訳</h2>
+            <h2>アフィリエイト広告クリック＆表示CTR内訳</h2>
             <p class="panel-sub">どの案件が、どの記事・画面で表示・クリックされたか</p>
             {% set aff_rows = data.by_label_pretty.get('affiliate_click', []) %}
             {% set ctr_rows = data.get('cta_surface_ctr', []) %}
             {% if ctr_rows %}
             <div style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
-                <div style="font-size: 0.76rem; font-weight: 700; color: var(--sub); margin-bottom: 6px;">📊 枠×掲載面別の表示回数・クリック率（Viewport実測）</div>
+                <div style="font-size: 0.76rem; font-weight: 700; color: var(--sub); margin-bottom: 6px;">枠×掲載面別の表示回数・クリック率（Viewport実測）</div>
                 <div class="bar-list">
                     {% for cr in ctr_rows[:8] %}
                     <div class="bar-item">
@@ -1749,7 +1680,7 @@
 
         <!-- 4. SNS / 2nd Venue Map / Official Links -->
         <div class="panel">
-            <h2>🍸 2軒目マップ・SNS・公式サイト送客</h2>
+            <h2>2軒目マップ・SNS・公式サイト送客</h2>
             <p class="panel-sub">サイトから外部（Googleマップ・SNS・公式サイト）へ誘導した内訳</p>
             {% set sns_rows = data.by_label_pretty.get('sns_click', []) %}
             {% set cafe_rows = data.by_label_pretty.get('map_cafe', []) %}
@@ -1775,7 +1706,7 @@
                 <div class="bar-item">
                     <div class="bar-item-top">
                         <div>
-                            <span class="bar-item-title">☕ 夜カフェ検索：{{ r.title }}</span>
+                            <span class="bar-item-title">夜カフェ検索：{{ r.title }}</span>
                             <span class="bar-item-sub">店舗モーダルから2軒目マップ検索</span>
                         </div>
                         <div class="bar-item-nums">
@@ -1789,7 +1720,7 @@
                 <div class="bar-item">
                     <div class="bar-item-top">
                         <div>
-                            <span class="bar-item-title">🍸 バー・バル検索：{{ r.title }}</span>
+                            <span class="bar-item-title">バー・バル検索：{{ r.title }}</span>
                             <span class="bar-item-sub">店舗モーダルから2軒目マップ検索</span>
                         </div>
                         <div class="bar-item-nums">
@@ -1803,7 +1734,7 @@
                 <div class="bar-item">
                     <div class="bar-item-top">
                         <div>
-                            <span class="bar-item-title">🌐 公式サイト遷移：{{ r.title }}</span>
+                            <span class="bar-item-title">公式サイト遷移：{{ r.title }}</span>
                             <span class="bar-item-sub">店舗詳細から公式ページへ</span>
                         </div>
                         <div class="bar-item-nums">
@@ -1821,7 +1752,7 @@
 
         <!-- 5. SNS ?s= & External Referer Cohort Inflows & Attributed Affiliate CVs -->
         <div class="panel">
-            <h2>📡 SNS・ショート動画・自然検索（?s= / Referer）流入＆CV内訳</h2>
+            <h2>SNS・ショート動画・自然検索（?s= / Referer）流入＆CV内訳</h2>
             <p class="panel-sub">Google検索・YouTubeショート・IGリール・X・Threads・AI検索から実際に訪問・クッション遷移・アフィリエイトCVした内訳</p>
             {% set inflow_rows = data.by_label_pretty.get('sns_inflow', []) %}
             {% if inflow_rows %}
@@ -1853,20 +1784,20 @@
     <div class="ops-section" id="affiliate-slot-manager">
         <div class="ops-header">
             <div>
-                <h2>💰 男女別アフィリエイト全{{ aff_status.slots|length }}枠・遷移先URL分離＆ノーコード差し替え</h2>
+                <h2>男女別アフィリエイト全{{ aff_status.slots|length }}枠・遷移先URL分離＆ノーコード差し替え</h2>
                 <p>男性向け5枠＋女性向け3枠＋男女共通ナイトケア1枠。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
             </div>
         </div>
 
         <div id="aff-dup-banner" class="dup-banner {% if aff_status.has_duplicates or aff_status.has_unmonetized %}warn{% else %}ok{% endif %}">
             {% if aff_status.has_duplicates or aff_status.has_unmonetized %}
-            ⚠️ <strong>収益取りこぼし要因を検知中：</strong>
+            <strong>収益取りこぼし要因を検知中：</strong>
             {% if aff_status.has_duplicates %}同一ASPリンクの重複が <strong>{{ aff_status.duplicate_slot_count }}枠</strong>{% endif %}
             {% if aff_status.has_duplicates and aff_status.has_unmonetized %} ／ {% endif %}
             {% if aff_status.has_unmonetized %}報酬タグなしの公式直URLが <strong>{{ aff_status.unmonetized_slot_count }}枠</strong>{% endif %}
             あります。該当枠にASP発行リンクを入力して保存すると0秒で即時反映されます。
             {% else %}
-            ✅ <strong>全{{ aff_status.slots|length }}枠すべてASP計測URLで正常に分離されています：</strong>男性向け・女性向け・男女共通それぞれの導線ごとに独立した案件へ送客中です。
+            <strong>全{{ aff_status.slots|length }}枠すべてASP計測URLで正常に分離されています：</strong>男性向け・女性向け・男女共通それぞれの導線ごとに独立した案件へ送客中です。
             {% endif %}
         </div>
 
@@ -1888,10 +1819,10 @@
                         <span class="ops-pill gold">期間内 {{ slot.clicks }} click{% if (slot.impressions or 0) > 0 %}（CTR {{ slot.ctr_pct }}%）{% endif %}</span>
                         <span class="ops-pill" id="aff-src-{{ slot.slot_id }}">{{ slot.source_label }}</span>
                         <span class="ops-pill warn" id="aff-dup-{{ slot.slot_id }}" {% if not slot.is_duplicate_url %}style="display:none;"{% endif %}>
-                            ⚠️ 同一URL重複中
+                            同一URL重複中
                         </span>
                         <span class="ops-pill warn" id="aff-unmon-{{ slot.slot_id }}" {% if not slot.is_unmonetized_url %}style="display:none;"{% endif %}>
-                            ⚠️ タグなし直URL（報酬0円）
+                            タグなし直URL（報酬0円）
                         </span>
                     </div>
                 </div>
@@ -1903,7 +1834,7 @@
                            value="{{ slot.memo }}"
                            placeholder="案件メモ（例: Dine A8 / タップル）">
                     <div class="ops-btn-group">
-                        <button type="button" class="ops-btn" onclick="saveAffiliateSlot('{{ slot.slot_id }}', false)">💾 保存・即時反映</button>
+                        <button type="button" class="ops-btn" onclick="saveAffiliateSlot('{{ slot.slot_id }}', false)">保存・即時反映</button>
                         <button type="button" class="ops-btn secondary" onclick="saveAffiliateSlot('{{ slot.slot_id }}', true)" title="カスタム設定を解除して環境変数・初期URLへ戻す">初期値に戻す</button>
                         <button type="button" class="ops-btn secondary" data-test-slot="{{ slot.slot_id }}" onclick="window.open('/link/' + this.dataset.testSlot + '?staff_test=1', '_blank', 'noopener')" title="現在の遷移先を新しいタブで確認">遷移確認 ↗</button>
                     </div>
@@ -1921,19 +1852,19 @@
     <div class="ops-section" id="sheets-retention-manager">
         <div class="ops-header">
             <div>
-                <h2>🗄️ Google Sheets 1,000万セル上限ガード＆自動ローテーション</h2>
+                <h2>Google Sheets 1,000万セル上限ガード＆自動ローテーション</h2>
                 <p>毎日 06:20 JST に自動実行：生ログ（{{ retention_status.retention_days }}日超）を日次店舗サマリーへ約1/140に圧縮して削除・アクセス集計（{{ retention_status.analytics_days }}日保持）を日次合算・投票ログ（{{ retention_status.votes_days }}日超）＆Job Stateを自動スリム化します。</p>
             </div>
             <div class="ops-btn-group">
-                <button type="button" class="ops-btn secondary" id="btn-retention-dry" onclick="runSheetsRetention(true)">🔍 ドライラン試算（削除せず確認）</button>
-                <button type="button" class="ops-btn" id="btn-retention-exec" onclick="runSheetsRetention(false)">🧹 今すぐ圧縮・ローテーション実行</button>
+                <button type="button" class="ops-btn secondary" id="btn-retention-dry" onclick="runSheetsRetention(true)">ドライラン試算（削除せず確認）</button>
+                <button type="button" class="ops-btn" id="btn-retention-exec" onclick="runSheetsRetention(false)">今すぐ圧縮・ローテーション実行</button>
             </div>
         </div>
 
         <div class="cap-meter-box">
             <div class="cap-meter-top">
                 <div>
-                    <strong id="cap-health-label">{{ cap.get('health_label', '🟢 自動ローテーション待機中') }}</strong>
+                    <strong id="cap-health-label">{{ cap.get('health_label', '自動ローテーション待機中') }}</strong>
                     <span style="font-size:0.75rem;color:var(--sub);margin-left:8px;" id="cap-last-run">最終確認: {{ retention_status.executed_at }}</span>
                 </div>
                 <div style="font-size:0.84rem;font-variant-numeric:tabular-nums;">
@@ -1948,7 +1879,7 @@
                 {% for ws in cap.get('worksheets', []) %}
                 <span class="ws-chip"><strong>{{ ws.title }}</strong>: {{ "{:,}".format(ws.rows) }}行 × {{ ws.cols }}列（{{ "{:,}".format(ws.grid_cells) }}セル）</span>
                 {% else %}
-                <span class="ws-chip">「🔍 ドライラン試算」を押すと現在の全シート行数・セル使用率を即時計測できます</span>
+                <span class="ws-chip">「ドライラン試算」を押すと現在の全シート行数・セル使用率を即時計測できます</span>
                 {% endfor %}
             </div>
         </div>
@@ -1962,7 +1893,7 @@
     <div class="ops-section" id="forecast-accuracy-audit">
         <div class="ops-header">
             <div>
-                <h2>🔮 60分後予測AI（{{ forecast_accuracy.model_version }}）精度監査＆答え合わせログ</h2>
+                <h2>60分後予測AI（{{ forecast_accuracy.model_version }}）精度監査＆答え合わせログ</h2>
                 <p>10分ごとのロギング時に60分後予測をDBへ自動保存し、60分経過後に実測値と自動突合してズレ（誤差pt）を集計＆店舗別オンライン自己補正へフィードバックしています。</p>
             </div>
             <div class="ops-btn-group">
@@ -1997,7 +1928,7 @@
 
         {% if forecast_accuracy.bias_adjustments %}
         <div style="margin-bottom:12px;">
-            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">🧠 現在稼働中の店舗別オンライン残差バイアス補正（Empirical-Bayes）</div>
+            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">現在稼働中の店舗別オンライン残差バイアス補正（Empirical-Bayes）</div>
             <div class="ws-chips">
                 {% for b in forecast_accuracy.bias_adjustments %}
                 <span class="ws-chip"><strong>{{ b.display_name }}</strong>: {% if b.online_adj_pt > 0 %}+{{ b.online_adj_pt }}pt{% else %}{{ b.online_adj_pt }}pt{% endif %} 自動補正中</span>
@@ -2008,7 +1939,7 @@
 
         {% if forecast_accuracy.pending_forecasts %}
         <div style="margin-bottom:14px;">
-            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">⏳ 現在「60分後の答え合わせ待ち」の予測キュー（最大10件表示）</div>
+            <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">現在「60分後の答え合わせ待ち」の予測キュー（最大10件表示）</div>
             <div class="ws-chips">
                 {% for p in forecast_accuracy.pending_forecasts[:10] %}
                 <span class="ws-chip"><strong>{{ p.display_name }}</strong>（{{ p.predicted_hm }}→{{ p.target_hm }}判定）: 出発{{ p.start_wpct }}% → 予測<strong>{{ p.pred_wpct }}%</strong>（{{ p.pred_women }}:{{ p.pred_men }}）</span>
@@ -2018,9 +1949,9 @@
         {% endif %}
 
         {% if forecast_accuracy.recent_resolved %}
-        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">📋 直近の答え合わせ結果（予測 vs 60分後実測）</div>
+        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">直近の答え合わせ結果（予測 vs 60分後実測）</div>
         <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-variant-numeric:tabular-nums;">
                 <thead>
                     <tr style="border-bottom:1px solid var(--border);color:var(--sub);text-align:left;">
                         <th style="padding:7px 8px;">予測→判定</th>
@@ -2277,11 +2208,11 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
         }, 25000);
         if (!res.ok) {
             msgEl.style.color = 'var(--err-ink)';
-            msgEl.textContent = '⚠️ ' + (res.error || '保存に失敗しました');
+            msgEl.textContent = (res.error || '保存に失敗しました');
             return;
         }
         msgEl.style.color = 'var(--green-ink)';
-        msgEl.textContent = '✅ ' + (res.message || '保存しました');
+        msgEl.textContent = (res.message || '保存しました');
 
         if (res.aff_status && Array.isArray(res.aff_status.slots)) {
             const banner = document.getElementById('aff-dup-banner');
@@ -2291,10 +2222,10 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
                     const parts = [];
                     if (res.aff_status.has_duplicates) parts.push('同一ASPリンクの重複が <strong>' + Number(res.aff_status.duplicate_slot_count || 0) + '枠</strong>');
                     if (res.aff_status.has_unmonetized) parts.push('報酬タグなしの公式直URLが <strong>' + Number(res.aff_status.unmonetized_slot_count || 0) + '枠</strong>');
-                    banner.innerHTML = '⚠️ <strong>収益取りこぼし要因を検知中：</strong>' + parts.join(' ／ ') + ' あります。該当枠にASP発行リンクを入力して保存すると0秒で即時反映されます。';
+                    banner.innerHTML = '<strong>収益取りこぼし要因を検知中：</strong>' + parts.join(' ／ ') + ' あります。該当枠にASP発行リンクを入力して保存すると0秒で即時反映されます。';
                 } else {
                     banner.className = 'dup-banner ok';
-                    banner.innerHTML = '✅ <strong>全' + Number(res.aff_status.slots.length || 0) + '枠すべてASP計測URLで正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
+                    banner.innerHTML = '<strong>全' + Number(res.aff_status.slots.length || 0) + '枠すべてASP計測URLで正常に分離されています：</strong>各ユーザー導線ごとに独立した案件へ送客中です。';
                 }
             }
             for (const s of res.aff_status.slots) {
@@ -2314,7 +2245,7 @@ async function saveAffiliateSlot(slotId, resetToDefault) {
         }
     } catch (e) {
         msgEl.style.color = 'var(--err-ink)';
-        msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
+        msgEl.textContent = ((e && e.message) || '通信エラーが発生しました');
     } finally {
         _affSavingSlots[slotId] = false;
         cardBtns.forEach(b => { b.disabled = false; });
@@ -2332,7 +2263,7 @@ async function runSheetsRetention(dryRun) {
     }
     msgEl.style.display = 'block';
     msgEl.style.color = 'var(--sub)';
-    msgEl.textContent = dryRun ? '🔍 Google Sheets の全シート容量と削減対象行数を計測中...' : '🧹 日次サマリー圧縮＆シート整理を実行中...';
+    msgEl.textContent = dryRun ? 'Google Sheets の全シート容量と削減対象行数を計測中...' : '日次サマリー圧縮＆シート整理を実行中...';
     if (btnDry) btnDry.disabled = true;
     if (btnExec) btnExec.disabled = true;
 
@@ -2344,7 +2275,7 @@ async function runSheetsRetention(dryRun) {
         }, 60000);
         if (!res.ok) {
             msgEl.style.color = 'var(--err-ink)';
-            msgEl.textContent = '⚠️ ' + (res.error || 'シート整理に失敗しました');
+            msgEl.textContent = (res.error || 'シート整理に失敗しました');
             return;
         }
         const cap = res.capacity || {};
@@ -2379,7 +2310,7 @@ async function runSheetsRetention(dryRun) {
         }
 
         msgEl.style.color = 'var(--green-ink)';
-        msgEl.textContent = (dryRun ? '✅ 【ドライラン試算結果】' : '✅ 【圧縮・ローテーション完了】') +
+        msgEl.textContent = (dryRun ? '【ドライラン試算結果】' : '【圧縮・ローテーション完了】') +
             ' 合計削減対象: ' + Number(res.total_deleted_rows || 0).toLocaleString() + '行' +
             '（生ログ圧縮: ' + Number(mainD.deleted_rows || 0).toLocaleString() + '行 → 日次サマリー +' + Number(mainD.summary_rows_added || 0).toLocaleString() + '行 / ' +
             'Analytics合算削減: ' + Number(anaD.deleted_rows || 0).toLocaleString() + '行 / ' +
@@ -2388,7 +2319,7 @@ async function runSheetsRetention(dryRun) {
             'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）';
     } catch (e) {
         msgEl.style.color = 'var(--err-ink)';
-        msgEl.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
+        msgEl.textContent = ((e && e.message) || '通信エラーが発生しました');
     } finally {
         if (btnDry) btnDry.disabled = false;
         if (btnExec) btnExec.disabled = false;

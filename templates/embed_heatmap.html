@@ -1,3 +1,14 @@
+{#- ============================================================================
+   外部 iframe 隔離用の独立インライントークン設計規約（P3 標準化仕様）
+   - 本テンプレート（/embed/heatmap）は外部ブログ・メディアへの <iframe> 埋め込み時に
+     1リクエストで高速描画し、CSS カスケード隔離を保証するため、意図的に外部CSSを非読込とする。
+   - ただし :root（Dark）および :root[data-theme="light"] / html.theme-light / body.theme-light の
+     ベース背景・サーフェス・文字色は、必ず案2（TableCheck・VACAN型）正準HEX値と完全同期を維持すること：
+       Dark : bg=#111113 / surface=#1a1a1e / surface-2=#232329 / text=#f4f4f5 / sub=#b4b4be
+       Light: bg=#f6f6f7 / surface=#ffffff / surface-2=#f2f2f5 / text=#18181b / sub=#52525b
+   - 全数値セル・見出し・凡例には font-variant-numeric: tabular-nums を必須適用し、
+     アフィリエイト遷移リンクは絶対に含めないこと。
+   ============================================================================ -#}
 <!DOCTYPE html>
 {%- set sc = heatmap.scope -%}
 {%- set meta = heatmap.meta -%}
@@ -80,56 +91,62 @@
         :root {
             color-scheme: dark;
             --hm-bg: #111113;
-            --hm-surface: #18181b;
-            --hm-text: #f4f1ec;
-            --hm-sub: #b5b0a7;
-            --hm-border: #2e2f36;
-            --hm-link: #dfc496;
-            --hm-focus: #f4f1ec;
-            --hm-tab-bg: #1b1c22;
-            --hm-tab-text: #c9c4bb;
-            --hm-tab-on-bg: #f4f1ec;
+            --hm-surface: #1a1a1e;
+            --hm-surface-2: #232329;
+            --hm-text: #f4f4f5;
+            --hm-sub: #b4b4be;
+            --hm-border: rgba(255, 255, 255, 0.08);
+            --hm-border-strong: rgba(255, 255, 255, 0.16);
+            --hm-link: #f4f4f5;
+            --hm-focus: #f4f4f5;
+            --hm-tab-bg: #232329;
+            --hm-tab-text: #b4b4be;
+            --hm-tab-on-bg: #f4f4f5;
             --hm-tab-on-text: #111113;
-            --hm-tip-bg: #f4f1ec;
+            --hm-tip-bg: #f4f4f5;
             --hm-tip-text: #111113;
-            --r1-bg: #93b1c9; --r1-fg: #10161c;
-            --r2-bg: #3f5668; --r2-fg: #f4f1ec;
-            --r3-bg: #2a2c34; --r3-fg: #f4f1ec;
-            --r4-bg: #7c5a63; --r4-fg: #f4f1ec;
-            --r5-bg: #d8a1aa; --r5-fg: #1a1216;
-            --h1-bg: #1b1c22; --h1-fg: #a8a49c;
-            --h2-bg: #3a3225; --h2-fg: #f4f1ec;
-            --h3-bg: #5c492d; --h3-fg: #f4f1ec;
-            --h4-bg: #b89760; --h4-fg: #16120c;
-            --h5-bg: #dfc496; --h5-fg: #16120c;
-            --na-bg: #1b1c22; --na-fg: #9a968e; --na-border: #4a4b53;
+            --r1-bg: #93c5fd; --r1-fg: #111113;
+            --r2-bg: #1e3a5f; --r2-fg: #f4f4f5;
+            --r3-bg: #232329; --r3-fg: #f4f4f5;
+            --r4-bg: #6b213a; --r4-fg: #f4f4f5;
+            --r5-bg: #f4a8b8; --r5-fg: #111113;
+            --h1-bg: #232329; --h1-fg: #b4b4be;
+            --h2-bg: #2e2e36; --h2-fg: #f4f4f5;
+            --h3-bg: #3f3f46; --h3-fg: #f4f4f5;
+            --h4-bg: #d4d4d8; --h4-fg: #111113;
+            --h5-bg: #f4f4f5; --h5-fg: #111113;
+            --na-bg: #232329; --na-fg: #b4b4be; --na-border: rgba(255, 255, 255, 0.16);
         }
-        :root[data-theme="light"] {
+        :root[data-theme="light"],
+        html.theme-light,
+        body.theme-light {
             color-scheme: light;
             --hm-bg: #f6f6f7;
             --hm-surface: #ffffff;
-            --hm-text: #1c1c21;
-            --hm-sub: #4b4b55;
-            --hm-border: #d4d4d8;
-            --hm-link: #6b4a1a;
-            --hm-focus: #1c1c21;
-            --hm-tab-bg: #ececef;
-            --hm-tab-text: #3f3f46;
-            --hm-tab-on-bg: #1c1c21;
+            --hm-surface-2: #f2f2f5;
+            --hm-text: #18181b;
+            --hm-sub: #52525b;
+            --hm-border: rgba(24, 24, 27, 0.09);
+            --hm-border-strong: rgba(24, 24, 27, 0.16);
+            --hm-link: #18181b;
+            --hm-focus: #18181b;
+            --hm-tab-bg: #f2f2f5;
+            --hm-tab-text: #52525b;
+            --hm-tab-on-bg: #18181b;
             --hm-tab-on-text: #ffffff;
-            --hm-tip-bg: #1c1c21;
+            --hm-tip-bg: #18181b;
             --hm-tip-text: #ffffff;
-            --r1-bg: #4f6f8a; --r1-fg: #ffffff;
-            --r2-bg: #c5d6e4; --r2-fg: #1f2933;
-            --r3-bg: #e9e9ec; --r3-fg: #3f3f46;
-            --r4-bg: #ecc9cf; --r4-fg: #5a1d2b;
-            --r5-bg: #9b4a5c; --r5-fg: #ffffff;
-            --h1-bg: #f0f0f2; --h1-fg: #3f3f46;
-            --h2-bg: #e6d9bf; --h2-fg: #2b2415;
-            --h3-bg: #dcc69e; --h3-fg: #241d10;
-            --h4-bg: #755528; --h4-fg: #ffffff;
-            --h5-bg: #523b1a; --h5-fg: #ffffff;
-            --na-bg: #f0f0f2; --na-fg: #5f5e66; --na-border: #a1a1aa;
+            --r1-bg: #1e40af; --r1-fg: #ffffff;
+            --r2-bg: #dbeafe; --r2-fg: #1e3a8a;
+            --r3-bg: #f2f2f5; --r3-fg: #18181b;
+            --r4-bg: #ffe4e6; --r4-fg: #881337;
+            --r5-bg: #9f1239; --r5-fg: #ffffff;
+            --h1-bg: #f2f2f5; --h1-fg: #52525b;
+            --h2-bg: #e4e4e7; --h2-fg: #18181b;
+            --h3-bg: #d4d4d8; --h3-fg: #18181b;
+            --h4-bg: #3f3f46; --h4-fg: #ffffff;
+            --h5-bg: #18181b; --h5-fg: #ffffff;
+            --na-bg: #f2f2f5; --na-fg: #52525b; --na-border: rgba(24, 24, 27, 0.16);
         }
         *, *::before, *::after { box-sizing: border-box; }
         body {
@@ -137,7 +154,7 @@
             padding: 12px 12px 10px;
             background: var(--hm-bg);
             color: var(--hm-text);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             font-size: 13px;
             line-height: 1.5;
             -webkit-text-size-adjust: 100%;
@@ -155,12 +172,12 @@
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
             gap: 8px 12px; margin-bottom: 8px;
         }
-        .hm-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+        .hm-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; letter-spacing: -0.015em; text-wrap: balance; }
         .hm-sub { margin: 2px 0 0; color: var(--hm-sub); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-        .hm-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--hm-tab-bg); }
+        .hm-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--hm-tab-bg); }
         .hm-tab {
             appearance: none; border: 0; margin: 0; cursor: pointer;
-            min-height: 32px; padding: 4px 12px; border-radius: 6px;
+            min-height: 34px; padding: 4px 12px; border-radius: 8px;
             background: transparent; color: var(--hm-tab-text);
             font: inherit; font-size: 12.5px; font-weight: 600;
         }
@@ -174,9 +191,9 @@
             position: relative;
             max-inline-size: 100%;
             overflow-x: auto; overscroll-behavior-x: contain;
-            border: 1px solid var(--hm-border); border-radius: 10px; background: var(--hm-surface);
+            border: 1px solid var(--hm-border); border-radius: 13px; background: var(--hm-surface);
         }
-        table { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 640px; }
+        table { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 640px; font-variant-numeric: tabular-nums; }
         @media (max-width: 480px) {
             table { min-width: 516px; }
             td { min-width: 41px; font-size: 11.5px; }

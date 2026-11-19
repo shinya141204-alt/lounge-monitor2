@@ -1,43 +1,42 @@
 <style>
     :root {
-        --mn-bg: rgba(17, 17, 19, 0.88);
-        --mn-surface: #18181b;
-        --mn-surface-2: #232329;
-        --mn-border: rgba(255, 255, 255, 0.08);
-        --mn-border-strong: rgba(255, 255, 255, 0.16);
-        --mn-text: #f4f4f5;
-        --mn-sub: #c4c4cc;
-        --mn-active-bg: #f4f4f5;
-        --mn-active-ink: #111113;
-        --mn-badge-bg: rgba(244, 244, 245, 0.10);
+        --mn-bg: var(--surface, #1a1a1e);
+        --mn-surface: var(--surface, #1a1a1e);
+        --mn-surface-2: var(--surface-2, #232329);
+        --mn-border: var(--border, rgba(255, 255, 255, 0.08));
+        --mn-border-strong: var(--border-strong, rgba(255, 255, 255, 0.16));
+        --mn-text: var(--text, #f4f4f5);
+        --mn-sub: var(--sub, #b4b4be);
+        --mn-active-bg: var(--active-bg, #f4f4f5);
+        --mn-active-ink: var(--active-ink, #111113);
+        --mn-badge-bg: var(--surface-2, #232329);
     }
+    html.theme-light,
     body.theme-light {
-        --mn-bg: rgba(246, 246, 247, 0.92);
-        --mn-surface: #ffffff;
-        --mn-surface-2: #ededf0;
-        --mn-border: rgba(24, 24, 27, 0.10);
-        --mn-border-strong: rgba(24, 24, 27, 0.20);
-        --mn-text: #18181b;
-        --mn-sub: #3f3f46;
-        --mn-active-bg: #18181b;
-        --mn-active-ink: #ffffff;
-        --mn-badge-bg: rgba(24, 24, 27, 0.07);
+        --mn-bg: var(--surface, #ffffff);
+        --mn-surface: var(--surface, #ffffff);
+        --mn-surface-2: var(--surface-2, #f2f2f5);
+        --mn-border: var(--border, rgba(24, 24, 27, 0.09));
+        --mn-border-strong: var(--border-strong, rgba(24, 24, 27, 0.16));
+        --mn-text: var(--text, #18181b);
+        --mn-sub: var(--sub, #52525b);
+        --mn-active-bg: var(--active-bg, #18181b);
+        --mn-active-ink: var(--active-ink, #ffffff);
+        --mn-badge-bg: var(--surface-2, #f2f2f5);
     }
     .master-global-dock {
         position: sticky;
         top: 8px;
         z-index: 90;
         background: var(--mn-bg);
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
         border: 1px solid var(--mn-border-strong);
-        border-radius: 16px;
+        border-radius: var(--r-card, 18px);
         padding: 10px 14px;
         margin-bottom: 16px;
-        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
     }
     body.theme-light .master-global-dock {
-        box-shadow: 0 4px 18px rgba(24, 24, 27, 0.06);
+        box-shadow: 0 4px 18px rgba(24, 24, 27, 0.05);
     }
     .master-dock-top {
         display: flex;
@@ -63,7 +62,7 @@
         display: inline-flex;
         align-items: center;
         padding: 2px 8px;
-        border-radius: 999px;
+        border-radius: 8px;
         font-size: 0.66rem;
         font-weight: 800;
         letter-spacing: 0.06em;
@@ -81,10 +80,11 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
+        min-height: 36px;
         padding: 5px 11px;
-        border-radius: 999px;
+        border-radius: var(--r-chip, 10px);
         border: 1px solid var(--mn-border-strong);
-        background: var(--mn-surface);
+        background: var(--mn-surface-2);
         color: var(--mn-text);
         font-size: 0.76rem;
         font-weight: 600;
@@ -96,7 +96,7 @@
         transition: background-color 0.15s ease, border-color 0.15s ease;
     }
     .master-util-btn:hover {
-        background: var(--mn-surface-2);
+        border-color: var(--mn-sub);
     }
     .master-util-btn.primary {
         background: var(--mn-active-bg);
@@ -124,8 +124,9 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
+        min-height: 36px;
         padding: 6px 12px;
-        border-radius: 999px;
+        border-radius: var(--r-chip, 10px);
         border: 1px solid transparent;
         background: transparent;
         color: var(--mn-sub);
@@ -182,8 +183,9 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        min-height: 36px;
         padding: 5px 11px;
-        border-radius: 999px;
+        border-radius: var(--r-chip, 10px);
         border: 1px solid var(--mn-border-strong);
         background: var(--mn-surface);
         color: var(--mn-text);
@@ -201,7 +203,7 @@
         .master-global-dock {
             position: static;
             padding: 9px 11px;
-            border-radius: 14px;
+            border-radius: var(--r-inner, 13px);
         }
         .master-dock-top {
             gap: 8px;

@@ -17,9 +17,9 @@
     <meta property="og:image" content="https://aiseki-navi.com/ogp/live.png">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <script type="application/ld+json">
     [
       {
@@ -51,18 +51,21 @@
         :root {
             --bg-dark: #111113;
             --card-bg: #1a1a1e;
+            --card-bg-2: #232329;
             --text-main: #f4f4f5;
             --text-sub: #b4b4be;
             --accent-text: #f4f4f5;
             --border-subtle: rgba(255, 255, 255, 0.08);
         }
+        html.theme-light,
         body.theme-light {
             --bg-dark: #f6f6f7;
             --card-bg: #ffffff;
+            --card-bg-2: #f2f2f5;
             --text-main: #18181b;
             --text-sub: #52525b;
             --accent-text: #18181b;
-            --border-subtle: #e4e4e7;
+            --border-subtle: rgba(24, 24, 27, 0.09);
         }
         * { box-sizing: border-box; }
         body {
@@ -70,7 +73,7 @@
             padding: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: Outfit, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            font-family: Outfit, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Noto Sans JP", sans-serif;
             line-height: 1.85;
         }
         .portal-wrap {
@@ -95,21 +98,22 @@
         .portal-brand-title {
             font-size: 1.45rem;
             font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--text-main);
             margin: 0;
         }
         .content-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 18px;
             padding: 28px 24px;
         }
         .content-box a { text-decoration: underline; text-underline-offset: 3px; }
-        h1 { font-size: 1.4rem; margin: 0 0 18px; color: var(--text-main); }
-        h2 { font-size: 1.08rem; margin: 28px 0 10px; color: var(--text-main); }
+        h1 { font-size: 1.4rem; letter-spacing: -0.02em; margin: 0 0 18px; color: var(--text-main); }
+        h2 { font-size: 1.08rem; margin: 28px 0 10px; color: var(--text-main); border-left: none; padding-left: 0; }
         p { font-size: 0.92rem; color: var(--text-sub); margin: 0 0 14px; }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
 </head>
 
 <body>

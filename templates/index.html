@@ -146,9 +146,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
-    <link rel="stylesheet" href="/static/style.css?v=20261118_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=51" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261119_2" as="script">
+    <link rel="stylesheet" href="/static/style.css?v=20261119_1" fetchpriority="high">
+    <link rel="stylesheet" href="/static/calm.css?v=52" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261119_3" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -173,103 +173,63 @@
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <link rel="expect" href="#app-shell" blocking="render">
     <style>
-        html.theme-light{background-color:#f6f6f7;}
-        /* Fallback for the store-page CTA (calm.css holds the canonical solid inverted style) */
-        .modal-store-page-cta {
+        html.theme-light { background-color: #f6f6f7; }
+        .modal-store-page-cta.hidden { display: none; }
+        .modal-event-note {
+            font-size: 0.72rem;
+            color: var(--calm-sub, #b4b4be);
+            margin: 8px 0 0;
+            line-height: 1.55;
+        }
+        body.theme-light .modal-event-note {
+            color: var(--calm-light-sub, #52525b);
+        }
+        .modal-vote-wait-row {
+            margin-top: 9px;
+            padding-top: 8px;
+            border-top: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08));
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            width: 100%;
-            min-height: 52px;
-            margin: 0 0 12px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            background: #f4f4f5;
-            border: 1px solid #f4f4f5;
-            color: #111113;
-            font-weight: 700;
-            text-decoration: none;
-            box-sizing: border-box;
+            flex-wrap: wrap;
+            gap: 6px;
         }
-        .modal-store-page-cta:hover {
-            background: #e4e4e7;
-            border-color: #e4e4e7;
+        body.theme-light .modal-vote-wait-row {
+            border-top-color: var(--calm-light-border, rgba(24, 24, 27, 0.09));
         }
-        .modal-store-page-cta.hidden {
+        .modal-vote-wait-label {
+            font-size: 0.74rem;
+            color: var(--calm-sub, #b4b4be);
+            font-weight: 600;
+        }
+        body.theme-light .modal-vote-wait-label {
+            color: var(--calm-light-sub, #52525b);
+        }
+        .modal-vote-wait-btns {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .vote-pill-btn.vote-wait-pill {
+            min-width: auto;
+            flex: 0 1 auto;
+            min-height: 38px;
+            padding: 6px 11px;
+            justify-content: center;
+            font-size: 0.74rem;
+            border-radius: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+        .modal-vote-wait-summary {
+            font-size: 0.74rem;
+            color: var(--calm-sub, #b4b4be);
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
             display: none;
         }
-        .modal-store-cta-main {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-        .modal-store-cta-title {
-            font-size: 0.86rem;
-            font-weight: 800;
-            line-height: 1.35;
-        }
-        .modal-store-cta-sub {
-            font-size: 0.72rem;
-            font-weight: 600;
-            line-height: 1.4;
-            color: #3f3f46;
-        }
-        .modal-store-cta-pill {
-            flex-shrink: 0;
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: #111113;
-            color: #f4f4f5;
-            font-size: 0.74rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-        body.theme-light .modal-store-page-cta {
-            background: #18181b;
-            border-color: #18181b;
-            color: #ffffff;
-        }
-        body.theme-light .modal-store-page-cta:hover {
-            background: #27272a;
-            border-color: #27272a;
-        }
-        body.theme-light .modal-store-cta-sub {
-            color: #d4d4d8;
-        }
-        body.theme-light .modal-store-cta-pill {
-            background: #ffffff;
-            color: #18181b;
-        }
-        .cmi-store-page-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            min-height: 44px;
-            padding: 9px 16px;
-            border-radius: 999px;
-            background: #f4f4f5;
-            color: #111113;
-            border: 1px solid #f4f4f5;
-            font-size: 0.82rem;
-            font-weight: 700;
-            text-decoration: none;
-            box-sizing: border-box;
-        }
-        .cmi-store-page-link:hover {
-            background: #e4e4e7;
-            border-color: #e4e4e7;
-        }
-        body.theme-light .cmi-store-page-link {
-            background: #18181b;
-            color: #ffffff;
-            border-color: #18181b;
-        }
-        body.theme-light .cmi-store-page-link:hover {
-            background: #27272a;
-            border-color: #27272a;
+        body.theme-light .modal-vote-wait-summary {
+            color: var(--calm-light-sub, #52525b);
         }
     </style>
 </head>
@@ -385,7 +345,7 @@
             {% if is_staff %}
             <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 {% if is_master %}
-                <span class="staff-header-badge master-header-badge">👑 MASTER MONITOR（マスター全権限モード・広告OFF）</span>
+                <span class="staff-header-badge master-header-badge">MASTER MONITOR（マスター全権限モード・広告OFF）</span>
                 {% else %}
                 <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
                 {% endif %}
@@ -771,7 +731,7 @@
                                         <span class="master-subpanel-meta">人間味 {{ c.scores.human_tone }}/35 ｜ 新鮮さ {{ c.scores.freshness_diversity }}/30</span>
                                     </div>
                                     <div class="master-sched-card-bottom">
-                                        <span class="master-sched-title">{{ c.style_label }}</span>
+                                        <span class="master-sched-title">{{ c.style_label | clean_badge | strip_emoji }}</span>
                                         <a href="/staff/sns-editorial" class="master-inline-link">全文 ↗</a>
                                     </div>
                                 </div>
@@ -1929,7 +1889,7 @@
             <!-- 60-Min AI Ratio Forecast & JIS-Calibrated Real Wait Inference Box -->
             <div id="modal-moat-forecast-box" class="modal-moat-box hidden"></div>
 
-            <!-- Modal Store Detail Bridge + Top Quick Share & Official Bar -->
+            <!-- Modal Store Detail Bridge (Share bar consolidated at #modal-share-bar below) -->
             <a id="modal-store-detail-link" href="/areas" class="modal-store-page-cta hidden" data-cushion="1">
                 <span class="modal-store-cta-main">
                     <span class="modal-store-cta-title">この店舗の専用ページ</span>
@@ -1937,12 +1897,6 @@
                 </span>
                 <span class="modal-store-cta-pill">詳細を見る ›</span>
             </a>
-            <div class="modal-top-share-actions">
-                <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 混雑＋特典をポスト</button>
-                <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINE共有</button>
-                <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
-                <a id="modal-top-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
-            </div>
 
             <!-- Store Events & Campaign Section -->
             <div id="modal-event-section" class="modal-event-box hidden">
@@ -1950,7 +1904,7 @@
                     <span class="modal-event-badge">開催中イベント・キャンペーン</span>
                 </div>
                 <div id="modal-event-list" class="modal-event-list"></div>
-                <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 8px 0 0; line-height: 1.55;">
+                <p class="modal-event-note">
                     ※イベントの開催有無・適用条件・料金システムは変更される場合があります。ご来店の際は必ず各店舗の公式ホームページ・公式アプリをご確認ください。
                 </p>
             </div>
@@ -1974,15 +1928,15 @@
                         <span id="vote-count-lively" class="vote-num">0</span>
                     </button>
                 </div>
-                <div id="modal-vote-wait-row" style="margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
-                    <span style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 600;">受付待ち実測（任意）：</span>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <button type="button" class="vote-pill-btn" data-wait-min="0" onclick="submitCrowdWaitMinutes(0)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">待ち0分</button>
-                        <button type="button" class="vote-pill-btn" data-wait-min="15" onclick="submitCrowdWaitMinutes(15)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">約15分</button>
-                        <button type="button" class="vote-pill-btn" data-wait-min="30" onclick="submitCrowdWaitMinutes(30)" style="min-width: auto; flex: 0 1 auto; min-height: 38px; padding: 6px 11px; justify-content: center; font-size: 0.74rem;">30分+</button>
+                <div id="modal-vote-wait-row" class="modal-vote-wait-row">
+                    <span class="modal-vote-wait-label">受付待ち実測（任意）：</span>
+                    <div class="modal-vote-wait-btns">
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="0" onclick="submitCrowdWaitMinutes(0)">待ち0分</button>
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="15" onclick="submitCrowdWaitMinutes(15)">約15分</button>
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="30" onclick="submitCrowdWaitMinutes(30)">30分+</button>
                     </div>
                 </div>
-                <div id="modal-vote-wait-summary" style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 6px; font-variant-numeric: tabular-nums; display: none;"></div>
+                <div id="modal-vote-wait-summary" class="modal-vote-wait-summary"></div>
                 <div id="modal-vote-feedback" class="modal-vote-feedback hidden"></div>
             </div>
 
@@ -2093,7 +2047,7 @@
             </div>
 
             <!-- Modal Store Share & PR Slot -->
-            <div class="modal-share-bar">
+            <div id="modal-share-bar" class="modal-share-bar">
                 <span class="modal-share-label">この店舗を友達に共有・公式確認：</span>
                 <div class="modal-share-actions">
                     <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINEで送る</button>
@@ -2906,6 +2860,7 @@
     <!-- Mobile Navigation Drawer / Menu Modal -->
     <div id="menu-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="menu-modal-title">
         <div class="modal-content" style="max-width: 520px;">
+            <div class="sheet-drag-handle" aria-hidden="true"></div>
             <div class="modal-header">
                 <h2 id="menu-modal-title">メニュー & 設定</h2>
                 <button class="close-btn-pill" onclick="closeMenuModal()" aria-label="閉じる">✕ 閉じる</button>
@@ -2915,7 +2870,7 @@
                 <div class="menu-section">
                     <div class="menu-section-title">デザイン切替</div>
                     <div class="theme-switcher-bar menu-theme-bar" role="group" aria-label="デザイン切替">
-                        <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true); closeMenuModal();">通常</button>
+                        <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true); closeMenuModal();">ダーク</button>
                         <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true); closeMenuModal();">リスト</button>
                         <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true); closeMenuModal();">ライト</button>
                     </div>
@@ -2949,43 +2904,43 @@
                 {% if is_staff %}
                 <!-- Staff / Master Mobile Quick Menu -->
                 <div class="menu-section">
-                    <div class="menu-section-title">{% if is_master %}👑 マスター運営・編集部ボード{% else %}社内管理メニュー{% endif %}</div>
+                    <div class="menu-section-title">{% if is_master %}マスター運営・編集部ボード{% else %}社内管理メニュー{% endif %}</div>
                     <div class="menu-grid">
                         {% if is_master %}
                         <a href="/staff/pdca" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>🧭 自律PDCA作戦参謀</strong>
+                                <strong>自律PDCA作戦参謀</strong>
                                 <span>勝ち筋・収益CVR診断＆自動最適化</span>
                             </div>
                         </a>
                         <a href="/staff/sns-editorial" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>🧠 SNS編集部＆動画スタジオ</strong>
+                                <strong>SNS編集部＆動画スタジオ</strong>
                                 <span>X・Threads・IG合議＆縦型リール生成</span>
                             </div>
                         </a>
                         <a href="/staff/column-editorial" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>📖 コラム・note編集部</strong>
+                                <strong>コラム・note編集部</strong>
                                 <span>4役合議執筆・予約公開・note出力</span>
                             </div>
                         </a>
                         <a href="/staff/analytics" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>📈 アクセス・収益集計</strong>
+                                <strong>アクセス・収益集計</strong>
                                 <span>PV・アフィリエイト・ボタン計測</span>
                             </div>
                         </a>
                         <a href="/staff/sns-kit" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>📸 週末予報画像キット</strong>
+                                <strong>週末予報画像キット</strong>
                                 <span>IG・Threads用速報画像を生成</span>
                             </div>
                         </a>
                         {% else %}
                         <a href="/staff?switch=1" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>👑 マスター権限へ切替</strong>
+                                <strong>マスター権限へ切替</strong>
                                 <span>マスターパスコードで全機能解放</span>
                             </div>
                         </a>
@@ -3096,7 +3051,7 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261119_2" defer></script>
+    <script src="/static/app.js?v=20261119_3" defer></script>
     <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -3112,7 +3067,7 @@
                 }
                 if (window.__swRegistered) return;
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=118', { updateViaCache: 'none' })
+                navigator.serviceWorker.register('/sw.js?v=119', { updateViaCache: 'none' })
                     .then(function(reg) {
                         // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
                         var maybeUpdate = function() {

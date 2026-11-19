@@ -80,9 +80,119 @@
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=19">
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        .stats-open-hero {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 6px 0 22px !important;
+            margin: 2px 0 24px !important;
+        }
+        html.theme-light .stats-open-hero,
+        body.theme-light .stats-open-hero {
+            border-bottom-color: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        .stats-kicker {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 8px;
+            background: var(--calm-surface-2, #232329);
+            border: 1px solid var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            color: var(--calm-sub, #b4b4be);
+            margin-bottom: 10px;
+        }
+        html.theme-light .stats-kicker,
+        body.theme-light .stats-kicker {
+            background: #f2f2f5;
+            border-color: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            color: var(--calm-light-sub, #52525b);
+        }
+        .stats-open-hero h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.22rem, 3.6vw, 1.44rem);
+            line-height: 1.42;
+            letter-spacing: -0.02em;
+            word-break: auto-phrase;
+            overflow-wrap: anywhere;
+            text-wrap: pretty;
+        }
+        .stats-cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .stats-cta-primary,
+        .stats-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .stats-cta-primary {
+            font-weight: 700;
+            background: var(--cm-cta-bg, #f4f4f5);
+            border: 1px solid var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+        }
+        html.theme-light .stats-cta-primary,
+        body.theme-light .stats-cta-primary {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
+        .stats-cta-secondary {
+            font-weight: 600;
+            background: var(--calm-surface-2, #232329);
+            border: 1px solid var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            color: var(--calm-text, #f4f4f5);
+        }
+        html.theme-light .stats-cta-secondary,
+        body.theme-light .stats-cta-secondary {
+            background: #f2f2f5;
+            border-color: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            color: var(--calm-light-text, #18181b);
+        }
+        .stats-card-p2 {
+            background: var(--calm-surface, #1a1a1e);
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08));
+            border-radius: 18px !important;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        html.theme-light .stats-card-p2,
+        body.theme-light .stats-card-p2 {
+            background: #ffffff;
+            border-color: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+        }
+        .store-comp-table {
+            font-variant-numeric: tabular-nums;
+        }
+        .di-pos { color: var(--calm-women, #f4a8b8); }
+        .di-neg { color: var(--calm-men, #93c5fd); }
+        html.theme-light .di-pos,
+        body.theme-light .di-pos { color: #9f1239; }
+        html.theme-light .di-neg,
+        body.theme-light .di-neg { color: #1e40af; }
+        .regime-link {
+            display: inline-block;
+            white-space: nowrap;
+            text-underline-offset: 2px;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
 </head>
 
 <body>
@@ -93,7 +203,7 @@
                 <span class="portal-brand-title">相席ナビ</span>
                 <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
-            <span style="font-size: 0.77rem; color: var(--text-sub);">集計期間: 直近{{ di_report.window_days }}日間（{{ di_report.cutoff_date }}〜）</span>
+            <span style="font-size: 0.77rem; color: var(--text-sub); font-variant-numeric: tabular-nums;">集計期間: 直近{{ di_report.window_days }}日間（{{ di_report.cutoff_date }}〜）</span>
         </div>
 
         {% set nav_active = 'stats' %}
@@ -104,81 +214,84 @@
         </nav>
 
         <main>
-            <header class="section-card" style="padding: 24px 22px; margin-bottom: 20px;">
-                <div style="font-size: 0.74rem; font-weight: 700; color: var(--accent-text); margin-bottom: 6px;">CC BY 4.0 公開一次統計インデックス ｜ 相席ナビ × マチナビ 共同集計</div>
-                <h1 style="margin: 0 0 10px; font-size: 1.38rem; line-height: 1.4;">{{ di_report.title }}</h1>
-                <p style="margin: 0 0 12px; font-size: 0.88rem; color: var(--text-sub); line-height: 1.7;">
-                    同じ金曜・土曜の夜でも、<strong>「18〜20時開始の事前予約制パーティー（街コン・個室婚活）が男性満席のエリア」</strong>と<strong>「20時以降の当日飛び込み型相席ラウンジが女性優位になるエリア」</strong>には構造的なズレが生じます。本指標は、相席ナビの1時間ロールアップ実測ログと、姉妹サイト<a href="https://machinavi-data.com/" target="_blank" rel="noopener" style="color: var(--accent-text);">マチナビ（machinavi-data.com）</a>の公開残席バッジ観測ログを共通エリア定義（<code>{{ di_report.crosswalk_version }}</code>）で突合した2軸の需給DI（Diffusion Index：<code>-100pt</code>〜<code>+100pt</code>、プラスほど女性先行・男性が入りやすい状態）です。
+            <header class="hero-box stats-open-hero">
+                <div class="stats-kicker">CC BY 4.0 公開一次統計インデックス ｜ 相席ナビ × マチナビ 共同集計</div>
+                <h1>{{ di_report.title }}</h1>
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.72;">
+                    同じ金曜・土曜の夜でも、<strong style="color: var(--text-main);">「18〜20時開始の事前予約制パーティー（街コン・個室婚活）が男性満席のエリア」</strong>と<strong style="color: var(--text-main);">「20時以降の当日飛び込み型相席ラウンジが女性優位になるエリア」</strong>には構造的なズレが生じます。本指標は、相席ナビの1時間ロールアップ実測ログと、姉妹サイト<a href="https://machinavi-data.com/" target="_blank" rel="noopener" style="color: var(--text-main); text-decoration: underline; text-underline-offset: 2px;">マチナビ（machinavi-data.com）</a>の公開残席バッジ観測ログを共通エリア定義（<code>{{ di_report.crosswalk_version }}</code>）で突合した2軸の需給DI（Diffusion Index：<code>-100pt</code>〜<code>+100pt</code>、プラスほど女性先行・男性が入りやすい状態）です。
                 </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <a href="/stats/weekend-index.csv" style="display: inline-flex; align-items: center; padding: 7px 13px; border-radius: 7px; font-size: 0.78rem; font-weight: 700; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.45); color: var(--accent-text); text-decoration: none;">CSVダウンロード (CC BY 4.0)</a>
-                    <a href="/stats/weekend-index.json" style="display: inline-flex; align-items: center; padding: 7px 13px; border-radius: 7px; font-size: 0.78rem; font-weight: 600; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); color: var(--text-main); text-decoration: none;">JSONフィード</a>
-                    <a href="/stats" style="display: inline-flex; align-items: center; padding: 7px 13px; border-radius: 7px; font-size: 0.78rem; font-weight: 600; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); color: var(--text-main); text-decoration: none;">← 全国統計データ白書へ戻る</a>
+                <div class="stats-cta-row">
+                    <a href="/stats/weekend-index.csv" class="stats-cta-primary">CSVダウンロード (CC BY 4.0)</a>
+                    <a href="/stats/weekend-index.json" class="stats-cta-secondary">JSONフィード</a>
+                    <a href="/stats" class="stats-cta-secondary">←&nbsp;全国統計データ白書へ戻る</a>
                 </div>
             </header>
 
-            <section class="section-card" style="padding: 20px; margin-bottom: 20px;">
-                <h2 style="margin: 0 0 12px; font-size: 1.08rem;">エリア別 2軸需給DIマトリクス（直近{{ di_report.window_days }}日間）</h2>
-                <div class="table-scroll-frame" style="overflow-x: auto;">
-                    <table class="store-comp-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">
-                        <thead>
-                            <tr>
-                                <th scope="col" style="text-align: left; padding: 10px;">都市・エリア</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">当日相席DI (Walk-in)</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">夜間平均女性比</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">相席観測時間数</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">予約制残席DI (Prepaid)</th>
-                                <th scope="col" style="text-align: left; padding: 10px;">需給レジーム判定・回遊先</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for a in di_report.areas %}
-                            <tr style="border-top: 1px solid var(--border-subtle);">
-                                <td style="padding: 11px 10px; font-weight: 700;">
-                                    <a href="{{ a.aiseki_area_url }}" style="color: var(--text-main); text-decoration: none;">{{ a.label }}</a>
-                                    {% if a.coverage_note %}<div style="font-size: 0.71rem; font-weight: 400; color: var(--text-sub);">{{ a.coverage_note }}</div>{% endif %}
-                                </td>
-                                <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">
-                                    {% if a.walkin_data_status == 'measured' and a.walkin_di_pt is not none %}
-                                    <span style="color: {% if a.walkin_di_pt > 0 %}var(--women){% elif a.walkin_di_pt < 0 %}var(--men){% else %}var(--text-main){% endif %};">{{ '%+.1f'|format(a.walkin_di_pt) }}pt</span>
-                                    {% else %}
-                                    <span style="font-size: 0.75rem; color: var(--text-sub); font-weight: 500;">insufficient ({{ a.walkin_store_hours }}h)</span>
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums;">
-                                    {% if a.walkin_avg_wpct is not none %}{{ '%.1f'|format(a.walkin_avg_wpct) }}%{% else %}--{% endif %}
-                                </td>
-                                <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-sub);">
-                                    {{ "{:,}".format(a.walkin_store_hours) }}時間（n={{ "{:,}".format(a.walkin_sample_count) }}）
-                                </td>
-                                <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">
-                                    {% if a.prepaid_data_status == 'measured' and a.prepaid_di_pt is not none %}
-                                    <span>{{ '%+.1f'|format(a.prepaid_di_pt) }}pt</span>
-                                    {% else %}
-                                    <span style="font-size: 0.75rem; color: var(--text-sub); font-weight: 500;">insufficient (n={{ a.prepaid_sample_count }})</span>
-                                    {% endif %}
-                                </td>
-                                <td style="padding: 11px 10px; font-size: 0.78rem; color: var(--text-sub);">
-                                    <div>{{ a.regime_summary }}</div>
-                                    <div style="margin-top: 3px;">
-                                        <a href="{{ a.aiseki_area_url }}" style="color: var(--accent-text); margin-right: 8px;">相席エリア詳細 ›</a>
-                                        <a href="{{ a.machinavi_area_url }}" target="_blank" rel="noopener" style="color: var(--text-sub);">マチナビ残席観測 ›</a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <section class="section-card stats-card-p2">
+                <h2 style="margin: 0 0 12px; font-size: 1.08rem; border-left: none; padding-left: 0; word-break: auto-phrase; text-wrap: pretty;">エリア別 2軸需給DIマトリクス（直近{{ di_report.window_days }}日間）</h2>
+                <div class="table-scroll-frame">
+                    <span class="table-scroll-hint">横にスクロールできます →</span>
+                    <div class="stats-table-wrap" tabindex="0" role="region" aria-label="エリア別 2軸需給DIマトリクス統計データ表" style="overflow-x: auto;">
+                        <table class="store-comp-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="text-align: left; padding: 10px; white-space: nowrap;">都市・エリア</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">当日相席DI (Walk-in)</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">夜間平均女性比</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">相席観測時間数</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">予約制残席DI (Prepaid)</th>
+                                    <th scope="col" style="text-align: left; padding: 10px; white-space: nowrap;">需給レジーム判定・回遊先</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in di_report.areas %}
+                                <tr style="border-top: 1px solid var(--border-subtle);">
+                                    <td style="padding: 11px 10px; font-weight: 700;">
+                                        <a href="{{ a.aiseki_area_url }}" style="color: var(--text-main); text-decoration: none;">{{ a.label }}</a>
+                                        {% if a.coverage_note %}<div style="font-size: 0.71rem; font-weight: 400; color: var(--text-sub);">{{ a.coverage_note }}</div>{% endif %}
+                                    </td>
+                                    <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">
+                                        {% if a.walkin_data_status == 'measured' and a.walkin_di_pt is not none %}
+                                        <span class="{% if a.walkin_di_pt > 0 %}di-pos{% elif a.walkin_di_pt < 0 %}di-neg{% endif %}">{{ '%+.1f'|format(a.walkin_di_pt) }}pt</span>
+                                        {% else %}
+                                        <span style="font-size: 0.75rem; color: var(--text-sub); font-weight: 500;">insufficient ({{ a.walkin_store_hours }}h)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums;">
+                                        {% if a.walkin_avg_wpct is not none %}{{ '%.1f'|format(a.walkin_avg_wpct) }}%{% else %}--{% endif %}
+                                    </td>
+                                    <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-sub);">
+                                        {{ "{:,}".format(a.walkin_store_hours) }}時間（n={{ "{:,}".format(a.walkin_sample_count) }}）
+                                    </td>
+                                    <td style="padding: 11px 10px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700;">
+                                        {% if a.prepaid_data_status == 'measured' and a.prepaid_di_pt is not none %}
+                                        <span>{{ '%+.1f'|format(a.prepaid_di_pt) }}pt</span>
+                                        {% else %}
+                                        <span style="font-size: 0.75rem; color: var(--text-sub); font-weight: 500;">insufficient (n={{ a.prepaid_sample_count }})</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 11px 10px; font-size: 0.78rem; color: var(--text-sub);">
+                                        <div>{{ a.regime_summary }}</div>
+                                        <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px;">
+                                            <a href="{{ a.aiseki_area_url }}" class="regime-link" style="color: var(--text-main); font-weight: 600;">相席エリア詳細&nbsp;›</a>
+                                            <a href="{{ a.machinavi_area_url }}" target="_blank" rel="noopener" class="regime-link" style="color: var(--text-sub);">マチナビ残席観測&nbsp;›</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
-            <section class="section-card" style="padding: 20px;">
-                <h2 style="margin: 0 0 10px; font-size: 1.02rem;">算出方法と「推測値ゼロ（Zero Guesswork）」ポリシー</h2>
+            <section class="section-card stats-card-p2" style="margin-bottom: 0;">
+                <h2 style="margin: 0 0 10px; font-size: 1.02rem; border-left: none; padding-left: 0;">算出方法と「推測値ゼロ（Zero Guesswork）」ポリシー</h2>
                 <ul style="margin: 0; padding-left: 20px; font-size: 0.84rem; color: var(--text-sub); line-height: 1.75;">
-                    <li><strong>当日相席ラウンジ需給DI（Walk-in DI）：</strong> {{ di_report.methodology.walkin_di_formula }}</li>
-                    <li><strong>事前予約制イベント残席DI（Prepaid DI）：</strong> {{ di_report.methodology.prepaid_di_formula }}</li>
-                    <li><strong>欠測・サンプル不足時の扱い：</strong> {{ di_report.methodology.zero_guesswork_policy }}</li>
-                    <li><strong>ライセンス：</strong> 本ページの統計表・JSON・CSVは <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color: var(--accent-text);">CC BY 4.0（クリエイティブ・コモンズ 表示 4.0 国際）</a> のもと、出典リンク（<code>https://aiseki-navi.com/stats/weekend-index</code>）の明記により自由に引用・二次利用いただけます。</li>
+                    <li><strong style="color: var(--text-main);">当日相席ラウンジ需給DI（Walk-in DI）：</strong> {{ di_report.methodology.walkin_di_formula }}</li>
+                    <li><strong style="color: var(--text-main);">事前予約制イベント残席DI（Prepaid DI）：</strong> {{ di_report.methodology.prepaid_di_formula }}</li>
+                    <li><strong style="color: var(--text-main);">欠測・サンプル不足時の扱い：</strong> {{ di_report.methodology.zero_guesswork_policy }}</li>
+                    <li><strong style="color: var(--text-main);">ライセンス：</strong> 本ページの統計表・JSON・CSVは <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color: var(--text-main); text-decoration: underline; text-underline-offset: 2px;">CC BY 4.0（クリエイティブ・コモンズ 表示 4.0 国際）</a> のもと、出典リンク（<code>https://aiseki-navi.com/stats/weekend-index</code>）の明記により自由に引用・二次利用いただけます。</li>
                 </ul>
             </section>
         </main>

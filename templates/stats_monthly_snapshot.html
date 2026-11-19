@@ -56,9 +56,95 @@
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=19">
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        .stats-open-hero {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 6px 0 22px !important;
+            margin: 2px 0 24px !important;
+        }
+        html.theme-light .stats-open-hero,
+        body.theme-light .stats-open-hero {
+            border-bottom-color: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        .stats-kicker {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 8px;
+            background: var(--calm-surface-2, #232329);
+            border: 1px solid var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            color: var(--calm-sub, #b4b4be);
+            margin-bottom: 10px;
+        }
+        html.theme-light .stats-kicker,
+        body.theme-light .stats-kicker {
+            background: #f2f2f5;
+            border-color: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            color: var(--calm-light-sub, #52525b);
+        }
+        .stats-open-hero h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.22rem, 3.6vw, 1.42rem);
+            line-height: 1.42;
+            letter-spacing: -0.02em;
+            word-break: auto-phrase;
+            overflow-wrap: anywhere;
+            text-wrap: pretty;
+        }
+        .stats-cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .stats-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            line-height: 1.3;
+            text-decoration: none;
+            white-space: nowrap;
+            background: var(--calm-surface-2, #232329);
+            border: 1px solid var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            color: var(--calm-text, #f4f4f5);
+        }
+        html.theme-light .stats-cta-secondary,
+        body.theme-light .stats-cta-secondary {
+            background: #f2f2f5;
+            border-color: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            color: var(--calm-light-text, #18181b);
+        }
+        .stats-card-p2 {
+            background: var(--calm-surface, #1a1a1e);
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08));
+            border-radius: 18px !important;
+            padding: 20px;
+        }
+        html.theme-light .stats-card-p2,
+        body.theme-light .stats-card-p2 {
+            background: #ffffff;
+            border-color: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+        }
+        .store-comp-table {
+            font-variant-numeric: tabular-nums;
+        }
+        .snap-women { color: var(--calm-women, #f4a8b8); }
+        html.theme-light .snap-women,
+        body.theme-light .snap-women { color: #9f1239; }
+    </style>
+    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
 </head>
 
 <body>
@@ -69,7 +155,7 @@
                 <span class="portal-brand-title">相席ナビ</span>
                 <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
-            <span style="font-size: 0.77rem; color: var(--text-sub);">対象月: {{ snap.yyyy_mm }}（CC BY 4.0）</span>
+            <span style="font-size: 0.77rem; color: var(--text-sub); font-variant-numeric: tabular-nums;">対象月: {{ snap.yyyy_mm }}（CC BY 4.0）</span>
         </div>
 
         {% set nav_active = 'stats' %}
@@ -80,52 +166,59 @@
         </nav>
 
         <main>
-            <header class="section-card" style="padding: 24px 22px; margin-bottom: 20px;">
-                <div style="font-size: 0.74rem; font-weight: 700; color: var(--accent-text); margin-bottom: 6px;">月次固定URLアーカイブ（CC BY 4.0）</div>
-                <h1 style="margin: 0 0 10px; font-size: 1.35rem;">{{ snap.title_ja }}</h1>
+            <header class="hero-box stats-open-hero">
+                <div class="stats-kicker">月次固定URLアーカイブ（CC BY 4.0）</div>
+                <h1>{{ snap.title_ja }}</h1>
                 {% if snap.data_status == 'measured' %}
-                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.7;">
-                    {{ snap.year }}年{{ snap.month }}月（{{ snap.first_date }}〜{{ snap.last_date }}）に計測された国内<strong>{{ snap.store_count }}店舗</strong>・延べ<strong>{{ "{:,}".format(snap.total_store_hours) }}営業店舗時間（n={{ "{:,}".format(snap.total_samples) }}回計測）</strong>の月次一次統計スナップショットです。AI検索・メディア記事・調査レポートでの固定URL引用にご利用いただけます。
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.72; font-variant-numeric: tabular-nums;">
+                    {{ snap.year }}年{{ snap.month }}月（{{ snap.first_date }}〜{{ snap.last_date }}）に計測された国内<strong style="color: var(--text-main);">{{ snap.store_count }}店舗</strong>・延べ<strong style="color: var(--text-main);">{{ "{:,}".format(snap.total_store_hours) }}営業店舗時間（n={{ "{:,}".format(snap.total_samples) }}回計測）</strong>の月次一次統計スナップショットです。AI検索・メディア記事・調査レポートでの固定URL引用にご利用いただけます。
                 </p>
                 {% else %}
-                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.7;">
-                    指定された月（{{ snap.yyyy_mm }}）の1時間ロールアップ集計レコードは現在未蓄積（<code>data_status="insufficient"</code>）です。直近30日間の統計は <a href="/stats" style="color: var(--accent-text);">全国ラウンジ統計データ白書（/stats）</a> または <a href="/stats/monthly.csv" style="color: var(--accent-text);">/stats/monthly.csv</a> をご参照ください。
+                <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.72;">
+                    指定された月（{{ snap.yyyy_mm }}）の1時間ロールアップ集計レコードは現在未蓄積（<code>data_status="insufficient"</code>）です。直近30日間の統計は <a href="/stats" style="color: var(--text-main); text-decoration: underline; text-underline-offset: 2px;">全国ラウンジ統計データ白書（/stats）</a> または <a href="/stats/monthly.csv" style="color: var(--text-main); text-decoration: underline; text-underline-offset: 2px;">/stats/monthly.csv</a> をご参照ください。
                 </p>
                 {% endif %}
+                <div class="stats-cta-row">
+                    <a href="/stats/monthly.csv" class="stats-cta-secondary">店舗別30日統計CSV（CC BY 4.0）</a>
+                    <a href="/stats" class="stats-cta-secondary">←&nbsp;全国統計データ白書へ戻る</a>
+                </div>
             </header>
 
             {% if snap.stores %}
-            <section class="section-card" style="padding: 20px;">
-                <h2 style="margin: 0 0 12px; font-size: 1.06rem;">{{ snap.year }}年{{ snap.month }}月 店舗別ピーク女性数・平均男女比一覧</h2>
-                <div class="table-scroll-frame" style="overflow-x: auto;">
-                    <table class="store-comp-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">
-                        <thead>
-                            <tr>
-                                <th scope="col" style="text-align: left; padding: 10px;">店舗名</th>
-                                <th scope="col" style="text-align: left; padding: 10px;">エリア</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">月間最大女性</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">営業時平均女性</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">営業時平均男性</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">平均女性比率</th>
-                                <th scope="col" style="text-align: right; padding: 10px;">観測時間数 (n)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for st in snap.stores %}
-                            <tr style="border-top: 1px solid var(--border-subtle);">
-                                <td style="padding: 10px; font-weight: 700;">
-                                    <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }}</a>
-                                </td>
-                                <td style="padding: 10px; color: var(--text-sub);">{{ st.area_label }}</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 700; color: var(--women);">{{ st.peak_women }}名</td>
-                                <td style="padding: 10px; text-align: right;">{{ '%.1f'|format(st.avg_women) }}名</td>
-                                <td style="padding: 10px; text-align: right;">{{ '%.1f'|format(st.avg_men) }}名</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 700;">{{ '%.1f'|format(st.avg_wpct) }}%</td>
-                                <td style="padding: 10px; text-align: right; color: var(--text-sub);">{{ "{:,}".format(st.store_hours) }}h ({{ "{:,}".format(st.sample_count) }})</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <section class="section-card stats-card-p2">
+                <h2 style="margin: 0 0 12px; font-size: 1.06rem; border-left: none; padding-left: 0; word-break: auto-phrase; text-wrap: pretty;">{{ snap.year }}年{{ snap.month }}月 店舗別ピーク女性数・平均男女比一覧</h2>
+                <div class="table-scroll-frame">
+                    <span class="table-scroll-hint">横にスクロールできます →</span>
+                    <div class="stats-table-wrap" tabindex="0" role="region" aria-label="月次店舗別ピーク女性数・平均男女比統計データ表" style="overflow-x: auto;">
+                        <table class="store-comp-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="text-align: left; padding: 10px; white-space: nowrap;">店舗名</th>
+                                    <th scope="col" style="text-align: left; padding: 10px; white-space: nowrap;">エリア</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">月間最大女性</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">営業時平均女性</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">営業時平均男性</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">平均女性比率</th>
+                                    <th scope="col" style="text-align: right; padding: 10px; white-space: nowrap;">観測時間数 (n)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for st in snap.stores %}
+                                <tr style="border-top: 1px solid var(--border-subtle);">
+                                    <td style="padding: 10px; font-weight: 700;">
+                                        <a href="/store/{{ st.slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.seo_name }}</a>
+                                    </td>
+                                    <td style="padding: 10px; color: var(--text-sub);">{{ st.area_label }}</td>
+                                    <td class="snap-women" style="padding: 10px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">{{ st.peak_women }}名</td>
+                                    <td style="padding: 10px; text-align: right; font-variant-numeric: tabular-nums;">{{ '%.1f'|format(st.avg_women) }}名</td>
+                                    <td style="padding: 10px; text-align: right; font-variant-numeric: tabular-nums;">{{ '%.1f'|format(st.avg_men) }}名</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;">{{ '%.1f'|format(st.avg_wpct) }}%</td>
+                                    <td style="padding: 10px; text-align: right; color: var(--text-sub); font-variant-numeric: tabular-nums;">{{ "{:,}".format(st.store_hours) }}h ({{ "{:,}".format(st.sample_count) }})</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
             {% endif %}

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
     <title>相席ラウンジの服装・身だしなみ＆代替サービス比較ガイド｜清潔感チェック・2軒目・恋活アプリ｜相席ナビ</title>
@@ -64,27 +65,30 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #111113;
-            --card-bg: #1a1a1e;
-            --card-elev: #232329;
-            --text-main: #f4f4f5;
-            --text-sub: #b4b4be;
-            --accent-gold: #a1a1aa;
-            --accent-text: #f4f4f5;
-            --border-subtle: rgba(255, 255, 255, 0.1);
+            --bg-dark: var(--calm-bg);
+            --card-bg: var(--calm-surface);
+            --card-elev: var(--calm-surface-2);
+            --text-main: var(--calm-text);
+            --text-sub: var(--calm-sub);
+            --accent-gold: var(--calm-sub);
+            --accent-text: var(--calm-text);
+            --border-subtle: var(--calm-border);
+            --border-strong: var(--calm-border-strong);
         }
+        html.theme-light,
         body.theme-light {
-            --bg-dark: #f6f6f7;
-            --card-bg: #ffffff;
-            --card-elev: #f4f4f5;
-            --text-main: #18181b;
-            --text-sub: #52525b;
-            --accent-gold: #52525b;
-            --accent-text: #18181b;
-            --border-subtle: #e4e4e7;
+            --bg-dark: var(--calm-light-bg);
+            --card-bg: var(--calm-light-surface);
+            --card-elev: var(--calm-light-surface-2);
+            --text-main: var(--calm-light-text);
+            --text-sub: var(--calm-light-sub);
+            --accent-gold: var(--calm-light-sub);
+            --accent-text: var(--calm-light-text);
+            --border-subtle: var(--calm-light-border);
+            --border-strong: var(--calm-light-border-strong);
         }
         * { box-sizing: border-box; }
         body {
@@ -93,7 +97,7 @@
             background-color: var(--bg-dark);
             background-image: none;
             color: var(--text-main);
-            font-family: Outfit, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            font-family: var(--font-editorial);
             line-height: 1.8;
         }
         .portal-wrap {
@@ -133,7 +137,7 @@
         .content-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 18px;
             padding: 28px 24px;
         }
         .content-box a:not(.rec-btn):not(.grooming-jump-chip):not(.editorial-bridge-btn):not(.audience-switch-link) {
@@ -144,6 +148,13 @@
         }
         .audience-switch-bar a {
             text-decoration: none !important;
+        }
+        .pr-notice {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            margin: -4px 0 14px;
+            border-left: 2px solid var(--border-strong);
+            padding-left: 8px;
         }
         h1 {
             font-size: 1.45rem;
@@ -167,7 +178,7 @@
         .grooming-mode-bar {
             background: var(--card-elev);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            border-radius: 13px;
             padding: 14px 16px;
             margin: 14px 0 20px;
         }
@@ -194,6 +205,7 @@
             font-size: 0.8rem;
             font-weight: 700;
             text-decoration: none;
+            white-space: nowrap;
         }
         .grooming-jump-chip.is-active {
             background: var(--text-main);
@@ -203,8 +215,8 @@
         .rec-card {
             background: var(--card-elev);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 22px;
+            border-radius: 13px;
+            padding: 20px 22px;
             margin: 20px 0;
         }
         .rec-badge {
@@ -215,7 +227,7 @@
             font-size: 0.71rem;
             font-weight: 700;
             padding: 2px 10px;
-            border-radius: 4px;
+            border-radius: 8px;
             margin-bottom: 8px;
         }
         .rec-badge.pr-badge {
@@ -239,24 +251,33 @@
             align-items: center;
             justify-content: center;
             min-height: 42px;
+            max-width: 100%;
             padding: 10px 22px;
             border-radius: 999px;
-            background: var(--text-main);
-            border: 1px solid var(--text-main);
-            color: var(--bg-dark);
+            background: var(--cm-cta-bg);
+            border: 1px solid var(--cm-cta-bg);
+            color: var(--cm-cta-text);
             text-decoration: none;
             font-weight: 800;
             font-size: 0.86rem;
+            line-height: 1.4;
+            text-align: center;
+            word-break: auto-phrase;
             transition: opacity 0.18s ease;
+        }
+        body.theme-light .rec-btn {
+            background: var(--calm-light-accent);
+            border-color: var(--calm-light-accent);
+            color: #ffffff;
         }
         .rec-btn:hover {
             opacity: 0.88;
         }
         .dialogue-box {
-            background: var(--card-elev);
-            border-left: 3px solid var(--accent-gold);
-            border-radius: 0 10px 10px 0;
-            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 20px;
             margin: 18px 0;
             font-size: 0.9rem;
             line-height: 1.8;
@@ -270,7 +291,7 @@
             margin-bottom: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
 </head>
 
 <body>
@@ -279,7 +300,7 @@
         <div class="portal-top-header">
             <a href="/" class="portal-brand-link">
                 <span class="portal-brand-title">相席ナビ</span>
-                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆攻略メディア</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
         </div>
 
@@ -292,11 +313,11 @@
             <h1>相席ラウンジ入店前の準備アイテム＆代替サービス比較ガイド</h1>
             <p style="font-size:0.78rem; color:var(--text-sub); margin:-6px 0 12px;">公開：2026年10月20日・更新：2026年11月6日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
             {% if not is_staff and not session.get('is_staff') %}
-            <p class="pr-notice" style="font-size: 0.78rem; color: var(--text-sub); margin: -4px 0 14px; border-left: 2px solid rgba(200,164,110,0.5); padding-left: 8px;">※本ページにはプロモーション（広告）が含まれます</p>
+            <p class="pr-notice">※本ページにはプロモーション（広告）が含まれます</p>
             {% endif %}
             <aside class="audience-switch-bar" aria-label="女性向けガイドへの案内">
                 <span>女性ペア向けの「待ち時間ゼロ店舗ボード・席替えフレーズ・限定特典」は専用ページで公開しています。</span>
-                <a class="audience-switch-link" href="/for-women">女性向け実践ガイドを見る ›</a>
+                <a class="audience-switch-link" href="/for-women">女性向け実践ガイドを見る&nbsp;›</a>
             </aside>
             <nav class="grooming-mode-bar" aria-label="目的別クイック移動と現在人数ボード">
                 <p class="grooming-mode-title">{% if active_mode == 'waiting' %}いま満席・男性待機中の方へ：代替アプリ・近隣穴場へすぐ切り替えられます{% elif active_mode == 'second' %}2軒目・次回デートの空席確保セクションへ移動できます{% else %}いまの状況に合わせて必要な項目へ移動できます{% endif %}</p>
@@ -304,8 +325,8 @@
                     <a href="#skin-beard" class="grooming-jump-chip{% if active_mode == 'prep' %} is-active{% endif %}">① 入店前の清潔感ケア</a>
                     <a href="#night-care" class="grooming-jump-chip{% if active_mode == 'second' %} is-active{% endif %}">② 2軒目バー空席確保</a>
                     <a href="#backup-apps" class="grooming-jump-chip{% if active_mode == 'waiting' %} is-active{% endif %}">③ 満席時の代替アプリ</a>
-                    <a href="/" class="grooming-jump-chip">リアルタイム順位へ戻る ›</a>
-                    <a href="/concierge" class="grooming-jump-chip">3秒穴場診断 ›</a>
+                    <a href="/" class="grooming-jump-chip">リアルタイム順位へ戻る&nbsp;›</a>
+                    <a href="/concierge" class="grooming-jump-chip">3秒穴場診断&nbsp;›</a>
                 </div>
             </nav>
             <p>
@@ -350,7 +371,7 @@
                     <li>朝のシェービング時間を短縮でき、カミソリ負けの気になりにくい清潔な口元を保ちやすい</li>
                     <li>照明が落ちた70cmのソファ席でも、口元の影を気にせず自然に会話へ集中できる</li>
                 </ul>
-                <a href="/link/hair_removal?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイトで詳細を見る ›</a>
+                <a href="/link/hair_removal?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイトで詳細を見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D" alt="" style="display:none;">
             </div>
             {% endif %}
@@ -378,7 +399,7 @@
                     <li>洗顔・化粧水・保湿液のシンプルな手順で、スキンケア初心者でも洗面台に置くだけで続けやすい</li>
                     <li>まずは自分の肌に合うか試せるトライアルセットから始められる</li>
                 </ul>
-                <a href="/link/orbis?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">初回限定セットを公式で見る ›</a>
+                <a href="/link/orbis?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">初回限定セットを公式で見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX" alt="" style="display:none;">
             </div>
             {% endif %}
@@ -397,7 +418,7 @@
                     <li>休日の夕方に「今日何を着ていこう」と迷う時間や、店頭で服を探す手間を減らせる</li>
                     <li>オリエンタルラウンジやJISの照明にも、後日のランチ・カフェデートにもそのままなじむシルエット</li>
                 </ul>
-                <a href="/link/spu?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">スタイルアップ便の公式を見る ›</a>
+                <a href="/link/spu?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">スタイルアップ便の公式を見る&nbsp;›</a>
             </div>
             {% endif %}
 
@@ -425,7 +446,7 @@
                     <li>入店前のコンビニ水と一緒にも、乾杯前のテーブルでもサッと取り出しやすいスマート設計</li>
                     <li>平日の仕事帰りや、翌朝に予定を残している週末の夜でも余裕を持って楽しみたい方に</li>
                 </ul>
-                <a href="/link/night_care_supplement?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイト・キャンペーンを見る ›</a>
+                <a href="/link/night_care_supplement?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイト・キャンペーンを見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29" alt="" style="display:none;">
             </div>
             <div class="rec-card">
@@ -437,7 +458,7 @@
                     <li>駅近くの静かなバー・ホテルラウンジ・ビストロの空席をスマホからそのまま確保できる</li>
                     <li>WEB予約限定のワンドリンク付きプランや席のみ予約も選びやすく、雰囲気で外しにくい</li>
                 </ul>
-                <a href="/link/second_venue_reservation?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">一休.comレストランで空席を見る ›</a>
+                <a href="/link/second_venue_reservation?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">一休.comレストランで空席を見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" alt="" style="display:none;">
             </div>
             {% endif %}
@@ -464,7 +485,7 @@
                     <li>「今日これから近くで飲みたい」相手をエリア別に探せる機能があり、現地の動きと相性がいい</li>
                     <li>男性も登録・お相手検索までは無料で確認でき、ラウンジとの併用に向いている</li>
                 </ul>
-                <a href="/link/dating_instant?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">無料登録・公式サイトを見る ›</a>
+                <a href="/link/dating_instant?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">無料登録・公式サイトを見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BEK9C+21TRSI+5SFC+61RI9" alt="" style="display:none;">
             </div>
             <div class="rec-card">
@@ -476,7 +497,7 @@
                     <li>友人と予定を合わせなくても、自分の空き日程だけで1対1の食事・カフェの約束を組める</li>
                     <li>相席ラウンジが混み合う週末夜を避けて、週末昼や平日夜に落ち着いて会いたいときの軸になる</li>
                 </ul>
-                <a href="/link/dating_bachelor?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">1対1デート・恋活アプリの公式を見る ›</a>
+                <a href="/link/dating_bachelor?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">1対1デート・恋活アプリの公式を見る&nbsp;›</a>
             </div>
             {% endif %}
         </article>

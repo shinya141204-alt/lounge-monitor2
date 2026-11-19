@@ -1,0 +1,141 @@
+{#- ============================================================================
+   社内マスター／スタッフ専用サブ画面 共通トークンパーシャル（P3 統一仕様）
+   - staff_*.html（外部CSS非読込の社内管理画面）および _master_nav.html で共有する
+     案2（TableCheck・VACAN型）正準カラー＆角丸トークン定義。
+   - Dark : --bg=#111113 / --surface=#1a1a1e / --surface-2=#232329 / --text=#f4f4f5 / --sub=#b4b4be
+   - Light: --bg=#f6f6f7 / --surface=#ffffff / --surface-2=#f2f2f5 / --text=#18181b / --sub=#52525b
+   - 角丸 : --r-card=18px（外側カード） / --r-inner=13px（内側ボックス） / --r-chip=10px（入力・小ボタン）
+   - 全テキストノードで WCAG >= 5.5:1 を満たすようサブ面は不透明トーナル階層で分離する。
+   ============================================================================ -#}
+<style id="staff-canonical-tokens">
+    :root {
+        --r-card: 18px;
+        --r-inner: 13px;
+        --r-chip: 10px;
+        --r-pill: 999px;
+
+        --bg: #111113;
+        --surface: #1a1a1e;
+        --surface-2: #232329;
+        --card-inner: #232329;
+        --inner-card: #232329;
+        --input-bg: #111113;
+        --code-bg: #111113;
+        --code-ink: #f4f4f5;
+        --subtle-bg: #232329;
+        --chip-bg: #232329;
+        --track-bg: rgba(255, 255, 255, 0.08);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.16);
+        --text: #f4f4f5;
+        --sub: #b4b4be;
+        --muted-warm: #d4d4d8;
+
+        --gold: #f4f4f5;
+        --gold-soft: rgba(244, 244, 245, 0.09);
+        --gold-border: rgba(244, 244, 245, 0.28);
+        --gold-ink: #f4f4f5;
+        --gold-bright: #ffffff;
+        --active-bg: #f4f4f5;
+        --active-ink: #111113;
+        --btn-primary-ink: #111113;
+        --toast-ink: #111113;
+
+        --rose: #f4a8b8;
+        --rose-soft: rgba(244, 168, 184, 0.14);
+        --rose-border: rgba(244, 168, 184, 0.38);
+        --rose-ink: #fce4ec;
+
+        --blue: #93c5fd;
+        --blue-soft: rgba(147, 197, 253, 0.14);
+        --blue-border: rgba(147, 197, 253, 0.36);
+        --blue-ink: #e0f2fe;
+        --link-ink: #93c5fd;
+
+        --green: #6ee7b7;
+        --green-soft: rgba(110, 231, 183, 0.14);
+        --green-border: rgba(110, 231, 183, 0.38);
+        --green-ink: #d1fae5;
+
+        --amber: #fcd34d;
+        --amber-soft: rgba(252, 211, 77, 0.14);
+        --amber-border: rgba(252, 211, 77, 0.42);
+        --amber-ink: #fef3c7;
+
+        --red: #fca5a5;
+        --err-ink: #fecaca;
+
+        --purple: #d8b4fe;
+        --purple-soft: rgba(216, 180, 254, 0.14);
+        --purple-border: rgba(216, 180, 254, 0.38);
+        --purple-ink: #f3e8ff;
+
+        --teal: #5eead4;
+        --teal-soft: rgba(94, 234, 212, 0.14);
+        --teal-border: rgba(94, 234, 212, 0.38);
+        --teal-ink: #ccfbf1;
+    }
+    html.theme-light,
+    body.theme-light {
+        --bg: #f6f6f7;
+        --surface: #ffffff;
+        --surface-2: #f2f2f5;
+        --card-inner: #f2f2f5;
+        --inner-card: #f2f2f5;
+        --input-bg: #ffffff;
+        --code-bg: #f2f2f5;
+        --code-ink: #18181b;
+        --subtle-bg: #f2f2f5;
+        --chip-bg: #f2f2f5;
+        --track-bg: rgba(24, 24, 27, 0.09);
+        --border: rgba(24, 24, 27, 0.09);
+        --border-strong: rgba(24, 24, 27, 0.16);
+        --text: #18181b;
+        --sub: #52525b;
+        --muted-warm: #52525b;
+
+        --gold: #18181b;
+        --gold-soft: rgba(24, 24, 27, 0.06);
+        --gold-border: rgba(24, 24, 27, 0.24);
+        --gold-ink: #18181b;
+        --gold-bright: #111113;
+        --active-bg: #18181b;
+        --active-ink: #ffffff;
+        --btn-primary-ink: #ffffff;
+        --toast-ink: #ffffff;
+
+        --rose: #9f1239;
+        --rose-soft: rgba(159, 18, 57, 0.09);
+        --rose-border: rgba(159, 18, 57, 0.32);
+        --rose-ink: #881337;
+
+        --blue: #1e40af;
+        --blue-soft: rgba(30, 64, 175, 0.09);
+        --blue-border: rgba(30, 64, 175, 0.32);
+        --blue-ink: #1e3a8a;
+        --link-ink: #1e40af;
+
+        --green: #065f46;
+        --green-soft: rgba(6, 95, 70, 0.09);
+        --green-border: rgba(6, 95, 70, 0.32);
+        --green-ink: #064e3b;
+
+        --amber: #92400e;
+        --amber-soft: rgba(146, 64, 14, 0.10);
+        --amber-border: rgba(146, 64, 14, 0.34);
+        --amber-ink: #78350f;
+
+        --red: #991b1b;
+        --err-ink: #7f1d1d;
+
+        --purple: #581c87;
+        --purple-soft: rgba(107, 33, 168, 0.09);
+        --purple-border: rgba(107, 33, 168, 0.32);
+        --purple-ink: #4c1d95;
+
+        --teal: #115e59;
+        --teal-soft: rgba(15, 118, 110, 0.09);
+        --teal-border: rgba(15, 118, 110, 0.32);
+        --teal-ink: #134e4a;
+    }
+</style>

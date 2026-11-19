@@ -12,7 +12,7 @@
     <style>
         :root {
             --bg: #111113;
-            --surface: #18181b;
+            --surface: #1a1a1e;
             --surface-2: #232329;
             --input-bg: #111113;
             --border: rgba(255, 255, 255, 0.08);
@@ -32,7 +32,7 @@
         body.theme-light {
             --bg: #f6f6f7;
             --surface: #ffffff;
-            --surface-2: #ededf0;
+            --surface-2: #f2f2f5;
             --input-bg: #ffffff;
             --border: rgba(24, 24, 27, 0.10);
             --border-strong: rgba(24, 24, 27, 0.20);
@@ -254,7 +254,7 @@
                     autofocus
                 >
                 {% if error %}
-                <div class="error-msg">⚠️ {{ error }}</div>
+                <div class="error-msg">{{ error }}</div>
                 {% endif %}
             </div>
 

@@ -119,35 +119,36 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --card-sub-bg: #1b1c22;
-            --text-main: #ebe8e3;
-            --text-sub: #9a968e;
-            --accent-gold: #c8a46e;
-            --accent-text: #dfc496;
-            --women: #d8a1aa;
-            --men: #93b1c9;
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-gold: rgba(200, 164, 110, 0.42);
-            --gold-tint: rgba(200, 164, 110, 0.11);
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-sub-bg: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --accent-gold: var(--calm-text, #f4f4f5);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-gold: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            --gold-tint: rgba(244, 244, 245, 0.08);
         }
+        html.theme-light,
         body.theme-light {
-            --bg-dark: #f4f2ed;
-            --card-bg: #faf9f6;
-            --card-sub-bg: #edeae3;
-            --text-main: #1f1e1b;
-            --text-sub: #5c574f;
-            --accent-gold: #7d5b24;
-            --accent-text: #6e4f1d;
-            --women: #a84456;
-            --men: #365c7d;
-            --border-subtle: rgba(28, 27, 24, 0.1);
-            --border-gold: rgba(125, 91, 36, 0.42);
-            --gold-tint: rgba(140, 107, 63, 0.12);
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-sub-bg: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --accent-gold: var(--calm-light-text, #18181b);
+            --accent-text: var(--calm-light-text, #18181b);
+            --women: var(--calm-light-women-strong, #9f1239);
+            --men: var(--calm-light-men-strong, #1e40af);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-gold: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            --gold-tint: rgba(24, 24, 27, 0.06);
         }
         * { box-sizing: border-box; }
         body {
@@ -156,23 +157,23 @@
             background-color: var(--bg-dark);
             background-image: none;
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-            line-height: 1.75;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+            line-height: 1.72;
         }
         .portal-wrap {
-            max-width: 980px;
+            max-width: 1020px;
             margin: 0 auto;
-            padding: 20px 18px 80px;
+            padding: 18px 16px 80px;
         }
         .portal-top-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 12px;
-            padding-bottom: 14px;
+            gap: 8px 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border-subtle);
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
         .portal-brand-link {
             text-decoration: none;
@@ -181,78 +182,122 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.45rem;
+            font-size: 1.42rem;
             font-weight: 800;
             color: var(--text-main);
+            letter-spacing: -0.02em;
             margin: 0;
         }
         .portal-brand-sub {
-            font-size: 0.78rem;
+            font-size: 0.77rem;
             color: var(--text-sub);
         }
-        .portal-global-nav { margin-bottom: 18px; scrollbar-width: none; }
+        .portal-global-nav { margin-bottom: 12px; scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
 
-        /* Area Selector Pills */
+        /* Plan 2 Omnibar Horizontal Scroll Area Chip Bar (Compresses SP FV h1Top < 220px) */
         .area-pills-group {
-            margin-bottom: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 8px 10px;
+            margin-bottom: 14px;
         }
         .area-pills-bar {
             display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-            margin-bottom: 8px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 6px;
+            align-items: center;
         }
-        .area-pills-sublabel {
-            font-size: 0.72rem;
+        .area-pills-bar::-webkit-scrollbar {
+            display: none;
+        }
+        .area-city-fold {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .area-city-fold > summary {
+            cursor: pointer;
+            font-size: 0.74rem;
             font-weight: 700;
             color: var(--text-sub);
-            display: inline-flex;
+            list-style: none;
+            display: flex;
             align-items: center;
-            margin-right: 4px;
+            justify-content: space-between;
+            min-height: 28px;
+            user-select: none;
+        }
+        .area-city-fold > summary::-webkit-details-marker {
+            display: none;
+        }
+        .area-city-fold > summary::after {
+            content: "展開 ▾";
+            font-size: 0.72rem;
+            color: var(--text-sub);
+        }
+        .area-city-fold[open] > summary::after {
+            content: "閉じる ▴";
+        }
+        .area-city-fold .area-pills-bar {
+            margin-top: 6px;
+        }
+        @media (min-width: 900px) {
+            .area-pills-bar {
+                flex-wrap: wrap;
+                overflow-x: visible;
+            }
         }
         .area-pill {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            white-space: nowrap;
             gap: 6px;
+            min-height: 38px;
             padding: 6px 13px;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 0.8rem;
             font-weight: 600;
             text-decoration: none;
             color: var(--text-sub);
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-sub-bg);
             border: 1px solid var(--border-subtle);
-            transition: all 0.18s ease;
-        }
-        body.theme-light .area-pill {
-            background: rgba(0, 0, 0, 0.025);
+            transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
         }
         .area-pill--city {
-            font-size: 0.77rem;
-            padding: 5px 11px;
-            border-style: dashed;
+            font-size: 0.78rem;
+            padding: 6px 11px;
+            border-style: solid;
         }
         .area-pill:hover {
             border-color: var(--border-gold);
             color: var(--text-main);
         }
-        .area-pill.active,
-        body.theme-light .area-pill.active {
-            background: var(--gold-tint);
-            border-color: var(--border-gold);
-            border-style: solid;
-            color: var(--accent-text);
+        .area-pill.active {
+            background: #f4f4f5;
+            border-color: #f4f4f5;
+            color: #111113;
             font-weight: 700;
         }
+        body.theme-light .area-pill.active {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
 
-        /* Concierge Promo Banner */
+        /* Concierge Promo Banner (Outer r:18px) */
         .concierge-promo-banner {
-            background: linear-gradient(135deg, var(--gold-tint), rgba(255, 255, 255, 0.015));
-            border: 1px solid var(--border-gold);
-            border-radius: 13px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
             padding: 16px 18px;
-            margin: 16px 0 22px;
+            margin: 18px 0 22px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -266,14 +311,14 @@
         .concierge-promo-badge {
             display: inline-block;
             font-size: 0.7rem;
-            font-weight: 800;
-            letter-spacing: 0.05em;
-            color: var(--accent-text);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--text-sub);
             margin-bottom: 3px;
         }
         .concierge-promo-title {
             margin: 0 0 3px;
-            font-size: 0.98rem;
+            font-size: 0.96rem;
             font-weight: 800;
             color: var(--text-main);
         }
@@ -288,74 +333,81 @@
             align-items: center;
             justify-content: center;
             gap: 7px;
-            padding: 11px 20px;
-            border-radius: 9px;
-            background: var(--accent-gold);
-            color: #111216;
-            font-size: 0.85rem;
+            min-height: 40px;
+            padding: 10px 18px;
+            border-radius: 12px;
+            background: #f4f4f5;
+            color: #111113;
+            font-size: 0.84rem;
             font-weight: 800;
             text-decoration: none;
             white-space: nowrap;
-            transition: opacity 0.16s ease, transform 0.12s ease;
+            transition: opacity 0.16s ease;
         }
         body.theme-light .concierge-gold-btn {
+            background: #18181b;
             color: #ffffff;
         }
         .concierge-gold-btn:hover {
-            opacity: 0.92;
-            transform: translateY(-1px);
+            opacity: 0.9;
         }
 
-        /* Sub-area / Parent-area Crossbar */
+        /* Sub-area / Parent-area Crossbar (Inner r:13px) */
         .subarea-crossbar {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
             padding: 10px 14px;
-            border-radius: 10px;
+            border-radius: 13px;
             background: var(--card-sub-bg);
             border: 1px solid var(--border-subtle);
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
         }
         .subarea-crossbar-label {
             font-weight: 700;
-            color: var(--accent-text);
+            color: var(--text-sub);
         }
         .subarea-chip-link {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 4px 11px;
-            border-radius: 999px;
-            border: 1px solid var(--border-gold);
-            background: var(--gold-tint);
+            min-height: 36px;
+            padding: 5px 11px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            background: var(--card-bg);
             color: var(--text-main);
             text-decoration: none;
             font-size: 0.78rem;
             font-weight: 700;
         }
         .subarea-chip-link:hover {
-            border-color: var(--accent-gold);
+            border-color: var(--border-gold);
         }
 
-        /* Area Detail Section */
+        /* Area Detail Section (Open Hairline Section — No Outer Box-in-Box) */
         .area-section-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            border-radius: 0;
+            padding: 4px 0 28px;
+            margin-bottom: 26px;
+        }
+        .area-section-card:last-child {
+            border-bottom: none;
         }
         .area-header-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 14px;
-            padding-bottom: 14px;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border-subtle);
         }
         .area-title-group h2, .area-title-group h1 {
@@ -365,7 +417,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            line-height: 1.38;
+            line-height: 1.36;
+            letter-spacing: -0.02em;
         }
         .area-live-totals {
             display: flex;
@@ -373,32 +426,34 @@
             flex-wrap: wrap;
             gap: 6px 10px;
             background: var(--card-sub-bg);
-            padding: 6px 14px;
-            border-radius: 16px;
+            padding: 6px 13px;
+            border-radius: 13px;
             border: 1px solid var(--border-subtle);
-            font-size: 0.82rem;
+            font-size: 0.81rem;
             font-weight: 600;
             color: var(--text-sub);
+            font-variant-numeric: tabular-nums;
         }
-        .tot-w { color: var(--women); }
-        .tot-m { color: var(--men); }
+        .tot-w { color: var(--women); font-variant-numeric: tabular-nums; }
+        .tot-m { color: var(--men); font-variant-numeric: tabular-nums; }
 
-        /* Live Store Mini Cards */
+        /* Live Store Signal Cards (Outer r:18px, Surface #1a1a1e / #ffffff) */
         .live-stores-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 12px;
-            margin: 16px 0 22px;
+            margin: 12px 0 18px;
         }
         .live-store-card {
-            background: var(--card-sub-bg);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 14px;
+            border-radius: 18px;
+            padding: 15px 16px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            transition: border-color 0.18s ease;
+            gap: 9px;
+            transition: border-color 0.16s ease;
+            font-variant-numeric: tabular-nums;
         }
         .live-store-card:hover {
             border-color: var(--border-gold);
@@ -422,12 +477,18 @@
             justify-content: space-between;
             font-size: 0.86rem;
             font-weight: 700;
+            background: var(--card-sub-bg);
+            padding: 9px 11px;
+            border-radius: 13px;
         }
         .ratio-bar {
             height: 6px;
             border-radius: 999px;
-            background: rgba(147, 177, 201, 0.28);
+            background: rgba(147, 197, 253, 0.22);
             overflow: hidden;
+        }
+        body.theme-light .ratio-bar {
+            background: rgba(29, 78, 216, 0.15);
         }
         .ratio-bar.is-empty {
             background: var(--border-subtle) !important;
@@ -440,14 +501,15 @@
             background: var(--women);
         }
 
-        /* Tactical Deep Guide Cards */
+        /* Tactical Deep Guide Cards (Outer r:18px, Anti-AI no left 3px border) */
         .section-subhead {
             font-size: 1.02rem;
             color: var(--text-main);
-            margin: 26px 0 12px;
-            padding-left: 10px;
-            border-left: 3px solid var(--accent-gold);
+            margin: 22px 0 10px;
+            padding-left: 0;
+            border-left: none;
             line-height: 1.4;
+            letter-spacing: -0.015em;
         }
         .tactical-deep-grid {
             display: grid;
@@ -456,15 +518,15 @@
             margin-bottom: 16px;
         }
         .tactical-card {
-            background: var(--card-sub-bg);
-            border: 1px solid var(--border-gold);
-            border-radius: 11px;
-            padding: 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 18px;
         }
         .tactical-card h3 {
             margin: 0 0 7px 0;
             font-size: 0.92rem;
-            color: var(--accent-text);
+            color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -472,11 +534,11 @@
         .tactical-card p {
             margin: 0;
             font-size: 0.83rem;
-            color: var(--text-main);
+            color: var(--text-sub);
             line-height: 1.68;
         }
 
-        /* Editorial Guide Points inside Area */
+        /* Editorial Guide Points inside Area (Outer r:18px) */
         .area-guide-points {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -484,15 +546,15 @@
             margin-top: 14px;
         }
         .area-point-box {
-            background: var(--card-sub-bg);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 18px;
+            padding: 16px 18px;
         }
         .area-point-box h3 {
             margin: 0 0 6px 0;
             font-size: 0.9rem;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         .area-point-box p {
             margin: 0;
@@ -503,22 +565,29 @@
         .area-cta-btn {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            background: var(--gold-tint);
-            border: 1px solid var(--border-gold);
-            color: var(--accent-text);
+            min-height: 40px;
+            padding: 9px 18px;
+            border-radius: 12px;
+            background: #f4f4f5;
+            border: 1px solid #f4f4f5;
+            color: #111113;
             text-decoration: none;
             font-size: 0.84rem;
             font-weight: 700;
-            transition: background 0.18s ease;
+            transition: opacity 0.16s ease;
+        }
+        body.theme-light .area-cta-btn {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
         }
         .area-cta-btn:hover {
-            background: rgba(200, 164, 110, 0.2);
+            opacity: 0.9;
         }
 
-        /* Area FAQ Accordion */
+        /* Area FAQ Accordion (Outer r:18px) */
         .area-faq-list {
             display: flex;
             flex-direction: column;
@@ -526,10 +595,10 @@
             margin-top: 12px;
         }
         .area-faq-item {
-            background: var(--card-sub-bg);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 12px 15px;
+            border-radius: 18px;
+            padding: 14px 16px;
         }
         .area-faq-item summary {
             cursor: pointer;
@@ -545,7 +614,7 @@
         .area-faq-item summary::-webkit-details-marker { display: none; }
         .area-faq-item summary::after {
             content: "＋";
-            color: var(--accent-text);
+            color: var(--text-sub);
             font-size: 0.9rem;
             flex-shrink: 0;
         }
@@ -561,9 +630,9 @@
             line-height: 1.68;
         }
 
-        /* Pinpoint City Cards Grid on /areas Directory */
+        /* Pinpoint City Cards Grid on /areas Directory (Outer r:18px) */
         .city-pinpoint-section {
-            margin-bottom: 26px;
+            margin-bottom: 24px;
         }
         .city-pinpoint-grid {
             display: grid;
@@ -573,18 +642,18 @@
         .city-pinpoint-card {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            padding: 13px 14px;
-            border-radius: 11px;
+            gap: 7px;
+            padding: 15px 16px;
+            border-radius: 18px;
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
             text-decoration: none;
             color: inherit;
-            transition: border-color 0.16s ease, transform 0.12s ease;
+            transition: border-color 0.16s ease;
+            font-variant-numeric: tabular-nums;
         }
         .city-pinpoint-card:hover {
             border-color: var(--border-gold);
-            transform: translateY(-1px);
         }
         .city-pinpoint-top {
             display: flex;
@@ -593,24 +662,27 @@
             gap: 6px;
         }
         .city-pinpoint-name {
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             font-weight: 800;
             color: var(--text-main);
         }
         .city-pinpoint-count {
-            font-size: 0.73rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            color: var(--accent-text);
-            background: var(--gold-tint);
-            border: 1px solid var(--border-gold);
-            padding: 1px 7px;
-            border-radius: 999px;
+            color: var(--text-sub);
+            background: var(--card-sub-bg);
+            border: 1px solid var(--border-subtle);
+            padding: 2px 8px;
+            border-radius: 8px;
         }
         .city-pinpoint-live {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 700;
             display: flex;
             gap: 10px;
+            background: var(--card-sub-bg);
+            padding: 7px 10px;
+            border-radius: 13px;
         }
         .city-pinpoint-note {
             font-size: 0.75rem;
@@ -623,13 +695,18 @@
         }
 
         @media (max-width: 640px) {
-            .portal-wrap { padding: 14px 12px 68px; }
-            .area-section-card { padding: 17px 14px; }
+            .portal-wrap { padding: 10px 12px 68px; }
+            .portal-top-header { padding-bottom: 6px; margin-bottom: 6px; }
+            .portal-brand-sub { display: none; }
+            .portal-global-nav-row { margin-bottom: 8px !important; }
+            .area-pills-group { padding: 6px 8px; margin-bottom: 10px; }
+            .area-section-card { padding: 2px 0 22px; }
+            .area-header-row { margin-bottom: 10px; padding-bottom: 10px; }
             .area-title-group h1, .area-title-group h2 { font-size: 1.12rem; }
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -637,7 +714,99 @@
     {% endif %}
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        body:not(.staff-mode) .area-pills-group {
+            border-radius: 16px !important;
+        }
+        body:not(.staff-mode) .area-pill {
+            border-radius: 10px !important;
+            min-height: 38px !important;
+        }
+        body:not(.staff-mode) .area-pill.area-pill--wrap {
+            white-space: normal !important;
+            max-width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            line-height: 1.4;
+        }
+        body:not(.theme-light):not(.staff-mode) .area-pill.active {
+            background: #f4f4f5 !important;
+            border-color: #f4f4f5 !important;
+            color: #111113 !important;
+        }
+        body.theme-light:not(.staff-mode) .area-pill.active {
+            background: #18181b !important;
+            border-color: #18181b !important;
+            color: #ffffff !important;
+        }
+        body:not(.staff-mode) .area-section-card {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 4px 0 28px !important;
+        }
+        body.theme-light:not(.staff-mode) .area-section-card {
+            border-bottom-color: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body:not(.staff-mode) .live-store-card,
+        body:not(.staff-mode) .city-pinpoint-card,
+        body:not(.staff-mode) .concierge-promo-banner,
+        body:not(.staff-mode) .tactical-card,
+        body:not(.staff-mode) .area-point-box,
+        body:not(.staff-mode) .area-faq-item {
+            border-radius: 18px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .live-store-card,
+        body:not(.theme-light):not(.staff-mode) .city-pinpoint-card,
+        body:not(.theme-light):not(.staff-mode) .concierge-promo-banner,
+        body:not(.theme-light):not(.staff-mode) .tactical-card,
+        body:not(.theme-light):not(.staff-mode) .area-point-box,
+        body:not(.theme-light):not(.staff-mode) .area-faq-item {
+            background: var(--calm-surface, #1a1a1e) !important;
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+        }
+        body.theme-light:not(.staff-mode) .live-store-card,
+        body.theme-light:not(.staff-mode) .city-pinpoint-card,
+        body.theme-light:not(.staff-mode) .concierge-promo-banner,
+        body.theme-light:not(.staff-mode) .tactical-card,
+        body.theme-light:not(.staff-mode) .area-point-box,
+        body.theme-light:not(.staff-mode) .area-faq-item {
+            background: #ffffff !important;
+            border: 1px solid var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body:not(.staff-mode) .live-counts-row,
+        body:not(.staff-mode) .city-pinpoint-live,
+        body:not(.staff-mode) .subarea-crossbar,
+        body:not(.staff-mode) .area-live-totals {
+            border-radius: 13px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .live-counts-row,
+        body:not(.theme-light):not(.staff-mode) .city-pinpoint-live {
+            background: var(--calm-surface-2, #232329) !important;
+        }
+        body.theme-light:not(.staff-mode) .live-counts-row,
+        body.theme-light:not(.staff-mode) .city-pinpoint-live {
+            background: var(--calm-light-surface-2, #f2f2f5) !important;
+        }
+        body.theme-light .tot-w {
+            color: var(--calm-light-women-strong, #9f1239) !important;
+        }
+        body.theme-light .tot-m {
+            color: var(--calm-light-men-strong, #1e40af) !important;
+        }
+        body:not(.staff-mode) .section-subhead {
+            border-left: none !important;
+            padding-left: 0 !important;
+        }
+        body:not(.staff-mode) .concierge-gold-btn,
+        body:not(.staff-mode) .area-cta-btn {
+            min-height: 40px !important;
+            border-radius: 12px !important;
+        }
+    </style>
     <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
@@ -656,28 +825,40 @@
         {% include '_portal_nav.html' %}
 
         <main>
-        <!-- Area Selector Bar (Primary Regions + Pinpoint Cities) -->
+        <!-- Area Selector Omnibar (1-Line Horizontal Scroll Region Chips + Collapsible Pinpoint Cities) -->
         <nav class="area-pills-group" aria-label="エリア選択ナビゲーション">
-            <div class="area-pills-bar">
-                <a href="/areas" class="area-pill {% if not selected_area %}active{% endif %}">全国すべてのエリア</a>
+            <div class="area-pills-bar" id="area-omnibar-scroll">
+                <a href="/areas" class="area-pill {% if not selected_area %}active{% endif %}">全国すべて</a>
                 {% for item in area_summaries if not item.info.parent_area %}
-                <a href="/area/{{ item.slug }}" class="area-pill {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
+                <a href="/area/{{ item.slug }}" class="area-pill {% if selected_area and (selected_area.slug == item.slug or selected_area.info.parent_area == item.slug) %}active{% endif %}">
                     <span>{{ item.info.short_name }}</span>
                 </a>
                 {% endfor %}
             </div>
-            <div class="area-pills-bar" style="margin-bottom: 0;">
-                <span class="area-pills-sublabel">主要都市ピンポイント：</span>
-                {% for item in area_summaries if item.info.parent_area %}
-                <a href="/area/{{ item.slug }}" class="area-pill area-pill--city {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
-                    <span>{{ item.info.short_name }}</span>
-                </a>
-                {% endfor %}
-            </div>
+            <details class="area-city-fold">
+                <summary>主要7都市ピンポイント（新宿・渋谷・梅田・難波・名古屋・福岡・広島）</summary>
+                <div class="area-pills-bar">
+                    {% for item in area_summaries if item.info.parent_area %}
+                    <a href="/area/{{ item.slug }}" class="area-pill area-pill--city {% if selected_area and selected_area.slug == item.slug %}active{% endif %}">
+                        <span>{{ item.info.short_name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </details>
         </nav>
+        <script>
+            (function(){
+                try {
+                    var activeChip = document.querySelector('#area-omnibar-scroll .area-pill.active');
+                    if (activeChip && activeChip.scrollIntoView) {
+                        activeChip.scrollIntoView({ block: 'nearest', inline: 'center' });
+                    }
+                } catch (e) {}
+            })();
+        </script>
 
         {% if selected_area %}
-        <!-- Single Selected Area View -->
+        <!-- Single Selected Area View (h1 + Live Stores right inside SP First View) -->
         {% set c_area_key = selected_area.info.concierge_area | default(selected_area.slug) %}
         <article class="area-section-card">
             <div class="area-header-row">
@@ -692,43 +873,7 @@
                 </div>
             </div>
 
-            {% if selected_area.info.sub_areas %}
-            <div class="subarea-crossbar">
-                <span class="subarea-crossbar-label">都市別ピンポイント深掘りガイド：</span>
-                {% for sub_slug in selected_area.info.sub_areas %}
-                    {% for item in area_summaries if item.slug == sub_slug %}
-                    <a href="/area/{{ item.slug }}" class="subarea-chip-link">
-                        <span>{{ item.info.short_name }}（{{ item.store_count }}店｜女{{ item.total_women }}:男{{ item.total_men }}） ›</span>
-                    </a>
-                    {% endfor %}
-                {% endfor %}
-            </div>
-            {% elif selected_area.info.parent_area %}
-            <div class="subarea-crossbar">
-                <span class="subarea-crossbar-label">広域エリア比較：</span>
-                {% for item in area_summaries if item.slug == selected_area.info.parent_area %}
-                <a href="/area/{{ item.slug }}" class="subarea-chip-link">
-                    <span>{{ item.info.name }}（全{{ item.store_count }}店舗）をまとめて見る ›</span>
-                </a>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <p style="font-size: 0.91rem; color: var(--text-sub); margin: 0 0 16px;">{{ selected_area.info.lead }}</p>
-
-            <!-- Prominent 3-Second Concierge CTA -->
-            <div class="concierge-promo-banner">
-                <div class="concierge-promo-copy">
-                    <span class="concierge-promo-badge">AISEKI CONCIERGE ｜ 0.1秒リアルタイム判定</span>
-                    <p class="concierge-promo-title">{{ selected_area.info.short_name }}で今夜入るべき「第1候補」と「徒歩ハシゴ保険」を即診断</p>
-                    <p class="concierge-promo-desc">1人参戦の入店規定・営業時間・現在の男女バランス・終電後の定着率まで加味して最適ルートを提案します。</p>
-                </div>
-                <a href="/concierge?area={{ c_area_key }}" class="concierge-gold-btn">
-                    このエリアで今夜の3秒穴場＆ハシゴ診断をする ›
-                </a>
-            </div>
-
-            <h2 class="section-subhead" style="margin-top: 18px;">現在の店舗別リアルタイム人数（女性が多い順）</h2>
+            <h2 class="section-subhead" style="margin-top: 8px;">いま狙い目の店舗・現在人数（女性が多い順）</h2>
             <div class="live-stores-grid">
                 {% for s in selected_area.stores %}
                 {% set tot = s.women + s.men %}
@@ -756,20 +901,56 @@
                 {% endfor %}
             </div>
 
+            {% if selected_area.info.sub_areas %}
+            <div class="subarea-crossbar">
+                <span class="subarea-crossbar-label">都市別ピンポイント深掘りガイド：</span>
+                {% for sub_slug in selected_area.info.sub_areas %}
+                    {% for item in area_summaries if item.slug == sub_slug %}
+                    <a href="/area/{{ item.slug }}" class="subarea-chip-link">
+                        <span>{{ item.info.short_name }}（{{ item.store_count }}店｜女{{ item.total_women }}:男{{ item.total_men }}） ›</span>
+                    </a>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            {% elif selected_area.info.parent_area %}
+            <div class="subarea-crossbar">
+                <span class="subarea-crossbar-label">広域エリア比較：</span>
+                {% for item in area_summaries if item.slug == selected_area.info.parent_area %}
+                <a href="/area/{{ item.slug }}" class="subarea-chip-link">
+                    <span>{{ item.info.name }}（全{{ item.store_count }}店舗）をまとめて見る ›</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <p style="font-size: 0.89rem; color: var(--text-sub); margin: 0 0 14px;">{{ selected_area.info.lead }}</p>
+
+            <!-- Prominent 3-Second Concierge CTA -->
+            <div class="concierge-promo-banner">
+                <div class="concierge-promo-copy">
+                    <span class="concierge-promo-badge">AISEKI CONCIERGE ｜ 0.1秒リアルタイム判定</span>
+                    <p class="concierge-promo-title">{{ selected_area.info.short_name }}で今夜入るべき「第1候補」と「徒歩ハシゴ保険」を即診断</p>
+                    <p class="concierge-promo-desc">1人参戦の入店規定・営業時間・現在の男女バランス・終電後の定着率まで加味して最適ルートを提案します。</p>
+                </div>
+                <a href="/concierge?area={{ c_area_key }}" class="concierge-gold-btn">
+                    このエリアで今夜の3秒穴場＆ハシゴ診断をする ›
+                </a>
+            </div>
+
             <div style="text-align: center; margin: 18px 0 26px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <a href="/concierge?area={{ c_area_key }}" class="area-cta-btn">
-                    {{ selected_area.info.short_name }}の穴場＆ハシゴ診断 ›
+                    {{ selected_area.info.short_name }}の穴場＆ハシゴ診断&nbsp;›
                 </a>
                 {% if selected_area.info.pillar_guide %}
-                <a href="{{ selected_area.info.pillar_guide.href }}" class="area-pill" style="padding: 10px 18px; border-color: var(--border-gold);">
-                    {{ selected_area.info.pillar_guide.title }} ›
+                <a href="{{ selected_area.info.pillar_guide.href }}" class="area-pill area-pill--wrap" style="padding: 10px 16px; border-color: var(--calm-border-strong, rgba(255,255,255,0.16));">
+                    {{ selected_area.info.pillar_guide.title }}&nbsp;›
                 </a>
                 {% endif %}
-                <a href="/price-comparison" class="area-pill" style="padding: 10px 18px;">
-                    エリア別の料金・開催中イベント比較を見る ›
+                <a href="/price-comparison" class="area-pill area-pill--wrap" style="padding: 10px 16px;">
+                    エリア別の料金・開催中イベント比較を見る&nbsp;›
                 </a>
-                <a href="/" class="area-pill" style="padding: 10px 18px;">
-                    トップ画面で曜日・時間帯別の詳細グラフを見る ›
+                <a href="/" class="area-pill area-pill--wrap" style="padding: 10px 16px;">
+                    トップ画面で曜日・時間帯別の詳細グラフを見る&nbsp;›
                 </a>
             </div>
 
@@ -829,26 +1010,14 @@
         </article>
         {% else %}
         <!-- All Areas Directory View -->
-        <div style="margin-bottom: 18px;">
-            <h1 style="font-size: 1.4rem; margin: 0 0 8px; color: var(--text-main);">全国エリア別の現在人数＆徒歩ハシゴ・立ち回りガイド</h1>
-            <p style="font-size: 0.88rem; color: var(--text-sub); margin: 0;">これから向かう街のリアルタイム合計人数と、徒歩ハシゴルート・終電後の2回転目傾向・1人参戦ルールをまとめて確認できます。※少人数時（女性10名未満）は比率が高くても席替え余地が限られるため、女性実数もあわせてご確認ください。</p>
+        <div style="margin-bottom: 14px;">
+            <h1 style="font-size: 1.36rem; line-height: 1.36; letter-spacing: -0.02em; margin: 0 0 6px; color: var(--text-main);">全国エリア別の現在人数＆徒歩ハシゴ・立ち回りガイド</h1>
+            <p style="font-size: 0.84rem; color: var(--text-sub); margin: 0;">これから向かう街のリアルタイム合計人数と、徒歩ハシゴルート・終電後の2回転目傾向・1人参戦ルールをまとめて確認できます。</p>
         </div>
 
-        <!-- National Concierge Banner -->
-        <div class="concierge-promo-banner">
-            <div class="concierge-promo-copy">
-                <span class="concierge-promo-badge">3秒穴場＆ハシゴ診断コンシェルジュ</span>
-                <p class="concierge-promo-title">どの店舗に入るか迷ったら、条件を選ぶだけで「本命＋徒歩ハシゴ候補」を即時判定</p>
-                <p class="concierge-promo-desc">新宿・渋谷・梅田・難波・横浜・大宮・名古屋・福岡・広島・札幌・仙台など全国主要エリアに対応。</p>
-            </div>
-            <a href="/concierge" class="concierge-gold-btn">
-                今夜の3秒穴場＆ハシゴ診断を開く ›
-            </a>
-        </div>
-
-        <!-- Pinpoint High-Demand City Guides -->
+        <!-- Pinpoint High-Demand City Guides (Immediate FV Access on /areas) -->
         <section class="city-pinpoint-section" aria-label="主要都市ピンポイント攻略ガイド">
-            <h2 class="section-subhead" style="margin-top: 6px;">検索人気の主要7都市ピンポイント攻略ガイド</h2>
+            <h2 class="section-subhead" style="margin-top: 4px;">主要7都市｜いま狙い目の街・リアルタイム合計人数</h2>
             <div class="city-pinpoint-grid">
                 {% for item in area_summaries if item.info.parent_area %}
                 <a href="/area/{{ item.slug }}" class="city-pinpoint-card">
@@ -865,6 +1034,18 @@
                 {% endfor %}
             </div>
         </section>
+
+        <!-- National Concierge Banner -->
+        <div class="concierge-promo-banner">
+            <div class="concierge-promo-copy">
+                <span class="concierge-promo-badge">3秒穴場＆ハシゴ診断コンシェルジュ</span>
+                <p class="concierge-promo-title">どの店舗に入るか迷ったら、条件を選ぶだけで「本命＋徒歩ハシゴ候補」を即時判定</p>
+                <p class="concierge-promo-desc">新宿・渋谷・梅田・難波・横浜・大宮・名古屋・福岡・広島・札幌・仙台など全国主要エリアに対応。</p>
+            </div>
+            <a href="/concierge" class="concierge-gold-btn">
+                今夜の3秒穴場＆ハシゴ診断を開く ›
+            </a>
+        </div>
 
         <!-- Primary 9 Regional Sections -->
         <div class="areas-page-list">

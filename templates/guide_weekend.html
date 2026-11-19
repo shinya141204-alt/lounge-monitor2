@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="dark light">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
+<meta name="google-site-verification" content="9kZaSJbaCuvn8QpGErUwI59w7Lf4N8ILhb_nWqDHI2s">
     <title>金・土の相席ラウンジで「男性待ち1時間」を避ける方法｜週末3つの時間帯別ムーブと徒歩3分ハシゴの考え方｜相席ナビ</title>
     <meta name="description" content="金曜・土曜の夜に相席ラウンジで「男性1時間待ち」を避けるための1晩の時間設計。19時50分の先行入店、21時〜22時30分の徒歩3分ハシゴ比較、23時以降の2回転目まで、59店舗・138,688件の人数記録から相席ナビ編集長くわもんがまとめました。">
     <meta name="keywords" content="相席ラウンジ 金曜,相席ラウンジ 土曜,オリエンタルラウンジ 週末 待ち時間,ag アグ 週末,JIS 週末 混雑,相席ナビ">
@@ -69,126 +69,868 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/style.css?v=20261118_1" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="/static/style.css?v=20261118_1"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+<link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
-        body {
-            display: block !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background-color: #0a0a0f !important;
-            color: #ffffff !important;
-            overflow-x: hidden !important;
+        :root {
+            --bg-dark: var(--calm-bg);
+            --card-bg: var(--calm-surface);
+            --card-bg-2: var(--calm-surface-2);
+            --text-main: var(--calm-text);
+            --text-sub: var(--calm-sub);
+            --accent-gold: var(--calm-accent);
+            --accent-text: var(--calm-text);
+            --border-subtle: var(--calm-border);
+            --border-strong: var(--calm-border-strong);
         }
-        .article-container {
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg);
+            --card-bg: var(--calm-light-surface);
+            --card-bg-2: var(--calm-light-surface-2);
+            --text-main: var(--calm-light-text);
+            --text-sub: var(--calm-light-sub);
+            --accent-gold: var(--calm-light-accent);
+            --accent-text: var(--calm-light-text);
+            --border-subtle: var(--calm-light-border);
+            --border-strong: var(--calm-light-border-strong);
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        body {
+            display: block;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            background-image: none;
+            color: var(--text-main);
+            font-family: var(--font-editorial);
+            line-height: 1.82;
+        }
+        a {
+            color: var(--text-main);
+        }
+        .hidden {
+            display: none !important;
+        }
+        .nowrap-tail {
+            white-space: nowrap;
+        }
+        .portal-wrap,
+        .article-container,
+        .article-wrap {
             max-width: 820px;
             width: 100%;
+            min-width: 0;
             margin: 0 auto;
-            padding: 24px 16px 80px 16px;
+            padding: 20px 16px 80px;
             box-sizing: border-box;
+        }
+        .portal-wrap .article-container {
+            max-width: 100%;
+            padding: 0;
+        }
+        main,
+        .article-body,
+        .article-content,
+        .article-box {
+            min-width: 0;
+            max-width: 100%;
+        }
+        .portal-top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 12px;
+        }
+        .portal-brand-link {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            color: inherit;
+        }
+        .portal-brand-title {
+            font-size: 1.32rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+        .portal-brand-sub {
+            font-size: 0.76rem;
+            color: var(--text-sub);
+        }
+        .preview-banner {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 13px;
+            margin-bottom: 18px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            line-height: 1.55;
         }
         .breadcrumb {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 0.78rem;
-            color: #94a3b8;
+            color: var(--text-sub);
             margin-bottom: 16px;
             flex-wrap: wrap;
         }
-        .breadcrumb a { color: #38bdf8; text-decoration: none; }
-        .article-header {
-            margin-bottom: 28px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .breadcrumb a {
+            color: var(--text-sub);
+            text-decoration: none;
         }
-        .article-cat-tag {
-            background: rgba(200, 164, 110, 0.22); border: 1px solid rgba(200, 164, 110, 0.45);
-            color: #fff;
+        .breadcrumb a:hover {
+            color: var(--text-main);
+            text-decoration: underline;
+        }
+        .article-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 28px 24px;
+        }
+        .article-header {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            border-radius: 0;
+            margin-bottom: 26px;
+            padding: 4px 0 20px;
+        }
+        .article-badge-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .article-cat-tag,
+        .cat-badge,
+        .related-article-badge,
+        .aff-badge,
+        .aff-card-badge {
+            display: inline-block;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
             font-size: 0.72rem;
             font-weight: 700;
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 999px;
-            display: inline-block;
+            letter-spacing: 0.03em;
             margin-bottom: 10px;
         }
-        .article-title {
-            font-size: 1.55rem;
+        .article-badge-row .article-cat-tag {
+            margin-bottom: 0;
+        }
+        .article-title,
+        .article-box h1 {
+            font-size: 1.5rem;
             font-weight: 800;
-            line-height: 1.45;
-            color: #ffffff;
-            margin: 0 0 16px 0;
+            line-height: 1.44;
+            color: var(--text-main);
+            margin: 0 0 12px 0;
+            letter-spacing: -0.015em;
         }
-        .article-lead {
-            font-size: 0.94rem;
-            line-height: 1.8;
-            color: #cbd5e1;
-            background: rgba(255, 255, 255, 0.04);
-            border-left: 4px solid #f59e0b;
-            padding: 16px 18px;
-            border-radius: 0 12px 12px 0;
-            margin-bottom: 24px;
+        @media (max-width: 600px) {
+            .article-title,
+            .article-box h1 {
+                font-size: 1.3rem;
+            }
         }
-        .article-body h2 {
-            font-size: 1.28rem;
-            color: #ffffff;
+        .article-meta-sub,
+        .article-meta-row,
+        .article-meta-line,
+        .article-date {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px 14px;
+            flex-wrap: wrap;
+        }
+        .article-meta-sub a,
+        .article-meta-row a,
+        .article-meta-line a,
+        .article-date a,
+        .article-author-link {
+            color: var(--text-sub);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .article-eyecatch,
+        .article-eyecatch-wrap {
+            width: 100%;
+            border-radius: 18px;
+            overflow: hidden;
+            margin: 16px 0 28px 0;
+            border: 1px solid var(--border-subtle);
+            background: var(--card-bg-2);
+        }
+        .article-eyecatch img,
+        .article-eyecatch-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .article-lead,
+        .lead-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 20px;
+            margin: 0 0 24px 0;
+            font-size: 0.93rem;
+            line-height: 1.82;
+            color: var(--text-main);
+        }
+        .article-lead-desc {
+            font-size: 0.95rem;
+            line-height: 1.85;
+            color: var(--text-sub);
+            margin: 0 0 20px 0;
+        }
+        .toc-box,
+        .article-toc {
+            background: var(--calm-surface-2, #232329);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px 22px;
+            margin: 0 0 32px 0;
+        }
+        body.theme-light .toc-box,
+        body.theme-light .article-toc,
+        html.theme-light .toc-box,
+        html.theme-light .article-toc {
+            background: var(--calm-light-surface-2, #f2f2f5);
+            border-color: var(--calm-light-border);
+        }
+        .toc-box h2,
+        .article-toc h2,
+        .article-toc h3,
+        .toc-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 10px 0;
+            padding: 0;
+            border: none;
+            background: transparent;
+        }
+        .toc-box ol,
+        .article-toc ol,
+        .toc-list {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 0.87rem;
+            line-height: 1.78;
+            color: var(--text-sub);
+        }
+        .toc-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .toc-box li,
+        .article-toc li,
+        .toc-list li {
+            margin-bottom: 6px;
+        }
+        .toc-box a,
+        .article-toc a,
+        .toc-list a {
+            color: var(--text-sub);
+            text-decoration: none;
+        }
+        .toc-box a:hover,
+        .article-toc a:hover,
+        .toc-list a:hover {
+            color: var(--text-main);
+            text-decoration: underline;
+        }
+        .article-body h2,
+        .article-content h2,
+        .article-box > h2 {
+            font-size: 1.22rem;
+            font-weight: 800;
+            color: var(--text-main);
             margin: 38px 0 16px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid rgba(245, 158, 11, 0.45);
+            padding: 0 0 10px 0;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-strong);
+            border-radius: 0;
+            line-height: 1.45;
         }
-        .article-body h3 {
-            font-size: 1.08rem;
-            color: #fde68a;
+        .article-body h3,
+        .article-content h3,
+        .article-box h3 {
+            font-size: 1.06rem;
+            font-weight: 700;
+            color: var(--text-main);
             margin: 26px 0 10px 0;
+            padding-left: 0;
+            border-left: none;
+            background: transparent;
+            line-height: 1.48;
         }
-        .article-body p {
+        .article-body h3::before,
+        .article-content h3::before,
+        .article-box h3::before {
+            content: none !important;
+            display: none !important;
+        }
+        .article-body p,
+        .article-body li,
+        .article-content p,
+        .article-content li,
+        .article-box p,
+        .article-box li {
             font-size: 0.94rem;
             line-height: 1.85;
-            color: #cbd5e1;
-            margin-bottom: 18px;
+            color: var(--text-sub);
         }
+        body:not(.theme-light) .article-body p,
+        body:not(.theme-light) .article-body li,
+        body:not(.theme-light) .article-content p,
+        body:not(.theme-light) .article-content li,
+        body:not(.theme-light) .article-box p,
+        body:not(.theme-light) .article-box li {
+            color: #d4d4d8;
+        }
+        body.theme-light .article-body p,
+        body.theme-light .article-body li,
+        body.theme-light .article-content p,
+        body.theme-light .article-content li,
+        body.theme-light .article-box p,
+        body.theme-light .article-box li {
+            color: #27272a;
+        }
+        .article-body p,
+        .article-content p,
+        .article-box p {
+            margin: 0 0 18px 0;
+        }
+        .article-body ul,
+        .article-body ol,
+        .article-content ul,
+        .article-content ol,
+        .article-box ul,
+        .article-box ol {
+            padding-left: 20px;
+            margin: 0 0 20px 0;
+        }
+        .article-body li,
+        .article-content li,
+        .article-box li {
+            margin-bottom: 8px;
+        }
+        .article-body strong,
+        .article-content strong,
+        .article-box strong {
+            color: var(--text-main);
+            font-weight: 700;
+        }
+        .article-body a:not(.cta-btn):not(.live-tool-btn):not(.editorial-bridge-btn):not(.share-chip-btn):not(.store-chip-link):not(.related-article-cta):not(.aff-cta-btn):not(.aff-btn),
+        .article-content a:not(.cta-btn):not(.live-tool-btn):not(.editorial-bridge-btn):not(.share-chip-btn):not(.store-chip-link):not(.related-article-cta):not(.aff-cta-btn):not(.aff-btn),
+        .article-box a:not(.cta-btn):not(.live-tool-btn):not(.editorial-bridge-btn):not(.share-chip-btn):not(.store-chip-link):not(.related-article-cta):not(.aff-cta-btn):not(.aff-btn) {
+            color: var(--text-main);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .dialogue-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 20px;
+            margin: 18px 0;
+            font-size: 0.92rem;
+            line-height: 1.82;
+            color: var(--text-main);
+        }
+        .dialogue-box .dlg-cap,
+        .dialogue-box .aside-note {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+        }
+        .dialogue-box .aside-note {
+            margin-top: 6px;
+            margin-bottom: 0;
+        }
+        .highlight-box,
+        .article-highlight-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-strong);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin: 20px 0;
+            color: var(--text-main);
+        }
+        .highlight-kicker,
+        .highlight-box-title,
+        .article-highlight-box h3,
+        .article-highlight-box h4 {
+            display: block;
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+        }
+        .stat-card-grid,
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+            margin: 22px 0;
+        }
+        .stat-card,
+        .stat-box {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 16px;
+            text-align: center;
+        }
+        body.theme-light .stat-card,
+        body.theme-light .stat-box,
+        html.theme-light .stat-card,
+        html.theme-light .stat-box {
+            background: var(--calm-light-surface, #ffffff);
+            border-color: var(--calm-light-border);
+        }
+        .stat-card-title {
+            font-size: 0.78rem;
+            color: var(--calm-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        body.theme-light .stat-card-title,
+        html.theme-light .stat-card-title {
+            color: #52525b;
+        }
+        .stat-card-value,
+        .stat-num {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+            margin: 4px 0;
+        }
+        body.theme-light .stat-card-value,
+        body.theme-light .stat-num,
+        html.theme-light .stat-card-value,
+        html.theme-light .stat-num {
+            color: #18181b;
+        }
+        .stat-card-sub {
+            font-size: 0.75rem;
+            color: var(--calm-sub);
+            margin-top: 4px;
+        }
+        body.theme-light .stat-card-sub,
+        html.theme-light .stat-card-sub {
+            color: #52525b;
+        }
+        .tone-women,
+        .stat-num.pink,
+        .dialogue-speaker.woman {
+            color: var(--calm-women);
+            font-weight: 700;
+        }
+        body.theme-light .tone-women,
+        body.theme-light .stat-num.pink,
+        body.theme-light .dialogue-speaker.woman,
+        html.theme-light .tone-women,
+        html.theme-light .stat-num.pink,
+        html.theme-light .dialogue-speaker.woman {
+            color: #9f1239 !important;
+        }
+        .tone-men,
+        .dialogue-speaker.man {
+            color: var(--calm-men);
+            font-weight: 700;
+        }
+        body.theme-light .tone-men,
+        body.theme-light .dialogue-speaker.man,
+        html.theme-light .tone-men,
+        html.theme-light .dialogue-speaker.man {
+            color: #1e40af !important;
+        }
+        .tone-ok {
+            color: #34d399;
+            font-weight: 700;
+        }
+        body.theme-light .tone-ok,
+        html.theme-light .tone-ok {
+            color: #065f46 !important;
+        }
+        .tone-warn {
+            color: #fca5a5;
+            font-weight: 700;
+        }
+        body.theme-light .tone-warn,
+        html.theme-light .tone-warn {
+            color: #9f1239 !important;
+        }
+        .table-scroll-frame {
+            position: relative;
+            max-width: 100%;
+            min-width: 0;
+            margin: 18px 0 24px 0;
+        }
+        .data-table-wrap,
+        .club-table-wrap,
+        .table-wrap,
+        .table-scroll-wrapper {
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            margin: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+        }
+        .data-table,
+        .club-table,
+        .editorial-table,
+        .area-table,
+        .spec-table,
+        .article-body table,
+        .article-content table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 540px;
+            font-variant-numeric: tabular-nums;
+            background: transparent;
+            color: var(--text-main);
+        }
+        .data-table th,
+        .data-table td,
+        .club-table th,
+        .club-table td,
+        .editorial-table th,
+        .editorial-table td,
+        .area-table th,
+        .area-table td,
+        .spec-table th,
+        .spec-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: left;
+            vertical-align: top;
+            font-variant-numeric: tabular-nums;
+        }
+        .data-table th,
+        .club-table th,
+        .editorial-table th,
+        .area-table th,
+        .spec-table th {
+            background: transparent;
+            color: var(--text-sub);
+            font-size: 0.76rem;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-strong);
+            white-space: nowrap;
+        }
+        .data-table-caption {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+        }
+        .faq-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 18px;
+            margin: 14px 0;
+        }
+        .faq-q {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+        }
+        .faq-a {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text-sub);
+            margin: 0;
+        }
+        .editorial-bridge-box {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            border-radius: 13px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        body.theme-light .editorial-bridge-box,
+        html.theme-light .editorial-bridge-box {
+            background: var(--calm-light-surface, #ffffff);
+            border-color: var(--calm-light-border-strong);
+        }
+        .editorial-bridge-kicker {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-sub);
+            letter-spacing: 0.06em;
+            display: block;
+            margin-bottom: 6px;
+        }
+        body.theme-light .editorial-bridge-kicker,
+        html.theme-light .editorial-bridge-kicker {
+            color: #52525b;
+        }
+        .editorial-bridge-title {
+            font-size: 1.04rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+            line-height: 1.45;
+        }
+        body.theme-light .editorial-bridge-title,
+        html.theme-light .editorial-bridge-title {
+            color: #18181b;
+        }
+        .editorial-bridge-desc {
+            font-size: 0.86rem;
+            color: var(--text-sub);
+            line-height: 1.68;
+            margin: 0 0 14px 0;
+        }
+        body.theme-light .editorial-bridge-desc,
+        html.theme-light .editorial-bridge-desc {
+            color: #52525b;
+        }
+        .editorial-bridge-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        @media (max-width: 640px) {
+            .editorial-bridge-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+        .editorial-bridge-btn,
+        .editorial-bridge-btn--men,
+        .editorial-bridge-btn--women {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 44px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main) !important;
+            text-decoration: none !important;
+            font-size: 0.83rem;
+            font-weight: 700;
+            line-height: 1.38;
+            transition: background-color 0.16s ease, border-color 0.16s ease;
+        }
+        .editorial-bridge-btn > span:last-child {
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .editorial-bridge-btn:hover,
+        .editorial-bridge-btn--men:hover,
+        .editorial-bridge-btn--women:hover {
+            background: var(--bg-dark);
+            border-color: var(--text-sub);
+        }
+        body.theme-light .editorial-bridge-btn,
+        body.theme-light .editorial-bridge-btn--men,
+        body.theme-light .editorial-bridge-btn--women,
+        html.theme-light .editorial-bridge-btn,
+        html.theme-light .editorial-bridge-btn--men,
+        html.theme-light .editorial-bridge-btn--women {
+            background: var(--calm-light-surface-2, #f2f2f5);
+            border-color: var(--calm-light-border-strong);
+            color: #18181b !important;
+        }
+        body.theme-light .editorial-bridge-btn:hover,
+        body.theme-light .editorial-bridge-btn--men:hover,
+        body.theme-light .editorial-bridge-btn--women:hover {
+            background: #e4e4e7;
+        }
+        .editorial-ref-note {
+            font-size: 0.86rem;
+            line-height: 1.7;
+            color: var(--text-sub);
+        }
+        .cta-box,
+        .live-tool-cta-box,
+        .aff-card,
+        .article-affiliate-card {
+            margin: 34px 0 24px 0;
+            padding: 22px 20px;
+            border-radius: 18px;
+            background: var(--card-bg);
+            background-image: none;
+            border: 1px solid var(--border-strong);
+            text-align: center;
+            box-shadow: none;
+        }
+        .aff-card,
+        .article-affiliate-card {
+            text-align: left;
+            margin: 22px 0;
+        }
+        .cta-box-title,
+        .cta-title,
+        .live-tool-cta-box h3,
+        .aff-card h3,
+        .aff-card h4,
+        .aff-name {
+            font-size: 1.06rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+        }
+        .cta-box-desc,
+        .cta-sub,
+        .live-tool-cta-box p,
+        .aff-desc {
+            font-size: 0.86rem;
+            color: var(--text-sub);
+            margin: 0 0 14px 0;
+            line-height: 1.68;
+        }
+        .cta-btn,
+        .live-tool-btn,
+        .aff-cta-btn,
+        .aff-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 42px;
+            max-width: 100%;
+            margin-top: 10px;
+            padding: 10px 24px;
+            border-radius: 999px;
+            background: var(--cm-cta-bg);
+            background-image: none;
+            border: 1px solid var(--cm-cta-bg);
+            color: var(--cm-cta-text) !important;
+            font-weight: 800;
+            text-decoration: none !important;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            text-align: center;
+            word-break: auto-phrase;
+            box-shadow: none;
+        }
+        body.theme-light .cta-btn,
+        body.theme-light .live-tool-btn,
+        body.theme-light .aff-cta-btn,
+        body.theme-light .aff-btn {
+            background: var(--calm-light-accent);
+            border-color: var(--calm-light-accent);
+            color: #ffffff !important;
+        }
+        .cta-btn.cta-btn--secondary,
+        .share-chip-btn,
+        .related-article-cta,
+        .store-chip-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 38px;
+            margin-top: 8px;
+            padding: 7px 15px;
+            border-radius: 999px;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main) !important;
+            font-size: 0.81rem;
+            font-weight: 700;
+            text-decoration: none !important;
+        }
+        .cta-links,
+        .share-btn-row,
+        .store-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .store-chip-row {
+            justify-content: flex-start;
+        }
+        .method-note {
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 14px 16px;
+            margin: 24px 0;
+        }
+        .method-note h3 {
+            margin: 0 0 6px 0;
+            font-size: 0.92rem;
+            color: var(--text-main);
+        }
+        .method-note p {
+            font-size: 0.82rem !important;
+            color: var(--text-sub) !important;
+            margin: 0 !important;
+            line-height: 1.68;
+        }
+        .related-articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: 14px;
+            margin-top: 28px;
+        }
+        .related-article-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px;
+        }
+        .related-article-card h4 {
+            margin: 0 0 6px 0;
+            font-size: 0.96rem;
+            color: var(--text-main);
+            line-height: 1.45;
+        }
+        .related-article-card p {
+            margin: 0 0 12px 0;
+            font-size: 0.82rem;
+            color: var(--text-sub);
+            line-height: 1.55;
+        }
+
         .slot-box {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(229, 200, 120, 0.35);
-            border-radius: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-strong);
+            border-radius: 18px;
             padding: 18px 20px;
             margin: 18px 0;
         }
-        .dialogue-box {
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 3px solid rgba(200, 164, 110, 0.55);
-            border-radius: 0 10px 10px 0;
-            padding: 14px 18px;
-            margin: 18px 0;
-            font-size: 0.92rem;
-            line-height: 1.8;
-            color: #e2e8f0;
-        }
-        body.theme-light .dialogue-box {
-            background: rgba(140, 107, 63, 0.06);
-            border-left-color: #8c6b3f;
-            color: #1f1e1b;
-        }
-        .data-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0 20px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; line-height: 1.5; font-variant-numeric: tabular-nums; color: #e4e4e7; }
-        .data-table th, .data-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); text-align: left; vertical-align: top; }
-        .data-table th { font-weight: 700; color: #f4f4f5; font-size: 0.78rem; }
-        .data-table td:first-child { white-space: nowrap; }
-        body.theme-light .data-table { color: #27272a; }
-        body.theme-light .data-table th { color: #18181b; }
-        body.theme-light .data-table th, body.theme-light .data-table td { border-bottom-color: #e4e4e7; }
-        .method-note { border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 14px 16px; margin: 24px 0; }
-        .method-note h3 { margin: 0 0 6px; font-size: 0.95rem; }
-        .method-note p { font-size: 0.82rem !important; margin: 0 !important; }
-        body.theme-light .method-note { border-color: #d4d4d8; }
-        @media (max-width: 480px) {
-            .data-table { font-size: 0.78rem; }
-            .data-table th, .data-table td { padding: 7px 5px; }
-        }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -199,6 +941,13 @@
 <body>
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>
     <div class="article-container">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
+            </a>
+        </div>
+
         {% set nav_active = 'columns' %}
         {% include '_portal_nav.html' %}
 
@@ -213,7 +962,7 @@
             <span class="article-cat-tag">週末ピークの混雑データ</span>
             <h1 class="article-title">金・土の相席ラウンジで「男性待ち1時間」を避ける方法｜週末3つの時間帯別ムーブと徒歩3分ハシゴの考え方</h1>
             <p style="font-size:0.8rem;color:var(--text-sub);margin:-6px 0 14px 0;">公開日：2026年10月23日・更新：2026年11月9日 ｜ 執筆・検証：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a></p>
-            <div style="margin: 16px 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12);">
+            <div style="margin: 16px 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--border-subtle);">
                 <picture>
                     <source srcset="/static/eyecatch-weekend.webp?v=3" type="image/webp">
                     <img src="/static/eyecatch-weekend.jpg?v=3" alt="金・土の相席ラウンジで男性待ち1時間を避ける方法" width="1280" height="720" fetchpriority="high" decoding="async" style="width:100%; height:auto; display:block;">
@@ -222,7 +971,7 @@
             <p class="article-lead">
                 19時50分、受付カウンターの前には誰もいなかった。2時間半後の22時15分、同じビルのエレベーターが開くと、待合ソファから壁際まで男性ペアの順番待ちで埋まっている。金曜・土曜の相席ラウンジは、たった2時間半で別の店になります。<br>
                 週末は1週間でいちばん女性が集まる曜日で、それ以上の勢いで男性が押し寄せる曜日でもある。相席ナビが記録している59店舗の人数を追うと、<strong>同じ街の徒歩圏なのにA店は男性が多く、B店は女性が多い</strong>という逆転が、エリアによっては週末の夜の4分の1ほどの時間で起きています（後半の「記録データで確かめる金曜・土曜の夜」で数字を出します）。<br>
-                この記事は、金・土の1晩を「19時50分の先行入店」「21時〜22時30分の徒歩3分ハシゴ」「23時以降の2回転目」の3つに切って、どの時間に何をするかだけに絞って書きました。22時台に「女性比60%」を見て歩き出したのに、着いたら裏返っていたという移動タイムラグの話は、<a href="/guide/crowd-rush-paradox" style="color:#38bdf8;">金曜22時の逆転現象を19,791件で検証したコラム</a>に分けています。
+                この記事は、金・土の1晩を「19時50分の先行入店」「21時〜22時30分の徒歩3分ハシゴ」「23時以降の2回転目」の3つに切って、どの時間に何をするかだけに絞って書きました。22時台に「女性比60%」を見て歩き出したのに、着いたら裏返っていたという移動タイムラグの話は、<a href="/guide/crowd-rush-paradox" style="color:var(--text-main);">金曜22時の逆転現象を19,791件で検証したコラム</a>に分けています。
             </p>
         </header>
 
@@ -258,14 +1007,14 @@
                 <h3 style="margin-top:0;">② 21:00〜22:30：徒歩3分圏内の複数ブランドを見比べてから上がる</h3>
                 <p style="margin-bottom:0;">
                     1軒目の居酒屋を終えた男女が一斉に動き出すコアタイムです。この時間に「いつもオリエンタルラウンジだから」「いつもJIS（ジス）だから」と1店舗に決め打ちするのは避けたい。<strong>居酒屋の会計を済ませた時点で相席ナビを開き、徒歩3分圏内の店舗の男女比を見比べる</strong>。それだけで、すんなり入れる店がかなり変わります。<br>
-                    ただしこの時間帯には落とし穴がひとつあって、「いま女性比60%」を見て歩き出しても、着くころには同じ数字を見た別の男性グループと鉢合わせることがある。この移動ラグの仕組みと、崩れにくい店の見分け方は<a href="/guide/crowd-rush-paradox" style="color:#f472b6;">金曜22時の逆転現象のコラム</a>に譲ります。ここでは「いつ動くか」だけを決めてください。
+                    ただしこの時間帯には落とし穴がひとつあって、「いま女性比60%」を見て歩き出しても、着くころには同じ数字を見た別の男性グループと鉢合わせることがある。この移動ラグの仕組みと、崩れにくい店の見分け方は<a href="/guide/crowd-rush-paradox" style="color:var(--text-main);">金曜22時の逆転現象のコラム</a>に譲ります。ここでは「いつ動くか」だけを決めてください。
                 </p>
             </div>
 
             <div class="slot-box">
                 <h3 style="margin-top:0;">③ 23:00〜25:00：終電前後の入れ替わりを待って「2回転目」に入る</h3>
                 <p style="margin-bottom:0;">
-                    終電が近づく23時20分〜23時55分は帰宅ラッシュで一時的に女性が抜けます。ところが0時30分を回ると、<strong>「今夜はもう少し飲みたい」という第2波の女性</strong>が入ってくる店舗がある。特に<a href="/ag" style="color:#f472b6;">ag（アグ）</a>の深夜の切り替わりや、<a href="/guide/club-area-midnight" style="color:#f472b6;">ナイトクラブがある街の店舗</a>、<a href="/guide/last-train-cliff" style="color:#f472b6;">深夜維持率が高い大型店</a>を選んでおくと、深夜帯でも相席がつきやすくなります。
+                    終電が近づく23時20分〜23時55分は帰宅ラッシュで一時的に女性が抜けます。ところが0時30分を回ると、<strong>「今夜はもう少し飲みたい」という第2波の女性</strong>が入ってくる店舗がある。特に<a href="/ag" style="color:var(--text-main);">ag（アグ）</a>の深夜の切り替わりや、<a href="/guide/club-area-midnight" style="color:var(--text-main);">ナイトクラブがある街の店舗</a>、<a href="/guide/last-train-cliff" style="color:var(--text-main);">深夜維持率が高い大型店</a>を選んでおくと、深夜帯でも相席がつきやすくなります。
                 </p>
             </div>
 
@@ -280,7 +1029,7 @@
             </div>
 
             <p>
-                男性にとっての「待たされる22時半」は、女性にとっての「待たずに主役で座れる22時半」です。同じ数字が立場で真逆の意味を持つ。だから週末の夜は、「混んでいる・空いている」ではなく「いま自分の性別がどちら側にいるか」で読むほうが正確です。女性側の時間帯別の見方は<a href="/for-women" style="color:#f472b6;">女性向けの案内ページ</a>に分けて書いています。
+                男性にとっての「待たされる22時半」は、女性にとっての「待たずに主役で座れる22時半」です。同じ数字が立場で真逆の意味を持つ。だから週末の夜は、「混んでいる・空いている」ではなく「いま自分の性別がどちら側にいるか」で読むほうが正確です。女性側の時間帯別の見方は<a href="/for-women" style="color:var(--text-main);">女性向けの案内ページ</a>に分けて書いています。
             </p>
 
             <h2>2. 徒歩3分動くだけで待ち時間が変わる主要エリア</h2>
@@ -297,14 +1046,14 @@
                 以下の5大エリアでは、徒歩2〜5分圏内に複数の相席ラウンジが集まっています。1店舗目の受付で「男性待ち」と言われたら、その場で待たずに近隣店舗の数字を見て切り替える。それだけです。
             </p>
             <ul style="color:var(--text-sub); font-size:0.93rem; line-height:1.9;">
-                <li><strong><a href="/area/shinjuku" style="color:#38bdf8;">新宿エリア（4店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:#f472b6;">オリエンタルラウンジ新宿</a>・<a href="/store/jis-shinjuku" style="color:#f472b6;">JIS新宿</a>が詰まっていても、<a href="/store/jis-nishishinjuku" style="color:#f472b6;">JIS西新宿</a>が女性優位になっている夜がよくあります。立ち飲み感覚で回遊できる<a href="/store/asobibar-shinjuku" style="color:#f472b6;">ASOBIBAR（アソビバー）新宿</a>も、受付で並びたくない夜の逃げ道になります。</li>
-                <li><strong><a href="/area/shibuya" style="color:#38bdf8;">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:#f472b6;">オリエンタルラウンジ渋谷本店</a>・<a href="/store/ag-shibuya" style="color:#f472b6;">ag渋谷</a>に、1駅先の<a href="/store/oriental-lounge-ebisu" style="color:#f472b6;">オリエンタルラウンジ恵比寿</a>まで含めて比べられます。若いノリならag、落ち着いた会社員層なら渋谷本店か恵比寿と、その場で切り替えがききます。</li>
-                <li><strong><a href="/area/osaka" style="color:#38bdf8;">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:#f472b6;">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:#f472b6;">オリエンタルラウンジ大阪駅前</a>・<a href="/store/ag-umeda" style="color:#f472b6;">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:#f472b6;">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:#f472b6;">ヤタコイ茶屋町</a>が密集していて、どこかの店舗で女性優位のタイミングが生まれやすい街です。</li>
-                <li><strong><a href="/area/nagoya" style="color:#38bdf8;">名古屋・栄/錦エリア（3店舗）</a></strong>：<a href="/store/oriental-lounge-nagoya-sakae" style="color:#f472b6;">オリエンタルラウンジ名古屋栄</a>・<a href="/store/oriental-lounge-nagoya-nishiki" style="color:#f472b6;">オリエンタルラウンジ名古屋錦</a>・<a href="/store/ag-nagoya" style="color:#f472b6;">ag名古屋</a>が徒歩数分に集まっています。</li>
-                <li><strong><a href="/area/fukuoka" style="color:#38bdf8;">福岡・天神エリア（2店舗）</a></strong>：<a href="/store/oriental-lounge-fukuoka" style="color:#f472b6;">オリエンタルラウンジ福岡</a>・<a href="/store/jis-fukuoka" style="color:#f472b6;">JIS福岡</a>の大型2店舗が、天神西通りと大名の周辺に揃っています。</li>
+                <li><strong><a href="/area/shinjuku" style="color:var(--text-main);">新宿エリア（4店舗）</a></strong>：東口の<a href="/store/oriental-lounge-shinjuku" style="color:var(--text-main);">オリエンタルラウンジ新宿</a>・<a href="/store/jis-shinjuku" style="color:var(--text-main);">JIS新宿</a>が詰まっていても、<a href="/store/jis-nishishinjuku" style="color:var(--text-main);">JIS西新宿</a>が女性優位になっている夜がよくあります。立ち飲み感覚で回遊できる<a href="/store/asobibar-shinjuku" style="color:var(--text-main);">ASOBIBAR（アソビバー）新宿</a>も、受付で並びたくない夜の逃げ道になります。</li>
+                <li><strong><a href="/area/shibuya" style="color:var(--text-main);">渋谷・恵比寿エリア（3店舗）</a></strong>：道玄坂の<a href="/store/oriental-lounge-shibuya-honten" style="color:var(--text-main);">オリエンタルラウンジ渋谷本店</a>・<a href="/store/ag-shibuya" style="color:var(--text-main);">ag渋谷</a>に、1駅先の<a href="/store/oriental-lounge-ebisu" style="color:var(--text-main);">オリエンタルラウンジ恵比寿</a>まで含めて比べられます。若いノリならag、落ち着いた会社員層なら渋谷本店か恵比寿と、その場で切り替えがききます。</li>
+                <li><strong><a href="/area/osaka" style="color:var(--text-main);">大阪・梅田エリア（5店舗）</a></strong>：<a href="/store/jis-umeda" style="color:var(--text-main);">JIS梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae" style="color:var(--text-main);">オリエンタルラウンジ大阪駅前</a>・<a href="/store/ag-umeda" style="color:var(--text-main);">ag梅田</a>・<a href="/store/jis-chayamachi" style="color:var(--text-main);">JIS茶屋町</a>・<a href="/store/yatakoi-umeda" style="color:var(--text-main);">ヤタコイ茶屋町</a>が密集していて、どこかの店舗で女性優位のタイミングが生まれやすい街です。</li>
+                <li><strong><a href="/area/nagoya" style="color:var(--text-main);">名古屋・栄/錦エリア（3店舗）</a></strong>：<a href="/store/oriental-lounge-nagoya-sakae" style="color:var(--text-main);">オリエンタルラウンジ名古屋栄</a>・<a href="/store/oriental-lounge-nagoya-nishiki" style="color:var(--text-main);">オリエンタルラウンジ名古屋錦</a>・<a href="/store/ag-nagoya" style="color:var(--text-main);">ag名古屋</a>が徒歩数分に集まっています。</li>
+                <li><strong><a href="/area/fukuoka" style="color:var(--text-main);">福岡・天神エリア（2店舗）</a></strong>：<a href="/store/oriental-lounge-fukuoka" style="color:var(--text-main);">オリエンタルラウンジ福岡</a>・<a href="/store/jis-fukuoka" style="color:var(--text-main);">JIS福岡</a>の大型2店舗が、天神西通りと大名の周辺に揃っています。</li>
             </ul>
             <p>
-                どの街のどの曜日に女性が増えるかは店ごとに波があります。一次統計ページの<a href="/stats#heatmap-widget" style="color:#38bdf8;">曜日×時間帯ヒートマップ</a>でエリアを選ぶと、18時から翌5時までの濃淡で金・土の山の高さと平日との差が見えるので、出かける前に一度眺めておくと時間帯の勘が合いやすくなります。
+                どの街のどの曜日に女性が増えるかは店ごとに波があります。一次統計ページの<a href="/stats#heatmap-widget" style="color:var(--text-main);">曜日×時間帯ヒートマップ</a>でエリアを選ぶと、18時から翌5時までの濃淡で金・土の山の高さと平日との差が見えるので、出かける前に一度眺めておくと時間帯の勘が合いやすくなります。
             </p>
 
             <h2>3. 記録データで確かめる金曜・土曜の夜</h2>
@@ -316,7 +1065,9 @@
             <p>
                 まず、店舗ごとに「その夜いちばん女性が多かった時点の人数（最大女性数）」を求め、曜日別に平均しました。0時〜6時台の記録は前日の夜として数えています。
             </p>
-            <div class="data-table-wrap">
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="data-table-wrap" tabindex="0" role="region" aria-label="データ比較表">
                 <table class="data-table">
                     <thead>
                         <tr><th scope="col">曜日（夜）</th><th scope="col">最大女性数の平均</th><th scope="col">その時の男性数の平均</th><th scope="col">ピークが来やすい時間</th></tr>
@@ -332,6 +1083,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             <p>
                 金曜の最大女性数は平均61.0名、土曜は76.2名で、火〜木曜（28〜30名前後）の2倍以上です。一方で男性も金曜48.0名・土曜62.0名と大きく増えていて、<strong>女性が増える以上のペースで男性も集まる</strong>のが週末の特徴です。火〜木曜は最大時でも女性が男性の1.6〜1.7倍いるのに対し、土曜は約1.2倍まで縮まります。月曜の数字が火〜木曜より高めなのは、期間中に祝日の前夜や連休最終日が含まれている影響が考えられます。
             </p>
@@ -340,7 +1092,9 @@
             <p>
                 次に、1時間ごとの平均人数と「男性が女性より多かった記録の割合（男性先行率）」を、金・土の夜とそれ以外の夜で比べました。女性比率と男性先行率は、男女合計6名以上の記録だけで計算しています。
             </p>
-            <div class="data-table-wrap">
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="data-table-wrap" tabindex="0" role="region" aria-label="データ比較表">
                 <table class="data-table">
                     <thead>
                         <tr><th scope="col">時間帯</th><th scope="col">金・土 女性／男性</th><th scope="col">金・土 男性先行率</th><th scope="col">その他の曜日 女性／男性</th><th scope="col">その他 男性先行率</th></tr>
@@ -356,6 +1110,7 @@
                         <tr><td>2時台</td><td>44.2／44.3名</td><td>47%</td><td>18.0／16.0名</td><td>29%</td></tr>
                     </tbody>
                 </table>
+            </div>
             </div>
             <p>
                 金・土の20時台は、女性30.8名に対して男性12.6名。男性が女性より多い記録はわずか4%でした。ところが男性は20時台から23時台にかけて約4.4倍（12.6名→55.1名）に増えるのに対し、女性は約1.8倍（30.8名→56.5名）にとどまります。その結果、<strong>男性先行率は22時台の21%から23時台に46%、0時台には57%</strong>まで上がります。平日も同じ形ですが、0時台で36%と週末ほど偏りません。
@@ -380,7 +1135,9 @@
             <p>
                 「同じ街でもA店とB店で男女比が逆転している」という場面がどのくらいあるのかも調べました。金・土の21〜22時台を10分単位に区切り、同じエリアの店舗すべてに男女合計10名以上の記録がある時間だけを取り出して、店舗間の女性比率の差を比べています（各エリア118区間）。
             </p>
-            <div class="data-table-wrap">
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="data-table-wrap" tabindex="0" role="region" aria-label="データ比較表">
                 <table class="data-table">
                     <thead>
                         <tr><th scope="col">エリア（店舗数）</th><th scope="col">女性比率の差（中央値）</th><th scope="col">差が15ポイント以上</th><th scope="col">男女の多い側が店で逆</th></tr>
@@ -393,6 +1150,7 @@
                         <tr><td>福岡 天神（2）</td><td>6ポイント</td><td>8%</td><td>8%</td></tr>
                     </tbody>
                 </table>
+            </div>
             </div>
             <p>
                 新宿と名古屋では、10分区間の約4分の1で「ある店は男性のほうが多いのに、近くの別の店は女性のほうが多い」という逆転が起きていました。梅田・茶屋町は逆転こそ少ないものの、女性比率が15ポイント以上離れている区間が29%と最も多く、店選びで差が出やすいエリアです。反対に渋谷や福岡 天神は、店舗間の差が小さい時間がほとんどでした。<strong>ハシゴで状況が良くなる見込みが高いのは新宿・名古屋・梅田</strong>。渋谷・天神では「移動するより早めに入る」ほうが確実です。
@@ -408,7 +1166,7 @@
                 <li><strong>20時台までに入れる日</strong>：男性先行率は4%前後。待ち時間を気にせず入れる見込みがいちばん高く、1軒目から腰を据えて話すのに向いています。</li>
                 <li><strong>21〜22時台に動く日</strong>：女性比率は21時台で62%、22時台で55%と下がり始め、22時台から男性の伸びが速くなります。新宿・名古屋・梅田のように店舗間の差が出やすい街では、店に向かう前に近くの2〜3店を見比べてから決めてください。</li>
                 <li><strong>23時以降に入る日</strong>：男性のほうが多い記録が半分前後を占めます。店の前に着いてから人数を確認するのではなく、移動中に確認しておき、男性が多い店は避けて女性比率が保たれている店を選ぶ。</li>
-                <li><strong>日曜〜木曜</strong>：最大女性数は月〜木曜で金曜の半分前後（日曜は40.5名）ですが、21時台までは女性が男性の1.7倍以上いて、0時台でも男性のほうが多い記録は36%と週末（57%）より少なめです。人の多さより落ち着いて話せることを重視するなら、平日の夜も十分に選択肢になります（<a href="/guide/weekday-strategy" style="color:#38bdf8;">水曜・木曜20時台の静けさを書いたコラム</a>も参考にしてください）。</li>
+                <li><strong>日曜〜木曜</strong>：最大女性数は月〜木曜で金曜の半分前後（日曜は40.5名）ですが、21時台までは女性が男性の1.7倍以上いて、0時台でも男性のほうが多い記録は36%と週末（57%）より少なめです。人の多さより落ち着いて話せることを重視するなら、平日の夜も十分に選択肢になります（<a href="/guide/weekday-strategy" style="color:var(--text-main);">水曜・木曜20時台の静けさを書いたコラム</a>も参考にしてください）。</li>
             </ul>
 
             <h2>4. 週末の夜は、向かう前に人数を見るかどうかで決まる</h2>

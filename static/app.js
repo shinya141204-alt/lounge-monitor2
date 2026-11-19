@@ -3872,7 +3872,7 @@
             const tipsBoxEl = document.getElementById('guide-tips-box');
             if (titleEl) {
                 titleEl.textContent = isWomenMode
-                    ? '💄 女性向け｜1対1無料デート＆自分磨き特集'
+                    ? '女性向け｜1対1無料デート＆自分磨き特集'
                     : '身だしなみ・おすすめサービス特集';
             }
             if (leadEl) {
@@ -3883,7 +3883,7 @@
             if (tipsBoxEl) {
                 tipsBoxEl.innerHTML = isWomenMode
                     ? `
-                        <h4>💄 女性ペアが待ちゼロ＆快適に楽しむ3つのコツ</h4>
+                        <h4>女性ペアが待ちゼロ＆快適に楽しむ3つのコツ</h4>
                         <ul>
                             <li><strong>① 男性が先行している大型店を選ぶ：</strong> 女余りの有名店へ行くと受付で30分待たされやすくなります。男性比率が高い店舗なら待ちゼロで広いソファ席へ案内されやすいです。</li>
                             <li><strong>② 顔写真付き身分証の「原本」を忘れずに：</strong> 運転免許証・マイナンバーカード・パスポート等の原本が1人でも欠けるとペアごと入店できません。</li>
@@ -4990,6 +4990,8 @@
             const officialUrl = getOfficialBrandUrl(bInfo.code, storeName);
             const officialLinkEl = document.getElementById('modal-official-link');
             if (officialLinkEl) officialLinkEl.href = officialUrl;
+            const topShareActionsEl = document.getElementById('modal-top-share-actions') || document.querySelector('.modal-top-share-actions');
+            if (topShareActionsEl) topShareActionsEl.classList.add('hidden');
             const topOfficialLinkEl = document.getElementById('modal-top-official-link');
             if (topOfficialLinkEl) topOfficialLinkEl.href = officialUrl;
             const modalStoreDetailEl = document.getElementById('modal-store-detail-link');
@@ -6545,12 +6547,12 @@
 
             wrap.innerHTML = `
                 <div class="daily-log-summary-bar">
-                    <span>📅 <strong>${escapeHtml(dateStr)}</strong> 営業日ログ（全${rows.length}件）</span>
+                    <span><strong>${escapeHtml(dateStr)}</strong> 営業日ログ（全${rows.length}件）</span>
                     <span>最高ピーク: <strong class="daily-col-w">女性${peakW}名</strong> / <strong class="daily-col-m">男性${peakM}名</strong> (${escapeHtml(peakTime)})</span>
                 </div>
                 <details class="daily-log-details" ${ IS_STAFF ? 'open' : '' }>
                     <summary>
-                        🕒 時刻別の詳細数値ログ一覧を表示（${rows.length}回計測）
+                        時刻別の詳細数値ログ一覧を表示（${rows.length}回計測）
                     </summary>
                     <div style="max-height:220px; overflow-y:auto; margin-top:8px;">
                         <table class="daily-log-table">

@@ -6,82 +6,12 @@
     <meta name="color-scheme" content="dark light">
     <meta name="robots" content="noindex, nofollow">
     <title>SNS編集部（X・Threads・IG）4役合議ボード（マスター専用）｜相席ナビ</title>
+    {% include '_staff_tokens.html' %}
     <style>
-        :root {
-            --bg: #111113;
-            --surface: #18181b;
-            --surface-2: #232329;
-            --input-bg: #111113;
-            --code-bg: #0c0c0e;
-            --code-ink: #e4e4e7;
-            --subtle-bg: rgba(255, 255, 255, 0.03);
-            --chip-bg: rgba(255, 255, 255, 0.06);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f4f4f5;
-            --sub: #c4c4cc;
-            --gold: #f4f4f5;
-            --gold-soft: rgba(244, 244, 245, 0.09);
-            --gold-ink: #f4f4f5;
-            --gold-bright: #ffffff;
-            --active-bg: #f4f4f5;
-            --active-ink: #111113;
-            --muted-warm: #d4d4d8;
-            --green: #6ee7b7;
-            --green-soft: rgba(110, 231, 183, 0.14);
-            --green-ink: #d1fae5;
-            --blue: #7dd3fc;
-            --blue-soft: rgba(125, 211, 252, 0.14);
-            --blue-ink: #e0f2fe;
-            --rose: #f48fb1;
-            --rose-soft: rgba(244, 143, 177, 0.14);
-            --rose-ink: #fce4ec;
-            --amber: #fcd34d;
-            --amber-soft: rgba(252, 211, 77, 0.14);
-            --amber-ink: #fef3c7;
-            --red: #fca5a5;
-            --err-ink: #fecaca;
-            --purple: #d8b4fe;
-            --purple-soft: rgba(216, 180, 254, 0.14);
-            --purple-ink: #f3e8ff;
-        }
+        :root { --bg: #111113; --surface: #1a1a1e; --surface-2: #232329; --text: #f4f4f5; --sub: #b4b4be; }
         body.theme-light {
-            --bg: #f6f6f7;
-            --surface: #ffffff;
-            --surface-2: #ededf0;
-            --input-bg: #ffffff;
-            --code-bg: #f4f4f6;
-            --code-ink: #18181b;
-            --subtle-bg: rgba(24, 24, 27, 0.04);
-            --chip-bg: rgba(24, 24, 27, 0.06);
-            --border: rgba(24, 24, 27, 0.10);
-            --border-strong: rgba(24, 24, 27, 0.20);
-            --text: #18181b;
-            --sub: #3f3f46;
-            --gold: #18181b;
-            --gold-soft: rgba(24, 24, 27, 0.06);
-            --gold-ink: #18181b;
-            --gold-bright: #111113;
-            --active-bg: #18181b;
-            --active-ink: #ffffff;
-            --muted-warm: #3f3f46;
-            --green: #064e3b;
-            --green-soft: rgba(6, 95, 70, 0.09);
-            --green-ink: #064e3b;
-            --blue: #075985;
-            --blue-soft: rgba(3, 105, 161, 0.09);
-            --blue-ink: #0c4a6e;
-            --rose: #831843;
-            --rose-soft: rgba(157, 23, 77, 0.09);
-            --rose-ink: #831843;
-            --amber: #78350f;
-            --amber-soft: rgba(146, 64, 14, 0.10);
-            --amber-ink: #78350f;
-            --red: #991b1b;
-            --err-ink: #7f1d1d;
-            --purple: #581c87;
-            --purple-soft: rgba(107, 33, 168, 0.09);
-            --purple-ink: #4c1d95;
+            color-scheme: light;
+            --bg: #f6f6f7; --surface: #ffffff; --surface-2: #f2f2f5; --text: #18181b; --sub: #52525b;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -128,7 +58,7 @@
             padding: 10px 14px;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
         }
         .tab-group {
             display: flex;
@@ -155,7 +85,7 @@
         .header-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 18px;
         }
@@ -177,7 +107,7 @@
         .role-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 13px;
+            border-radius: var(--r-card, 18px);
             padding: 14px 16px;
             min-width: 0;
         }
@@ -223,7 +153,7 @@
         .cand-card {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 16px;
             display: flex;
             flex-direction: column;
@@ -248,6 +178,7 @@
             border-radius: 999px;
             background: var(--surface-2);
             border: 1px solid var(--border-strong);
+            font-variant-numeric: tabular-nums;
         }
         .cand-card.winner .score-pill {
             background: var(--green-soft);
@@ -265,18 +196,19 @@
             gap: 6px;
             background: var(--surface-2);
             padding: 9px 11px;
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             font-size: 0.75rem;
             color: var(--sub);
+            font-variant-numeric: tabular-nums;
         }
         .score-bars span strong { color: var(--text); }
         .writer-memo {
             font-size: 0.78rem;
             color: var(--muted-warm);
             background: var(--gold-soft);
-            border-left: 3px solid var(--gold);
-            padding: 6px 10px;
-            border-radius: 4px;
+            border: 1px solid var(--gold-border);
+            padding: 7px 11px;
+            border-radius: var(--r-inner, 13px);
             overflow-wrap: anywhere;
             word-break: break-word;
         }
@@ -284,21 +216,22 @@
             font-size: 0.77rem;
             color: var(--purple-ink);
             background: var(--purple-soft);
-            border-left: 3px solid var(--purple);
-            padding: 7px 10px;
-            border-radius: 4px;
+            border: 1px solid var(--purple-border);
+            padding: 8px 11px;
+            border-radius: var(--r-inner, 13px);
             overflow-wrap: anywhere;
             word-break: break-word;
         }
         .desk-box {
             font-size: 0.76rem;
-            color: #d6d2c9;
+            color: var(--text);
             background: var(--subtle-bg);
-            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
             padding: 8px 10px;
         }
         body.theme-light .desk-box {
-            color: #3a3630;
+            color: var(--text);
         }
         .desk-box div { margin-bottom: 3px; }
         .tweet-preview {
@@ -308,7 +241,7 @@
             font-size: 0.82rem;
             background: var(--input-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 11px 12px;
             color: var(--text);
             font-family: inherit;
@@ -320,14 +253,14 @@
             font-size: 0.75rem;
             background: var(--subtle-bg);
             border: 1px dashed var(--border-strong);
-            border-radius: 8px;
+            border-radius: var(--r-inner, 13px);
             padding: 8px 10px;
             color: var(--sub);
         }
         .copy-btn {
             cursor: pointer;
             padding: 7px 12px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--gold);
             background: var(--gold-soft);
             color: var(--gold-ink);
@@ -343,7 +276,7 @@
         .history-item {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             padding: 12px 15px;
             font-size: 0.8rem;
         }
@@ -357,15 +290,15 @@
         }
         .history-head strong { color: var(--text); }
         .ai-panel {
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.96) 65%);
-            border: 1px solid rgba(168, 85, 247, 0.38);
-            border-radius: 16px;
+            background: var(--surface);
+            border: 1px solid var(--purple-border, rgba(216, 180, 254, 0.38));
+            border-radius: var(--r-card, 18px);
             padding: 15px 18px;
             margin-bottom: 18px;
         }
         body.theme-light .ai-panel {
-            background: linear-gradient(135deg, rgba(107, 63, 160, 0.08) 0%, #faf9f6 70%);
-            border-color: rgba(107, 63, 160, 0.28);
+            background: var(--surface);
+            border-color: var(--purple-border, rgba(107, 33, 168, 0.32));
         }
         .ai-panel-top {
             display: flex;
@@ -414,7 +347,7 @@
             background: var(--chip-bg);
             border: 1px solid var(--border-strong);
             padding: 4px 10px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             max-width: 100%;
             overflow-wrap: anywhere;
             word-break: break-word;
@@ -430,7 +363,7 @@
             font-size: 0.78rem;
             font-weight: 700;
             padding: 7px 13px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--purple);
             background: var(--purple-soft);
             color: var(--purple-ink);
@@ -464,7 +397,7 @@
             min-width: 240px;
             max-width: 100%;
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--input-bg);
             color: var(--text);
@@ -474,7 +407,7 @@
         .reel-studio-card {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 22px;
         }
@@ -505,7 +438,7 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            background: rgba(15, 16, 20, 0.82);
+            background: var(--surface-2);
             border: 1px solid var(--border-strong);
             border-radius: 999px;
             padding: 7px 14px;
@@ -585,15 +518,15 @@
             max-width: 262px;
             aspect-ratio: 9 / 16;
             background: #07080d;
-            border: 2px solid rgba(200, 164, 110, 0.45);
-            border-radius: 20px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-card, 18px);
             overflow: hidden;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
             position: relative;
         }
         body.theme-light .reel-phone-frame {
-            border-color: rgba(125, 91, 36, 0.45);
-            box-shadow: 0 10px 26px rgba(28, 27, 24, 0.18);
+            border-color: var(--border-strong);
+            box-shadow: 0 10px 26px rgba(24, 24, 27, 0.14);
         }
         .reel-phone-frame video {
             width: 100%;
@@ -613,7 +546,7 @@
             font-size: 0.8rem;
             font-weight: 800;
             padding: 9px 12px;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             background: var(--surface-2);
             border: 1px solid var(--gold);
             color: var(--gold-ink);
@@ -648,15 +581,15 @@
             font-size: 0.82rem;
             font-weight: 800;
             padding: 9px 15px;
-            border-radius: 10px;
-            border: 1px solid rgba(244, 114, 182, 0.7);
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.28), rgba(200, 164, 110, 0.25));
-            color: #fff3f8;
+            border-radius: var(--r-chip, 10px);
+            border: 1px solid var(--active-bg);
+            background: var(--active-bg);
+            color: var(--active-ink);
         }
         body.theme-light .reel-gen-btn {
-            border-color: rgba(168, 72, 88, 0.55);
-            background: linear-gradient(135deg, rgba(168, 72, 88, 0.14), rgba(125, 91, 36, 0.14));
-            color: #7a2636;
+            border-color: var(--active-bg);
+            background: var(--active-bg);
+            color: var(--active-ink);
         }
         .reel-gen-btn:hover { opacity: 0.92; }
         .reel-gen-btn:disabled { opacity: 0.55; cursor: wait; }
@@ -664,7 +597,7 @@
             width: 100%;
             min-height: 158px;
             padding: 11px 12px;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--input-bg);
             color: var(--text);
@@ -679,7 +612,7 @@
             font-size: 0.83rem;
             font-weight: 800;
             padding: 9px 16px;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--green);
             background: var(--green-soft);
             color: var(--green-ink);
@@ -688,14 +621,14 @@
         .reel-publish-btn:disabled { opacity: 0.55; cursor: wait; }
         .reel-veo-details {
             margin-top: 14px;
-            background: rgba(11, 12, 16, 0.72);
-            border: 1px dashed rgba(200, 164, 110, 0.42);
-            border-radius: 12px;
+            background: var(--surface-2);
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--r-inner, 13px);
             padding: 10px 14px;
         }
         body.theme-light .reel-veo-details {
             background: var(--surface-2);
-            border-color: rgba(125, 91, 36, 0.38);
+            border-color: var(--border-strong);
         }
         .reel-veo-details summary {
             cursor: pointer;
@@ -718,7 +651,7 @@
         .reel-veo-card {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 10px 12px;
             font-size: 0.76rem;
             display: flex;
@@ -729,7 +662,7 @@
         .reel-veo-prompt-box {
             background: var(--code-bg);
             border: 1px solid var(--border);
-            border-radius: 7px;
+            border-radius: var(--r-chip, 10px);
             padding: 7px 9px;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 0.72rem;
@@ -846,7 +779,7 @@
             line-height: 1.5;
             padding: 10px 12px;
             min-height: 48px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid #71717a;
             background: var(--input-bg);
             color: var(--text);
@@ -867,9 +800,9 @@
             font-size: 0.74rem;
             color: var(--sub);
             background: var(--subtle-bg);
-            border-left: 2px solid var(--border-strong);
+            border: 1px solid var(--border-strong);
             padding: 6px 10px;
-            border-radius: 0 6px 6px 0;
+            border-radius: var(--r-chip, 10px);
             line-height: 1.5;
             overflow-wrap: anywhere;
         }
@@ -886,7 +819,7 @@
             gap: 6px;
             min-height: 44px;
             padding: 8px 14px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--surface-2);
             color: var(--text);
@@ -961,7 +894,7 @@
         .vn-script-sample {
             margin: 8px 0;
             padding: 12px 14px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--code-bg);
             color: var(--code-ink);
@@ -995,7 +928,7 @@
             background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border-strong);
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             padding: 10px 12px;
             font-size: 0.84rem;
             font-family: inherit;
@@ -1077,7 +1010,7 @@
         .img-prompts-section {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 16px 18px;
             margin-bottom: 22px;
         }
@@ -1090,7 +1023,7 @@
         .img-prompt-card {
             background: var(--surface-2);
             border: 1px solid var(--border-strong);
-            border-radius: 11px;
+            border-radius: var(--r-inner, 13px);
             padding: 12px;
             display: flex;
             flex-direction: column;
@@ -1104,7 +1037,7 @@
         .img-prompt-box {
             background: var(--code-bg);
             border: 1px solid var(--border);
-            border-radius: 7px;
+            border-radius: var(--r-chip, 10px);
             padding: 8px 10px;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 0.72rem;
@@ -1117,7 +1050,7 @@
         }
         @media (max-width: 560px) {
             .reel-auto-box {
-                border-radius: 12px;
+                border-radius: var(--r-inner, 13px);
                 width: 100%;
                 justify-content: space-between;
                 box-sizing: border-box;
@@ -1137,7 +1070,7 @@
         .moshimo-queue-card {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 18px;
         }
@@ -1171,7 +1104,7 @@
         .moshimo-kpi-item {
             background: var(--surface-2);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 9px 12px;
             font-variant-numeric: tabular-nums;
         }
@@ -1207,7 +1140,7 @@
             width: 100%;
             min-height: 44px;
             padding: 9px 12px;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border);
             background: var(--surface-2);
             color: var(--text);
@@ -1264,7 +1197,7 @@
         .moshimo-video {
             width: 100%;
             aspect-ratio: 9 / 16;
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             background: #000;
             border: 1px solid var(--border-strong);
             object-fit: cover;
@@ -1285,7 +1218,7 @@
             background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border-strong);
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             padding: 8px 10px;
             font: inherit;
             font-size: max(0.82rem, 13px);
@@ -1406,17 +1339,17 @@
         </div>
 
         <!-- Writing Tone & Perspective Selector (Spicy / Female Real / Mix / Standard) -->
-        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--rose);">
+        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--rose-border);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
-                    🌶️💄 執筆トーン＆視点セレクター（現在表示：{{ editorial.tone_mode_label }}）
+                    執筆トーン＆視点セレクター（現在表示：{{ editorial.tone_mode_label }}）
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
                         自動投稿の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
                     </span>
                     <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
-                        📌 このトーンを自動投稿の標準に保存
+                        このトーンを自動投稿の標準に保存
                     </button>
                 </div>
             </div>
@@ -1430,15 +1363,15 @@
                 {% endfor %}
             </div>
             <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
-                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}💡 {{ tm.desc }}{% endif %}{% endfor %}
+                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}{{ tm.desc }}{% endif %}{% endfor %}
             </div>
         </div>
 
         <!-- Situation Specialization Selector (F2.2) -->
-        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--amber);">
+        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--amber-border);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                 <div style="font-size:0.84rem; font-weight:800; color:var(--amber-ink);">
-                    🎯 シチュエーション特化セレクター（現在：{{ editorial.situation_label or '🎲 通常（指定なし）' }}）
+                    🎯 シチュエーション特化セレクター（現在：{{ editorial.situation_label or '通常（指定なし）' }}）
                 </div>
                 <div style="font-size:0.74rem; color:var(--sub);">
                     特定の現場切り口（2軒目・待ちゼロ・雨天等）でワンクリック再編成
@@ -1448,7 +1381,7 @@
                 <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}"
                    class="{{ 'active' if not editorial.situation else '' }}"
                    title="通常編成（各SNSの標準スタイルローテーション）">
-                    🎲 通常（指定なし）
+                    通常（指定なし）
                 </a>
                 {% for sit in editorial.situation_specs %}
                 <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}&situation={{ sit.key }}"
@@ -1460,28 +1393,28 @@
             </div>
             {% if editorial.situation_meta %}
             <div style="font-size:0.76rem; color:var(--amber-ink);">
-                💡 <strong>{{ editorial.situation_meta.label }}：</strong>{{ editorial.situation_meta.desc }}
+                <strong>{{ editorial.situation_meta.label }}：</strong>{{ editorial.situation_meta.desc }}
             </div>
             {% endif %}
         </div>
 
         <!-- Automated SNS Delivery Health & Token Diagnostic Panel -->
         {% set dh = editorial.delivery_health or {} %}
-        <div class="header-card" id="sns-delivery-health" style="padding:14px 18px; border-color:var(--green);">
+        <div class="header-card" id="sns-delivery-health" style="padding:14px 18px; border-color:var(--green-border);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div style="font-size:0.86rem; font-weight:800;">
-                    📡 自動投稿ステータス＆トークン疎通モニター（IGリール毎日20:00＋活況夜22:50自動2本化・カルーセル＆空打ちAI停止・投稿時のみOpus稼働）
+                    自動投稿ステータス＆トークン疎通モニター（IGリール毎日20:00＋活況夜22:50自動2本化・カルーセル＆空打ちAI停止・投稿時のみOpus稼働）
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     {% if channel == 'tiktok' %}
-                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--gold); background:var(--gold-soft); color:var(--gold-ink);" onclick="enqueueAsyncChannelPost()">🎵 TikTokアプリInboxへ下書き送信（動画スタジオ連動）</button>
+                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--gold); background:var(--gold-soft); color:var(--gold-ink);" onclick="enqueueAsyncChannelPost()">TikTokアプリInboxへ下書き送信（動画スタジオ連動）</button>
                     {% else %}
-                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--green); background:var(--green-soft); color:var(--green-ink);" onclick="enqueueAsyncChannelPost()">⚡ {{ editorial.channel_label }}を裏方ワーカーで今すぐ配信（待ち0秒）</button>
+                    <button type="button" id="async-dispatch-btn" class="ai-btn" style="font-size:0.76rem; padding:5px 11px; border-color:var(--green); background:var(--green-soft); color:var(--green-ink);" onclick="enqueueAsyncChannelPost()">{{ editorial.channel_label }}を裏方ワーカーで今すぐ配信（待ち0秒）</button>
                     {% endif %}
-                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">🔍 Threads疎通テスト</button>
-                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">🔍 IG疎通テスト</button>
-                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('tiktok')">🔍 TikTok疎通確認</button>
-                    <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">🔑 Threads / IG / TikTok トークン設定</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('threads')">Threads疎通テスト</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('instagram')">IG疎通テスト</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:5px 11px;" onclick="verifyPlatformToken('tiktok')">TikTok疎通確認</button>
+                    <button type="button" class="copy-btn" style="font-size:0.76rem; padding:5px 11px;" onclick="togglePlatformTokenDrawer()">Threads / IG / TikTok トークン設定</button>
                 </div>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap:10px; margin-top:12px;">
@@ -1541,7 +1474,7 @@
                     </select>
                     <input type="password" id="platform-access-token-input" class="key-input" placeholder="THAA... / IGAA... / act....（アクセストークンを貼り付け）" autocomplete="off">
                     <input type="password" id="platform-app-secret-input" class="key-input" style="flex:0 1 220px; min-width:180px;" placeholder="任意：App Secret / Refresh Token" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="savePlatformToken()">💾 疎通確認＆暗号化保存</button>
+                    <button type="button" class="copy-btn" onclick="savePlatformToken()">疎通確認＆暗号化保存</button>
                 </div>
             </div>
         </div>
@@ -1561,8 +1494,8 @@
                     {% endif %}
                 </div>
                 <div class="ai-actions">
-                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">✨ AI執筆案を今すぐ生成</button>
-                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerAsyncAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">AI執筆案を今すぐ生成</button>
+                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
                 </div>
             </div>
 
@@ -1591,20 +1524,20 @@
 
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
-                    <button type="button" data-engine-pref="auto" class="ai-btn {{ 'is-active' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else 'is-inactive' }}" onclick="saveEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
-                    <button type="button" data-engine-pref="gemini" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else 'is-inactive' }}" onclick="saveEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
-                    <button type="button" data-engine-pref="claude" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else 'is-inactive' }}" onclick="saveEnginePref('claude')">✍️ Claude Opus × 2段階推敲 優先</button>
+                    <button type="button" data-engine-pref="auto" class="ai-btn {{ 'is-active' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else 'is-inactive' }}" onclick="saveEnginePref('auto')">自動（Claude登録時はClaude優先）</button>
+                    <button type="button" data-engine-pref="gemini" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else 'is-inactive' }}" onclick="saveEnginePref('gemini')">上位 Gemini Pro/Flash 優先</button>
+                    <button type="button" data-engine-pref="claude" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else 'is-inactive' }}" onclick="saveEnginePref('claude')">Claude Opus × 2段階推敲 優先</button>
                 </div>
 
                 <div class="key-form-row" style="margin-top:10px;">
                     <input type="password" id="gemini-api-key-input" class="key-input" placeholder="Google Geminiキー: AIzaSy... / AQ.... {% if editorial.gemini_status and editorial.gemini_status.gemini_configured %}（現在: {{ editorial.gemini_status.gemini_masked_key }}）{% endif %}" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="saveGeminiKey('gemini')">💾 Geminiキーを保存</button>
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('gemini')">Geminiキーを保存</button>
                     <button type="button" id="clear-gemini-key-btn" class="back-btn" onclick="clearGeminiKey('gemini')" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.gemini_configured) else 'none' }}; cursor:pointer;">Gemini削除</button>
                 </div>
 
                 <div class="key-form-row" style="margin-top:8px;">
                     <input type="password" id="claude-api-key-input" class="key-input" placeholder="Anthropic Claudeキー（任意）: sk-ant-... {% if editorial.gemini_status and editorial.gemini_status.claude_configured %}（現在: {{ editorial.gemini_status.claude_masked_key }}）{% endif %}" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">💾 Claudeキーを保存</button>
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">Claudeキーを保存</button>
                     <button type="button" id="clear-claude-key-btn" class="back-btn" onclick="clearGeminiKey('claude')" style="display: {{ 'inline-flex' if (editorial.gemini_status and editorial.gemini_status.claude_configured) else 'none' }}; cursor:pointer;">Claude削除</button>
                 </div>
 
@@ -1836,13 +1769,13 @@
         <div class="reel-studio-card" id="reel-studio-section">
             <div class="reel-studio-head">
                 <div>
-                    <h2 class="reel-studio-title">🎬 Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
+                    <h2 class="reel-studio-title">Google AI Ultra ショート動画スタジオ（Reels / Shorts / TikTok）</h2>
                     <p class="reel-studio-sub">全国リアルタイム人数から 9:16 縦型ショート動画（H.264 + BGM・自分の声AIナレーション自動調整MP4・8.5秒）を自動合成。Instagram Reels への1クリック直接公開、または MP4 保存で TikTok / YouTube Shorts へそのまま投稿できます。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
                     <label class="reel-auto-box" for="reel-auto-schedule-toggle" title="毎日20:00枠（1軒目探し）＋活況夜22:50枠（2軒目・終電前・リールタブ専用）の1日最大2本・5テンプレ自動ローテーション投稿します">
                         <span id="reel-auto-schedule-label">
-                            🔄 毎日20:00＋活況夜22:50の自動リール投稿（最大2本・5型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
+                            毎日20:00＋活況夜22:50の自動リール投稿（最大2本・5型ローテ）：<strong id="reel-auto-state-text" style="color:{{ 'var(--green)' if _reel_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _reel_init_auto else 'OFF（手動のみ）' }}</strong>
                         </span>
                         <span class="reel-switch">
                             <input type="checkbox" id="reel-auto-schedule-toggle" {{ 'checked' if _reel_init_auto else '' }} onchange="saveReelAutoSchedule(this.checked)">
@@ -1851,7 +1784,7 @@
                     </label>
                     <label class="reel-auto-box" for="tiktok-auto-schedule-toggle" title="水・金・土の20:39〜20:55 JST（人間ゆらぎ付）にTikTokアプリのInbox下書きへ自動送信します（TIKTOK_ACCESS_TOKEN設定時に稼働）">
                         <span id="tiktok-auto-schedule-label">
-                            🎵 水・金・土のTikTok自動下書き送信：<strong id="tiktok-auto-state-text" style="color:{{ 'var(--green)' if _tiktok_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _tiktok_init_auto else 'OFF（手動のみ）' }}</strong>
+                            水・金・土のTikTok自動下書き送信：<strong id="tiktok-auto-state-text" style="color:{{ 'var(--green)' if _tiktok_init_auto else 'var(--sub)' }};">{{ 'ON（稼働中）' if _tiktok_init_auto else 'OFF（手動のみ）' }}</strong>
                         </span>
                         <span class="reel-switch">
                             <input type="checkbox" id="tiktok-auto-schedule-toggle" {{ 'checked' if _tiktok_init_auto else '' }} onchange="saveTikTokAutoSchedule(this.checked)">
@@ -1879,7 +1812,7 @@
                        class="reel-dl-btn"
                        href="/ogp/reel/{{ _reel_init_type }}.mp4?t=init&download=1"
                        download="aiseki_navi_{{ _reel_init_type }}.mp4">
-                        ⬇️ MP4を保存（TikTok / Shorts用）
+                        MP4を保存（TikTok / Shorts用）
                     </a>
                     <div id="reel-bg-status-badge" style="font-size:0.73rem; color:var(--sub); text-align:center; line-height:1.45;">
                         {% if _reel_init_bgs and _reel_init_bgs.get('active_mode') == 'veo3_video' %}
@@ -1895,48 +1828,48 @@
                 <!-- Right: Template Tabs, Generate Button, Editable Caption & 1-Click IG / TikTok Publish -->
                 <div style="display:flex; flex-direction:column; gap:10px; min-width:0;">
                     <div>
-                        <div style="font-size:0.78rem; font-weight:700; color:var(--gold-ink); margin-bottom:6px;">① ショート動画テンプレートを選択（🎵マークはTikTok右端アイコン・下部キャプション回避のセーフゾーン＆冒頭結論フック特化）：</div>
+                        <div style="font-size:0.78rem; font-weight:700; color:var(--gold-ink); margin-bottom:6px;">① ショート動画テンプレートを選択（TikTok右端アイコン・下部キャプション回避のセーフゾーン＆冒頭結論フック対応）：</div>
                         <div class="reel-tab-row" role="tablist" aria-label="リール動画タイプ切替">
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_gap_shock' else '' }}"
                                     data-reel-type="tiktok_gap_shock"
                                     onclick="selectReelType('tiktok_gap_shock')">
-                                🎵 同駅ギャップ比較
+                                同駅ギャップ比較
                             </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_ladies_real' else '' }}"
                                     data-reel-type="tiktok_ladies_real"
                                     onclick="selectReelType('tiktok_ladies_real')">
-                                🎵 女子本音×待ち0
+                                女子本音×待ち0
                             </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'tiktok_midnight_cliff' else '' }}"
                                     data-reel-type="tiktok_midnight_cliff"
                                     onclick="selectReelType('tiktok_midnight_cliff')">
-                                🎵 終電崖×深夜穴場
+                                終電崖×深夜穴場
                             </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'live_top5' else '' }}"
                                     data-reel-type="live_top5"
                                     onclick="selectReelType('live_top5')">
-                                🔥 全国TOP5速報
+                                全国TOP5速報
                             </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'area_battle' else '' }}"
                                     data-reel-type="area_battle"
                                     onclick="selectReelType('area_battle')">
-                                ⚡ 3大都市バトル
+                                3大都市バトル
                             </button>
                             <button type="button"
                                     class="reel-tab-btn {{ 'active' if _reel_init_type == 'ladies_zero_wait' else '' }}"
                                     data-reel-type="ladies_zero_wait"
                                     onclick="selectReelType('ladies_zero_wait')">
-                                💄 女子待ち0速報
+                                女子待ち0速報
                             </button>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px;">
                             <button type="button" id="reel-generate-btn" class="reel-gen-btn" onclick="previewReelVideoNow()">
-                                🎬 最新データでリール動画を生成・プレビュー
+                                最新データでリール動画を生成・プレビュー
                             </button>
                             <span id="reel-template-desc" style="font-size:0.76rem; color:var(--sub);">
                                 冒頭2秒結論フック＆TikTokセーフゾーン設計の縦型ショート動画を自動合成
@@ -1951,10 +1884,10 @@
                             </label>
                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
                                 <button type="button" class="back-btn" style="font-size:0.74rem; padding:4px 10px;" onclick="loadReelStudioInfo(null, true)">
-                                    🔄 最新データから文面を再取得
+                                    最新データから文面を再取得
                                 </button>
                                 <button type="button" class="copy-btn" style="font-size:0.74rem; padding:4px 10px;" onclick="copyReelCaption(this)">
-                                    📋 キャプションをコピー
+                                    キャプションをコピー
                                 </button>
                             </div>
                         </div>
@@ -1970,10 +1903,10 @@
                         </label>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <button type="button" id="reel-publish-tiktok-btn" class="copy-btn" style="padding:9px 14px; font-size:0.8rem;" onclick="publishTikTokInboxNow()">
-                                🎵 TikTokアプリInboxへ下書き送信
+                                TikTokアプリInboxへ下書き送信
                             </button>
                             <button type="button" id="reel-publish-ig-btn" class="reel-publish-btn" onclick="publishInstagramReelNow()">
-                                📸 Instagramリールへ今すぐ投稿
+                                Instagramリールへ今すぐ投稿
                             </button>
                         </div>
                     </div>
@@ -2148,11 +2081,11 @@
             <!-- Collapsible Google Flow (Veo 3) Cinematic 9:16 Prompt Book -->
             <details class="reel-veo-details">
                 <summary>
-                    <span>✨ Google Flow (Veo 3) 専用・映画級9:16背景プロンプト帳（実写動画背景へ自動アップグレード）</span>
+                    <span>Google Flow (Veo 3) 専用・映画級9:16背景プロンプト帳（実写動画背景へ自動アップグレード）</span>
                     <span style="font-size:0.74rem; color:var(--gold);">▼ クリックで開閉</span>
                 </summary>
                 <div style="font-size:0.77rem; color:var(--sub); margin-top:10px; line-height:1.6;">
-                    💡 <strong>Google AI Ultra 連携ガイド（GCP不要・追加APIコスト0円）</strong>：<br>
+                    <strong>Google AI Ultra 連携ガイド（GCP不要・追加APIコスト0円）</strong>：<br>
                     1. Google AI Ultra の <strong>Google Flow (Veo 3)</strong> を開き、アスペクト比 <code>9:16（縦型）</code> を選択して下の英語プロンプトをワンクリックコピー＆動画生成します。<br>
                     2. ダウンロードした <code>.mp4</code> を <code>static/reels_bg/</code> フォルダ（推奨名：<code>veo_neon.mp4</code> / <code>veo_lounge.mp4</code> / <code>veo_rosegold.mp4</code> 等、任意の <code>*.mp4</code> でも可）に置くだけで、自動的に実写シネマティック背景＋暗幕オーバーレイ＋リアルタイム人数アニメーション合成へ切り替わります！
                 </div>
@@ -2166,7 +2099,7 @@
                         <div style="color:var(--sub);">{{ vp.scene_ja }}</div>
                         <div class="reel-veo-prompt-box" id="veo-prompt-text-{{ loop.index0 }}">{{ vp.prompt_en }}</div>
                         <button type="button" class="copy-btn" style="font-size:0.73rem; padding:5px 10px; align-self:flex-start;" onclick="copyVeoPrompt({{ loop.index0 }}, this)">
-                            📋 英語プロンプトをコピー
+                            英語プロンプトをコピー
                         </button>
                     </div>
                     {% endfor %}
@@ -2182,7 +2115,7 @@
                 <span style="font-size:0.74rem; color:var(--gold);">▼ クリックで開閉</span>
             </summary>
             <div style="font-size:0.78rem; color:var(--sub); margin-top:10px; line-height:1.6;">
-                💡 <strong>画像生成AI（Midjourney / Imagen 3 / DALL-E 3 等）連携プロンプト</strong>：<br>
+                <strong>画像生成AI（Midjourney / Imagen 3 / DALL-E 3 等）連携プロンプト</strong>：<br>
                 各SNSの推奨アスペクト比（X: 16:9, IG: 4:5, note: 1.91:1, TikTok: 9:16, Threads: 1:1）に合わせた英語プロンプトをワンクリックコピーできます。
             </div>
             
@@ -2191,13 +2124,13 @@
                 {% if p %}
                 <div class="img-prompt-card primary">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                        <strong style="color:var(--gold-bright);">⭐ 推奨（{{ p.title }}）</strong>
+                        <strong style="color:var(--gold-bright);">推奨（{{ p.title }}）</strong>
                         <span class="char-counter-badge ok">{{ p.ratio_label }}</span>
                     </div>
                     <div style="font-size:0.76rem; color:var(--sub);">{{ p.prompt_ja }}</div>
                     <div class="img-prompt-box" id="img-prompt-primary">{{ p.prompt_en }}</div>
                     <button type="button" class="copy-btn" style="padding:5px 10px; font-size:0.74rem; align-self:flex-start;" onclick="copyText('img-prompt-primary', this)">
-                        📋 英語プロンプトをコピー
+                        英語プロンプトをコピー
                     </button>
                 </div>
                 {% endif %}
@@ -2212,7 +2145,7 @@
                     <div style="font-size:0.76rem; color:var(--sub);">{{ g.prompt_ja }}</div>
                     <div class="img-prompt-box" id="img-prompt-{{ g.id }}">{{ g.prompt_en }}</div>
                     <button type="button" class="copy-btn" style="padding:5px 10px; font-size:0.74rem; align-self:flex-start;" onclick="copyText('img-prompt-{{ g.id }}', this)">
-                        📋 英語プロンプトをコピー
+                        英語プロンプトをコピー
                     </button>
                 </div>
                 {% endif %}
@@ -2251,7 +2184,7 @@
         </div>
 
         <h2 class="section-h2">
-            <span id="candidates-heading-title">📝 {{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
+            <span id="candidates-heading-title">{{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
             <span id="candidates-heading-ts" style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
         </h2>
 
@@ -2260,26 +2193,26 @@
             <div class="cand-card {{ 'winner' if c.is_selected else '' }}">
                 <div class="cand-top">
                     <span class="style-title">
-                        {% if c.is_selected %}🏆 採用案（1位）{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
+                        {% if c.is_selected %}採用案（1位）{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
                     </span>
                     <span class="score-pill">{{ c.total_score }}点 / 100</span>
                 </div>
 
                 <div class="score-bars">
-                    <span>🗣️ 人間味・非ボット感: <strong>{{ c.scores.human_tone }}/35</strong></span>
-                    <span>🔄 新鮮さ・被り回避: <strong>{{ c.scores.freshness_diversity }}/30</strong></span>
-                    <span>📊 データの具体性・精度: <strong>{{ c.scores.data_specificity }}/25</strong></span>
-                    <span>📏 媒体ルール適合: <strong>{{ c.scores.weight_fit }}/10</strong> ({{ c.metric_unit }})</span>
+                    <span>人間味・非ボット感: <strong>{{ c.scores.human_tone }}/35</strong></span>
+                    <span>新鮮さ・被り回避: <strong>{{ c.scores.freshness_diversity }}/30</strong></span>
+                    <span>データの具体性・精度: <strong>{{ c.scores.data_specificity }}/25</strong></span>
+                    <span>媒体ルール適合: <strong>{{ c.scores.weight_fit }}/10</strong> ({{ c.metric_unit }})</span>
                 </div>
 
                 <div class="writer-memo">
-                    <strong>✍️ 執筆係の狙い：</strong>{{ c.writer_note }}
+                    <strong>執筆係の狙い：</strong>{{ c.writer_note }}
                 </div>
                 {% if c.tiktok_hook_text %}
-                <div class="thinking-memo" style="border-color:var(--gold); background:var(--gold-soft);">
-                    <div><strong>🎯 冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">{{ c.tiktok_hook_text }}</span></div>
+                <div class="thinking-memo" style="border-color:var(--gold-border); background:var(--gold-soft);">
+                    <div><strong>冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">{{ c.tiktok_hook_text }}</span></div>
                     {% if c.tiktok_bgm_mood %}
-                    <div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>🎵 推奨トレンドBGMムード：</strong>{{ c.tiktok_bgm_mood }}</div>
+                    <div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>推奨トレンドBGMムード：</strong>{{ c.tiktok_bgm_mood }}</div>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -2290,7 +2223,7 @@
                 {% endif %}
 
                 <div class="desk-box">
-                    <strong>🧐 評価係（デスク）の講評：</strong>
+                    <strong>評価係（デスク）の講評：</strong>
                     {% for comment in c.desk_comments %}
                     <div>{{ comment }}</div>
                     {% endfor %}
@@ -2301,7 +2234,7 @@
                 <!-- Inline Editing Box with Realtime Weight / Character Counter (F2.3) -->
                 <div class="cand-edit-box">
                     <div class="cand-edit-header">
-                        <span style="font-weight:700; color:var(--gold-ink);">✏️ インライン微調整・文字数リアルタイム検証：</span>
+                        <span style="font-weight:700; color:var(--gold-ink);">インライン微調整・文字数リアルタイム検証：</span>
                         <span class="char-counter-badge ok" id="char-counter-{{ loop.index }}">
                             {{ c.metric_unit }}
                         </span>
@@ -2315,14 +2248,14 @@
                               oninput="onCandidateTextareaInput({{ loop.index }})">{{ c.main_text }}</textarea>
                 </div>
 
-                <div class="reply-preview" id="cand-reply-{{ loop.index }}"><strong>💬 {% if channel == 'tiktok' %}秒数別カット割り台本＆動画テンプレ連動{% elif channel == 'note' %}note投稿・アイキャッチ連動仕様{% else %}補足・連結仕様{% endif %}：</strong><br>{{ c.reply_text }}</div>
+                <div class="reply-preview" id="cand-reply-{{ loop.index }}"><strong>{% if channel == 'tiktok' %}秒数別カット割り台本＆動画テンプレ連動{% elif channel == 'note' %}note投稿・アイキャッチ連動仕様{% else %}補足・連結仕様{% endif %}：</strong><br>{{ c.reply_text }}</div>
 
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
-                    <button type="button" class="copy-btn" onclick="copyEditedText({{ loop.index }}, this)">📋 編集後テキストをコピー</button>
+                    <button type="button" class="copy-btn" onclick="copyEditedText({{ loop.index }}, this)">編集後テキストをコピー</button>
                     {% if channel == 'tiktok' %}
-                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText('cand-reply-{{ loop.index }}', this)">🎬 秒数別台本をコピー</button>
+                    <button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText('cand-reply-{{ loop.index }}', this)">秒数別台本をコピー</button>
                     {% if c.tiktok_reel_type %}
-                    <button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio('{{ c.tiktok_reel_type }}', {{ loop.index }})">🎵 この企画でTikTok動画をプレビュー＆文面反映</button>
+                    <button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio('{{ c.tiktok_reel_type }}', {{ loop.index }})">この企画でTikTok動画をプレビュー＆文面反映</button>
                     {% endif %}
                     {% endif %}
                 </div>
@@ -2331,15 +2264,15 @@
                 <div class="intent-btn-group">
                     {% if channel == 'x' %}
                     <button type="button" class="intent-btn x-intent-btn" onclick="openWebIntent('x', {{ loop.index }})">
-                        𝕏 ワンタップでポスト（Web Intent）
+                        X ワンタップでポスト（Web Intent）
                     </button>
                     {% elif channel == 'threads' %}
                     <button type="button" class="intent-btn threads-intent-btn" onclick="openWebIntent('threads', {{ loop.index }})">
-                        🧵 Threadsで直接投稿（Web Intent）
+                        Threadsで直接投稿（Web Intent）
                     </button>
                     {% elif channel == 'note' %}
                     <button type="button" class="intent-btn note-intent-btn" onclick="openWebIntent('note', {{ loop.index }})">
-                        📝 本文コピーしてnote投稿画面を開く
+                        本文コピーしてnote投稿画面を開く
                     </button>
                     {% endif %}
                 </div>
@@ -2347,7 +2280,7 @@
             {% endfor %}
         </div>
 
-        <h2 class="section-h2">📚 直近の{{ editorial.channel_label }} 採用ログ（本番投稿履歴）</h2>
+        <h2 class="section-h2">直近の{{ editorial.channel_label }} 採用ログ（本番投稿履歴）</h2>
         <div class="history-list">
             {% if editorial.history %}
                 {% for h in editorial.history %}
@@ -2768,7 +2701,7 @@
             var hTitle = document.getElementById("candidates-heading-title");
             if (hTitle) {
                 var slotSuffix = (CURRENT_CHANNEL !== "instagram") ? ("（" + CURRENT_SLOT + "枠）") : "";
-                hTitle.textContent = "📝 " + (ed.channel_label || CHANNEL_LABEL) + " 提案" + cands.length + "案とデスクの評価スコア" + slotSuffix;
+                hTitle.textContent = (ed.channel_label || CHANNEL_LABEL) + " 提案" + cands.length + "案とデスクの評価スコア" + slotSuffix;
             }
             var hTs = document.getElementById("candidates-heading-ts");
             if (hTs && ed.research && ed.research.timestamp) {
@@ -2779,16 +2712,16 @@
             if (grid) {
                 grid.innerHTML = cands.map(function(c, idx) {
                     var n = idx + 1;
-                    var rankLabel = c.is_selected ? "🏆 採用案（1位）" : ("候補 " + c.rank + "位");
+                    var rankLabel = c.is_selected ? "採用案（1位）" : ("候補 " + c.rank + "位");
                     var sc = c.scores || {};
                     var commentsHtml = (c.desk_comments || []).map(function(cm) {
                         return "<div>" + escHtml(cm) + "</div>";
                     }).join("");
                     var hookHtml = "";
                     if (c.tiktok_hook_text) {
-                        hookHtml = '<div class="thinking-memo" style="border-color:var(--gold); background:var(--gold-soft);">' +
-                            '<div><strong>🎯 冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">' + escHtml(c.tiktok_hook_text) + '</span></div>' +
-                            (c.tiktok_bgm_mood ? ('<div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>🎵 推奨トレンドBGMムード：</strong>' + escHtml(c.tiktok_bgm_mood) + '</div>') : '') +
+                        hookHtml = '<div class="thinking-memo" style="border-color:var(--gold-border); background:var(--gold-soft);">' +
+                            '<div><strong>冒頭1.8秒スクロール停止フック：</strong><span style="font-weight:800; color:var(--gold-ink);">' + escHtml(c.tiktok_hook_text) + '</span></div>' +
+                            (c.tiktok_bgm_mood ? ('<div style="margin-top:4px; font-size:0.78rem; color:var(--sub);"><strong>推奨トレンドBGMムード：</strong>' + escHtml(c.tiktok_bgm_mood) + '</div>') : '') +
                         '</div>';
                     }
                     var thinkingHtml = c.thinking_memo
@@ -2797,9 +2730,9 @@
                     var replyTitle = CURRENT_CHANNEL === "tiktok" ? "秒数別カット割り台本＆動画テンプレ連動" : "補足・連結仕様";
                     var extraBtns = "";
                     if (CURRENT_CHANNEL === "tiktok") {
-                        extraBtns += '<button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText(\'cand-reply-' + n + '\', this)">🎬 秒数別台本をコピー</button>';
+                        extraBtns += '<button type="button" class="back-btn" style="cursor:pointer; font-size:0.76rem; padding:6px 11px;" onclick="copyText(\'cand-reply-' + n + '\', this)">秒数別台本をコピー</button>';
                         if (c.tiktok_reel_type) {
-                            extraBtns += '<button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio(\'' + escHtml(c.tiktok_reel_type) + '\', ' + n + ')">🎵 この企画でTikTok動画をプレビュー＆文面反映</button>';
+                            extraBtns += '<button type="button" class="ai-btn" style="font-size:0.76rem; padding:6px 12px;" onclick="applyCandidateToReelStudio(\'' + escHtml(c.tiktok_reel_type) + '\', ' + n + ')">この企画でTikTok動画をプレビュー＆文面反映</button>';
                         }
                     }
                     return (
@@ -2809,19 +2742,19 @@
                                 '<span class="score-pill">' + escHtml(c.total_score) + '点 / 100</span>' +
                             '</div>' +
                             '<div class="score-bars">' +
-                                '<span>🗣️ 人間味・非ボット感: <strong>' + escHtml(sc.human_tone) + '/35</strong></span>' +
-                                '<span>🔄 新鮮さ・被り回避: <strong>' + escHtml(sc.freshness_diversity) + '/30</strong></span>' +
-                                '<span>📊 データの具体性・精度: <strong>' + escHtml(sc.data_specificity) + '/25</strong></span>' +
-                                '<span>📏 媒体ルール適合: <strong>' + escHtml(sc.weight_fit) + '/10</strong> (' + escHtml(c.metric_unit || "") + ')</span>' +
+                                '<span>人間味・非ボット感: <strong>' + escHtml(sc.human_tone) + '/35</strong></span>' +
+                                '<span>新鮮さ・被り回避: <strong>' + escHtml(sc.freshness_diversity) + '/30</strong></span>' +
+                                '<span>データの具体性・精度: <strong>' + escHtml(sc.data_specificity) + '/25</strong></span>' +
+                                '<span>媒体ルール適合: <strong>' + escHtml(sc.weight_fit) + '/10</strong> (' + escHtml(c.metric_unit || "") + ')</span>' +
                             '</div>' +
-                            '<div class="writer-memo"><strong>✍️ 執筆係の狙い：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                            '<div class="writer-memo"><strong>執筆係の狙い：</strong>' + escHtml(c.writer_note || "") + '</div>' +
                             hookHtml +
                             thinkingHtml +
-                            '<div class="desk-box"><strong>🧐 評価係（デスク）の講評：</strong>' + commentsHtml + '</div>' +
+                            '<div class="desk-box"><strong>評価係（デスク）の講評：</strong>' + commentsHtml + '</div>' +
                             '<div class="tweet-preview" id="cand-main-' + n + '">' + escHtml(c.main_text || "") + '</div>' +
-                            '<div class="reply-preview" id="cand-reply-' + n + '"><strong>💬 ' + replyTitle + '：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
+                            '<div class="reply-preview" id="cand-reply-' + n + '"><strong>' + replyTitle + '：</strong><br>' + escHtml(c.reply_text || "") + '</div>' +
                             '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">' +
-                                '<button type="button" class="copy-btn" onclick="copyText(\'cand-main-' + n + '\', this)">📋 本文キャプションをコピー</button>' +
+                                '<button type="button" class="copy-btn" onclick="copyText(\'cand-main-' + n + '\', this)">本文キャプションをコピー</button>' +
                                 extraBtns +
                             '</div>' +
                         '</div>'

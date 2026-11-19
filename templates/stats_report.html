@@ -106,18 +106,36 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --text-main: #ebe8e3;
-            --text-sub: #9a968e;
-            --women: #d8a1aa;
-            --men: #93b1c9;
-            --accent-gold: #c8a46e;
-            --accent-text: #dfc496;
-            --border-subtle: rgba(255, 255, 255, 0.08);
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-bg-2: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --accent-gold: var(--calm-accent, #e4e4e7);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-strong: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+        }
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-bg-2: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --women: #9f1239;
+            --men: #1e40af;
+            --accent-gold: var(--calm-light-accent, #18181b);
+            --accent-text: var(--calm-light-text, #18181b);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-strong: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
         }
         * { box-sizing: border-box; }
         body {
@@ -126,7 +144,7 @@
             background-color: var(--bg-dark);
             background-image: none;
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             line-height: 1.75;
         }
         .portal-wrap {
@@ -153,19 +171,21 @@
         .portal-brand-title {
             font-size: 1.45rem;
             font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--text-main);
             margin: 0;
         }
         .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
         .portal-global-nav { scrollbar-width: none; }
         .portal-global-nav::-webkit-scrollbar { display: none; }
+
         /* --- JIS公式POS実測データ解析（stats_report） --- */
         .stats-section-kicker {
             display: inline-block;
             font-size: 0.68rem;
             font-weight: 800;
             letter-spacing: 0.08em;
-            color: var(--accent-gold);
+            color: var(--text-sub);
             margin-bottom: 2px;
         }
         .jis-stats-kpi-grid {
@@ -173,16 +193,18 @@
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 18px;
+            font-variant-numeric: tabular-nums;
         }
         .jis-stats-kpi-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 14px 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-variant-numeric: tabular-nums;
         }
         body.theme-light .jis-stats-kpi-card {
             background: #ffffff;
-            border-color: rgba(24, 24, 27, 0.12);
+            border-color: var(--border-subtle);
         }
         .jis-kpi-label {
             font-size: 0.74rem;
@@ -195,21 +217,22 @@
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.2;
+            font-variant-numeric: tabular-nums;
         }
         body.theme-light .jis-kpi-val {
             color: #18181b;
         }
         .jis-kpi-val.highlight {
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         body.theme-light .jis-kpi-val.highlight {
-            color: #b45309;
+            color: #18181b;
         }
         .jis-kpi-val.alert {
-            color: #f87171;
+            color: #fca5a5;
         }
         body.theme-light .jis-kpi-val.alert {
-            color: #dc2626;
+            color: #991b1b;
         }
         .jis-kpi-unit {
             font-size: 0.76rem;
@@ -222,33 +245,36 @@
             color: var(--text-sub);
             margin-top: 6px;
             line-height: 1.45;
+            font-variant-numeric: tabular-nums;
         }
         .jis-kpi-note {
             display: block;
             font-size: 0.68rem;
-            opacity: 0.8;
+            color: var(--text-sub);
             margin-top: 2px;
         }
         .jis-stats-table-wrap {
             overflow-x: auto;
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            border-radius: 18px;
             background: var(--card-bg);
             -webkit-overflow-scrolling: touch;
+            font-variant-numeric: tabular-nums;
         }
         body.theme-light .jis-stats-table-wrap {
             background: #ffffff;
-            border-color: rgba(24, 24, 27, 0.12);
+            border-color: var(--border-subtle);
         }
         .jis-stats-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.8rem;
             text-align: left;
+            font-variant-numeric: tabular-nums;
         }
         .jis-stats-table th {
             padding: 10px 14px;
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg-2);
             border-bottom: 1px solid var(--border-subtle);
             color: var(--text-sub);
             font-size: 0.72rem;
@@ -257,17 +283,18 @@
             white-space: nowrap;
         }
         body.theme-light .jis-stats-table th {
-            background: #f4f4f5;
-            border-bottom-color: rgba(24, 24, 27, 0.10);
+            background: #f2f2f5;
+            border-bottom-color: var(--border-subtle);
             color: #52525b;
         }
         .jis-stats-table td {
             padding: 11px 14px;
             border-bottom: 1px solid var(--border-subtle);
             vertical-align: middle;
+            font-variant-numeric: tabular-nums;
         }
         body.theme-light .jis-stats-table td {
-            border-bottom-color: rgba(24, 24, 27, 0.08);
+            border-bottom-color: var(--border-subtle);
         }
         .jis-stats-table tr:last-child td {
             border-bottom: none;
@@ -285,7 +312,7 @@
         }
         .jis-store-link:hover {
             text-decoration: underline;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         .jis-td-area {
             display: block;
@@ -302,28 +329,29 @@
         .jis-td-badge {
             display: inline-block;
             font-size: 0.66rem;
-            padding: 1px 5px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.05);
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: var(--card-bg-2);
             border: 1px solid var(--border-subtle);
             color: var(--text-sub);
             margin-left: 4px;
         }
         body.theme-light .jis-td-badge {
-            background: #f4f4f5;
-            border-color: rgba(24, 24, 27, 0.12);
+            background: #f2f2f5;
+            border-color: var(--border-subtle);
         }
         .jis-td-sub {
             font-size: 0.7rem;
             color: var(--text-sub);
             margin-top: 2px;
+            font-variant-numeric: tabular-nums;
         }
         .jis-rate-vip {
-            color: var(--accent-text);
+            color: var(--text-main);
             font-weight: 700;
         }
         body.theme-light .jis-rate-vip {
-            color: #b45309;
+            color: #18181b;
         }
         .jis-rate-sep {
             color: var(--text-sub);
@@ -334,110 +362,215 @@
             font-weight: 600;
         }
         body.theme-light .jis-rate-norm {
-            color: #27272a;
+            color: #18181b;
         }
         .jis-wait-pill {
             display: inline-block;
             font-size: 0.7rem;
             font-weight: 700;
             padding: 2px 8px;
-            border-radius: 999px;
+            border-radius: 8px;
             white-space: nowrap;
         }
         .jis-wait-pill.reverse {
-            background: rgba(220, 38, 38, 0.15);
-            border: 1px solid rgba(220, 38, 38, 0.4);
-            color: #fca5a5;
+            background: rgba(244, 168, 184, 0.16);
+            border: 1px solid rgba(244, 168, 184, 0.42);
+            color: #f4a8b8;
         }
         body.theme-light .jis-wait-pill.reverse {
-            background: #fef2f2;
-            border-color: #fca5a5;
-            color: #991b1b;
+            background: rgba(159, 18, 57, 0.10);
+            border-color: rgba(159, 18, 57, 0.34);
+            color: #9f1239;
         }
         .jis-wait-pill.waiting {
-            background: rgba(200, 164, 110, 0.12);
-            border: 1px solid rgba(200, 164, 110, 0.34);
-            color: var(--accent-text);
+            background: rgba(251, 191, 36, 0.14);
+            border: 1px solid rgba(251, 191, 36, 0.38);
+            color: #fcd34d;
         }
         body.theme-light .jis-wait-pill.waiting {
-            background: #fefce8;
-            border-color: #fde047;
-            color: #854d0e;
+            background: rgba(245, 158, 11, 0.13);
+            border-color: rgba(245, 158, 11, 0.36);
+            color: #92400e;
         }
         .jis-wait-pill.normal {
-            background: rgba(147, 177, 201, 0.12);
-            border: 1px solid rgba(147, 177, 201, 0.3);
+            background: rgba(147, 197, 253, 0.14);
+            border: 1px solid rgba(147, 197, 253, 0.35);
             color: var(--men);
         }
         body.theme-light .jis-wait-pill.normal {
-            background: #eff6ff;
-            border-color: #bfdbfe;
-            color: #1d4ed8;
+            background: rgba(30, 64, 175, 0.09);
+            border-color: rgba(30, 64, 175, 0.28);
+            color: #1e40af;
         }
         .jis-wait-pill.direct {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-subtle);
-            color: var(--text-sub);
+            background: rgba(52, 211, 153, 0.14);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            color: #6ee7b7;
         }
         body.theme-light .jis-wait-pill.direct {
-            background: #f4f4f5;
-            border-color: rgba(24, 24, 27, 0.10);
-            color: #52525b;
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.34);
+            color: #065f46;
         }
         @media (max-width: 768px) {
             .jis-stats-kpi-grid {
                 grid-template-columns: 1fr;
             }
         }
-        .hero-box {
+        .hero-box.stats-open-hero {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid var(--border-subtle) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 6px 0 22px !important;
+            margin: 2px 0 26px !important;
+        }
+        .stats-method-card {
             background: var(--card-bg);
-            border: 1px solid rgba(200, 164, 110, 0.3);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 26px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 22px;
+            margin-top: 32px;
         }
         .badge {
             display: inline-block;
-            background: rgba(200, 164, 110, 0.12);
-            color: var(--accent-text);
-            border: 1px solid rgba(200, 164, 110, 0.32);
+            background: var(--card-bg-2);
+            color: var(--text-sub);
+            border: 1px solid var(--border-strong);
             font-size: 0.71rem;
             font-weight: 700;
             padding: 3px 10px;
-            border-radius: 999px;
+            border-radius: 8px;
             margin-bottom: 10px;
+            font-variant-numeric: tabular-nums;
         }
-        h1 { font-size: 1.42rem; margin: 0 0 10px; color: var(--text-main); }
+        .stats-cta-row {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 10px;
+            font-size: 0.8rem;
+        }
+        .stats-cta-primary,
+        .stats-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .stats-cta-primary {
+            font-weight: 700;
+            background: var(--cm-cta-bg, #f4f4f5);
+            border: 1px solid var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+        }
+        html.theme-light .stats-cta-primary,
+        body.theme-light .stats-cta-primary {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
+        .stats-cta-secondary {
+            font-weight: 600;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
+        }
+        .stats-anchor-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
+            padding: 6px 10px;
+            color: var(--text-sub);
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            white-space: nowrap;
+        }
+        .stats-citation-box {
+            padding: 12px 14px;
+            border-radius: 13px;
+            background: var(--card-bg-2);
+            font-size: 0.82rem;
+            color: var(--text-main);
+        }
+        .stats-cite-card {
+            background: var(--card-bg-2);
+            border-radius: 13px;
+            padding: 12px 14px;
+        }
+        .stats-cite-copy-btn {
+            min-height: 38px;
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            background: var(--card-bg);
+            color: var(--text-main);
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        h1 {
+            font-size: clamp(1.24rem, 3.6vw, 1.46rem);
+            line-height: 1.4;
+            letter-spacing: -0.02em;
+            margin: 0 0 10px;
+            color: var(--text-main);
+            word-break: auto-phrase;
+            overflow-wrap: anywhere;
+            text-wrap: pretty;
+        }
         h2 {
             font-size: 1.12rem;
             margin: 30px 0 12px;
             color: var(--text-main);
-            padding-left: 10px;
-            border-left: 3px solid var(--accent-gold);
+            padding-left: 0;
+            border-left: none;
+        }
+        .table-scroll-frame {
+            margin-bottom: 26px;
+        }
+        .hmx-box .table-scroll-frame {
+            margin-bottom: 0;
         }
         .stats-table-wrap {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            border-radius: 18px;
             overflow-x: auto;
-            margin-bottom: 26px;
+            margin-bottom: 0;
+            font-variant-numeric: tabular-nums;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             min-width: 580px;
+            font-variant-numeric: tabular-nums;
         }
         th, td {
             padding: 11px 14px;
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid var(--border-subtle);
             font-size: 0.84rem;
+            font-variant-numeric: tabular-nums;
         }
         th {
-            background: #1b1c22;
+            background: var(--card-bg-2);
             color: var(--text-sub);
             font-weight: 600;
             font-size: 0.76rem;
+            white-space: nowrap;
         }
         .w-num { color: var(--women); font-weight: 700; }
         .m-num { color: var(--men); font-weight: 600; }
@@ -446,12 +579,14 @@
             grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
             gap: 12px;
             margin-bottom: 26px;
+            font-variant-numeric: tabular-nums;
         }
         .brand-stat-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-variant-numeric: tabular-nums;
         }
         .brand-stat-card h3 {
             margin: 0 0 8px;
@@ -463,12 +598,14 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 12px;
             margin-bottom: 18px;
+            font-variant-numeric: tabular-nums;
         }
         .fc-acc-kpi-card {
             background: var(--card-bg);
-            border: 1px solid rgba(200, 164, 110, 0.24);
-            border-radius: 12px;
-            padding: 15px 16px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-variant-numeric: tabular-nums;
         }
         .fc-acc-kpi-label {
             font-size: 0.75rem;
@@ -479,7 +616,7 @@
         .fc-acc-kpi-val {
             font-size: 1.52rem;
             font-weight: 800;
-            color: var(--accent-text);
+            color: var(--text-main);
             line-height: 1.2;
             font-variant-numeric: tabular-nums;
         }
@@ -487,56 +624,56 @@
             font-size: 0.74rem;
             color: var(--text-sub);
             margin-top: 5px;
+            font-variant-numeric: tabular-nums;
         }
         .fc-err-pill {
             display: inline-block;
             padding: 2px 8px;
-            border-radius: 999px;
+            border-radius: 8px;
             font-size: 0.74rem;
             font-weight: 700;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
         .fc-err-pill.good {
-            background: rgba(74, 222, 128, 0.12);
-            border: 1px solid rgba(74, 222, 128, 0.35);
-            color: #bbf7d0;
+            background: rgba(52, 211, 153, 0.14);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            color: #6ee7b7;
         }
         .fc-err-pill.ok {
-            background: rgba(200, 164, 110, 0.14);
-            border: 1px solid rgba(200, 164, 110, 0.36);
-            color: var(--accent-text);
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
         }
         .fc-err-pill.miss {
-            background: rgba(244, 63, 94, 0.12);
-            border: 1px solid rgba(244, 63, 94, 0.35);
-            color: #fecdd3;
+            background: rgba(244, 168, 184, 0.16);
+            border: 1px solid rgba(244, 168, 184, 0.40);
+            color: #f4a8b8;
         }
         body.theme-light .fc-acc-kpi-card {
-            border-color: rgba(140, 106, 56, 0.28);
-            box-shadow: 0 2px 10px rgba(24, 24, 27, 0.04);
+            border-color: var(--border-subtle);
         }
         body.theme-light .fc-err-pill.good {
-            background: rgba(22, 163, 74, 0.10);
-            border-color: rgba(22, 163, 74, 0.36);
-            color: #166534;
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #065f46;
         }
         body.theme-light .fc-err-pill.ok {
-            background: rgba(140, 106, 56, 0.12);
-            border-color: rgba(140, 106, 56, 0.38);
-            color: #755528;
+            background: #f2f2f5;
+            border-color: rgba(24, 24, 27, 0.16);
+            color: #18181b;
         }
         body.theme-light .fc-err-pill.miss {
-            background: rgba(225, 29, 72, 0.10);
-            border-color: rgba(225, 29, 72, 0.34);
+            background: rgba(159, 18, 57, 0.10);
+            border-color: rgba(159, 18, 57, 0.34);
             color: #9f1239;
         }
 
-        /* 統計シミュレーターUI スタイル (WCAG AA準拠 & ミニマルUI) */
+        /* 統計シミュレーターUI スタイル (案2 2階層構造: 外側 18px + 内側 13px) */
         .sim-container {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 18px;
             padding: 22px;
             margin-bottom: 28px;
         }
@@ -567,11 +704,9 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
             gap: 12px;
-            margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 14px;
+            margin-bottom: 18px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-subtle);
         }
         .sim-field {
             display: flex;
@@ -585,9 +720,10 @@
             letter-spacing: 0.02em;
         }
         .sim-select {
-            background: #202127;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 8px;
+            min-height: 40px;
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
             color: var(--text-main);
             padding: 8px 12px;
             font-size: 0.84rem;
@@ -596,16 +732,16 @@
             cursor: pointer;
             transition: border-color 0.15s ease;
         }
-        .sim-select:focus {
-            border-color: var(--accent-gold);
+        .sim-select:focus-visible {
+            outline: 2px solid var(--text-main);
+            outline-offset: 2px;
         }
         .sim-chart-box {
             position: relative;
-            background: #111216;
-            border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            background: var(--card-bg-2);
+            border-radius: 13px;
             padding: 14px 12px 10px;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             overflow: hidden;
         }
         .sim-chart-legend {
@@ -616,6 +752,7 @@
             font-size: 0.76rem;
             color: var(--text-sub);
             margin-bottom: 6px;
+            font-variant-numeric: tabular-nums;
         }
         .sim-legend-item {
             display: flex;
@@ -626,6 +763,14 @@
             width: 14px;
             height: 3px;
             border-radius: 2px;
+        }
+        .sim-legend-line--women {
+            background: var(--women);
+        }
+        .sim-legend-line--base {
+            background: transparent;
+            border-top: 1.5px dashed var(--text-sub);
+            height: 0;
         }
         .sim-svg-wrap {
             width: 100%;
@@ -640,12 +785,12 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 12px;
+            font-variant-numeric: tabular-nums;
         }
         .sim-insight-card {
-            background: rgba(255, 255, 255, 0.025);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 13px 14px;
+            background: var(--card-bg-2);
+            border-radius: 13px;
+            padding: 13px 15px;
         }
         .sim-insight-label {
             font-size: 0.73rem;
@@ -656,98 +801,93 @@
         .sim-insight-val {
             font-size: 1.08rem;
             font-weight: 800;
-            color: var(--accent-text);
+            color: var(--text-main);
             line-height: 1.35;
+            font-variant-numeric: tabular-nums;
         }
         .sim-insight-sub {
             font-size: 0.75rem;
             color: var(--text-sub);
             margin-top: 4px;
             line-height: 1.45;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* ライトモード対応 (WCAG AA 適合 コントラスト比 4.5:1以上) */
+        /* ライトモード対応 (案2正準トークン・WCAG AAA/AA 適合) */
         body.theme-light .sim-container {
             background: #ffffff;
-            border-color: rgba(0, 0, 0, 0.08);
-            box-shadow: 0 2px 12px rgba(24, 24, 27, 0.03);
-        }
-        body.theme-light .sim-controls {
-            background: #f8f8f9;
-            border-color: rgba(0, 0, 0, 0.08);
+            border-color: rgba(24, 24, 27, 0.09);
         }
         body.theme-light .sim-select {
-            background: #ffffff;
-            border-color: rgba(0, 0, 0, 0.20);
+            background: #f2f2f5;
+            border-color: rgba(24, 24, 27, 0.16);
             color: #18181b;
         }
         body.theme-light .sim-chart-box {
-            background: #fafafb;
-            border-color: rgba(0, 0, 0, 0.08);
+            background: #f2f2f5;
         }
         body.theme-light .sim-insight-card {
-            background: #f8f8f9;
-            border-color: rgba(0, 0, 0, 0.07);
+            background: #f2f2f5;
         }
         body.theme-light .sim-insight-val {
-            color: #8c6a38;
+            color: #18181b;
         }
 
-        /* 曜日×時間帯別 実測ヒートマップ（embed_heatmap.html と同一の WCAG AA 5段階パレット） */
+        /* 曜日×時間帯別 実測ヒートマップ（案2正準トークン・embed_heatmap.html と同一の WCAG AA 5段階パレット） */
         :root {
-            --hmx-surface: #16171c;
-            --hmx-surface-2: #1b1c22;
-            --hmx-text: #f4f1ec;
-            --hmx-sub: #b5b0a7;
-            --hmx-border: #2e2f36;
-            --hmx-link: #dfc496;
-            --hmx-focus: #f4f1ec;
-            --hmx-tab-bg: #1b1c22;
-            --hmx-tab-text: #c9c4bb;
-            --hmx-tab-on-bg: #f4f1ec;
-            --hmx-tab-on-text: #111113;
-            --hmx-tip-bg: #f4f1ec;
-            --hmx-tip-text: #111113;
-            --hmx-code-bg: #111216;
-            --hmx-r1-bg: #93b1c9; --hmx-r1-fg: #10161c;
-            --hmx-r2-bg: #3f5668; --hmx-r2-fg: #f4f1ec;
-            --hmx-r3-bg: #2a2c34; --hmx-r3-fg: #f4f1ec;
-            --hmx-r4-bg: #7c5a63; --hmx-r4-fg: #f4f1ec;
-            --hmx-r5-bg: #d8a1aa; --hmx-r5-fg: #1a1216;
-            --hmx-h1-bg: #1b1c22; --hmx-h1-fg: #a8a49c;
-            --hmx-h2-bg: #3a3225; --hmx-h2-fg: #f4f1ec;
-            --hmx-h3-bg: #5c492d; --hmx-h3-fg: #f4f1ec;
-            --hmx-h4-bg: #b89760; --hmx-h4-fg: #16120c;
-            --hmx-h5-bg: #dfc496; --hmx-h5-fg: #16120c;
-            --hmx-na-bg: #1b1c22; --hmx-na-fg: #9a968e; --hmx-na-border: #4a4b53;
+            --hmx-surface: var(--calm-surface, #1a1a1e);
+            --hmx-surface-2: var(--calm-surface-2, #232329);
+            --hmx-text: var(--calm-text, #f4f4f5);
+            --hmx-sub: var(--calm-sub, #b4b4be);
+            --hmx-border: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --hmx-link: var(--calm-text, #f4f4f5);
+            --hmx-focus: var(--calm-text, #f4f4f5);
+            --hmx-tab-bg: var(--calm-surface-2, #232329);
+            --hmx-tab-text: var(--calm-sub, #b4b4be);
+            --hmx-tab-on-bg: var(--cm-cta-bg, #f4f4f5);
+            --hmx-tab-on-text: var(--cm-cta-text, #111113);
+            --hmx-tip-bg: var(--calm-text, #f4f4f5);
+            --hmx-tip-text: var(--calm-bg, #111113);
+            --hmx-code-bg: var(--calm-surface-2, #232329);
+            --hmx-r1-bg: #93c5fd; --hmx-r1-fg: #111113;
+            --hmx-r2-bg: #1e3a5f; --hmx-r2-fg: #f4f4f5;
+            --hmx-r3-bg: #232329; --hmx-r3-fg: #f4f4f5;
+            --hmx-r4-bg: #6b213a; --hmx-r4-fg: #f4f4f5;
+            --hmx-r5-bg: #f4a8b8; --hmx-r5-fg: #111113;
+            --hmx-h1-bg: #232329; --hmx-h1-fg: #b4b4be;
+            --hmx-h2-bg: #2e2e36; --hmx-h2-fg: #f4f4f5;
+            --hmx-h3-bg: #3f3f46; --hmx-h3-fg: #f4f4f5;
+            --hmx-h4-bg: #d4d4d8; --hmx-h4-fg: #111113;
+            --hmx-h5-bg: #f4f4f5; --hmx-h5-fg: #111113;
+            --hmx-na-bg: #232329; --hmx-na-fg: #b4b4be; --hmx-na-border: rgba(255, 255, 255, 0.16);
         }
         html.theme-light,
         body.theme-light {
-            --hmx-surface: #ffffff;
-            --hmx-surface-2: #f4f4f5;
-            --hmx-text: #1c1c21;
-            --hmx-sub: #4b4b55;
-            --hmx-border: #d4d4d8;
-            --hmx-link: #6b4a1a;
-            --hmx-focus: #1c1c21;
-            --hmx-tab-bg: #ececef;
-            --hmx-tab-text: #3f3f46;
-            --hmx-tab-on-bg: #1c1c21;
+            --hmx-surface: var(--calm-light-surface, #ffffff);
+            --hmx-surface-2: var(--calm-light-surface-2, #f2f2f5);
+            --hmx-text: var(--calm-light-text, #18181b);
+            --hmx-sub: var(--calm-light-sub, #52525b);
+            --hmx-border: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --hmx-link: var(--calm-light-text, #18181b);
+            --hmx-focus: var(--calm-light-text, #18181b);
+            --hmx-tab-bg: var(--calm-light-surface-2, #f2f2f5);
+            --hmx-tab-text: var(--calm-light-sub, #52525b);
+            --hmx-tab-on-bg: #18181b;
             --hmx-tab-on-text: #ffffff;
-            --hmx-tip-bg: #1c1c21;
+            --hmx-tip-bg: #18181b;
             --hmx-tip-text: #ffffff;
-            --hmx-code-bg: #f8f8f9;
-            --hmx-r1-bg: #4f6f8a; --hmx-r1-fg: #ffffff;
-            --hmx-r2-bg: #c5d6e4; --hmx-r2-fg: #1f2933;
-            --hmx-r3-bg: #e9e9ec; --hmx-r3-fg: #3f3f46;
-            --hmx-r4-bg: #ecc9cf; --hmx-r4-fg: #5a1d2b;
-            --hmx-r5-bg: #9b4a5c; --hmx-r5-fg: #ffffff;
-            --hmx-h1-bg: #f0f0f2; --hmx-h1-fg: #3f3f46;
-            --hmx-h2-bg: #e6d9bf; --hmx-h2-fg: #2b2415;
-            --hmx-h3-bg: #dcc69e; --hmx-h3-fg: #241d10;
-            --hmx-h4-bg: #755528; --hmx-h4-fg: #ffffff;
-            --hmx-h5-bg: #523b1a; --hmx-h5-fg: #ffffff;
-            --hmx-na-bg: #f0f0f2; --hmx-na-fg: #5f5e66; --hmx-na-border: #a1a1aa;
+            --hmx-code-bg: #f2f2f5;
+            --hmx-r1-bg: #1e40af; --hmx-r1-fg: #ffffff;
+            --hmx-r2-bg: #dbeafe; --hmx-r2-fg: #1e3a8a;
+            --hmx-r3-bg: #f2f2f5; --hmx-r3-fg: #18181b;
+            --hmx-r4-bg: #ffe4e6; --hmx-r4-fg: #881337;
+            --hmx-r5-bg: #9f1239; --hmx-r5-fg: #ffffff;
+            --hmx-h1-bg: #f2f2f5; --hmx-h1-fg: #52525b;
+            --hmx-h2-bg: #e4e4e7; --hmx-h2-fg: #18181b;
+            --hmx-h3-bg: #d4d4d8; --hmx-h3-fg: #18181b;
+            --hmx-h4-bg: #3f3f46; --hmx-h4-fg: #ffffff;
+            --hmx-h5-bg: #18181b; --hmx-h5-fg: #ffffff;
+            --hmx-na-bg: #f2f2f5; --hmx-na-fg: #52525b; --hmx-na-border: rgba(24, 24, 27, 0.16);
         }
         .hmx-sr-only {
             position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -758,18 +898,19 @@
             background: var(--hmx-surface);
             color: var(--hmx-text);
             border: 1px solid var(--hmx-border);
-            border-radius: 14px;
+            border-radius: 18px;
             padding: 22px;
             margin-bottom: 28px;
         }
-        .hmx-box h2 { margin: 0 0 8px; }
+        .hmx-box h2 { margin: 0 0 8px; border-left: none; padding-left: 0; }
         .hmx-box h3 { margin: 22px 0 8px; font-size: 1rem; color: var(--hmx-text); }
         .hmx-lead { margin: 0 0 12px; font-size: 0.85rem; color: var(--hmx-sub); line-height: 1.65; }
         .hmx-box a { color: var(--hmx-link); text-underline-offset: 3px; }
         .hmx-meta { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 14px; padding: 0; list-style: none; }
         .hmx-meta li {
             font-size: 0.74rem; font-weight: 600; color: var(--hmx-sub);
-            border: 1px solid var(--hmx-border); border-radius: 999px; padding: 3px 10px;
+            background: var(--hmx-surface-2);
+            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 3px 10px;
             font-variant-numeric: tabular-nums;
         }
         .hmx-meta li strong { color: var(--hmx-text); font-weight: 700; }
@@ -781,14 +922,14 @@
         .hmx-field label, .hmx-legend-title { font-size: 0.74rem; font-weight: 700; color: var(--hmx-sub); }
         .hmx-select {
             min-height: 40px; background: var(--hmx-surface-2); color: var(--hmx-text);
-            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 8px 12px;
+            border: 1px solid var(--border-strong); border-radius: 10px; padding: 8px 12px;
             font: inherit; font-size: 0.84rem; font-weight: 600;
         }
         .hmx-tabbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-        .hmx-tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--hmx-tab-bg); }
+        .hmx-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--hmx-tab-bg); }
         .hmx-tab {
             appearance: none; border: 0; margin: 0; cursor: pointer;
-            min-height: 36px; padding: 6px 14px; border-radius: 6px;
+            min-height: 38px; padding: 6px 14px; border-radius: 8px;
             background: transparent; color: var(--hmx-tab-text);
             font: inherit; font-size: 0.82rem; font-weight: 600;
         }
@@ -801,10 +942,16 @@
         .hmx-scroll {
             position: relative;
             overflow-x: auto; overscroll-behavior-x: contain;
-            border: 1px solid var(--hmx-border); border-radius: 10px; background: var(--hmx-surface);
+            border: 1px solid var(--hmx-border); border-radius: 13px; background: var(--hmx-surface);
         }
-        .hmx-table { border-collapse: separate; border-spacing: 2px; width: 100%; min-width: 660px; }
-        .hmx-table th, .hmx-table td { border-bottom: 0; }
+        .hmx-table {
+            border-collapse: separate;
+            border-spacing: 2px;
+            width: 100%;
+            min-width: 660px;
+            font-variant-numeric: tabular-nums;
+        }
+        .hmx-table th, .hmx-table td { border-bottom: 0; font-variant-numeric: tabular-nums; }
         .hmx-table th {
             background: var(--hmx-surface); color: var(--hmx-sub);
             font-weight: 600; font-size: 0.72rem; padding: 4px 2px;
@@ -859,12 +1006,12 @@
         .hmx-status {
             margin: 10px 0 0; min-height: 2.6em; font-size: 0.8rem; line-height: 1.6;
             color: var(--hmx-text); background: var(--hmx-surface-2);
-            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 8px 12px;
+            border-radius: 13px; padding: 10px 14px;
             font-variant-numeric: tabular-nums;
         }
         .hmx-tip {
             position: fixed; z-index: 30; max-width: 300px; pointer-events: none;
-            padding: 7px 10px; border-radius: 7px;
+            padding: 7px 10px; border-radius: 8px;
             background: var(--hmx-tip-bg); color: var(--hmx-tip-text);
             font-size: 0.76rem; line-height: 1.55; font-variant-numeric: tabular-nums;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
@@ -874,7 +1021,7 @@
         .hmx-theme-set { border: 0; margin: 0 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
         .hmx-theme-set legend { padding: 0; margin-bottom: 6px; width: 100%; }
         .hmx-theme-set label {
-            display: inline-flex; align-items: center; gap: 6px; min-height: 36px;
+            display: inline-flex; align-items: center; gap: 6px; min-height: 38px;
             font-size: 0.82rem; font-weight: 600; color: var(--hmx-text); cursor: pointer;
         }
         .hmx-code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
@@ -884,32 +1031,30 @@
         .hmx-code {
             width: 100%; min-height: 150px; resize: vertical;
             background: var(--hmx-code-bg); color: var(--hmx-text);
-            border: 1px solid var(--hmx-border); border-radius: 8px; padding: 10px 12px;
+            border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.74rem; line-height: 1.55; font-variant-numeric: tabular-nums;
         }
         .hmx-copy {
-            min-height: 36px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
-            border: 1px solid var(--hmx-border); background: var(--hmx-surface-2);
+            min-height: 38px; padding: 6px 14px; border-radius: 10px; cursor: pointer;
+            border: 1px solid var(--border-strong); background: var(--hmx-surface-2);
             color: var(--hmx-text); font: inherit; font-size: 0.76rem; font-weight: 700;
             white-space: nowrap; flex-shrink: 0;
         }
         .hmx-copy-status { font-size: 0.74rem; color: var(--hmx-sub); min-height: 1.2em; margin: 0; }
         .hmx-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0 0; font-size: 0.8rem; }
-        .hmx-links a { display: inline-flex; align-items: center; min-height: 36px; font-weight: 600; }
+        .hmx-links a { display: inline-flex; align-items: center; min-height: 38px; font-weight: 600; }
         .hmx-note { margin: 10px 0 0; font-size: 0.74rem; color: var(--hmx-sub); line-height: 1.6; }
         @media (prefers-reduced-motion: no-preference) {
             .hmx-tab { transition: background-color 0.15s ease, color 0.15s ease; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
@@ -926,13 +1071,13 @@
         {% include '_portal_nav.html' %}
 
         <main>
-        <section class="hero-box">
+        <section class="hero-box stats-open-hero">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                 <span class="badge" style="margin-bottom:0;">ORIGINAL DATA WHITEPAPER</span>
                 {% if report and report.total_records_analyzed is number and report.total_records_analyzed > 0 %}
-                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">累計 {{ "{:,}".format(report.total_records_analyzed | int) }}件の実測ログ集計</span>
+                <span class="badge" style="margin-bottom:0;">累計 {{ "{:,}".format(report.total_records_analyzed | int) }}件の実測ログ集計</span>
                 {% else %}
-                <span class="badge" style="margin-bottom:0; background:rgba(255,255,255,0.045); color:var(--text-sub); border-color:var(--border-subtle);">実測ログ集計（累計件数は検証ログ蓄積中）</span>
+                <span class="badge" style="margin-bottom:0;">実測ログ集計（累計件数は検証ログ蓄積中）</span>
                 {% endif %}
             </div>
             <h1>全国相席ラウンジ 統計データ白書＆週間ピークランキング</h1>
@@ -940,12 +1085,12 @@
                 『相席ナビ』編集部（監修：<a href="/about" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">くわもん（相席ナビ編集長）</a>）が独自計測・蓄積している全国63店舗（国内61店舗＋韓国2店舗）の時系列ログから、<strong style="color: var(--text-main);">曜日別・時間帯別の平均男女比、直近7日間の店舗別ピーク人数、高女子率の穴場店舗、過去{{ forecast_days or 90 }}日間のAI予測精度トラックレコード</strong>を算出した一次統計レポートです。
                 {% if report and report.period %}（直近集計期間：{{ report.period }}）{% endif %}
             </p>
-            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 0.8rem;">
-                <a href="/stats/year-end-2026" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; background: rgba(200, 164, 110, 0.14); border: 1px solid rgba(200, 164, 110, 0.42); color: var(--accent-text); font-weight: 700; text-decoration: none;">2026年 忘年会・年末年始＆ドーム終演連動データ白書 ›</a>
-                <a href="/stats/monthly.csv" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-main); font-weight: 600; text-decoration: none;">店舗別30日統計CSVダウンロード（CC BY 4.0）</a>
-                <a href="#data-provenance" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">データの取り方・蓄積内訳・予測精度 ↓</a>
-                <a href="#heatmap" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">曜日×時間帯別ヒートマップ＆埋め込み発行 ↓</a>
-                <a href="#forecast-accuracy" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 12px; color: var(--text-sub); font-weight: 600; text-decoration: underline;">過去{{ forecast_days or 90 }}日間の予測検証ログへ ↓</a>
+            <div class="stats-cta-row">
+                <a href="/stats/year-end-2026" class="stats-cta-primary">2026年 忘年会・年末年始＆ドーム終演連動データ白書&nbsp;›</a>
+                <a href="/stats/monthly.csv" class="stats-cta-secondary">店舗別30日統計CSVダウンロード（CC BY 4.0）</a>
+                <a href="#data-provenance" class="stats-anchor-link">データの取り方・蓄積内訳・予測精度&nbsp;↓</a>
+                <a href="#heatmap" class="stats-anchor-link">曜日×時間帯別ヒートマップ＆埋め込み発行&nbsp;↓</a>
+                <a href="#forecast-accuracy" class="stats-anchor-link">過去{{ forecast_days or 90 }}日間の予測検証ログへ&nbsp;↓</a>
             </div>
         </section>
 
@@ -1637,11 +1782,11 @@
             <div class="sim-chart-box">
                 <div class="sim-chart-legend">
                     <div class="sim-legend-item">
-                        <span class="sim-legend-line" style="background:#f472b6;"></span>
+                        <span class="sim-legend-line sim-legend-line--women"></span>
                         <span id="sim-legend-w-label">女性比率（%）</span>
                     </div>
                     <div class="sim-legend-item">
-                        <span class="sim-legend-line" style="background:rgba(255,255,255,0.3); border-top:1px dashed #9a968e;"></span>
+                        <span class="sim-legend-line sim-legend-line--base"></span>
                         <span>基準線 50%</span>
                     </div>
                 </div>
@@ -1733,13 +1878,15 @@
                 var data = computeWave(area, brand, dow, weather);
 
                 var isLight = document.body.classList.contains('theme-light') || document.documentElement.classList.contains('theme-light');
-                var textSubColor = isLight ? '#52525b' : '#9a968e';
-                var gridColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.07)';
-                var line50Color = isLight ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.30)';
-                var waveStroke = isLight ? '#be185d' : '#f472b6';
-                var fillGradTop = isLight ? 'rgba(190, 24, 93, 0.22)' : 'rgba(244, 114, 182, 0.28)';
-                var fillGradBottom = isLight ? 'rgba(190, 24, 93, 0.01)' : 'rgba(244, 114, 182, 0.01)';
-                var peakMarkerColor = isLight ? '#8c6a38' : '#c8a46e';
+                var textSubColor = isLight ? '#52525b' : '#b4b4be';
+                var gridColor = isLight ? 'rgba(24, 24, 27, 0.08)' : 'rgba(255, 255, 255, 0.08)';
+                var line50Color = isLight ? 'rgba(24, 24, 27, 0.28)' : 'rgba(255, 255, 255, 0.28)';
+                var waveStroke = isLight ? '#9f1239' : '#f4a8b8';
+                var fillGradTop = isLight ? 'rgba(159, 18, 57, 0.16)' : 'rgba(244, 168, 184, 0.22)';
+                var fillGradBottom = isLight ? 'rgba(159, 18, 57, 0.01)' : 'rgba(244, 168, 184, 0.01)';
+                var peakMarkerColor = isLight ? '#18181b' : '#f4f4f5';
+                var peakLabelText = isLight ? '#ffffff' : '#111113';
+                var peakRingStroke = isLight ? '#f2f2f5' : '#232329';
 
                 var leftPad = 40;
                 var rightPad = 25;
@@ -1815,12 +1962,12 @@
                     var pt = pts[k];
                     var isPeak = (k === maxIdx);
                     if (k % 2 === 0 || k === 11) {
-                        svgHTML += '<text x="' + pt.x + '" y="' + (250 - 10) + '" fill="' + textSubColor + '" font-size="10" font-weight="600" text-anchor="middle">' + pt.time + '</text>';
+                        svgHTML += '<text x="' + pt.x + '" y="' + (250 - 10) + '" fill="' + textSubColor + '" font-size="10" font-weight="600" text-anchor="middle" font-variant-numeric="tabular-nums">' + pt.time + '</text>';
                     }
                     if (isPeak) {
-                        svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="6" fill="' + peakMarkerColor + '" stroke="' + (isLight ? '#fff' : '#111216') + '" stroke-width="2" />';
-                        svgHTML += '<rect x="' + (pt.x - 24) + '" y="' + (pt.y - 25) + '" width="48" height="18" rx="4" fill="' + (isLight ? '#18181b' : '#22232a') + '" stroke="' + peakMarkerColor + '" stroke-width="1" />';
-                        svgHTML += '<text x="' + pt.x + '" y="' + (pt.y - 13) + '" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">' + pt.v + '%</text>';
+                        svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="6" fill="' + peakMarkerColor + '" stroke="' + peakRingStroke + '" stroke-width="2" />';
+                        svgHTML += '<rect x="' + (pt.x - 24) + '" y="' + (pt.y - 25) + '" width="48" height="18" rx="5" fill="' + peakMarkerColor + '" />';
+                        svgHTML += '<text x="' + pt.x + '" y="' + (pt.y - 13) + '" fill="' + peakLabelText + '" font-size="10" font-weight="700" text-anchor="middle" font-variant-numeric="tabular-nums">' + pt.v + '%</text>';
                     } else if (pt.v >= 50) {
                         svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="3" fill="' + waveStroke + '" />';
                     }
@@ -1862,102 +2009,116 @@
             } else {
                 updateSimulator();
             }
+            if (typeof MutationObserver === 'function') {
+                var obs = new MutationObserver(function() { updateSimulator(); });
+                if (document.body) obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+                obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            }
         })();
         </script>
 
         {% if report and report.weekday_summary %}
         <h2>曜日別・全国相席ラウンジ平均男女比＆狙い目データ</h2>
         <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">全国主要店舗のコアタイム（20:00〜24:00）における曜日別の平均女性比率と混雑傾向です。</p>
-        <div class="stats-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>曜日</th>
-                        <th>コアタイム平均女性比</th>
-                        <th>平均ピーク女性数</th>
-                        <th>平均ピーク男性数</th>
-                        <th>曜日別の特徴・立ち回り判定</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for w in report.weekday_summary %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--text-main);">{{ w.weekday }}</td>
-                        {% if w.avg_wpct is number %}
-                        <td style="font-weight: 700; color: {% if w.avg_wpct >= 55 %}var(--accent-text){% else %}var(--text-main){% endif %};">{{ w.avg_wpct }}%</td>
-                        {% else %}
-                        <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
-                        {% endif %}
-                        <td class="w-num">{% if w.avg_women is number %}{{ w.avg_women }}名{% else %}—{% endif %}</td>
-                        <td class="m-num">{% if w.avg_men is number %}{{ w.avg_men }}名{% else %}—{% endif %}</td>
-                        <td style="color: var(--text-sub); font-size: 0.82rem;">{{ w.note }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="table-scroll-frame">
+            <span class="table-scroll-hint">横にスクロールできます →</span>
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="曜日別平均男女比統計データ表">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>曜日</th>
+                            <th>コアタイム平均女性比</th>
+                            <th>平均ピーク女性数</th>
+                            <th>平均ピーク男性数</th>
+                            <th>曜日別の特徴・立ち回り判定</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in report.weekday_summary %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--text-main);">{{ w.weekday }}</td>
+                            {% if w.avg_wpct is number %}
+                            <td style="font-weight: 700; color: {% if w.avg_wpct >= 55 %}var(--accent-text){% else %}var(--text-main){% endif %};">{{ w.avg_wpct }}%</td>
+                            {% else %}
+                            <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
+                            {% endif %}
+                            <td class="w-num">{% if w.avg_women is number %}{{ w.avg_women }}名{% else %}—{% endif %}</td>
+                            <td class="m-num">{% if w.avg_men is number %}{{ w.avg_men }}名{% else %}—{% endif %}</td>
+                            <td style="color: var(--text-sub); font-size: 0.82rem;">{{ w.note }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
         {% if report and report.timeslot_summary %}
         <h2>時間帯別・全国平均女性比＆回遊フェーズ分析</h2>
         <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">19時のオープン帯から深夜3時のオールナイト帯まで、時間帯ごとの男女比推移と客層の変化です。</p>
-        <div class="stats-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>時間帯</th>
-                        <th>フェーズ</th>
-                        <th>平均女性比</th>
-                        <th>データから見える特徴・攻略ポイント</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ts in report.timeslot_summary %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ ts.slot }}</td>
-                        <td style="font-weight: 600; color: var(--text-main); white-space: nowrap;">{{ ts.title }}</td>
-                        {% if ts.avg_wpct is number %}
-                        <td style="font-weight: 700; color: var(--women);">{{ ts.avg_wpct }}%</td>
-                        {% else %}
-                        <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
-                        {% endif %}
-                        <td style="color: var(--text-sub); font-size: 0.82rem;">{{ ts.description }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="table-scroll-frame">
+            <span class="table-scroll-hint">横にスクロールできます →</span>
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="時間帯別平均女性比統計データ表">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>時間帯</th>
+                            <th>フェーズ</th>
+                            <th>平均女性比</th>
+                            <th>データから見える特徴・攻略ポイント</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ts in report.timeslot_summary %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ ts.slot }}</td>
+                            <td style="font-weight: 600; color: var(--text-main); white-space: nowrap;">{{ ts.title }}</td>
+                            {% if ts.avg_wpct is number %}
+                            <td style="font-weight: 700; color: var(--women);">{{ ts.avg_wpct }}%</td>
+                            {% else %}
+                            <td style="color: var(--text-sub); font-size: 0.82rem;">検証ログ蓄積中</td>
+                            {% endif %}
+                            <td style="color: var(--text-sub); font-size: 0.82rem;">{{ ts.description }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
         {% if report and report.anaba_stores %}
         <h2>週間「高女子率・穴場ラウンジ」ランキング TOP10</h2>
         <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">十分な母数が集まっている店舗（女性ピーク平均15名以上）の中で、女性比率が高く男性が待ち時間を抑えて相席しやすい上位10店舗です。</p>
-        <div class="stats-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>穴場順位</th>
-                        <th>店舗名</th>
-                        <th>週間平均女性比</th>
-                        <th>女性ピーク平均</th>
-                        <th>男性ピーク平均</th>
-                        <th>最頻ピーク時間</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in report.anaba_stores %}
-                    {% set st_slug = s.name | store_linkable_slug %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
-                        <td style="color: var(--accent-text); font-weight: 700;">{{ s.avg_wpct }}%</td>
-                        <td class="w-num">{{ s.avg_women }}名</td>
-                        <td class="m-num">{{ s.avg_men }}名</td>
-                        <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="table-scroll-frame">
+            <span class="table-scroll-hint">横にスクロールできます →</span>
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="週間高女子率穴場ラウンジTOP10統計データ表">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>穴場順位</th>
+                            <th>店舗名</th>
+                            <th>週間平均女性比</th>
+                            <th>女性ピーク平均</th>
+                            <th>男性ピーク平均</th>
+                            <th>最頻ピーク時間</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in report.anaba_stores %}
+                        {% set st_slug = s.name | store_linkable_slug %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
+                            <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
+                            <td style="color: var(--accent-text); font-weight: 700;">{{ s.avg_wpct }}%</td>
+                            <td class="w-num">{{ s.avg_women }}名</td>
+                            <td class="m-num">{{ s.avg_men }}名</td>
+                            <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
@@ -2116,146 +2277,155 @@
             </div>
 
             <!-- JIS全10店舗リアルタイム詳細テーブル -->
-            <div class="jis-stats-table-wrap" style="font-variant-numeric: tabular-nums;">
-                <table class="jis-stats-table">
-                    <thead>
-                        <tr>
-                            <th scope="col" style="min-width: 140px;">店舗名</th>
-                            <th scope="col" style="min-width: 90px;">現在人数</th>
-                            <th scope="col" style="min-width: 120px;">平均組人数（傾向）</th>
-                            <th scope="col" style="min-width: 160px;">相席率（VIP vs 一般）</th>
-                            <th scope="col" style="min-width: 130px;">女性待ち状況</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for s in jis_list %}
-                        {% set pt = s.pos_telemetry if (s.pos_telemetry and s.pos_telemetry.get('telemetry_type') == 'jis_pos') else none %}
-                        {% set st_total = s.total if s.total is number else ((s.women or 0) + (s.men or 0)) %}
-                        {% set has_live_guests = (st_total > 0) %}
-                        <tr data-store-name="{{ s.name }}">
-                            <td class="jis-td-store">
-                                {% if s.slug %}<a href="/store/{{ s.slug }}" class="jis-store-link">{{ s.seo_name or s.name }}</a>{% else %}<span class="jis-store-link">{{ s.seo_name or s.name }}</span>{% endif %}
-                                {% if s.area_label %}<span class="jis-td-area">{{ s.area_label }}</span>{% endif %}
-                            </td>
-                            <td class="jis-td-people">
-                                {% if has_live_guests %}
-                                <span style="color: var(--women); font-weight:700;">{{ s.women }}</span> : <span style="color: var(--men); font-weight:700;">{{ s.men }}</span>
-                                <div class="jis-td-total">計{{ st_total }}名</div>
-                                {% else %}
-                                <span style="color: var(--text-sub);">空席 / 準備中</span>
-                                {% endif %}
-                            </td>
-                            <td class="jis-td-party">
-                                {% if has_live_guests and pt and pt.get('avg_party_size_total') is number %}
-                                <strong style="color: var(--text-main);">{{ '%.2f'|format(pt.get('avg_party_size_total')) }}名</strong>
-                                {% if pt.get('party_style') %}<span class="jis-td-badge">{{ pt.get('party_style') }}</span>{% endif %}
-                                <div class="jis-td-sub">男{% if pt.get('avg_party_size_men') is number %}{{ '%.1f'|format(pt.get('avg_party_size_men')) }}名{% else %}--{% endif %} / 女{% if pt.get('avg_party_size_women') is number %}{{ '%.1f'|format(pt.get('avg_party_size_women')) }}名{% else %}--{% endif %}</div>
-                                {% else %}
-                                <span style="color: var(--text-sub);">--</span>
-                                {% endif %}
-                            </td>
-                            <td class="jis-td-match">
-                                {% if has_live_guests and pt and pt.get('vip_match_rate') is number and pt.get('normal_match_rate') is number %}
-                                <div>
-                                    <span class="jis-rate-vip">VIP {{ '%.1f'|format(pt.get('vip_match_rate')) }}%</span>
-                                    <span class="jis-rate-sep">/</span>
-                                    <span class="jis-rate-norm">一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</span>
-                                </div>
-                                {% if pt.get('match_rate_diff') is number %}
-                                <div class="jis-td-sub">
-                                    成立差: <strong style="color: var(--accent-text);">{{ '%+.1f'|format(pt.get('match_rate_diff')) }}pt</strong>
-                                </div>
-                                {% endif %}
-                                {% elif has_live_guests and pt and pt.get('normal_match_rate') is number %}
-                                <div>一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</div>
-                                {% else %}
-                                <span style="color: var(--text-sub);">--</span>
-                                {% endif %}
-                            </td>
-                            <td class="jis-td-wait">
-                                {% if not has_live_guests or not pt %}
-                                <span style="color: var(--text-sub);">--</span>
-                                {% elif pt.get('is_reverse_waiting') %}
-                                <span class="jis-wait-pill reverse">逆転（女性{{ pt.get('women_waiting_groups') or 0 }}組待ち）</span>
-                                {% elif pt.get('is_women_waiting') %}
-                                <span class="jis-wait-pill waiting">女性{{ pt.get('women_waiting_groups') or 0 }}組待ち</span>
-                                {% elif (pt.get('men_waiting_groups') or 0) > 0 %}
-                                <span class="jis-wait-pill normal">男性{{ pt.get('men_waiting_groups') }}組待ち</span>
-                                {% else %}
-                                <span class="jis-wait-pill direct">即案内中（待ち0）</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" style="text-align:center; padding: 20px; color: var(--text-sub);">JIS店舗データ取得中</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="jis-stats-table-wrap" tabindex="0" role="region" aria-label="JIS公式POS実測データ表">
+                    <table class="jis-stats-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="min-width: 140px;">店舗名</th>
+                                <th scope="col" style="min-width: 90px;">現在人数</th>
+                                <th scope="col" style="min-width: 120px;">平均組人数（傾向）</th>
+                                <th scope="col" style="min-width: 160px;">相席率（VIP vs 一般）</th>
+                                <th scope="col" style="min-width: 130px;">女性待ち状況</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in jis_list %}
+                            {% set pt = s.pos_telemetry if (s.pos_telemetry and s.pos_telemetry.get('telemetry_type') == 'jis_pos') else none %}
+                            {% set st_total = s.total if s.total is number else ((s.women or 0) + (s.men or 0)) %}
+                            {% set has_live_guests = (st_total > 0) %}
+                            <tr data-store-name="{{ s.name }}">
+                                <td class="jis-td-store">
+                                    {% if s.slug %}<a href="/store/{{ s.slug }}" class="jis-store-link">{{ s.seo_name or s.name }}</a>{% else %}<span class="jis-store-link">{{ s.seo_name or s.name }}</span>{% endif %}
+                                    {% if s.area_label %}<span class="jis-td-area">{{ s.area_label }}</span>{% endif %}
+                                </td>
+                                <td class="jis-td-people">
+                                    {% if has_live_guests %}
+                                    <span style="color: var(--women); font-weight:700;">{{ s.women }}</span> : <span style="color: var(--men); font-weight:700;">{{ s.men }}</span>
+                                    <div class="jis-td-total">計{{ st_total }}名</div>
+                                    {% else %}
+                                    <span style="color: var(--text-sub);">空席 / 準備中</span>
+                                    {% endif %}
+                                </td>
+                                <td class="jis-td-party">
+                                    {% if has_live_guests and pt and pt.get('avg_party_size_total') is number %}
+                                    <strong style="color: var(--text-main);">{{ '%.2f'|format(pt.get('avg_party_size_total')) }}名</strong>
+                                    {% if pt.get('party_style') %}<span class="jis-td-badge">{{ pt.get('party_style') }}</span>{% endif %}
+                                    <div class="jis-td-sub">男{% if pt.get('avg_party_size_men') is number %}{{ '%.1f'|format(pt.get('avg_party_size_men')) }}名{% else %}--{% endif %} / 女{% if pt.get('avg_party_size_women') is number %}{{ '%.1f'|format(pt.get('avg_party_size_women')) }}名{% else %}--{% endif %}</div>
+                                    {% else %}
+                                    <span style="color: var(--text-sub);">--</span>
+                                    {% endif %}
+                                </td>
+                                <td class="jis-td-match">
+                                    {% if has_live_guests and pt and pt.get('vip_match_rate') is number and pt.get('normal_match_rate') is number %}
+                                    <div>
+                                        <span class="jis-rate-vip">VIP {{ '%.1f'|format(pt.get('vip_match_rate')) }}%</span>
+                                        <span class="jis-rate-sep">/</span>
+                                        <span class="jis-rate-norm">一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</span>
+                                    </div>
+                                    {% if pt.get('match_rate_diff') is number %}
+                                    <div class="jis-td-sub">
+                                        成立差: <strong style="color: var(--accent-text);">{{ '%+.1f'|format(pt.get('match_rate_diff')) }}pt</strong>
+                                    </div>
+                                    {% endif %}
+                                    {% elif has_live_guests and pt and pt.get('normal_match_rate') is number %}
+                                    <div>一般 {{ '%.1f'|format(pt.get('normal_match_rate')) }}%</div>
+                                    {% else %}
+                                    <span style="color: var(--text-sub);">--</span>
+                                    {% endif %}
+                                </td>
+                                <td class="jis-td-wait">
+                                    {% if not has_live_guests or not pt %}
+                                    <span style="color: var(--text-sub);">--</span>
+                                    {% elif pt.get('is_reverse_waiting') %}
+                                    <span class="jis-wait-pill reverse">逆転（女性{{ pt.get('women_waiting_groups') or 0 }}組待ち）</span>
+                                    {% elif pt.get('is_women_waiting') %}
+                                    <span class="jis-wait-pill waiting">女性{{ pt.get('women_waiting_groups') or 0 }}組待ち</span>
+                                    {% elif (pt.get('men_waiting_groups') or 0) > 0 %}
+                                    <span class="jis-wait-pill normal">男性{{ pt.get('men_waiting_groups') }}組待ち</span>
+                                    {% else %}
+                                    <span class="jis-wait-pill direct">即案内中（待ち0）</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding: 20px; color: var(--text-sub);">JIS店舗データ取得中</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
         {% if report and report.stores %}
         <h2>週間ピーク女性人数ランキング TOP30（過去7日間）</h2>
         <p style="font-size: 0.85rem; color: var(--text-sub); margin: -6px 0 14px;">各店舗の1日あたり最高来店数の7日間平均と、週間最大女性人数・最も盛り上がる時間帯の一覧です。</p>
-        <div class="stats-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>順位</th>
-                        <th>店舗名</th>
-                        <th>女性ピーク平均</th>
-                        <th>男性ピーク平均</th>
-                        <th>週間最大女性数</th>
-                        <th>最頻ピーク時間</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in report.stores[:30] %}
-                    {% set st_slug = s.name | store_linkable_slug %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
-                        <td class="w-num">{{ s.avg_women }}名</td>
-                        <td class="m-num">{{ s.avg_men }}名</td>
-                        <td style="color: var(--accent-text); font-weight: 700;">最大 {{ s.max_women }}名</td>
-                        <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="table-scroll-frame">
+            <span class="table-scroll-hint">横にスクロールできます →</span>
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="週間ピーク女性人数ランキングTOP30統計データ表">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>店舗名</th>
+                            <th>女性ピーク平均</th>
+                            <th>男性ピーク平均</th>
+                            <th>週間最大女性数</th>
+                            <th>最頻ピーク時間</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in report.stores[:30] %}
+                        {% set st_slug = s.name | store_linkable_slug %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
+                            <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
+                            <td class="w-num">{{ s.avg_women }}名</td>
+                            <td class="m-num">{{ s.avg_men }}名</td>
+                            <td style="color: var(--accent-text); font-weight: 700;">最大 {{ s.max_women }}名</td>
+                            <td style="color: var(--text-sub); font-weight: 600;">{{ s.peak_hour }}頃</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
         {% if live_stores %}
         <h2>現在のリアルタイム上位20店舗（{{ last_updated }} 時点）</h2>
-        <div class="stats-table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>現在順位</th>
-                        <th>店舗名</th>
-                        <th>現在の女性人数</th>
-                        <th>現在の男性人数</th>
-                        <th>女性比率</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in live_stores[:20] %}
-                    {% set tot = s.women + s.men %}
-                    {% set pct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
-                    {% set st_slug = s.name | store_linkable_slug %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
-                        <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
-                        <td class="w-num">{{ s.women }}名</td>
-                        <td class="m-num">{{ s.men }}名</td>
-                        <td style="color: var(--accent-text); font-weight: 600;">{{ pct }}%</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="table-scroll-frame">
+            <span class="table-scroll-hint">横にスクロールできます →</span>
+            <div class="stats-table-wrap" tabindex="0" role="region" aria-label="現在のリアルタイム上位20店舗統計データ表">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>現在順位</th>
+                            <th>店舗名</th>
+                            <th>現在の女性人数</th>
+                            <th>現在の男性人数</th>
+                            <th>女性比率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in live_stores[:20] %}
+                        {% set tot = s.women + s.men %}
+                        {% set pct = ((s.women / tot) * 100)|round|int if tot > 0 else 0 %}
+                        {% set st_slug = s.name | store_linkable_slug %}
+                        <tr>
+                            <td style="font-weight: 700; color: var(--text-sub);">#{{ loop.index }}</td>
+                            <td style="font-weight: 600; color: var(--text-main);">{% if st_slug %}<a href="/store/{{ st_slug }}" style="color: var(--text-main); text-decoration: none;">{{ s.name | seo_store_name }}</a>{% else %}{{ s.name | seo_store_name }}{% endif %}</td>
+                            <td class="w-num">{{ s.women }}名</td>
+                            <td class="m-num">{{ s.men }}名</td>
+                            <td style="color: var(--accent-text); font-weight: 600;">{{ pct }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
 
@@ -2301,140 +2471,149 @@
 
             {% if forecast_accuracy.recent_resolved %}
             <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">直近の「60分前予測 vs 実際の結果」答え合わせタイムライン</h3>
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>予測時刻 → 照合</th>
-                            <th>店舗名</th>
-                            <th>出発時の店内</th>
-                            <th>60分後AI予測</th>
-                            <th>60分後の実際</th>
-                            <th>予測とのズレ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in forecast_accuracy.recent_resolved[:15] %}
-                        {% set abs_e = r.abs_error_wpct_pt or 0 %}
-                        {% set sig_e = r.error_wpct_pt or 0 %}
-                        <tr>
-                            <td style="white-space: nowrap; color: var(--text-sub); font-size: 0.8rem;">{{ r.predicted_mdhm }} → {{ r.target_hm }}</td>
-                            <td style="font-weight: 600;">{% if r.store_slug %}<a href="/store/{{ r.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ r.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ r.store_name | seo_store_name }}</span>{% endif %}</td>
-                            <td style="white-space: nowrap; font-size: 0.81rem;">
-                                <span class="w-num">女{{ r.start_women }}</span>:<span class="m-num">男{{ r.start_men }}</span>（{{ r.start_wpct }}%）
-                            </td>
-                            <td style="white-space: nowrap; font-size: 0.81rem;">
-                                予測 <strong style="color: var(--accent-text);">{{ r.pred_wpct }}%</strong>
-                                <span style="color: var(--text-sub);">（{{ r.pred_women }}:{{ r.pred_men }}）</span>
-                            </td>
-                            <td style="white-space: nowrap; font-size: 0.81rem;">
-                                実測 <strong style="color: var(--text-main);">{{ r.actual_wpct }}%</strong>
-                                <span style="color: var(--text-sub);">（<span class="w-num">{{ r.actual_women }}</span>:<span class="m-num">{{ r.actual_men }}</span>）</span>
-                            </td>
-                            <td style="white-space: nowrap;">
-                                <span class="fc-err-pill {% if abs_e <= 5 %}good{% elif abs_e <= 10 %}ok{% else %}miss{% endif %}">
-                                    {% if sig_e > 0 %}+{{ sig_e }}pt（予測高め）{% elif sig_e < 0 %}{{ sig_e }}pt（実測上振れ）{% else %}±0pt 完全一致{% endif %}
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="60分前予測と実際の結果タイムライン統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>予測時刻 → 照合</th>
+                                <th>店舗名</th>
+                                <th>出発時の店内</th>
+                                <th>60分後AI予測</th>
+                                <th>60分後の実際</th>
+                                <th>予測とのズレ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in forecast_accuracy.recent_resolved[:15] %}
+                            {% set abs_e = r.abs_error_wpct_pt or 0 %}
+                            {% set sig_e = r.error_wpct_pt or 0 %}
+                            <tr>
+                                <td style="white-space: nowrap; color: var(--text-sub); font-size: 0.8rem;">{{ r.predicted_mdhm }} → {{ r.target_hm }}</td>
+                                <td style="font-weight: 600;">{% if r.store_slug %}<a href="/store/{{ r.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ r.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ r.store_name | seo_store_name }}</span>{% endif %}</td>
+                                <td style="white-space: nowrap; font-size: 0.81rem;">
+                                    <span class="w-num">女{{ r.start_women }}</span>:<span class="m-num">男{{ r.start_men }}</span>（{{ r.start_wpct }}%）
+                                </td>
+                                <td style="white-space: nowrap; font-size: 0.81rem;">
+                                    予測 <strong style="color: var(--accent-text);">{{ r.pred_wpct }}%</strong>
+                                    <span style="color: var(--text-sub);">（{{ r.pred_women }}:{{ r.pred_men }}）</span>
+                                </td>
+                                <td style="white-space: nowrap; font-size: 0.81rem;">
+                                    実測 <strong style="color: var(--text-main);">{{ r.actual_wpct }}%</strong>
+                                    <span style="color: var(--text-sub);">（<span class="w-num">{{ r.actual_women }}</span>:<span class="m-num">{{ r.actual_men }}</span>）</span>
+                                </td>
+                                <td style="white-space: nowrap;">
+                                    <span class="fc-err-pill {% if abs_e <= 5 %}good{% elif abs_e <= 10 %}ok{% else %}miss{% endif %}">
+                                        {% if sig_e > 0 %}+{{ sig_e }}pt（予測高め）{% elif sig_e < 0 %}{{ sig_e }}pt（実測上振れ）{% else %}±0pt 完全一致{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% endif %}
 
             {% if forecast_accuracy.by_hour %}
             <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">時間帯別の予測精度（終電崖・深夜帯を含む実測検証）</h3>
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>予測出発時間帯</th>
-                            <th>検証件数</th>
-                            <th>{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }} 平均ズレ（MAE）</th>
-                            <th>旧v1 平均ズレ</th>
-                            <th>±10pt以内的中率</th>
-                            <th>平均バイアス</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for h in forecast_accuracy.by_hour %}
-                        <tr>
-                            <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ h.slot_label }}</td>
-                            <td style="color: var(--text-sub);">{{ h.count }}件</td>
-                            <td style="font-weight: 700; color: var(--text-main);">±{{ h.mae_wpct }}pt</td>
-                            <td style="color: var(--text-sub);">{% if h.v1_mae_wpct is not none %}±{{ h.v1_mae_wpct }}pt{% else %}-{% endif %}</td>
-                            <td style="color: var(--women); font-weight: 700;">{{ h.within_10pt_pct }}%</td>
-                            <td style="color: var(--text-sub); font-size: 0.8rem;">{% if h.bias_wpct > 0 %}+{{ h.bias_wpct }}pt{% else %}{{ h.bias_wpct }}pt{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="時間帯別の予測精度統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>予測出発時間帯</th>
+                                <th>検証件数</th>
+                                <th>{{ (forecast_accuracy.model_version or 'v3.0').split('-')[0] }} 平均ズレ（MAE）</th>
+                                <th>旧v1 平均ズレ</th>
+                                <th>±10pt以内的中率</th>
+                                <th>平均バイアス</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for h in forecast_accuracy.by_hour %}
+                            <tr>
+                                <td style="font-weight: 700; color: var(--accent-text); white-space: nowrap;">{{ h.slot_label }}</td>
+                                <td style="color: var(--text-sub);">{{ h.count }}件</td>
+                                <td style="font-weight: 700; color: var(--text-main);">±{{ h.mae_wpct }}pt</td>
+                                <td style="color: var(--text-sub);">{% if h.v1_mae_wpct is not none %}±{{ h.v1_mae_wpct }}pt{% else %}-{% endif %}</td>
+                                <td style="color: var(--women); font-weight: 700;">{{ h.within_10pt_pct }}%</td>
+                                <td style="color: var(--text-sub); font-size: 0.8rem;">{% if h.bias_wpct > 0 %}+{{ h.bias_wpct }}pt{% else %}{{ h.bias_wpct }}pt{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% endif %}
 
             {% if forecast_accuracy.by_store %}
             <h3 style="font-size: 0.96rem; margin: 18px 0 10px; color: var(--text-main);">店舗別・60分後予測の安定度ランキング TOP12</h3>
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>順位</th>
-                            <th>店舗名</th>
-                            <th>検証回数</th>
-                            <th>平均予測ズレ（MAE）</th>
-                            <th>±10pt的中率</th>
-                            <th>人数平均ズレ（女 / 男）</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for st in forecast_accuracy.by_store[:12] %}
-                        <tr>
-                            <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
-                            <td style="font-weight: 600;">{% if st.store_slug %}<a href="/store/{{ st.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ st.store_name | seo_store_name }}</span>{% endif %}</td>
-                            <td style="color: var(--text-sub);">{{ st.count }}回</td>
-                            <td style="font-weight: 700; color: var(--text-main);">±{{ st.mae_wpct }}pt</td>
-                            <td style="color: var(--women); font-weight: 700;">{{ st.within_10pt_pct }}%</td>
-                            <td style="color: var(--text-sub); font-size: 0.81rem;">女±{{ st.mae_women }}名 / 男±{{ st.mae_men }}名</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="店舗別60分後予測の安定度ランキングTOP12統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>順位</th>
+                                <th>店舗名</th>
+                                <th>検証回数</th>
+                                <th>平均予測ズレ（MAE）</th>
+                                <th>±10pt的中率</th>
+                                <th>人数平均ズレ（女 / 男）</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for st in forecast_accuracy.by_store[:12] %}
+                            <tr>
+                                <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
+                                <td style="font-weight: 600;">{% if st.store_slug %}<a href="/store/{{ st.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name | seo_store_name }}</a>{% else %}<span style="color: var(--text-main);">{{ st.store_name | seo_store_name }}</span>{% endif %}</td>
+                                <td style="color: var(--text-sub);">{{ st.count }}回</td>
+                                <td style="font-weight: 700; color: var(--text-main);">±{{ st.mae_wpct }}pt</td>
+                                <td style="color: var(--women); font-weight: 700;">{{ st.within_10pt_pct }}%</td>
+                                <td style="color: var(--text-sub); font-size: 0.81rem;">女±{{ st.mae_women }}名 / 男±{{ st.mae_men }}名</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% endif %}
         </section>
         {% endif %}
 
-        <section class="hero-box" style="margin-top: 32px; border-color: var(--border-subtle);">
+        <section class="stats-method-card">
             <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">データ収集・検証方法論 ＆ メディア・AI引用ガイドライン（CC BY 4.0）</h2>
-            <p style="margin: 0 0 10px; font-size: 0.84rem; color: var(--text-sub);">
+            <p style="margin: 0 0 10px; font-size: 0.84rem; color: var(--text-sub); font-variant-numeric: tabular-nums;">
                 <strong style="color: var(--text-main);">計測・保存プロトコル：</strong>全国対象店舗の公開来店人数を1分間隔で自動計測し、生ログを90日間保持した上で1時間粒度ロールアップ統計（平均・最大人数・サンプル数・気象・大型公演・交通遅延コンテキスト）へ永久アーカイブしています（{% if moat_coverage and moat_coverage.raw_snapshots %}現在の直近生ログ保持 {{ "{:,}".format(moat_coverage.raw_snapshots) }}件{% if moat_coverage.rolled_up_hours %} ／ 1時間ロールアップ {{ "{:,}".format(moat_coverage.rolled_up_hours) }}枠{% endif %}{% else %}毎分自動蓄積中{% endif %}）。60分後予測の精度検証では、閉店間際の退店一斉処理による右側打ち切りバイアスを除外して実測照合を行っています。
             </p>
             <p style="margin: 0 0 12px; font-size: 0.85rem; color: var(--text-sub);">
-                本ページの統計データおよび <a href="/stats/monthly.csv" style="color: var(--accent-text);">店舗別30日間一次統計CSV（/stats/monthly.csv）</a> は、クリエイティブ・コモンズ表示 4.0 国際（CC BY 4.0）の下、個人ブログ・SNS・報道記事・研究・AI検索等で<strong style="color: var(--text-main);">事前の許諾なくご自由に引用・転載いただけます</strong>。引用時は下記の出典表記をご利用ください。
+                本ページの統計データおよび <a href="/stats/monthly.csv" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">店舗別30日間一次統計CSV（/stats/monthly.csv）</a> は、クリエイティブ・コモンズ表示 4.0 国際（CC BY 4.0）の下、個人ブログ・SNS・報道記事・研究・AI検索等で<strong style="color: var(--text-main);">事前の許諾なくご自由に引用・転載いただけます</strong>。引用時は下記の出典表記をご利用ください。
             </p>
             <div class="stats-citation-box">
-                出典：相席ナビ編集部（監修：くわもん（相席ナビ編集長））「<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text);">全国相席ラウンジ統計データ白書</a>」（https://aiseki-navi.com/stats ／ CC BY 4.0）
+                出典：相席ナビ編集部（監修：くわもん（相席ナビ編集長））「<a href="https://aiseki-navi.com/stats" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">全国相席ラウンジ統計データ白書</a>」（https://aiseki-navi.com/stats ／ CC BY 4.0）
             </div>
             <div style="margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px;">
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                <div class="stats-cite-card">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
                         <strong style="font-size: 0.78rem; color: var(--text-main);">1行クレジット（SNS・note用）</strong>
-                        <button type="button" data-copy-cite="plain" onclick="copyCitationSnippet('plain', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                        <button type="button" class="stats-cite-copy-btn" data-copy-cite="plain" onclick="copyCitationSnippet('plain', this)">コピー</button>
                     </div>
                     <code id="cite-snippet-plain" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">出典：相席ナビ編集部「全国相席ラウンジ統計データ白書」 https://aiseki-navi.com/stats （CC BY 4.0）</code>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                <div class="stats-cite-card">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
                         <strong style="font-size: 0.78rem; color: var(--text-main);">Markdown形式（ブログ・Zenn用）</strong>
-                        <button type="button" data-copy-cite="md" onclick="copyCitationSnippet('md', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                        <button type="button" class="stats-cite-copy-btn" data-copy-cite="md" onclick="copyCitationSnippet('md', this)">コピー</button>
                     </div>
                     <code id="cite-snippet-md" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">&gt; 出典：[相席ナビ編集部「全国相席ラウンジ統計データ白書」](https://aiseki-navi.com/stats)（CC BY 4.0）</code>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 11px 13px;">
+                <div class="stats-cite-card">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
                         <strong style="font-size: 0.78rem; color: var(--text-main);">HTML埋め込み（Webメディア用）</strong>
-                        <button type="button" data-copy-cite="html" onclick="copyCitationSnippet('html', this)" style="min-height: 36px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); background: transparent; color: var(--accent-text); font-size: 0.74rem; font-weight: 600; cursor: pointer;">コピー</button>
+                        <button type="button" class="stats-cite-copy-btn" data-copy-cite="html" onclick="copyCitationSnippet('html', this)">コピー</button>
                     </div>
                     <code id="cite-snippet-html" style="display: block; font-size: 0.73rem; color: var(--text-sub); line-height: 1.45; word-break: break-all;">&lt;blockquote cite="https://aiseki-navi.com/stats"&gt;出典：&lt;a href="https://aiseki-navi.com/stats" rel="noopener"&gt;相席ナビ編集部「全国相席ラウンジ統計データ白書」&lt;/a&gt;（CC BY 4.0）&lt;/blockquote&gt;</code>
                 </div>
@@ -2458,8 +2637,8 @@
         </section>
 
         <div style="text-align: center; margin-top: 26px;">
-            <a href="/" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 11px 24px; border-radius: 999px; background: var(--cm-cta-bg); border: 1px solid var(--cm-cta-bg); color: var(--cm-cta-text); text-decoration: none; font-weight: 700; font-size: 0.88rem;">
-                全店舗のリアルタイム順位・曜日別グラフを見る ›
+            <a href="/" class="btn-primary stats-cta-primary" style="padding: 11px 24px; min-height: 44px; font-size: 0.88rem;">
+                全店舗のリアルタイム順位・曜日別グラフを見る&nbsp;›
             </a>
         </div>
         </main>

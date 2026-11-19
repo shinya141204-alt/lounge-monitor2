@@ -7,39 +7,42 @@
     <title>{{ code }} {{ title }}｜相席ナビ</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #0c0d10;
-            --card-bg: #16181f;
-            --card-bg-2: #1f222c;
-            --border-color: rgba(235, 232, 227, 0.16);
-            --border-gold: rgba(200, 164, 110, 0.48);
-            --text-main: #f0ede8;
-            --text-sub: #b5b0a6;
-            --accent-gold: #c8a46e;
-            --accent-text: #e3c898;
+            --bg-dark: #111113;
+            --card-bg: #1a1a1e;
+            --card-bg-2: #232329;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text-main: #f4f4f5;
+            --text-sub: #b4b4be;
+            --cta-bg: #f4f4f5;
+            --cta-text: #111113;
         }
+        html.theme-light,
         body.theme-light {
-            --bg-dark: #eeebe2;
+            --bg-dark: #f6f6f7;
             --card-bg: #ffffff;
-            --card-bg-2: #e4dfd4;
-            --border-color: rgba(28, 26, 23, 0.18);
-            --border-gold: rgba(110, 79, 35, 0.48);
-            --text-main: #1b1916;
-            --text-sub: #4d4840;
-            --accent-gold: #6e4f23;
-            --accent-text: #6e4f23;
+            --card-bg-2: #f2f2f5;
+            --border-color: rgba(24, 24, 27, 0.09);
+            --border-strong: rgba(24, 24, 27, 0.16);
+            --text-main: #18181b;
+            --text-sub: #52525b;
+            --cta-bg: #18181b;
+            --cta-text: #ffffff;
         }
         * { box-sizing: border-box; }
         body {
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -48,18 +51,18 @@
             justify-content: space-between;
         }
         .error-header {
-            padding: 18px 24px;
+            padding: 16px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 3px double var(--border-gold);
+            border-bottom: 1px solid var(--border-color);
             background: var(--bg-dark);
         }
         .error-logo {
             font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
             font-size: 1.32rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
+            font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--text-main);
             text-decoration: none;
             display: flex;
@@ -68,20 +71,20 @@
         }
         .error-logo .badge {
             font-family: "Outfit", sans-serif;
-            background: rgba(200, 164, 110, 0.14);
-            border: 1px solid var(--border-gold);
-            color: var(--accent-text);
+            background: var(--card-bg-2);
+            border: 1px solid var(--border-strong);
+            color: var(--text-sub);
             font-size: 0.68rem;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.06em;
             padding: 2px 8px;
-            border-radius: 999px;
+            border-radius: 8px;
             font-weight: 700;
         }
         .error-container {
             max-width: 620px;
             width: 100%;
             margin: 40px auto;
-            padding: 0 20px;
+            padding: 0 18px;
             text-align: center;
             flex: 1;
             display: flex;
@@ -91,23 +94,24 @@
         .error-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-top: 3px solid var(--accent-gold);
-            border-radius: 14px;
-            padding: 40px 26px;
+            border-radius: 18px;
+            padding: 36px 26px;
         }
         .error-code {
             font-family: "Outfit", sans-serif;
-            font-size: 4rem;
-            font-weight: 700;
+            font-size: 3.8rem;
+            font-weight: 800;
             line-height: 1;
-            letter-spacing: 0.06em;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
             margin: 0 0 14px;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         .error-title {
             font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
             font-size: 1.32rem;
             font-weight: 700;
+            letter-spacing: -0.015em;
             margin: 0 0 12px;
             color: var(--text-main);
         }
@@ -126,18 +130,19 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 24px;
-            border-radius: 999px;
-            background: var(--card-bg-2);
-            border: 1px solid var(--border-gold);
-            color: var(--accent-text);
+            min-height: 44px;
+            padding: 11px 24px;
+            border-radius: 12px;
+            background: var(--cta-bg);
+            border: 1px solid var(--cta-bg);
+            color: var(--cta-text);
             font-weight: 700;
             font-size: 0.92rem;
             text-decoration: none;
-            transition: background 0.15s ease;
+            transition: opacity 0.15s ease;
         }
         .btn-primary:hover {
-            background: rgba(200, 164, 110, 0.18);
+            opacity: 0.9;
         }
         .nav-links {
             display: flex;
@@ -147,18 +152,21 @@
             margin-top: 6px;
         }
         .nav-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
             color: var(--text-sub);
             font-size: 0.82rem;
             font-weight: 600;
             text-decoration: none;
             padding: 6px 13px;
-            border-radius: 999px;
+            border-radius: 10px;
             background: var(--card-bg-2);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-strong);
             transition: border-color 0.15s ease, color 0.15s ease;
         }
         .nav-link:hover {
-            border-color: var(--border-gold);
+            border-color: var(--text-sub);
             color: var(--text-main);
         }
         .error-footer {
@@ -169,9 +177,7 @@
             border-top: 1px solid var(--border-color);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/calm.css?v=52">
 </head>
 <body>
     <script>
@@ -194,11 +200,11 @@
             <p class="error-message">{{ message }}</p>
 
             <div class="error-actions">
-                <a href="/" class="btn-primary">リアルタイム順位トップへ戻る ›</a>
+                <a href="/" class="btn-primary">リアルタイム順位トップへ戻る&nbsp;›</a>
                 <div class="nav-links">
                     <a href="/oriental-lounge" class="nav-link">オリエンタルラウンジ</a>
                     <a href="/ag" class="nav-link">ag（アグ）</a>
-                    <a href="/jis" class="nav-link">JIS</a>
+                    <a href="/jis" class="nav-link">JIS（ジス）</a>
                     <a href="/columns" class="nav-link">攻略コラム</a>
                     <a href="/concierge" class="nav-link">3秒ハシゴ診断</a>
                 </div>

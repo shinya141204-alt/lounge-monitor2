@@ -45,8 +45,13 @@ def scan_file_for_ai_patterns(filepath: str) -> dict:
         clean,
         flags=re.I | re.S,
     )
+    menu_or_badge_blocks = re.findall(
+        r'class="[^"]*(?:menu-grid-item|crowd-status-badge|masthead-kicker)[^"]*"[^>]*>(.*?)</(?:a|div|span)>',
+        clean,
+        flags=re.I | re.S,
+    )
     control_emojis = []
-    for blk in heading_or_btn_blocks:
+    for blk in heading_or_btn_blocks + menu_or_badge_blocks:
         txt = re.sub(r"<[^>]+>", "", blk)
         found = [ch for ch in EMOJI_RE.findall(txt) if ch not in ("✕", "✖", "×")]
         if found:
@@ -59,6 +64,21 @@ def scan_file_for_ai_patterns(filepath: str) -> dict:
         "sample_emojis": "".join(control_emojis[:10]),
         "neon_gradient_count": len(neon_grads),
     }
+
+
+def check_python_ui_badge_emojis() -> list:
+    """Ensure server-side UI badge/summary builders (e.g. concierge_matcher.py) do not emit decorative emojis."""
+    issues = []
+    cm_path = os.path.join(REPO_ROOT, "concierge_matcher.py")
+    if os.path.exists(cm_path):
+        with open(cm_path, "r", encoding="utf-8") as fp:
+            src = fp.read()
+        m = re.search(r"def _build_area_summary\(.*?(?=\ndef |\Z)", src, flags=re.S)
+        if m:
+            found = [ch for ch in EMOJI_RE.findall(m.group(0)) if ch not in ("✕", "✖", "×")]
+            if found:
+                issues.append(f"concierge_matcher.py (_build_area_summary): 装飾絵文字が残存しています ({''.join(found[:8])})")
+    return issues
 
 
 def check_calm_css_scroll_safety() -> list:
@@ -115,24 +135,55 @@ def check_undefined_css_vars() -> list:
 
 
 def check_guide_light_mode_inline_colors() -> list:
-    """Block hardcoded dark-only light text colors (#fff/#f8fafc/#e2e8f0/#cbd5e1/#ebe8e3) inside inline style= attributes of guide_*.html."""
+    """Block hardcoded dark-only light/muted text colors inside inline style= or un-overridden <style> rules, and block body overflow-x: hidden in guides/store_detail."""
     issues = []
     style_attr_re = re.compile(r'style="([^"]*)"', re.I)
     forbidden_color_re = re.compile(
         r"(?:^|;)\s*color\s*:\s*(#fff(?:fff)?|#f8fafc|#e2e8f0|#cbd5e1|#ebe8e3)\b",
         re.I,
     )
-    for tpath in sorted(glob.glob(os.path.join(REPO_ROOT, "templates", "guide_*.html"))):
+    style_block_re = re.compile(r"<style\b[^>]*>(.*?)</style>", re.I | re.S)
+    body_ovx_re = re.compile(r"(?:^|\})\s*body\s*\{[^}]*overflow-x\s*:\s*(?:hidden|clip)", re.I | re.S)
+    unscoped_muted_re = re.compile(r"([^{}]+)\{([^{}]*color\s*:\s*(#9ca3af|#cbd5e1|#e2e8f0|#f8fafc|#ebe8e3)\b[^{}]*)\}", re.I)
+
+    guide_files = sorted(glob.glob(os.path.join(REPO_ROOT, "templates", "guide_*.html")))
+    for tpath in guide_files:
         fname = os.path.basename(tpath)
         with open(tpath, "r", encoding="utf-8") as fp:
-            lines = fp.readlines()
+            raw = fp.read()
+        lines = raw.splitlines()
         for idx, line in enumerate(lines, start=1):
             for sm in style_attr_re.finditer(line):
                 cm = forbidden_color_re.search(sm.group(1))
                 if cm:
                     issues.append(
-                        f"templates/{fname}:{idx}: インライン style にダーク専用文字色 {cm.group(1)} が直書きされています（var(--text-main) / var(--text-sub) を使用してください）"
+                        f"templates/{fname}:{idx}: インライン style にダーク専用文字色 {cm.group(1)} が直書きされています（var(--calm-text) / var(--calm-sub) を使用してください）"
                     )
+        clean_raw = re.sub(r"<!--.*?-->|\{#.*?#\}", "", raw, flags=re.S)
+        for sb in style_block_re.findall(clean_raw):
+            sb_clean = re.sub(r"/\*.*?\*/", "", sb, flags=re.S)
+            if body_ovx_re.search(sb_clean):
+                issues.append(f"templates/{fname}: <style> 内の body に overflow-x: hidden/clip が残存しています（Sticky阻害）")
+            for rm in unscoped_muted_re.finditer(sb_clean):
+                sel = rm.group(1).strip()
+                hex_col = rm.group(3)
+                if "not(.theme-light)" in sel or "dark" in sel.lower():
+                    continue
+                base_cls = sel.split()[-1] if sel.split() else sel
+                if base_cls and re.search(r"theme-light[^{]*" + re.escape(base_cls) + r"\b", sb_clean):
+                    continue
+                issues.append(
+                    f"templates/{fname}: <style> 内の '{sel}' にライトモード未上書きの低コントラスト色 {hex_col} が直書きされています"
+                )
+
+    sd_path = os.path.join(REPO_ROOT, "templates", "store_detail.html")
+    if os.path.exists(sd_path):
+        with open(sd_path, "r", encoding="utf-8") as fp:
+            sd_raw = re.sub(r"<!--.*?-->|\{#.*?#\}", "", fp.read(), flags=re.S)
+        for sb in style_block_re.findall(sd_raw):
+            sb_clean = re.sub(r"/\*.*?\*/", "", sb, flags=re.S)
+            if body_ovx_re.search(sb_clean):
+                issues.append("templates/store_detail.html: <style> 内の body に overflow-x: hidden/clip が残存しています")
     return issues
 
 
@@ -277,15 +328,20 @@ def main():
                 targets.append(os.path.join(tdir, fn))
 
     rows = [scan_file_for_ai_patterns(p) for p in targets]
+    py_emoji_issues = check_python_ui_badge_emojis()
     rows.sort(key=lambda r: (r["neon_gradient_count"], r["control_emoji_count"]), reverse=True)
     for r in rows[:10]:
         if r["control_emoji_count"] > 0 or r["neon_gradient_count"] > 0:
             print(
-                f"  - {r['file']}: 見出し/ボタン絵文字={r['control_emoji_count']}個 ({r['sample_emojis']}) "
+                f"  ❌ {r['file']}: 見出し/ボタン/メニュー絵文字={r['control_emoji_count']}個 ({r['sample_emojis']}) "
                 f"| インライン派手グラデ={r['neon_gradient_count']}箇所"
             )
-    if all(r["control_emoji_count"] == 0 and r["neon_gradient_count"] == 0 for r in rows):
-        print("  ✅ 対象ファイルに見出し/ボタン絵文字過多・派手グラデなし")
+            has_error = True
+    for p_iss in py_emoji_issues:
+        print(f"  ❌ {p_iss}")
+        has_error = True
+    if all(r["control_emoji_count"] == 0 and r["neon_gradient_count"] == 0 for r in rows) and not py_emoji_issues:
+        print("  ✅ 対象ファイル＆Pythonバッジに見出し/ボタン絵文字・派手グラデなし")
 
     if has_error:
         sys.exit(1)

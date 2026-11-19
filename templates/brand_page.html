@@ -72,20 +72,37 @@
     ]
     </script>
 
+    <meta name="color-scheme" content="dark light">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --text-main: #ebe8e3;
-            --text-sub: #9a968e;
-            --women: #d8a1aa;
-            --men: #93b1c9;
-            --accent-gold: #c8a46e;
-            --accent-text: #dfc496;
-            --border-subtle: rgba(255, 255, 255, 0.08);
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-bg-2: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --accent-gold: var(--calm-text, #f4f4f5);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-strong: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+        }
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-bg-2: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --women: var(--calm-light-women-strong, #9f1239);
+            --men: var(--calm-light-men-strong, #1e40af);
+            --accent-gold: var(--calm-light-text, #18181b);
+            --accent-text: var(--calm-light-text, #18181b);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-strong: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
         }
         * { box-sizing: border-box; }
         body {
@@ -94,11 +111,11 @@
             background-color: var(--bg-dark);
             background-image: none;
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             line-height: 1.75;
         }
         .portal-wrap {
-            max-width: 980px;
+            max-width: 1020px;
             margin: 0 auto;
             padding: 20px 18px 80px;
         }
@@ -122,6 +139,7 @@
             font-size: 1.45rem;
             font-weight: 800;
             color: var(--text-main);
+            letter-spacing: -0.02em;
             margin: 0;
         }
         .portal-brand-sub { font-size: 0.78rem; color: var(--text-sub); }
@@ -150,12 +168,13 @@
         .brand-tab {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             flex: 0 0 auto;
             white-space: nowrap;
-            min-height: 36px;
+            min-height: 40px;
             gap: 6px;
-            padding: 6px 14px;
-            border-radius: 999px;
+            padding: 7px 14px;
+            border-radius: 10px;
             font-size: 0.81rem;
             font-weight: 600;
             text-decoration: none;
@@ -165,11 +184,8 @@
             transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
         }
         .brand-tab:hover {
-            border-color: rgba(255, 255, 255, 0.24);
+            border-color: var(--border-strong);
             color: var(--text-main);
-        }
-        body.theme-light .brand-tab:hover {
-            border-color: rgba(24, 24, 27, 0.28);
         }
         .brand-tab.active {
             background: #f4f4f5 !important;
@@ -184,26 +200,28 @@
         }
 
         .hero-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 22px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            border-radius: 0;
+            padding: 6px 0 22px;
             margin-bottom: 20px;
         }
         .hero-card h1 {
             margin: 0 0 10px;
-            font-size: 1.34rem;
+            font-size: 1.36rem;
             color: var(--text-main);
-            line-height: 1.4;
+            line-height: 1.38;
+            letter-spacing: -0.02em;
         }
         .totals-bar {
             display: inline-flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 6px 14px;
-            background: #18181c;
+            background: var(--card-bg-2);
             padding: 8px 14px;
-            border-radius: 10px;
+            border-radius: 13px;
             border: 1px solid var(--border-subtle);
             font-size: 0.83rem;
             font-weight: 600;
@@ -212,13 +230,22 @@
             margin-bottom: 14px;
         }
         body.theme-light .totals-bar {
-            background: #f6f6f7;
-            border-color: rgba(24, 24, 27, 0.10);
+            background: var(--calm-light-surface-2, #f2f2f5);
+            border-color: var(--calm-light-border, rgba(24, 24, 27, 0.09));
         }
-        .tot-w { color: var(--women); font-weight: 700; }
-        .tot-m { color: var(--men); font-weight: 700; }
-        body.theme-light .tot-w { color: #be123c !important; }
-        body.theme-light .tot-m { color: #1d4ed8 !important; }
+        .tot-w { color: var(--women); font-weight: 700; font-variant-numeric: tabular-nums; }
+        .tot-m { color: var(--men); font-weight: 700; font-variant-numeric: tabular-nums; }
+        body.theme-light .tot-w { color: var(--calm-light-women-strong, #9f1239) !important; }
+        body.theme-light .tot-m { color: var(--calm-light-men-strong, #1e40af) !important; }
+
+        .brand-sec-title {
+            font-size: 1.08rem;
+            color: var(--text-main);
+            margin: 22px 0 12px;
+            padding-left: 0;
+            border-left: none;
+            letter-spacing: -0.015em;
+        }
 
         .stores-grid {
             display: grid;
@@ -234,15 +261,16 @@
         .store-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
             display: flex;
             flex-direction: column;
             gap: 10px;
             transition: border-color 0.18s ease;
+            font-variant-numeric: tabular-nums;
         }
         .store-card:hover {
-            border-color: rgba(200, 164, 110, 0.45);
+            border-color: var(--border-strong);
         }
         .store-title-row {
             display: flex;
@@ -258,13 +286,19 @@
         }
         .store-area-badge {
             font-size: 0.71rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.045);
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 8px;
+            background: var(--card-bg-2);
             border: 1px solid var(--border-subtle);
             color: var(--text-sub);
             white-space: nowrap;
             flex-shrink: 0;
+        }
+        body.theme-light .store-area-badge {
+            background: var(--calm-light-surface-2, #f2f2f5);
+            color: var(--calm-light-sub, #52525b);
+            border-color: var(--calm-light-border, rgba(24, 24, 27, 0.09));
         }
         .counts-row {
             display: flex;
@@ -272,12 +306,18 @@
             justify-content: space-between;
             font-size: 0.92rem;
             font-weight: 700;
+            background: var(--card-bg-2);
+            padding: 10px 12px;
+            border-radius: 13px;
         }
         .ratio-bar {
             height: 6px;
             border-radius: 999px;
-            background: rgba(147, 177, 201, 0.28);
+            background: rgba(147, 197, 253, 0.22);
             overflow: hidden;
+        }
+        body.theme-light .ratio-bar {
+            background: rgba(29, 78, 216, 0.15);
         }
         .ratio-bar.is-empty {
             background: var(--border-subtle) !important;
@@ -300,16 +340,17 @@
         .guide-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 22px;
+            border-radius: 18px;
+            padding: 20px;
             margin-top: 22px;
         }
         .guide-box h2 {
             font-size: 1.08rem;
             margin: 0 0 10px;
             color: var(--text-main);
-            padding-left: 10px;
-            border-left: 3px solid var(--accent-gold);
+            padding-left: 0;
+            border-left: none;
+            letter-spacing: -0.015em;
         }
         .guide-box p {
             margin: 0 0 12px;
@@ -317,14 +358,65 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        body:not(.staff-mode) .brand-tab {
+            min-height: 40px !important;
+            border-radius: 10px !important;
+        }
+        body:not(.staff-mode) .store-card,
+        body:not(.staff-mode) .guide-box {
+            border-radius: 18px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .store-card {
+            background: var(--calm-surface, #1a1a1e) !important;
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+        }
+        body.theme-light:not(.staff-mode) .store-card {
+            background: #ffffff !important;
+            border: 1px solid var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body:not(.staff-mode) .counts-row,
+        body:not(.staff-mode) .totals-bar {
+            border-radius: 13px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .counts-row {
+            background: var(--calm-surface-2, #232329) !important;
+        }
+        body.theme-light:not(.staff-mode) .counts-row {
+            background: var(--calm-light-surface-2, #f2f2f5) !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .store-area-badge {
+            background: var(--calm-surface-2, #232329) !important;
+            color: var(--calm-sub, #b4b4be) !important;
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            border-radius: 8px !important;
+        }
+        body.theme-light:not(.staff-mode) .store-area-badge {
+            background: var(--calm-light-surface-2, #f2f2f5) !important;
+            color: var(--calm-light-sub, #52525b) !important;
+            border: 1px solid var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+            border-radius: 8px !important;
+        }
+        body.theme-light .tot-w {
+            color: var(--calm-light-women-strong, #9f1239) !important;
+        }
+        body.theme-light .tot-m {
+            color: var(--calm-light-men-strong, #1e40af) !important;
+        }
+        body:not(.staff-mode) .brand-sec-title,
+        body:not(.staff-mode) .guide-box h2 {
+            border-left: none !important;
+            padding-left: 0 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -338,7 +430,7 @@
             <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: {{ last_updated }}</span>
         </div>
 
-        {% set nav_active = 'ranking' %}
+        {% set nav_active = 'comparison' %}
         {% include '_portal_nav.html' %}
 
         <main>
@@ -362,7 +454,7 @@
             <p style="margin: 0; font-size: 0.89rem; color: var(--text-sub);">{{ brand.lead }}</p>
         </section>
 
-        <h2 style="font-size: 1.08rem; color: var(--text-main); margin: 22px 0 12px; padding-left: 10px; border-left: 3px solid var(--accent-gold);">{{ brand.name }} 店舗別リアルタイム人数・男女比一覧（女性が多い順）</h2>
+        <h2 class="brand-sec-title">{{ brand.name }} 店舗別リアルタイム人数・男女比一覧（女性が多い順）</h2>
 
         <div class="stores-grid">
             {% for s in stores %}

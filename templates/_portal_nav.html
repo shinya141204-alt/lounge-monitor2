@@ -5,13 +5,28 @@
 <script>
 (function(){
     try {
-        if (!document.body.classList.contains('audience-women') && localStorage.getItem('olg_view_theme') === 'light') {
+        var isWomenPage = document.body.classList.contains('audience-women') || (location.pathname || '').indexOf('/for-women') === 0;
+        var wm = isWomenPage ? localStorage.getItem('aiseki_women_manual_theme') : null;
+        var gv = localStorage.getItem('olg_view_theme');
+        if (isWomenPage) {
+            if (window.__aisekiWomenForceDark || wm === 'default' || (wm === null && gv === 'default')) {
+                document.documentElement.classList.remove('theme-light');
+                document.body.classList.remove('theme-light');
+            } else if (wm === 'light' || gv === 'light' || document.body.classList.contains('theme-light')) {
+                document.documentElement.classList.add('theme-light');
+                document.body.classList.add('theme-light');
+            }
+        } else if (gv === 'light' || document.documentElement.classList.contains('theme-light')) {
             document.documentElement.classList.add('theme-light');
             document.body.classList.add('theme-light');
         }
     } catch (e) {}
     window.__syncPortalThemeBtns = function() {
         var isLight = document.body.classList.contains('theme-light');
+        var meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta && !document.documentElement.hasAttribute('data-theme')) {
+            meta.content = isLight ? 'light' : 'dark';
+        }
         var nodes = document.querySelectorAll('.portal-theme-btn-text');
         for (var i = 0; i < nodes.length; i++) {
             nodes[i].textContent = isLight ? 'ダーク表示' : 'ライト表示';
@@ -22,12 +37,13 @@
         document.documentElement.classList.toggle('theme-light', isLight);
         try {
             localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
-            if (document.body.classList.contains('audience-women')) {
+            if (document.body.classList.contains('audience-women') || (location.pathname || '').indexOf('/for-women') === 0) {
                 localStorage.setItem('aiseki_women_manual_theme', isLight ? 'light' : 'default');
             }
         } catch (e) {}
         window.__syncPortalThemeBtns();
     };
+    window.toggleForWomenTheme = window.__togglePortalTheme;
 })();
 </script>
 <div class="portal-global-nav-row">
@@ -42,11 +58,9 @@
             <a href="/guide/brand-comparison" class="portal-nav-item{% if nav_active == 'comparison' %} active{% endif %}"{% if nav_active == 'comparison' %} aria-current="page"{% endif %}>3大ブランド比較</a>
             <a href="/grooming" class="portal-nav-item{% if nav_active == 'grooming' %} active{% endif %}"{% if nav_active == 'grooming' %} aria-current="page"{% endif %}>服装・事前準備</a>
         </nav>
-        {% if nav_active != 'for_women' %}
-        <button type="button" class="portal-nav-item portal-theme-toggle-btn" onclick="window.__togglePortalTheme && window.__togglePortalTheme()" title="明るいライトモードとダークモードを切り替え">
+        <button type="button"{% if nav_active == 'for_women' %} id="for-women-theme-btn"{% endif %} class="portal-nav-item portal-theme-toggle-btn" onclick="{% if nav_active == 'for_women' %}toggleForWomenTheme(){% else %}window.__togglePortalTheme && window.__togglePortalTheme(){% endif %}" title="明るいライトモードとダークモードを切り替え">
             <span class="portal-theme-btn-text">ライト表示</span>
         </button>
-        {% endif %}
 </div>
-        <script>if(window.__syncPortalThemeBtns)window.__syncPortalThemeBtns();</script>
+        <script>(function(){if(window.__syncPortalThemeBtns)window.__syncPortalThemeBtns();var n=document.querySelector('.portal-global-nav'),a=n&&n.querySelector('.portal-nav-item.active');if(n&&a&&n.scrollWidth>n.clientWidth){n.scrollLeft=Math.max(0,(a.offsetLeft-n.offsetLeft)-(n.clientWidth-a.offsetWidth)/2);}})();</script>
         {% include '_nav_loader.html' %}

@@ -242,14 +242,45 @@
     }
 
     function initTableScrollAffordance() {
+        var SCROLLER_SEL = '.comp-table-wrap, .stats-table-wrap, .data-table-wrap, .jis-stats-table-wrap, .table-scroll-wrapper, .table-wrap';
+        var rawScrollers = document.querySelectorAll(SCROLLER_SEL);
+        for (var s = 0; s < rawScrollers.length; s++) {
+            var scEl = rawScrollers[s];
+            if (scEl.parentElement && scEl.parentElement.closest && scEl.parentElement.closest(SCROLLER_SEL)) continue;
+            var parentFrame = scEl.closest ? scEl.closest('.table-scroll-frame') : null;
+            if (!parentFrame && scEl.parentNode) {
+                parentFrame = document.createElement('div');
+                parentFrame.className = 'table-scroll-frame';
+                var hintSpan = document.createElement('span');
+                hintSpan.className = 'table-scroll-hint';
+                hintSpan.setAttribute('aria-hidden', 'true');
+                hintSpan.textContent = '横にスクロールできます →';
+                scEl.parentNode.insertBefore(parentFrame, scEl);
+                parentFrame.appendChild(hintSpan);
+                parentFrame.appendChild(scEl);
+            } else if (parentFrame && !parentFrame.querySelector('.table-scroll-hint')) {
+                var extraHint = document.createElement('span');
+                extraHint.className = 'table-scroll-hint';
+                extraHint.setAttribute('aria-hidden', 'true');
+                extraHint.textContent = '横にスクロールできます →';
+                parentFrame.insertBefore(extraHint, parentFrame.firstChild);
+            }
+        }
         var frames = document.querySelectorAll('.table-scroll-frame');
         if (!frames.length) return;
         var entries = [];
         for (var i = 0; i < frames.length; i++) {
             var frame = frames[i];
             if (frame.__scrollAffordanceBound) continue;
-            var scroller = frame.querySelector('.comp-table-wrap, .stats-table-wrap');
+            var scroller = frame.querySelector(SCROLLER_SEL) || (frame.querySelector('table') ? frame : null);
             if (!scroller) continue;
+            if (!scroller.hasAttribute('tabindex')) scroller.setAttribute('tabindex', '0');
+            if (!scroller.hasAttribute('role')) scroller.setAttribute('role', 'region');
+            if (!scroller.hasAttribute('aria-label') && !scroller.hasAttribute('aria-labelledby')) {
+                var cap = scroller.querySelector('caption');
+                var capTxt = cap && cap.textContent ? cap.textContent.trim() : '';
+                scroller.setAttribute('aria-label', capTxt || 'データ比較表');
+            }
             frame.__scrollAffordanceBound = true;
             entries.push({ frame: frame, scroller: scroller });
         }
@@ -435,7 +466,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=118', { updateViaCache: 'none' }).then(function(reg) {
+                navigator.serviceWorker.register('/sw.js?v=119', { updateViaCache: 'none' }).then(function(reg) {
                     // Throttle explicit SW update checks to once per 10 minutes per tab session
                     try {
                         var KEY = 'aiseki_sw_update_at';

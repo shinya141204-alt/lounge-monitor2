@@ -90,102 +90,105 @@
     ]
     </script>
 
+    <meta name="color-scheme" content="dark light">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
-        /* デフォルト（女性向けローズリネン地×純白カード紙面の高級サロン誌トーン） */
-        :root {
-            --bg-page: #f2eaeb;
-            --card-bg: #ffffff;
-            --card-bg-2: #e8dcde;
-            --text-main: #221b1d;
-            --text-body: #32282b;
-            --heading-color: #1a1315;
-            --text-sub: #544146;
-            --rose: #9a3950;
-            --rose-strong: #822b40;
-            --rose-soft: rgba(154, 57, 80, 0.12);
-            --rose-border: rgba(154, 57, 80, 0.36);
-            --gold-strong: #6e4f23;
-            --gold-soft: rgba(110, 79, 35, 0.12);
-            --mint-strong: #0f5f43;
-            --mint-soft: rgba(15, 95, 67, 0.11);
-            --mint-border: rgba(15, 95, 67, 0.36);
-            --men-strong: #2b5478;
-            --border-subtle: rgba(120, 62, 78, 0.16);
-            --border-outline: rgba(120, 62, 78, 0.28);
-            --hero-grad: linear-gradient(155deg, rgba(216, 141, 158, 0.18) 0%, #ffffff 68%);
+        /* 案2（TableCheck・VACAN型）正準ニュートラル・トーナル階層 ＋ 女性向け最小アクセント */
+        :root,
+        html.theme-light,
+        body.theme-light,
+        body.theme-light.audience-women {
+            --bg-page: var(--calm-light-bg, #f6f6f7);
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-bg-2: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-body: #27272a;
+            --heading-color: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --rose: var(--calm-light-women-strong, #9f1239);
+            --rose-strong: #881337;
+            --rose-soft: rgba(159, 18, 57, 0.09);
+            --rose-border: rgba(159, 18, 57, 0.24);
+            --mint-strong: #064e3b;
+            --mint-soft: rgba(16, 185, 129, 0.12);
+            --mint-border: rgba(6, 95, 70, 0.24);
+            --men-strong: var(--calm-light-men-strong, #1e40af);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-outline: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
         }
-        /* 手動でダーク表示を選んだ場合のフォールバック */
+        /* ダーク表示時の正準ニュートラル黒階層（明度逆転ゼロ：#111113 < #1a1a1e < #232329） */
         body:not(.theme-light) {
-            --bg-page: #0c0d10;
-            --card-bg: #16181f;
-            --card-bg-2: #1f222c;
-            --text-main: #f2eef0;
-            --text-body: #e4dce0;
-            --heading-color: #ffffff;
-            --text-sub: #b8afb4;
-            --rose: #e3a7b4;
-            --rose-strong: #f6dce2;
-            --rose-soft: rgba(227, 167, 180, 0.15);
-            --rose-border: rgba(227, 167, 180, 0.42);
-            --gold-strong: #e3c898;
-            --gold-soft: rgba(200, 164, 110, 0.16);
-            --mint-strong: #cbf3de;
-            --mint-soft: rgba(123, 196, 159, 0.16);
-            --mint-border: rgba(123, 196, 159, 0.44);
-            --men-strong: #98b7d0;
-            --border-subtle: rgba(235, 232, 227, 0.15);
-            --border-outline: rgba(235, 232, 227, 0.25);
-            --hero-grad: linear-gradient(155deg, rgba(227, 167, 180, 0.14) 0%, #16181f 62%);
+            --bg-page: var(--calm-bg, #111113);
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-bg-2: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-body: #e4e4e7;
+            --heading-color: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --rose: var(--calm-women, #f4a8b8);
+            --rose-strong: #fbcfe8;
+            --rose-soft: rgba(244, 168, 184, 0.14);
+            --rose-border: rgba(244, 168, 184, 0.30);
+            --mint-strong: #6ee7b7;
+            --mint-soft: rgba(52, 211, 153, 0.14);
+            --mint-border: rgba(52, 211, 153, 0.30);
+            --men-strong: var(--calm-men, #93c5fd);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-outline: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             background: var(--bg-page);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
-            line-height: 1.82;
-            transition: background-color 0.2s ease, color 0.2s ease;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+            line-height: 1.78;
         }
-        .wrap {
-            max-width: 880px;
+        .portal-wrap.wrap {
+            max-width: 960px;
             margin: 0 auto;
-            padding: 18px 18px 80px;
+            padding: 18px 16px 80px;
         }
-        .top-header {
+        .portal-top-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
-            padding-bottom: 13px;
-            border-bottom: 3px double var(--border-outline);
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
             margin-bottom: 14px;
         }
-        .brand-link {
-            font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+        .portal-brand-link {
             text-decoration: none;
-            color: var(--heading-color);
-            font-weight: 700;
-            font-size: 1.25rem;
             display: flex;
             align-items: baseline;
             flex-wrap: wrap;
-            gap: 4px 8px;
+            gap: 6px 10px;
         }
-        .brand-link span {
-            font-size: 0.76rem;
-            color: var(--rose);
-            font-weight: 700;
+        .portal-brand-title {
+            font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--heading-color);
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+        .portal-brand-sub {
+            font-size: 0.77rem;
+            color: var(--text-sub);
         }
         .hero-box {
-            background: var(--hero-grad);
-            border: 1px solid var(--rose-border);
-            border-radius: 16px;
-            padding: 26px 24px;
-            margin: 18px 0 26px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            border-radius: 0;
+            padding: 6px 0 24px;
+            margin: 12px 0 26px;
         }
         .hero-kicker {
             display: inline-flex;
@@ -194,15 +197,17 @@
             background: var(--rose-soft);
             color: var(--rose-strong);
             border: 1px solid var(--rose-border);
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 0.74rem;
+            padding: 4px 11px;
+            border-radius: 8px;
+            font-size: 0.72rem;
             font-weight: 700;
+            letter-spacing: 0.03em;
             margin-bottom: 12px;
         }
         .hero-box h1 {
-            font-size: 1.48rem;
-            line-height: 1.42;
+            font-size: 1.46rem;
+            line-height: 1.4;
+            letter-spacing: -0.02em;
             margin: 0 0 12px;
             color: var(--heading-color);
         }
@@ -219,24 +224,35 @@
         .btn-rose {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
+            min-height: 42px;
             padding: 10px 18px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #a63d57, #852840);
-            color: #fff !important;
+            border-radius: 12px;
+            background: #9f1239;
+            color: #ffffff !important;
             font-weight: 800;
             font-size: 0.86rem;
             text-decoration: none;
-            border: none;
-            box-shadow: 0 2px 10px rgba(133, 40, 64, 0.2);
+            border: 1px solid #9f1239;
+        }
+        body:not(.theme-light) .btn-rose {
+            background: #f4a8b8;
+            border-color: #f4a8b8;
+            color: #111113 !important;
+        }
+        .btn-rose:hover {
+            opacity: 0.9;
         }
         .btn-outline {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
+            min-height: 42px;
             padding: 10px 16px;
-            border-radius: 999px;
-            background: var(--card-bg-2);
+            border-radius: 12px;
+            background: var(--card-bg);
             color: var(--text-main);
             border: 1px solid var(--border-outline);
             font-weight: 700;
@@ -244,14 +260,17 @@
             text-decoration: none;
             cursor: pointer;
         }
+        .btn-outline:hover {
+            border-color: var(--text-main);
+        }
 
-        /* Live Zero-Wait Board */
+        /* Live Zero-Wait Board (Outer 18px / Inner 13px) */
         .live-board {
             background: var(--card-bg);
-            border: 1px solid var(--mint-border);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 28px;
         }
         .live-board-head {
             display: flex;
@@ -259,21 +278,25 @@
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .live-board-head h2 {
-            font-size: 1.12rem;
+            font-size: 1.1rem;
             margin: 0;
             color: var(--heading-color);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
         }
         .live-pill {
-            font-size: 0.73rem;
+            font-size: 0.72rem;
             font-weight: 700;
             padding: 3px 10px;
-            border-radius: 999px;
+            border-radius: 8px;
             background: var(--mint-soft);
             border: 1px solid var(--mint-border);
             color: var(--mint-strong);
+            font-variant-numeric: tabular-nums;
         }
         .live-grid {
             display: grid;
@@ -285,30 +308,31 @@
             display: block;
             text-decoration: none;
             color: inherit;
-            background: var(--bg-page);
+            background: var(--card-bg-2);
             border: 1px solid var(--border-subtle);
-            border-radius: 11px;
-            padding: 12px 14px;
-            transition: border-color 0.2s ease, transform 0.15s ease;
+            border-radius: 13px;
+            padding: 13px 14px;
+            transition: border-color 0.16s ease;
         }
         .live-pick-card:hover {
-            border-color: var(--rose);
+            border-color: var(--border-outline);
         }
         .pick-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 6px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
+        /* WCAG >= 6.0:1 guaranteed on both Light (#f2f2f5) and Dark (#232329) */
         .pick-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4.5px;
-            font-size: 0.7rem;
+            gap: 5px;
+            font-size: 0.71rem;
             font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 999px;
+            padding: 3px 8px;
+            border-radius: 8px;
             background: var(--mint-soft);
             color: var(--mint-strong);
         }
@@ -317,7 +341,7 @@
             color: var(--rose-strong);
         }
         .pick-area {
-            font-size: 0.71rem;
+            font-size: 0.72rem;
             color: var(--text-sub);
         }
         .pick-name {
@@ -334,46 +358,47 @@
         .pick-counts strong.m { color: var(--men-strong); }
         .pick-counts strong.w { color: var(--rose); }
         .pick-ev {
-            margin-top: 6px;
+            margin-top: 7px;
+            padding-top: 6px;
+            border-top: 1px solid var(--border-subtle);
             font-size: 0.73rem;
-            color: var(--gold-strong);
-            background: var(--gold-soft);
-            padding: 3px 8px;
-            border-radius: 6px;
-            display: inline-block;
+            color: var(--text-sub);
+            display: block;
             font-weight: 600;
         }
 
-        /* Editorial Sections */
+        /* Editorial Sections (Anti-AI: no left 3px vertical bars) */
         h2.sec-h2 {
-            font-size: 1.22rem;
-            margin: 38px 0 14px;
-            padding-left: 12px;
-            border-left: 3px solid var(--rose);
+            font-size: 1.2rem;
+            margin: 36px 0 12px;
+            padding: 0 0 8px;
+            border-left: none;
+            border-bottom: 1px solid var(--border-subtle);
             color: var(--heading-color);
-            line-height: 1.45;
+            line-height: 1.42;
+            letter-spacing: -0.015em;
         }
         h3.sec-h3 {
-            font-size: 1.02rem;
-            margin: 24px 0 8px;
-            color: var(--rose-strong);
+            font-size: 1rem;
+            margin: 22px 0 8px;
+            color: var(--heading-color);
         }
         p { margin: 0 0 15px; font-size: 0.94rem; color: var(--text-body); }
         .dialogue-box {
-            background: var(--rose-soft);
-            border-left: 3px solid var(--rose);
-            border-radius: 0 10px 10px 0;
-            padding: 14px 18px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 14px 16px;
             margin: 18px 0;
             font-size: 0.9rem;
             color: var(--text-main);
         }
-        .dialogue-box strong { color: var(--rose-strong); }
+        .dialogue-box strong { color: var(--rose); }
 
         .comp-table-wrap {
             overflow-x: auto;
             margin: 16px 0 22px;
-            border-radius: 12px;
+            border-radius: 13px;
             border: 1px solid var(--border-subtle);
         }
         table.comp-table {
@@ -383,6 +408,7 @@
             background: var(--card-bg);
             min-width: 560px;
             color: var(--text-body);
+            font-variant-numeric: tabular-nums;
         }
         .comp-table th, .comp-table td {
             padding: 11px 12px;
@@ -392,7 +418,7 @@
         }
         .comp-table th {
             background: var(--card-bg-2);
-            color: var(--rose-strong);
+            color: var(--heading-color);
             font-weight: 700;
         }
 
@@ -405,14 +431,14 @@
         .rule-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 15px 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
         }
         .rule-card h3,
         .rule-card h4 {
             margin: 0 0 6px;
             font-size: 0.92rem;
-            color: var(--rose-strong);
+            color: var(--heading-color);
         }
         .rule-card p {
             margin: 0;
@@ -420,13 +446,13 @@
             color: var(--text-body);
         }
 
-        /* Women's Curated Self-Care & Screening App Box (Plan D) */
+        /* Women's Curated Self-Care & Screening App Box (Outer 18px / Inner 13px) */
         .ladies-pr-section {
-            margin: 36px 0 28px;
-            padding: 20px;
-            border-radius: 14px;
+            margin: 34px 0 28px;
+            padding: 18px;
+            border-radius: 18px;
             background: var(--card-bg);
-            border: 1px solid var(--rose-border);
+            border: 1px solid var(--border-subtle);
         }
         .ladies-pr-head {
             display: flex;
@@ -438,22 +464,22 @@
             font-size: 0.68rem;
             font-weight: 800;
             padding: 2px 7px;
-            border-radius: 4px;
+            border-radius: 6px;
             background: var(--card-bg-2);
             color: var(--text-sub);
             border: 1px solid var(--border-subtle);
         }
         .ladies-pr-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 12px;
             margin-top: 12px;
         }
         .ladies-pr-card {
-            background: var(--bg-page);
+            background: var(--card-bg-2);
             border: 1px solid var(--border-subtle);
-            border-radius: 11px;
-            padding: 14px;
+            border-radius: 13px;
+            padding: 14px 16px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -461,7 +487,7 @@
         .ladies-pr-card h3,
         .ladies-pr-card h4 {
             font-size: 0.9rem;
-            margin: 4px 0 6px;
+            margin: 6px 0 6px;
             color: var(--heading-color);
         }
         .ladies-pr-card p {
@@ -470,30 +496,34 @@
             margin: 0 0 12px;
         }
         .ladies-pr-link {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
             text-align: center;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: var(--rose-soft);
-            border: 1px solid var(--rose-border);
-            color: var(--rose-strong);
-            font-size: 0.8rem;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-outline);
+            color: var(--heading-color);
+            font-size: 0.81rem;
             font-weight: 700;
             text-decoration: none;
         }
         .ladies-pr-link:hover {
-            background: rgba(186, 93, 117, 0.22);
+            border-color: var(--rose);
+            color: var(--rose);
         }
         .faq-item {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 11px;
-            padding: 14px 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
             margin-bottom: 10px;
         }
         .faq-q {
             font-weight: 800;
-            color: var(--rose-strong);
+            color: var(--heading-color);
             font-size: 0.92rem;
             margin-bottom: 5px;
         }
@@ -503,8 +533,87 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
-    <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme');if(_mw!=='default'&&_mw!=='list')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme'),_gv=localStorage.getItem('olg_view_theme');if(!window.__aisekiWomenForceDark&&_mw!=='default'&&_mw!=='list'&&!(_mw===null&&_gv==='default'))document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>
+        /* Post-calm.css Plan 2 Canonical Neutralization */
+        html.theme-light,
+        body.theme-light.audience-women:not(.staff-mode) {
+            --bg-dark: var(--calm-light-bg, #f6f6f7) !important;
+            --bg-page: var(--calm-light-bg, #f6f6f7) !important;
+            --card-bg: var(--calm-light-surface, #ffffff) !important;
+            --card-bg-2: var(--calm-light-surface-2, #f2f2f5) !important;
+            --card-elevated: #ffffff !important;
+            --card-sub-bg: #f2f2f5 !important;
+            --text-main: var(--calm-light-text, #18181b) !important;
+            --text-body: #27272a !important;
+            --heading-color: var(--calm-light-text, #18181b) !important;
+            --text-sub: var(--calm-light-sub, #52525b) !important;
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+            --border-outline: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16)) !important;
+            --border-strong: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16)) !important;
+            --border-gold: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16)) !important;
+            --women: var(--calm-light-women-strong, #9f1239) !important;
+            --men: var(--calm-light-men-strong, #1e40af) !important;
+            background-color: var(--calm-light-bg, #f6f6f7) !important;
+        }
+        body:not(.theme-light).audience-women:not(.staff-mode) {
+            --bg-dark: var(--calm-bg, #111113) !important;
+            --bg-page: var(--calm-bg, #111113) !important;
+            --card-bg: var(--calm-surface, #1a1a1e) !important;
+            --card-bg-2: var(--calm-surface-2, #232329) !important;
+            --text-main: var(--calm-text, #f4f4f5) !important;
+            --text-body: #e4e4e7 !important;
+            --heading-color: var(--calm-text, #f4f4f5) !important;
+            --text-sub: var(--calm-sub, #b4b4be) !important;
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            --border-outline: var(--calm-border-strong, rgba(255, 255, 255, 0.16)) !important;
+            --women: var(--calm-women, #f4a8b8) !important;
+            --men: var(--calm-men, #93c5fd) !important;
+            background-color: var(--calm-bg, #111113) !important;
+        }
+        body:not(.staff-mode) .live-board,
+        body:not(.staff-mode) .ladies-pr-section,
+        body:not(.staff-mode) .apple-compare-col,
+        body:not(.staff-mode) .rule-card,
+        body:not(.staff-mode) .faq-item {
+            border-radius: 18px !important;
+        }
+        body:not(.staff-mode) .live-pick-card,
+        body:not(.staff-mode) .ladies-pr-card {
+            border-radius: 13px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .live-pick-card,
+        body:not(.theme-light):not(.staff-mode) .ladies-pr-card {
+            background: var(--calm-surface-2, #232329) !important;
+            border-color: var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+        }
+        body.theme-light:not(.staff-mode) .live-pick-card,
+        body.theme-light:not(.staff-mode) .ladies-pr-card {
+            background: var(--calm-light-surface-2, #f2f2f5) !important;
+            border-color: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body.theme-light:not(.staff-mode) .pick-badge {
+            background: rgba(16, 185, 129, 0.12) !important;
+            color: #064e3b !important;
+        }
+        body.theme-light:not(.staff-mode) .pick-badge.good {
+            background: rgba(159, 18, 57, 0.09) !important;
+            color: #881337 !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .pick-badge {
+            background: rgba(52, 211, 153, 0.14) !important;
+            color: #6ee7b7 !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .pick-badge.good {
+            background: rgba(244, 168, 184, 0.14) !important;
+            color: #fbcfe8 !important;
+        }
+        body:not(.staff-mode) h2.sec-h2 {
+            border-left: none !important;
+            padding-left: 0 !important;
+        }
+    </style>
 </head>
 
 <body class="theme-light audience-women">
@@ -517,6 +626,10 @@
             }
         } catch (e) {}
         function toggleForWomenTheme() {
+            if (window.__togglePortalTheme) {
+                window.__togglePortalTheme();
+                return;
+            }
             var isLightNow = document.body.classList.toggle('theme-light');
             document.documentElement.classList.toggle('theme-light', isLightNow);
             try {
@@ -526,24 +639,17 @@
             var btn = document.getElementById('for-women-theme-btn');
             if (btn) btn.textContent = isLightNow ? 'ダーク表示' : 'ライト表示';
         }
+        // Keep global reference for backward-compatible callers: toggleForWomenTheme()
+        window.toggleForWomenTheme = toggleForWomenTheme;
     </script>
-    <div class="wrap">
-        <div class="top-header">
-            <a href="/" class="brand-link">相席ナビ <span>女性目線モード対応</span></a>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <button type="button" id="for-women-theme-btn" class="btn-outline" style="padding:6px 12px;font-size:0.76rem;" onclick="toggleForWomenTheme()">ダーク表示</button>
-                <a href="/?mode=women" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">女子モードで全国順位を見る</a>
-                <a href="/columns" class="btn-outline" style="padding:6px 12px;font-size:0.78rem;">コラム一覧</a>
-            </div>
+    <div class="portal-wrap wrap">
+        <div class="portal-top-header">
+            <a href="/" class="portal-brand-link">
+                <span class="portal-brand-title">相席ナビ</span>
+                <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
+            </a>
+            <span style="font-size: 0.76rem; color: var(--text-sub); font-variant-numeric: tabular-nums;">最終更新: {{ last_updated }}</span>
         </div>
-        <script>
-            (function() {
-                var btn = document.getElementById('for-women-theme-btn');
-                if (btn && !document.body.classList.contains('theme-light')) {
-                    btn.textContent = 'ライト表示';
-                }
-            })();
-        </script>
 
         {% set nav_active = 'for_women' %}
         {% include '_portal_nav.html' %}
@@ -585,7 +691,7 @@
                         <span style="font-size:0.75rem;color:var(--text-sub);">（男性比 {{ p.men_pct }}%）</span>
                     </div>
                     {% if p.event_title and not is_staff and not session.get('is_staff') %}
-                    <div class="pick-ev">特典：{{ p.event_title }}</div>
+                    <div class="pick-ev">特典：{{ p.event_title | clean_badge | strip_emoji }}</div>
                     {% endif %}
                 </a>
                 {% endfor %}
@@ -827,22 +933,8 @@
         </div>
         </main>
 
-        <footer style="margin-top:28px;padding-top:16px;border-top:1px solid var(--border-subtle);text-align:center;font-size:0.74rem;color:var(--text-sub);line-height:1.65;">
-            <p style="margin:0 auto 8px;max-width:700px;">
-                ※掲載しているイベントの開催有無・適用条件、料金システム、入店ルール等は変更される場合や表記に差異がある場合がございます。ご来店の際は必ず各店舗の公式ホームページ・公式アプリにて最新情報をご確認ください。
-            </p>
-            <p style="margin:0;">
-                <a href="/" style="color:var(--text-sub);text-decoration:none;">トップ</a> ｜
-                <a href="/columns" style="color:var(--text-sub);text-decoration:none;">コラム一覧</a> ｜
-                <a href="/privacy" style="color:var(--text-sub);text-decoration:none;">運営者情報・免責事項</a> ｜
-                <a href="/about" style="color:var(--text-sub);text-decoration:none;">相席ナビについて</a> ｜
-                <a href="/contact" style="color:var(--text-sub);text-decoration:none;">お問い合わせ</a>
-            </p>
-        </footer>
+        {% include '_portal_footer.html' %}
     </div>
-    {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=5"></script>
-    {% endif %}
 </body>
 
 </html>

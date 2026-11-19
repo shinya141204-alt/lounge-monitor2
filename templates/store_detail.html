@@ -93,25 +93,41 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <link rel="stylesheet" href="/static/style.css?v=20261118_1">
+    <link rel="stylesheet" href="/static/style.css?v=20261119_1">
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --card-elevated: #1b1c22;
-            --text-main: #ebe8e3;
-            --text-sub: #9a968e;
-            --women: #d8a1aa;
-            --men: #93b1c9;
-            --accent-gold: #c8a46e;
-            --accent-text: #dfc496;
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-gold: rgba(200, 164, 110, 0.34);
-            --bg-gold: rgba(200, 164, 110, 0.12);
-            --gold-dark: #dfc496;
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-elevated: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --accent-gold: var(--calm-text, #f4f4f5);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-gold: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            --bg-gold: rgba(244, 244, 245, 0.08);
+            --gold-dark: var(--calm-text, #f4f4f5);
+        }
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-elevated: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --women: var(--calm-light-women-strong, #9f1239);
+            --men: var(--calm-light-men-strong, #1e40af);
+            --accent-gold: var(--calm-light-text, #18181b);
+            --accent-text: var(--calm-light-text, #18181b);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-gold: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            --bg-gold: rgba(24, 24, 27, 0.06);
+            --gold-dark: var(--calm-light-text, #18181b);
         }
         * { box-sizing: border-box; }
         body {
@@ -122,17 +138,163 @@
             background-color: var(--bg-dark);
             background-image: none;
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             line-height: 1.75;
-            overflow-x: hidden;
-            overflow-y: visible;
         }
         .portal-wrap {
             width: 100%;
-            max-width: 960px;
+            max-width: 1160px;
             min-width: 0;
             margin: 0 auto;
             padding: 20px 18px 80px;
+        }
+        .live-sync-status {
+            color: #34d399;
+            font-weight: 600;
+        }
+        body.theme-light .live-sync-status {
+            color: #065f46;
+        }
+        /* PC 2-Pane Split Layout (Plan 2: Main 1fr + Sticky Right Inspector 340px) */
+        .store-detail-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .store-detail-hero-slot,
+        .store-detail-body-slot,
+        .store-detail-sidebar {
+            min-width: 0;
+        }
+        .store-inspector-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 16px;
+            font-variant-numeric: tabular-nums;
+        }
+        .store-inspector-eyebrow {
+            font-size: 0.71rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+        .store-inspector-title {
+            margin: 0 0 12px;
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.38;
+        }
+        .store-inspector-specs {
+            display: grid;
+            gap: 0;
+            border-top: 1px solid var(--border-subtle);
+            margin-bottom: 14px;
+        }
+        .store-inspector-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.8rem;
+        }
+        .store-inspector-k {
+            color: var(--text-sub);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .store-inspector-v {
+            color: var(--text-main);
+            font-weight: 700;
+            text-align: right;
+            min-width: 0;
+        }
+        .store-inspector-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .store-inspector-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            min-height: 42px;
+            padding: 9px 14px;
+            border-radius: 12px;
+            background: #f4f4f5;
+            border: 1px solid #f4f4f5;
+            color: #111113 !important;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        body.theme-light .store-inspector-btn-primary {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff !important;
+        }
+        .store-inspector-btn-sub {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .store-inspector-btn-sub:hover {
+            border-color: var(--border-gold);
+        }
+        .store-inspector-btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        @media (min-width: 1024px) {
+            .store-detail-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 340px;
+                grid-template-rows: auto 1fr;
+                column-gap: 24px;
+                row-gap: 0;
+                align-items: start;
+            }
+            .store-detail-hero-slot {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            .store-detail-body-slot {
+                grid-column: 1;
+                grid-row: 2;
+            }
+            .store-detail-sidebar {
+                grid-column: 2;
+                grid-row: 1 / span 2;
+                position: sticky;
+                top: 16px;
+                max-height: calc(100dvh - 32px);
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+            }
+            .store-inspector-card {
+                border-radius: 20px;
+                padding: 20px;
+            }
         }
         .portal-top-header {
             display: flex;
@@ -390,22 +552,23 @@
         .section-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 22px;
+            border-radius: 18px;
+            padding: 20px;
             margin-bottom: 20px;
         }
         .section-card h2 {
             margin: 0 0 10px;
             font-size: 1.08rem;
             color: var(--text-main);
-            padding-left: 10px;
-            border-left: 3px solid var(--accent-gold);
+            padding-left: 0;
+            border-left: none;
             line-height: 1.4;
+            letter-spacing: -0.015em;
         }
         .stat-subcard {
             background: var(--card-elevated);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            border: none;
+            border-radius: 13px;
             padding: 14px;
         }
         .nearby-grid {
@@ -417,7 +580,7 @@
         .nearby-item {
             background: var(--card-elevated);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            border-radius: 13px;
             padding: 13px 14px;
             text-decoration: none;
             color: inherit;
@@ -480,10 +643,11 @@
         }
         .moat-detail-panel {
             margin: 14px 0 4px;
-            padding: 13px 14px;
-            border-radius: 12px;
-            background: var(--card-elevated);
-            border: 1px solid var(--border-subtle);
+            padding: 14px 0 0;
+            border-radius: 0;
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--border-subtle);
         }
         .moat-detail-head {
             display: flex;
@@ -494,14 +658,14 @@
             margin-bottom: 10px;
             font-size: 0.78rem;
             font-weight: 700;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         .moat-detail-weather {
             font-size: 0.72rem;
             font-weight: 600;
             color: var(--text-sub);
             padding: 2px 8px;
-            border-radius: 999px;
+            border-radius: 8px;
             border: 1px solid var(--border-subtle);
         }
         .moat-detail-grid {
@@ -510,13 +674,13 @@
             gap: 10px;
         }
         .moat-detail-card {
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-subtle);
+            padding: 12px 14px;
+            border-radius: 13px;
+            background: var(--card-elevated);
+            border: none;
         }
         body.theme-light .moat-detail-card {
-            background: rgba(28, 27, 24, 0.025);
+            background: var(--calm-light-surface-2, #f2f2f5);
         }
         .moat-event-badge {
             display: inline-flex;
@@ -980,13 +1144,82 @@
             body.theme-light .store-dossier-col { border-top-color: rgba(24, 24, 27, 0.10); }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        /* Plan 2 Post-Cascade 2-Layer Tonal Hierarchy & Light Contrast */
+        body:not(.staff-mode) .live-hero-card,
+        body:not(.staff-mode) .section-card,
+        body:not(.staff-mode) .apple-compare-col,
+        body:not(.staff-mode) .official-notice-box {
+            border-radius: 18px !important;
+        }
+        @media (min-width: 1024px) {
+            body:not(.staff-mode) .store-inspector-card {
+                border-radius: 20px !important;
+            }
+        }
+        body:not(.theme-light):not(.staff-mode) .store-inspector-card {
+            background: var(--calm-surface, #1a1a1e) !important;
+            border: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+        }
+        body.theme-light:not(.staff-mode) .store-inspector-card {
+            background: #ffffff !important;
+            border: 1px solid var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body:not(.staff-mode) .moat-detail-panel {
+            background: transparent !important;
+            border: none !important;
+            border-top: 1px solid var(--calm-border, rgba(255, 255, 255, 0.08)) !important;
+            border-radius: 0 !important;
+            padding: 14px 0 0 !important;
+        }
+        body.theme-light:not(.staff-mode) .moat-detail-panel {
+            border-top-color: var(--calm-light-border, rgba(24, 24, 27, 0.09)) !important;
+        }
+        body:not(.staff-mode) .count-box,
+        body:not(.staff-mode) .moat-detail-card,
+        body:not(.staff-mode) .jis-pos-card,
+        body:not(.staff-mode) .chayamachi-floor-card,
+        body:not(.staff-mode) .stat-subcard,
+        body:not(.staff-mode) .nearby-item {
+            border-radius: 13px !important;
+        }
+        body:not(.theme-light):not(.staff-mode) .count-box,
+        body:not(.theme-light):not(.staff-mode) .moat-detail-card,
+        body:not(.theme-light):not(.staff-mode) .jis-pos-card,
+        body:not(.theme-light):not(.staff-mode) .chayamachi-floor-card,
+        body:not(.theme-light):not(.staff-mode) .stat-subcard {
+            background: var(--calm-surface-2, #232329) !important;
+            border: none !important;
+        }
+        body.theme-light:not(.staff-mode) .count-box,
+        body.theme-light:not(.staff-mode) .moat-detail-card,
+        body.theme-light:not(.staff-mode) .jis-pos-card,
+        body.theme-light:not(.staff-mode) .chayamachi-floor-card,
+        body.theme-light:not(.staff-mode) .stat-subcard {
+            background: var(--calm-light-surface-2, #f2f2f5) !important;
+            border: none !important;
+        }
+        body.theme-light .w-color,
+        body.theme-light .store-dossier-subhead.is-women {
+            color: var(--calm-light-women-strong, #9f1239) !important;
+        }
+        body.theme-light .m-color,
+        body.theme-light .store-dossier-subhead.is-men {
+            color: var(--calm-light-men-strong, #1e40af) !important;
+        }
+        body:not(.staff-mode) .btn-primary,
+        body:not(.staff-mode) .btn-secondary {
+            min-height: 40px !important;
+            border-radius: 12px !important;
+        }
+    </style>
     <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
@@ -998,10 +1231,10 @@
                 <span class="portal-brand-title">相席ナビ</span>
                 <span class="portal-brand-sub">全国ラウンジのリアルタイム人数＆統計メディア</span>
             </a>
-            <span style="font-size: 0.77rem; color: var(--text-sub);">最終更新: <span id="store-live-updated" style="color: var(--text-main); font-weight: 600;">{{ last_updated }}</span> <span style="color: #8fb89d; font-weight: 600;">● 自動更新中</span></span>
+            <span style="font-size: 0.77rem; color: var(--text-sub); font-variant-numeric: tabular-nums;">最終更新: <span id="store-live-updated" style="color: var(--text-main); font-weight: 600;">{{ last_updated }}</span> <span class="live-sync-status">● 自動更新中</span></span>
         </div>
 
-        {% set nav_active = 'ranking' %}
+        {% set nav_active = 'areas' %}
         {% include '_portal_nav.html' %}
 
         <nav class="breadcrumb" aria-label="パンくずリスト">
@@ -1018,6 +1251,8 @@
         </nav>
 
         <main>
+        <div class="store-detail-layout">
+        <div class="store-detail-hero-slot">
         <article class="live-hero-card" data-hero-store="{{ store.seo_name }}" data-hero-seo="{{ store.seo_name }}" data-hours-spec='{{ store.hours_spec | tojson }}'>
             {% set hide_dup_hours = store.crowd_comment and ((store.hours_label and store.hours_label in store.crowd_comment) or (store.today_hours_label and store.today_hours_label in store.crowd_comment)) %}
             <div class="badge-row">
@@ -1393,6 +1628,52 @@
                 {% endif %}
             </div>
         </article>
+        </div>
+
+        <aside class="store-detail-sidebar" aria-label="店舗基本スペックと公式・比較導線">
+            {% set cur_spec = (nearby_comparison.stores | selectattr('is_current_store') | list | first) if (nearby_comparison and nearby_comparison.stores) else none %}
+            <div class="store-inspector-card">
+                <div class="store-inspector-eyebrow">{{ store.area_label }} ・ {{ store.brand_label }}</div>
+                <h2 class="store-inspector-title">{{ store.seo_name }} 基本スペック</h2>
+                <div class="store-inspector-specs">
+                    <div class="store-inspector-row">
+                        <span class="store-inspector-k">本日の営業</span>
+                        <span class="store-inspector-v">{{ store.today_hours_label }}</span>
+                    </div>
+                    <div class="store-inspector-row">
+                        <span class="store-inspector-k">通常営業時間</span>
+                        <span class="store-inspector-v">{{ store.hours_label }}</span>
+                    </div>
+                    {% if cur_spec %}
+                    <div class="store-inspector-row">
+                        <span class="store-inspector-k">1名（ソロ）入店</span>
+                        <span class="store-inspector-v">{{ cur_spec.solo_rule }}</span>
+                    </div>
+                    <div class="store-inspector-row">
+                        <span class="store-inspector-k">単独待機料金</span>
+                        <span class="store-inspector-v">{{ cur_spec.wait_fee_str }}</span>
+                    </div>
+                    <div class="store-inspector-row">
+                        <span class="store-inspector-k">{{ cur_spec.active_slot_label }}</span>
+                        <span class="store-inspector-v">{{ cur_spec.active_slot_rate }}{% if not cur_spec.is_flat_rate and '10分' not in cur_spec.active_slot_rate %} / 10分{% endif %}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="store-inspector-actions">
+                    {% if store.official_url %}
+                    <a href="{{ store.official_url }}" target="_blank" rel="noopener noreferrer" class="store-inspector-btn-primary">公式サイトで最新条件を確認 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                    {% endif %}
+                    <div class="store-inspector-btn-grid">
+                        {% if store.map_url %}
+                        <a href="{{ store.map_url }}" target="_blank" rel="noopener noreferrer" class="store-inspector-btn-sub">Googleマップ</a>
+                        {% endif %}
+                        <a href="/concierge" class="store-inspector-btn-sub">3秒ハシゴ診断</a>
+                    </div>
+                    {% if nearby_comparison %}
+                    <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="store-inspector-btn-sub">同エリアの料金・特典を比較 ›</a>
+                    {% endif %}
+                </div>
+            </div>
 
         {% if store_smart_cta and not is_staff and not session.get('is_staff') %}
         <aside id="store-smart-cta-card"
@@ -1594,7 +1875,9 @@
         })();
         </script>
         {% endif %}
+        </aside>
 
+        <div class="store-detail-body-slot">
         {% if 'ソウル' not in store.name %}
         <section id="store-first-party-signals" class="section-card" aria-label="現場状況レポートと入店条件ウォッチ" style="padding: 18px 20px;">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px;">
@@ -1991,15 +2274,15 @@
                     <div class="apple-spec-row">
                         <div class="apple-spec-label">開催中の特典・企画</div>
                         {% for mp in st.men_perks[:1] %}
-                        <div class="apple-spec-sub"><strong style="color: var(--men);">[男性特典]</strong> {{ mp.title }}</div>
+                        <div class="apple-spec-sub"><strong style="color: var(--men);">[男性特典]</strong> {{ mp.title | clean_badge | strip_emoji }}</div>
                         {% endfor %}
                         {% for we in st.women_events[:1] %}
-                        <div class="apple-spec-sub"><strong style="color: var(--women);">[女性企画]</strong> {{ we.title }}</div>
+                        <div class="apple-spec-sub"><strong style="color: var(--women);">[女性企画]</strong> {{ we.title | clean_badge | strip_emoji }}</div>
                         {% endfor %}
                     </div>
 
                     <div class="apple-spec-row">
-                        <div style="font-weight: 700; font-size: 0.78rem; color: var(--accent-text);" data-nearby-verdict-badge>{{ st.verdict_badge }}</div>
+                        <div style="font-weight: 700; font-size: 0.78rem; color: var(--accent-text);" data-nearby-verdict-badge>{{ st.verdict_badge | clean_badge | strip_emoji }}</div>
                         <details class="apple-spec-fold">
                             <summary>コスパ検証・店舗情報 ▾</summary>
                             <div class="apple-spec-fold-body">
@@ -2174,6 +2457,8 @@
             {% endif %}
         </section>
         {% endif %}
+        </div>
+        </div>
         </main>
 
         {% include '_portal_footer.html' %}
@@ -3457,7 +3742,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=118', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=119', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

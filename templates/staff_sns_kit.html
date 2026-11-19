@@ -6,55 +6,10 @@
     <meta name="color-scheme" content="dark light">
     <meta name="robots" content="noindex, nofollow">
     <title>Instagram・Threads用「週末予報画像」自動生成キット（スタッフ専用）｜相席ナビ</title>
+    {% include '_staff_tokens.html' %}
     <style>
-        :root {
-            --bg: #111113;
-            --surface: #18181b;
-            --surface-2: #232329;
-            --input-bg: #111113;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f4f4f5;
-            --sub: #c4c4cc;
-            --gold: #f4f4f5;
-            --gold-soft: rgba(244, 244, 245, 0.09);
-            --gold-border: rgba(244, 244, 245, 0.28);
-            --gold-ink: #f4f4f5;
-            --btn-primary-ink: #111113;
-            --rose: #f48fb1;
-            --blue: #7dd3fc;
-            --blue-soft: rgba(125, 211, 252, 0.14);
-            --blue-border: rgba(125, 211, 252, 0.36);
-            --blue-ink: #e0f2fe;
-            --green: #6ee7b7;
-            --toast-ink: #111113;
-            --amber: #fcd34d;
-            --red: #fca5a5;
-        }
-        body.theme-light {
-            --bg: #f6f6f7;
-            --surface: #ffffff;
-            --surface-2: #ededf0;
-            --input-bg: #ffffff;
-            --border: rgba(24, 24, 27, 0.10);
-            --border-strong: rgba(24, 24, 27, 0.20);
-            --text: #18181b;
-            --sub: #3f3f46;
-            --gold: #18181b;
-            --gold-soft: rgba(24, 24, 27, 0.06);
-            --gold-border: rgba(24, 24, 27, 0.24);
-            --gold-ink: #18181b;
-            --btn-primary-ink: #ffffff;
-            --rose: #831843;
-            --blue: #075985;
-            --blue-soft: rgba(3, 105, 161, 0.09);
-            --blue-border: rgba(3, 105, 161, 0.32);
-            --blue-ink: #0c4a6e;
-            --green: #064e3b;
-            --toast-ink: #ffffff;
-            --amber: #78350f;
-            --red: #991b1b;
-        }
+        :root { --bg: #111113; --surface: #1a1a1e; --surface-2: #232329; --text: #f4f4f5; --sub: #b4b4be; }
+        body.theme-light { color-scheme: light; --bg: #f6f6f7; --surface: #ffffff; --surface-2: #f2f2f5; --text: #18181b; --sub: #52525b; }
         * { box-sizing: border-box; }
         html, body {
             overflow-x: hidden;
@@ -64,7 +19,7 @@
             margin: 0;
             background: var(--bg);
             color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Noto Sans JP", sans-serif;
             line-height: 1.6;
         }
         .wrap {
@@ -75,7 +30,7 @@
         .hero-box {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 20px 22px;
             margin-bottom: 22px;
             display: flex;
@@ -88,6 +43,7 @@
             margin: 0 0 6px;
             font-size: 1.3rem;
             font-weight: 800;
+            letter-spacing: -0.015em;
             color: var(--text);
         }
         .hero-box p {
@@ -103,21 +59,22 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 11px 20px;
-            border-radius: 999px;
+            min-height: 40px;
+            padding: 10px 18px;
+            border-radius: 12px;
             background: var(--gold);
             color: var(--btn-primary-ink);
             border: 1px solid var(--gold);
             text-decoration: none;
             font-weight: 800;
-            font-size: 0.88rem;
+            font-size: 0.86rem;
             font-family: inherit;
             cursor: pointer;
             max-width: 100%;
-            transition: filter 0.15s ease;
+            transition: opacity 0.15s ease;
         }
         .zip-btn:hover {
-            filter: brightness(1.06);
+            opacity: 0.9;
         }
         .zip-btn.threads {
             background: var(--blue-soft);
@@ -141,7 +98,7 @@
         .slide-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 12px;
             display: flex;
             flex-direction: column;
@@ -150,7 +107,7 @@
         .slide-card img {
             width: 100%;
             height: auto;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border);
             display: block;
         }
@@ -161,21 +118,25 @@
             gap: 8px;
             font-size: 0.8rem;
             font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
         .dl-btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
             text-align: center;
             padding: 8px 12px;
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             background: var(--surface-2);
-            border: 1px solid var(--gold-border);
-            color: var(--gold-ink);
+            border: 1px solid var(--border-strong);
+            color: var(--text);
             text-decoration: none;
             font-size: 0.8rem;
             font-weight: 700;
         }
         .dl-btn:hover {
-            background: var(--gold-soft);
+            border-color: var(--sub);
         }
         .caption-grid {
             display: grid;
@@ -188,7 +149,7 @@
         .caption-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--r-card, 18px);
             padding: 18px;
         }
         .caption-head {
@@ -206,12 +167,13 @@
         }
         .copy-btn {
             cursor: pointer;
+            min-height: 38px;
             padding: 7px 14px;
-            border-radius: 999px;
-            border: 1px solid var(--gold-border);
-            background: var(--gold-soft);
-            color: var(--gold-ink);
-            font-weight: 800;
+            border-radius: var(--r-chip, 10px);
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--text);
+            font-weight: 700;
             font-size: 0.8rem;
             font-family: inherit;
         }
@@ -223,7 +185,7 @@
             background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border-strong);
-            border-radius: 10px;
+            border-radius: var(--r-chip, 10px);
             padding: 12px;
             font-size: 0.84rem;
             line-height: 1.65;
@@ -243,10 +205,10 @@
             bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--green);
-            color: var(--toast-ink);
+            background: var(--active-bg);
+            color: var(--active-ink);
             padding: 10px 22px;
-            border-radius: 999px;
+            border-radius: var(--r-pill, 999px);
             font-weight: 800;
             font-size: 0.88rem;
             display: none;
@@ -284,18 +246,18 @@
         <div class="hero-box">
             <div>
                 <h1>Instagram / Threads「週末狙い目予報」画像キット</h1>
-                <p style="margin-bottom:6px; font-size:0.78rem; color:var(--sub);">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</p>
+                <p style="margin-bottom:6px; font-size:0.78rem; color:var(--sub); font-variant-numeric:tabular-nums;">対象週末：{{ ctx.weekend_label }} ｜ 集計時刻：{{ ctx.generated_at }}</p>
                 <p>蓄積データベースから最新の<strong>4:5縦長カルーセル画像（1080×1350px・全5枚）</strong>と投稿文を自動生成しました。<br>スマホは画像を長押し保存、PCはZIP一括ダウンロード、またはAPI設定済みなら即時投稿が可能です。</p>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:10px; max-width:100%;">
-                <button type="button" class="zip-btn" onclick="triggerDirectSnsPost('ig')">📸 Instagramへ5枚組を今すぐ投稿</button>
-                <button type="button" class="zip-btn threads" onclick="triggerDirectSnsPost('threads')">🧵 Threadsへ今すぐ投稿</button>
-                <a href="/staff/sns-kit/download.zip" class="zip-btn secondary">📦 全5枚＋キャプションをZIP保存</a>
+                <button type="button" class="zip-btn" onclick="triggerDirectSnsPost('ig')">Instagramへ5枚組を今すぐ投稿</button>
+                <button type="button" class="zip-btn threads" onclick="triggerDirectSnsPost('threads')">Threadsへ今すぐ投稿</button>
+                <a href="/staff/sns-kit/download.zip" class="zip-btn secondary">全5枚＋キャプションをZIP保存</a>
             </div>
         </div>
 
         <div class="slides-grid">
-            {% set labels = ['① 表紙カバー', '② 盛り上がりTOP5', '③ 高女性比率・穴場TOP5', '④ 時間帯別の立ち回り', '⑤ プロフィール誘導CTA'] %}
+            {% set labels = ['1. 表紙カバー', '2. 盛り上がりTOP5', '3. 高女性比率・穴場TOP5', '4. 時間帯別の立ち回り', '5. プロフィール誘導CTA'] %}
             {% for i in range(1, 6) %}
             <div class="slide-card">
                 <div class="slide-meta">
@@ -303,7 +265,7 @@
                     <span style="color:var(--sub); font-size:0.74rem;">1080×1350</span>
                 </div>
                 <img src="/staff/sns-kit/slide/{{ i }}.png?t={{ cache_bust }}" alt="{{ labels[i - 1] }}" loading="lazy">
-                <a href="/staff/sns-kit/slide/{{ i }}.png?download=1" download="aiseki_navi_slide_0{{ i }}.png" class="dl-btn">⬇ スライド{{ i }}を単体保存</a>
+                <a href="/staff/sns-kit/slide/{{ i }}.png?download=1" download="aiseki_navi_slide_0{{ i }}.png" class="dl-btn">スライド{{ i }}を単体保存</a>
             </div>
             {% endfor %}
         </div>
@@ -311,29 +273,29 @@
         <div class="caption-grid">
             <div class="caption-card">
                 <div class="caption-head">
-                    <h2>📱 Instagram用キャプション（タグ付き）</h2>
-                    <button type="button" class="copy-btn" onclick="copyText('cap-ig')">📋 コピーする</button>
+                    <h2>Instagram用キャプション（タグ付き）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-ig')">コピーする</button>
                 </div>
                 <textarea id="cap-ig" class="cap-area" readonly>{{ captions.instagram_caption }}</textarea>
             </div>
 
             <div class="caption-card">
                 <div class="caption-head">
-                    <h2>🧵 Threads用テキスト案①（データ速報調）</h2>
-                    <button type="button" class="copy-btn" onclick="copyText('cap-th1')">📋 コピーする</button>
+                    <h2>Threads用テキスト案 1（データ速報調）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-th1')">コピーする</button>
                 </div>
                 <textarea id="cap-th1" class="cap-area" style="min-height:140px; margin-bottom:14px;" readonly>{{ captions.threads_post_1 }}</textarea>
 
                 <div class="caption-head">
-                    <h2>🧵 Threads用テキスト案②（共感フック調）</h2>
-                    <button type="button" class="copy-btn" onclick="copyText('cap-th2')">📋 コピーする</button>
+                    <h2>Threads用テキスト案 2（共感フック調）</h2>
+                    <button type="button" class="copy-btn" onclick="copyText('cap-th2')">コピーする</button>
                 </div>
                 <textarea id="cap-th2" class="cap-area" style="min-height:120px;" readonly>{{ captions.threads_post_2 }}</textarea>
             </div>
         </div>
     </div>
 
-    <div id="copy-toast" class="toast">コピーしました！そのままSNSに貼り付けできます✨</div>
+    <div id="copy-toast" class="toast">コピーしました。そのままSNSに貼り付けできます</div>
 
     <script>
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -381,7 +343,7 @@
                 document.execCommand('copy');
             }
             var t = document.getElementById('copy-toast');
-            t.textContent = 'コピーしました！そのままSNSに貼り付けできます✨';
+            t.textContent = 'コピーしました。そのままSNSに貼り付けできます';
             t.style.display = 'block';
             setTimeout(function() { t.style.display = 'none'; }, 2200);
         }
@@ -403,13 +365,13 @@
                 }, 45000);
                 if (data && (data.status === 'success' || data.queued)) {
                     t.textContent = data.queued
-                        ? '✅ バックグラウンド投稿キューに投入しました（約10〜20秒で自動配信されます）'
-                        : (target === 'ig' ? '✅ Instagramへの自動投稿が完了しました！' : '✅ Threadsへの自動投稿が完了しました！');
+                        ? 'バックグラウンド投稿キューに投入しました（約10〜20秒で自動配信されます）'
+                        : (target === 'ig' ? 'Instagramへの自動投稿が完了しました' : 'Threadsへの自動投稿が完了しました');
                 } else {
-                    t.textContent = '⚠️ ' + ((data && (data.reason || data.detail || data.error)) || '設定を確認してください');
+                    t.textContent = '確認: ' + ((data && (data.reason || data.detail || data.error)) || '設定を確認してください');
                 }
             } catch (e) {
-                t.textContent = '⚠️ ' + ((e && e.message) || '通信エラーが発生しました');
+                t.textContent = 'エラー: ' + ((e && e.message) || '通信エラーが発生しました');
             } finally {
                 _snsPostInFlight = false;
                 btns.forEach(function(b) { b.disabled = false; b.style.opacity = ''; });

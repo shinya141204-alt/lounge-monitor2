@@ -6,12 +6,14 @@
    - 元に戻すときは各テンプレートの calm.css の <link> を外すだけでOK
    ========================================================================== */
 
-:root {
+:root,
+html:not(.theme-light) body:not(.theme-light) {
     color-scheme: dark;
     --font-editorial: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     --font-num: "Outfit", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", sans-serif;
+    --font-main: var(--font-editorial);
 
-    /* クリーン・ミニマル（ダーク：ニュートラル黒 #111113 × フローティングカード #1a1a1e・WCAG AAA〜AA） */
+    /* 案2（TableCheck・VACAN型）正準カラートークン（Dark：ニュートラル黒 #111113 × 第1面 #1a1a1e × 第2面 #232329） */
     --calm-bg: #111113;
     --calm-surface: #1a1a1e;
     --calm-surface-2: #232329;
@@ -19,51 +21,147 @@
     --calm-border-strong: rgba(255, 255, 255, 0.16);
     --calm-text: #f4f4f5;
     --calm-sub: #b4b4be;
-    --calm-accent: #e4e4e7;          /* クリーン・オフホワイト／シルバー */
+    --calm-accent: #e4e4e7;
     --calm-accent-soft: rgba(244, 244, 245, 0.10);
     --calm-accent-text: #f4f4f5;
-    --calm-women: #f4a8b8;           /* ソフトローズ */
-    --calm-men: #93c5fd;             /* ソフトミストブルー */
+    --calm-women: #f4a8b8;
+    --calm-women-strong: #f4a8b8;
+    --calm-men: #93c5fd;
+    --calm-men-strong: #93c5fd;
+    --calm-bar-women: #f4a8b8;
+    --calm-bar-men-track: rgba(147, 197, 253, 0.20);
+    --calm-focus-ring: #f4f4f5;
 
-    /* クリーン・ミニマル（昼・ライト：ソフトニュートラルグレー #f6f6f7 × 純白カード #ffffff） */
+    /* 案2 正準カラートークン（Light：ソフトニュートラル #f6f6f7 × 第1面 #ffffff × 第2面 #f2f2f5） */
     --calm-light-bg: #f6f6f7;
     --calm-light-surface: #ffffff;
-    --calm-light-surface-2: #ededf0;
+    --calm-light-surface-2: #f2f2f5;
     --calm-light-border: rgba(24, 24, 27, 0.09);
     --calm-light-border-strong: rgba(24, 24, 27, 0.16);
     --calm-light-text: #18181b;
     --calm-light-sub: #52525b;
-    --calm-light-accent: #18181b;    /* ソリッド・オブシディアン（純黒ピルCTA） */
+    --calm-light-accent: #18181b;
     --calm-light-accent-soft: rgba(24, 24, 27, 0.07);
-    --calm-light-women: #be123c;     /* クリーンディープローズ */
-    --calm-light-men: #1d4ed8;       /* クリーンロイヤルブルー */
-    --calm-light-bar-w: #f43f5e;
+    --calm-light-women: #be123c;
+    --calm-light-women-strong: #9f1239;
+    --calm-light-men: #1d4ed8;
+    --calm-light-men-strong: #1e40af;
+    --calm-light-bar-w: #be123c;
     --calm-light-bar-m: #60a5fa;
 
-    /* クリーン・ミニマル専用セマンティックトークン */
+    /* 案2 正準角丸（Border Radius）トークン */
+    --r-card: 18px;
+    --r-omnibar: 16px;
+    --r-inspector: 20px;
+    --r-inner: 13px;
+    --r-chip: 10px;
+    --r-badge: 8px;
+    --r-cta: 12px;
+    --r-pill: 999px;
+    --r-sheet: 24px;
+
+    /* 案2 セマンティック信号＆ソリッドCTAトークン */
     --cm-cta-bg: #f4f4f5;
     --cm-cta-text: #111113;
     --cm-ok-bg: rgba(52, 211, 153, 0.14);
     --cm-ok-text: #6ee7b7;
+    --cm-ok-dot: #34d399;
     --cm-wait-bg: rgba(251, 191, 36, 0.14);
     --cm-wait-text: #fcd34d;
+    --cm-wait-dot: #fbbf24;
 
-    /* 記事・統計・ポータルページ共通セマンティックエイリアス（style.css 非読み込みページでも :root で解決保証） */
+    /* レガシー互換エイリアス一元定義（Dark） */
     --bg-color: var(--calm-bg);
     --bg-dark: var(--calm-bg);
+    --bg-page: var(--calm-bg);
     --card-bg: var(--calm-surface);
     --card-bg-2: var(--calm-surface-2);
+    --card-sub-bg: var(--calm-surface-2);
+    --card-elevated: var(--calm-surface-2);
+    --card-hover: var(--calm-surface-2);
+    --card-border: var(--calm-border);
     --border-subtle: var(--calm-border);
+    --border-outline: var(--calm-border-strong);
     --border-strong: var(--calm-border-strong);
+    --border-gold: var(--calm-border-strong);
     --text-primary: var(--calm-text);
     --text-main: var(--calm-text);
     --text-secondary: var(--calm-sub);
     --text-sub: var(--calm-sub);
+    --primary: var(--calm-text);
     --accent: var(--calm-accent);
     --accent-gold: var(--calm-accent);
     --accent-text: var(--calm-accent-text);
+    --accent-soft: var(--calm-accent-soft);
+    --gold-tint: var(--calm-accent-soft);
+    --accent-bronze: var(--calm-sub);
+    --accent-silver: var(--calm-sub);
+    --accent-red: var(--calm-women);
     --women: var(--calm-women);
     --men: var(--calm-men);
+}
+
+/* 案2 ライトモード正準トークン＆レガシー互換エイリアス一元再バインド（FOUC防止同期） */
+html.theme-light,
+body.theme-light {
+    color-scheme: light;
+    --calm-bg: var(--calm-light-bg);
+    --calm-surface: var(--calm-light-surface);
+    --calm-surface-2: var(--calm-light-surface-2);
+    --calm-border: var(--calm-light-border);
+    --calm-border-strong: var(--calm-light-border-strong);
+    --calm-text: var(--calm-light-text);
+    --calm-sub: var(--calm-light-sub);
+    --calm-accent: var(--calm-light-accent);
+    --calm-accent-soft: var(--calm-light-accent-soft);
+    --calm-accent-text: var(--calm-light-accent);
+    --calm-women: var(--calm-light-women);
+    --calm-women-strong: var(--calm-light-women-strong);
+    --calm-men: var(--calm-light-men);
+    --calm-men-strong: var(--calm-light-men-strong);
+    --calm-bar-women: #be123c;
+    --calm-bar-men-track: rgba(29, 78, 216, 0.14);
+    --calm-focus-ring: #18181b;
+
+    --cm-cta-bg: #18181b;
+    --cm-cta-text: #ffffff;
+    --cm-ok-bg: rgba(16, 185, 129, 0.12);
+    --cm-ok-text: #065f46;
+    --cm-ok-dot: #10b981;
+    --cm-wait-bg: rgba(245, 158, 11, 0.13);
+    --cm-wait-text: #92400e;
+    --cm-wait-dot: #d97706;
+
+    --bg-color: var(--calm-light-bg);
+    --bg-dark: var(--calm-light-bg);
+    --bg-page: var(--calm-light-bg);
+    --card-bg: var(--calm-light-surface);
+    --card-bg-2: var(--calm-light-surface-2);
+    --card-sub-bg: var(--calm-light-surface-2);
+    --card-elevated: var(--calm-light-surface-2);
+    --card-hover: var(--calm-light-surface-2);
+    --card-border: var(--calm-light-border);
+    --border-subtle: var(--calm-light-border);
+    --border-outline: var(--calm-light-border-strong);
+    --border-strong: var(--calm-light-border-strong);
+    --border-gold: var(--calm-light-border-strong);
+    --text-primary: var(--calm-light-text);
+    --text-main: var(--calm-light-text);
+    --text-secondary: var(--calm-light-sub);
+    --text-sub: var(--calm-light-sub);
+    --primary: var(--calm-light-text);
+    --accent: var(--calm-light-accent);
+    --accent-gold: var(--calm-light-accent);
+    --accent-text: var(--calm-light-accent);
+    --accent-soft: var(--calm-light-accent-soft);
+    --gold-tint: var(--calm-light-accent-soft);
+    --accent-bronze: var(--calm-light-sub);
+    --accent-silver: var(--calm-light-sub);
+    --accent-red: var(--calm-light-women);
+    --women: var(--calm-light-women);
+    --men: var(--calm-light-men);
+    background-color: var(--calm-light-bg);
+    color: var(--calm-light-text);
 }
 
 /* ---------- 1. 動き：点滅・パルス・背景のゆらぎを止める ---------- */
@@ -145,7 +243,7 @@ body:not(.theme-light) .portal-brand-title {
     background-clip: initial !important;
     -webkit-text-fill-color: var(--calm-text) !important;
     color: var(--calm-text) !important;
-    letter-spacing: 0.06em;
+    letter-spacing: -0.02em;
 }
 
 body:not(.theme-light) .stat.ladies .count {
@@ -366,12 +464,12 @@ body:not(.theme-light) .article-affiliate-card,
 body:not(.theme-light) .modal-second-venue-box,
 body:not(.theme-light) .modal-vote-box,
 body:not(.theme-light) .article-box,
-body:not(.theme-light) .page-hero,
 body:not(.theme-light) .area-section-card,
 body:not(.theme-light) .article-card,
 body:not(.theme-light) .portal-article-card,
 body:not(.theme-light) .seo-guide-section,
-body:not(.theme-light) .portal-area-directory {
+body:not(.theme-light) .portal-area-directory,
+body:not(.theme-light) .store-card {
     background: var(--calm-surface) !important;
     border-color: var(--calm-border) !important;
     box-shadow: none !important;
@@ -560,7 +658,6 @@ body:not(.theme-light) .tip-card h4 {
     color: var(--calm-accent) !important;
 }
 
-body:not(.theme-light) .store-card,
 body:not(.theme-light) .c-card,
 body:not(.theme-light) .tip-card,
 body:not(.theme-light) .toc-box,
@@ -571,33 +668,9 @@ body:not(.theme-light) .area-point-box {
 }
 
 /* ==========================================================================
-   10. ライトモード（body.theme-light）：ウォームペーパー×ブロンズの上品なトーン
+   10. ライトモード（body.theme-light）：案2 クリーン・ニュートラル統一
    ========================================================================== */
 body.theme-light {
-    --bg-color: var(--calm-light-bg);
-    --bg-dark: var(--calm-light-bg);
-    --card-bg: var(--calm-light-surface);
-    --card-bg-2: var(--calm-light-surface-2);
-    --card-sub-bg: var(--calm-light-surface-2);
-    --card-elevated: var(--calm-light-surface-2);
-    --card-hover: var(--calm-light-surface-2);
-    --card-border: var(--calm-light-border);
-    --border-subtle: var(--calm-light-border);
-    --border-strong: var(--calm-light-border-strong);
-    --border-gold: rgba(117, 85, 40, 0.42);
-    --gold-tint: var(--calm-light-accent-soft);
-    --text-primary: var(--calm-light-text);
-    --text-main: var(--calm-light-text);
-    --text-secondary: var(--calm-light-sub);
-    --text-sub: var(--calm-light-sub);
-    --primary: var(--calm-light-text);
-    --accent: var(--calm-light-accent);
-    --accent-gold: var(--calm-light-accent);
-    --accent-text: var(--calm-light-accent);
-    --accent-soft: var(--calm-light-accent-soft);
-    --calm-accent-text: var(--calm-light-accent);
-    --women: var(--calm-light-women);
-    --men: var(--calm-light-men);
     background-color: var(--calm-light-bg) !important;
     background-image: none !important;
     color: var(--calm-light-text) !important;
@@ -610,7 +683,7 @@ body.theme-light .portal-brand-title {
     background-clip: initial !important;
     -webkit-text-fill-color: var(--calm-light-text) !important;
     color: var(--calm-light-text) !important;
-    letter-spacing: 0.06em;
+    letter-spacing: -0.02em;
 }
 
 body.theme-light .subtitle {
@@ -761,9 +834,9 @@ body.theme-light .sns-tab-btn.active,
 body.theme-light .guide-tab-pill.active,
 body.theme-light .portal-nav-link.active,
 body.theme-light .portal-nav-item.active {
-    background: var(--calm-light-accent-soft) !important;
-    border-color: rgba(140, 107, 63, 0.55) !important;
-    color: var(--calm-light-text) !important;
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
     box-shadow: none !important;
 }
 
@@ -987,8 +1060,6 @@ body.theme-light .momentum-legend-pill {
    - 多色使い（ネオンピンク・水色・紫・エメラルド・オレンジ）を廃し、
      「チャコール×アイボリー＋シャンパンゴールド（男女数値のみくすみローズ＆スレート）」に完全統一
    ========================================================================== */
-body:not(.theme-light) .hero-box,
-body:not(.theme-light) .hero-card,
 body:not(.theme-light) .live-hero-card,
 body:not(.theme-light) .section-card,
 body:not(.theme-light) .content-box,
@@ -1854,20 +1925,20 @@ body.theme-light .audience-mode-bar {
     border-color: var(--calm-light-border);
 }
 
-/* 女性目線×ライトモード：ローズリネン地×純白カード紙面の高級サロン誌パレット */
+/* 女性目線×ライトモード：案2ニュートラル紙面（#f6f6f7 / #ffffff / #f2f2f5）＋上品なローズアクセント */
 body.theme-light.audience-women {
-    --calm-light-bg: #f2eaeb;
+    --calm-light-bg: #f6f6f7;
     --calm-light-surface: #ffffff;
-    --calm-light-surface-2: #e8dcde;
-    --calm-light-border: rgba(120, 62, 78, 0.16);
-    --calm-light-border-strong: rgba(120, 62, 78, 0.28);
-    --calm-light-text: #221b1d;
-    --calm-light-sub: #544146;
-    --calm-light-accent: #88354b;
-    --calm-light-accent-soft: rgba(136, 53, 75, 0.12);
-    --accent: #88354b;
-    --accent-gold: #88354b;
-    --accent-text: #88354b;
+    --calm-light-surface-2: #f2f2f5;
+    --calm-light-border: rgba(24, 24, 27, 0.09);
+    --calm-light-border-strong: rgba(24, 24, 27, 0.16);
+    --calm-light-text: #18181b;
+    --calm-light-sub: #52525b;
+    --calm-light-accent: #9f1239;
+    --calm-light-accent-soft: rgba(159, 18, 57, 0.10);
+    --accent: #9f1239;
+    --accent-gold: #18181b;
+    --accent-text: #9f1239;
     background-color: var(--calm-light-bg) !important;
     color: var(--calm-light-text) !important;
 }
@@ -2333,8 +2404,8 @@ body.theme-light .daily-col-tot {
     opacity: 0;
     transform-origin: left center;
     transform: scaleX(0);
-    background: linear-gradient(90deg, #c8a46e 0%, #f3dfc1 55%, #dfa3b0 100%);
-    box-shadow: 0 0 10px rgba(200, 164, 110, 0.65);
+    background: var(--cm-cta-bg);
+    box-shadow: none;
     will-change: transform, opacity;
 }
 
@@ -2343,8 +2414,8 @@ body.theme-light .daily-col-tot {
 }
 
 body.theme-light .aiseki-nav-progress {
-    background: linear-gradient(90deg, #a84960 0%, #d88d9e 55%, #8c6b3f 100%);
-    box-shadow: 0 0 8px rgba(168, 73, 96, 0.4);
+    background: var(--calm-light-accent);
+    box-shadow: none;
 }
 
 .aiseki-nav-pill {
@@ -2437,9 +2508,9 @@ body.theme-light a.nav-loading {
 .concierge-quick-banner {
     margin: 0 0 12px;
     padding: 10px 14px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(200, 164, 110, 0.14), rgba(22, 23, 28, 0.94));
-    border: 1px solid rgba(200, 164, 110, 0.38);
+    border-radius: var(--r-card, 18px);
+    background: var(--calm-surface);
+    border: 1px solid var(--calm-border-strong);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2459,8 +2530,8 @@ body.theme-light a.nav-loading {
 .cqb-badge {
     font-size: 0.71rem;
     font-weight: 800;
-    color: #16171c;
-    background: #dfc496;
+    color: var(--cm-cta-text);
+    background: var(--cm-cta-bg);
     padding: 2px 8px;
     border-radius: 999px;
     letter-spacing: 0.03em;
@@ -2470,45 +2541,45 @@ body.theme-light a.nav-loading {
 .cqb-title {
     font-size: 0.84rem;
     font-weight: 700;
-    color: #f3efe8;
+    color: var(--calm-text);
     line-height: 1.45;
 }
 
 .cqb-chip {
     font-size: 0.76rem;
     font-weight: 600;
-    color: #dfc496;
+    color: var(--calm-text);
     text-decoration: none;
     padding: 4px 9px;
-    border-radius: 7px;
-    border: 1px solid rgba(200, 164, 110, 0.38);
-    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--r-chip, 10px);
+    border: 1px solid var(--calm-border-strong);
+    background: var(--calm-surface-2);
     white-space: nowrap;
 }
 
 .cqb-chip:hover {
-    background: rgba(200, 164, 110, 0.14);
+    border-color: var(--calm-text);
 }
 
 .cqb-cta {
     font-size: 0.8rem;
     font-weight: 800;
-    color: #14120e;
-    background: #dfc496;
+    color: var(--cm-cta-text);
+    background: var(--cm-cta-bg);
     text-decoration: none;
     padding: 5px 12px;
-    border-radius: 8px;
+    border-radius: var(--r-cta, 12px);
     white-space: nowrap;
 }
 
 body.theme-light .concierge-quick-banner {
     background: var(--calm-light-surface);
-    border-color: rgba(117, 85, 40, 0.38);
-    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.04);
+    border-color: var(--calm-light-border-strong);
+    box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04);
 }
 
 body.theme-light.audience-women .concierge-quick-banner {
-    border-color: rgba(143, 62, 84, 0.34);
+    border-color: var(--calm-light-border-strong);
 }
 
 body.theme-light .cqb-badge {
@@ -2538,7 +2609,7 @@ body.theme-light .cqb-cta {
 
 /* --- フッター・ヘッダー・モーダル共通のコントラスト補正 --- */
 .footer-mini-copy {
-    color: #8e96a4 !important;
+    color: var(--calm-sub) !important;
 }
 
 body.theme-light .footer-mini-copy {
@@ -2797,14 +2868,23 @@ body.theme-light .mini-ratio-fill {
 
 body.theme-light .w-color,
 body.theme-light .tot-w,
-body.theme-light .w-num {
-    color: var(--calm-light-women) !important;
+body.theme-light .w-num,
+body.theme-light .hc-num-w,
+body.theme-light .women-count,
+body.theme-light .ladies-num,
+body.theme-light .count-box.women .num,
+body.theme-light .count-box .count-num.w-color,
+body.theme-light .pick-counts strong.w,
+body.theme-light .ev-badge-women {
+    color: var(--calm-light-women-strong, #9f1239) !important;
 }
 
 body.theme-light .m-color,
 body.theme-light .tot-m,
-body.theme-light .m-num {
-    color: var(--calm-light-men) !important;
+body.theme-light .m-num,
+body.theme-light .hc-num-m,
+body.theme-light .count-box .count-num.m-color {
+    color: var(--calm-light-men-strong, #1e40af) !important;
 }
 
 body.theme-light .r-color,
@@ -2813,12 +2893,10 @@ body.theme-light .stat-num {
 }
 
 body.theme-light .stat-num.pink {
-    color: var(--calm-light-women) !important;
+    color: var(--calm-light-women-strong, #9f1239) !important;
 }
 
-/* --- サブページ＆全18コラム記事 ライトモード サーフェス統一 --- */
-body.theme-light:not(.audience-women) .hero-box,
-body.theme-light .hero-card,
+/* --- サブページ＆全コラム記事 ライトモード サーフェス統一（オープン・ヒーロー .hero-box/.hero-card/.page-hero は除外） --- */
 body.theme-light .live-hero-card,
 body.theme-light .section-card,
 body.theme-light .content-box,
@@ -2826,7 +2904,6 @@ body.theme-light .guide-box,
 body.theme-light .stats-table-wrap,
 body.theme-light .brand-stat-card,
 body.theme-light .article-box,
-body.theme-light .page-hero,
 body.theme-light .area-section-card,
 body.theme-light .article-card,
 body.theme-light .area-mini-card,
@@ -2837,10 +2914,11 @@ body.theme-light .stat-box,
 body.theme-light .faq-card,
 body.theme-light .related-article-card,
 body.theme-light .cta-box,
-body.theme-light .live-tool-cta-box {
+body.theme-light .live-tool-cta-box,
+body.theme-light .store-card {
     background: var(--calm-light-surface) !important;
     border: 1px solid var(--calm-light-border) !important;
-    box-shadow: 0 1px 2px rgba(28, 27, 24, 0.04) !important;
+    box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04) !important;
 }
 
 body.theme-light .rec-card,
@@ -2850,7 +2928,6 @@ body.theme-light .stat-subcard,
 body.theme-light .nearby-item,
 body.theme-light .totals-bar,
 body.theme-light .area-live-totals,
-body.theme-light .store-card,
 body.theme-light .c-card,
 body.theme-light .tip-card,
 body.theme-light .slot-box,
@@ -2862,10 +2939,15 @@ body.theme-light .highlight-box,
 body.theme-light .article-highlight-box,
 body.theme-light .article-lead,
 body.theme-light .lead-box,
-body.theme-light .ev-item {
+body.theme-light .ev-item,
+body.theme-light .store-area-badge {
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border) !important;
     box-shadow: none !important;
+}
+
+body.theme-light .store-area-badge {
+    color: var(--calm-light-sub) !important;
 }
 
 body.theme-light .article-lead,
@@ -3447,23 +3529,23 @@ body.theme-light .ranking-item.card-delta-up-men::after {
 /* --- 22-A. 検索窓・ソート枠・カード操作ボタンの視認性強化 --- */
 body:not(.theme-light) #search-input {
     background-color: var(--calm-surface-2) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23c8a46e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23b4b4be' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: 13px center !important;
     padding-left: 36px !important;
     border: 1px solid var(--calm-border-strong) !important;
     color: var(--calm-text) !important;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+    box-shadow: none !important;
 }
 
 body:not(.theme-light) #search-input::placeholder {
-    color: #9e998f !important;
-    opacity: 1 !important;
+    color: var(--calm-sub) !important;
+    opacity: 0.9 !important;
 }
 
 body:not(.theme-light) #search-input:focus {
-    border-color: var(--calm-accent) !important;
-    box-shadow: 0 0 0 2px rgba(200, 164, 110, 0.22) !important;
+    border-color: var(--calm-border-strong) !important;
+    box-shadow: none !important;
 }
 
 body:not(.theme-light) #search-input:focus:not(:focus-visible) {
@@ -3471,18 +3553,18 @@ body:not(.theme-light) #search-input:focus:not(:focus-visible) {
 }
 
 body.theme-light #search-input {
-    background-color: #ffffff !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%236e4f23' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") !important;
+    background-color: var(--calm-light-surface-2) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%2352525b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: 13px center !important;
     padding-left: 36px !important;
-    border: 1px solid var(--calm-light-border-strong) !important;
+    border: 1px solid var(--calm-light-border) !important;
     color: var(--calm-light-text) !important;
-    box-shadow: 0 1px 2px rgba(28, 26, 23, 0.05) !important;
+    box-shadow: none !important;
 }
 
 body.theme-light #search-input::placeholder {
-    color: #6a6359 !important;
+    color: var(--calm-light-sub) !important;
     opacity: 1 !important;
 }
 
@@ -3636,141 +3718,24 @@ body.theme-light .note-thumb-box {
     color: var(--calm-light-accent) !important;
 }
 
-/* --- 22-D. 2軒目スポット＆誘い方フレーズUI（ダーク／ライト完全エディトリアル化） --- */
-/* 1) ダークモード：ネオン水色・紫・赤を排し、チャコール×シャンパンゴールドに統一 */
-body:not(.theme-light) .second-venue-timing-badge {
+/* --- 22-D. 2軒目スポット＆誘い方フレーズUI（案2ニュートラル面×モノクロソリッドCTAへ統一） --- */
+body:not(.theme-light) .modal-second-venue-box {
     background: var(--calm-surface-2) !important;
-    border: 1px solid rgba(200, 164, 110, 0.42) !important;
-}
-
-body:not(.theme-light) .timing-badge-tag,
-body:not(.theme-light) .timing-toggle-arrow,
-body:not(.theme-light) .timing-rule-item .rule-title {
-    color: var(--calm-accent-text) !important;
-}
-
-body:not(.theme-light) .timing-badge-text,
-body:not(.theme-light) .timing-rule-item {
-    color: var(--calm-text) !important;
-}
-
-body:not(.theme-light) .second-venue-timing-details {
-    background: rgba(12, 13, 16, 0.65) !important;
-    border: 1px dashed rgba(200, 164, 110, 0.35) !important;
-}
-
-body:not(.theme-light) .second-tab-btn {
-    background: var(--calm-surface-2) !important;
-    border: 1px solid var(--calm-border-strong) !important;
-    color: var(--calm-sub) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
     box-shadow: none !important;
 }
 
-body:not(.theme-light) .second-tab-btn:hover {
-    color: var(--calm-text) !important;
-    border-color: rgba(200, 164, 110, 0.45) !important;
-}
-
-body:not(.theme-light) .second-tab-btn.active {
-    background: var(--calm-accent-soft) !important;
-    border-color: rgba(200, 164, 110, 0.62) !important;
-    color: #f5ebd8 !important;
-    box-shadow: none !important;
-}
-
-body:not(.theme-light) .second-venue-card,
-body:not(.theme-light) .second-tip-card {
-    background: var(--calm-surface-2) !important;
-    border: 1px solid var(--calm-border) !important;
-    box-shadow: none !important;
-}
-
-body:not(.theme-light) .second-venue-card:hover {
-    border-color: rgba(200, 164, 110, 0.48) !important;
-    transform: none !important;
-}
-
-body:not(.theme-light) .venue-category-badge,
-body:not(.theme-light) .venue-category-badge.cafe,
-body:not(.theme-light) .venue-category-badge.bar,
-body:not(.theme-light) .venue-category-badge.shisha,
-body:not(.theme-light) .venue-category-badge.yokocho {
-    background: rgba(200, 164, 110, 0.14) !important;
-    border: 1px solid rgba(200, 164, 110, 0.44) !important;
-    color: var(--calm-accent-text) !important;
-}
-
-body:not(.theme-light) .venue-walk-badge {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid var(--calm-border-strong) !important;
-    color: var(--calm-text) !important;
-}
-
-body:not(.theme-light) .venue-budget-pill,
-body:not(.theme-light) .second-tip-point,
-body:not(.theme-light) .quick-footer-label {
-    color: var(--calm-sub) !important;
-}
-
-body:not(.theme-light) .second-venue-name,
-body:not(.theme-light) .second-tip-situation {
-    color: var(--calm-text) !important;
-}
-
-body:not(.theme-light) .second-venue-comment {
-    color: #cfc9bf !important;
-}
-
-body:not(.theme-light) .venue-tag {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid var(--calm-border) !important;
-    color: var(--calm-sub) !important;
-}
-
-body:not(.theme-light) .second-venue-card-actions,
-body:not(.theme-light) .second-venue-quick-footer {
-    border-top-color: var(--calm-border) !important;
-}
-
-body:not(.theme-light) .venue-action-btn.map-btn,
-body:not(.theme-light) .tip-phrase-copy-btn {
-    background: var(--calm-accent-soft) !important;
-    border: 1px solid rgba(200, 164, 110, 0.48) !important;
-    color: #f3e6cf !important;
-}
-
-body:not(.theme-light) .venue-action-btn.copy-btn,
-body:not(.theme-light) .second-quick-pill {
-    background: var(--calm-surface) !important;
-    border: 1px solid var(--calm-border-strong) !important;
-    color: var(--calm-text) !important;
-}
-
-body:not(.theme-light) .venue-action-btn.line-btn {
-    background: rgba(26, 127, 75, 0.22) !important;
-    border: 1px solid rgba(74, 222, 128, 0.36) !important;
-    color: #bbf7d0 !important;
-}
-
-body:not(.theme-light) .second-tip-tag {
-    background: var(--calm-accent-soft) !important;
-    border: 1px solid rgba(200, 164, 110, 0.42) !important;
-    color: var(--calm-accent-text) !important;
-}
-
-body:not(.theme-light) .second-tip-phrase-box {
-    background: rgba(12, 13, 16, 0.65) !important;
-    border: 1px dashed rgba(200, 164, 110, 0.36) !important;
-}
-
-body:not(.theme-light) .second-tip-phrase {
-    color: #f5efe6 !important;
-}
-
-/* 2) ライトモード：白地上の白文字・パステル文字を完全根絶（WCAG AAA〜AA高コントラスト） */
 body.theme-light .modal-second-venue-box {
     background: var(--calm-light-surface-2) !important;
-    border: 1px solid var(--calm-light-border-strong) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .second-venue-header h3,
+body:not(.theme-light) .second-venue-title {
+    color: var(--calm-text) !important;
 }
 
 body.theme-light .second-venue-header h3,
@@ -3778,82 +3743,156 @@ body.theme-light .second-venue-title {
     color: var(--calm-light-text) !important;
 }
 
+body:not(.theme-light) .second-venue-desc {
+    color: var(--calm-sub) !important;
+}
+
 body.theme-light .second-venue-desc {
     color: var(--calm-light-sub) !important;
 }
 
-body.theme-light .second-venue-timing-badge {
-    background: #ffffff !important;
-    border: 1px solid rgba(110, 79, 35, 0.42) !important;
+body:not(.theme-light) .second-venue-timing-badge,
+body:not(.theme-light) .second-venue-timing-details,
+body:not(.theme-light) .second-tip-phrase-box {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    border-radius: var(--r-inner, 13px) !important;
+}
+
+body.theme-light .second-venue-timing-badge,
+body.theme-light .second-venue-timing-details,
+body.theme-light .second-tip-phrase-box {
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    border-radius: var(--r-inner, 13px) !important;
+}
+
+body:not(.theme-light) .timing-badge-tag,
+body:not(.theme-light) .timing-toggle-arrow,
+body:not(.theme-light) .timing-rule-item .rule-title {
+    color: var(--calm-text) !important;
 }
 
 body.theme-light .timing-badge-tag,
 body.theme-light .timing-toggle-arrow,
 body.theme-light .timing-rule-item .rule-title {
-    color: var(--calm-light-accent) !important;
-}
-
-body.theme-light .timing-badge-text,
-body.theme-light .timing-rule-item {
     color: var(--calm-light-text) !important;
 }
 
-body.theme-light .second-venue-timing-details {
-    background: #ffffff !important;
-    border: 1px dashed rgba(110, 79, 35, 0.38) !important;
+body:not(.theme-light) .timing-badge-text,
+body:not(.theme-light) .timing-rule-item,
+body:not(.theme-light) .second-tip-phrase {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light .timing-badge-text,
+body.theme-light .timing-rule-item,
+body.theme-light .second-tip-phrase {
+    color: var(--calm-light-text) !important;
+}
+
+body:not(.theme-light) .second-tab-btn {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .second-tab-btn:hover {
+    color: var(--calm-text) !important;
+    border-color: var(--calm-border-strong) !important;
 }
 
 body.theme-light .second-tab-btn {
-    background: #ffffff !important;
+    background: var(--calm-light-surface) !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     color: var(--calm-light-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
     box-shadow: none !important;
 }
 
 body.theme-light .second-tab-btn:hover {
     color: var(--calm-light-text) !important;
-    border-color: rgba(110, 79, 35, 0.5) !important;
+    border-color: var(--calm-light-border-strong) !important;
 }
 
+body:not(.theme-light) .second-tab-btn.active,
 body.theme-light .second-tab-btn.active {
-    background: var(--calm-light-accent) !important;
-    border-color: var(--calm-light-accent) !important;
-    color: #ffffff !important;
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    font-weight: 700 !important;
     box-shadow: none !important;
+}
+
+body:not(.theme-light) .second-venue-card,
+body:not(.theme-light) .second-tip-card {
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .second-venue-card:hover {
+    border-color: var(--calm-border-strong) !important;
+    transform: none !important;
 }
 
 body.theme-light .second-venue-card,
 body.theme-light .second-tip-card {
-    background: #ffffff !important;
-    border: 1px solid var(--calm-light-border-strong) !important;
-    box-shadow: 0 1px 3px rgba(28, 26, 23, 0.05) !important;
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
 }
 
 body.theme-light .second-venue-card:hover {
-    border-color: rgba(110, 79, 35, 0.55) !important;
+    border-color: var(--calm-light-border-strong) !important;
     transform: none !important;
+}
+
+body:not(.theme-light) .venue-category-badge,
+body:not(.theme-light) .venue-category-badge.cafe,
+body:not(.theme-light) .venue-category-badge.bar,
+body:not(.theme-light) .venue-category-badge.shisha,
+body:not(.theme-light) .venue-category-badge.yokocho,
+body:not(.theme-light) .venue-walk-badge,
+body:not(.theme-light) .second-tip-tag {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
 }
 
 body.theme-light .venue-category-badge,
 body.theme-light .venue-category-badge.cafe,
 body.theme-light .venue-category-badge.bar,
 body.theme-light .venue-category-badge.shisha,
-body.theme-light .venue-category-badge.yokocho {
-    background: var(--calm-light-accent-soft) !important;
-    border: 1px solid rgba(110, 79, 35, 0.42) !important;
-    color: var(--calm-light-accent) !important;
-}
-
-body.theme-light .venue-walk-badge {
+body.theme-light .venue-category-badge.yokocho,
+body.theme-light .venue-walk-badge,
+body.theme-light .second-tip-tag {
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     color: var(--calm-light-text) !important;
 }
 
+body:not(.theme-light) .venue-budget-pill,
+body:not(.theme-light) .second-tip-point,
+body:not(.theme-light) .quick-footer-label,
+body:not(.theme-light) .second-venue-comment {
+    color: var(--calm-sub) !important;
+}
+
 body.theme-light .venue-budget-pill,
 body.theme-light .second-tip-point,
-body.theme-light .quick-footer-label {
+body.theme-light .quick-footer-label,
+body.theme-light .second-venue-comment {
     color: var(--calm-light-sub) !important;
+}
+
+body:not(.theme-light) .second-venue-name,
+body:not(.theme-light) .second-tip-situation {
+    color: var(--calm-text) !important;
 }
 
 body.theme-light .second-venue-name,
@@ -3861,8 +3900,10 @@ body.theme-light .second-tip-situation {
     color: var(--calm-light-text) !important;
 }
 
-body.theme-light .second-venue-comment {
-    color: #3a3630 !important;
+body:not(.theme-light) .venue-tag {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
 }
 
 body.theme-light .venue-tag {
@@ -3871,63 +3912,64 @@ body.theme-light .venue-tag {
     color: var(--calm-light-sub) !important;
 }
 
+body:not(.theme-light) .second-venue-card-actions,
+body:not(.theme-light) .second-venue-quick-footer {
+    border-top-color: var(--calm-border) !important;
+}
+
 body.theme-light .second-venue-card-actions,
 body.theme-light .second-venue-quick-footer {
     border-top-color: var(--calm-light-border) !important;
 }
 
+body:not(.theme-light) .venue-action-btn.map-btn,
+body:not(.theme-light) .tip-phrase-copy-btn,
 body.theme-light .venue-action-btn.map-btn,
 body.theme-light .tip-phrase-copy-btn {
-    background: var(--calm-light-accent-soft) !important;
-    border: 1px solid rgba(110, 79, 35, 0.5) !important;
-    color: var(--calm-light-accent) !important;
+    background: var(--cm-cta-bg) !important;
+    border: 1px solid var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
+    border-radius: var(--r-cta, 12px) !important;
+    font-weight: 700 !important;
 }
 
+body:not(.theme-light) .venue-action-btn.map-btn:hover,
+body:not(.theme-light) .tip-phrase-copy-btn:hover,
 body.theme-light .venue-action-btn.map-btn:hover,
 body.theme-light .tip-phrase-copy-btn:hover {
-    background: rgba(110, 79, 35, 0.2) !important;
-    color: var(--calm-light-text) !important;
+    opacity: 0.9;
+}
+
+body:not(.theme-light) .venue-action-btn.copy-btn,
+body:not(.theme-light) .venue-action-btn.line-btn,
+body:not(.theme-light) .second-quick-pill {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: var(--r-cta, 12px) !important;
 }
 
 body.theme-light .venue-action-btn.copy-btn,
+body.theme-light .venue-action-btn.line-btn,
 body.theme-light .second-quick-pill {
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     color: var(--calm-light-text) !important;
+    border-radius: var(--r-cta, 12px) !important;
 }
 
 body.theme-light .venue-action-btn.copy-btn:hover,
+body.theme-light .venue-action-btn.line-btn:hover,
 body.theme-light .second-quick-pill:hover {
-    background: #dcd6c8 !important;
+    background: #e4e4e8 !important;
     color: var(--calm-light-text) !important;
 }
 
 body.theme-light .venue-action-btn.copy-btn.copied,
 body.theme-light .tip-phrase-copy-btn.copied {
-    background: rgba(22, 101, 52, 0.12) !important;
-    border-color: rgba(22, 101, 52, 0.45) !important;
-    color: #14532d !important;
-}
-
-body.theme-light .venue-action-btn.line-btn {
-    background: rgba(6, 150, 68, 0.12) !important;
-    border: 1px solid rgba(6, 150, 68, 0.42) !important;
-    color: #14532d !important;
-}
-
-body.theme-light .second-tip-tag {
-    background: var(--calm-light-accent-soft) !important;
-    border: 1px solid rgba(110, 79, 35, 0.42) !important;
-    color: var(--calm-light-accent) !important;
-}
-
-body.theme-light .second-tip-phrase-box {
-    background: var(--calm-light-surface-2) !important;
-    border: 1px dashed rgba(110, 79, 35, 0.4) !important;
-}
-
-body.theme-light .second-tip-phrase {
-    color: var(--calm-light-text) !important;
+    background: var(--cm-ok-bg) !important;
+    border-color: rgba(16, 185, 129, 0.42) !important;
+    color: var(--cm-ok-text) !important;
 }
 
 /* --- 22-E. 3秒コンシェルジュ（/concierge）＆動的コラムのコントラスト補強 --- */
@@ -4560,7 +4602,7 @@ body.theme-light .articles-grid > .article-card .article-card-body::before {
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #c8a46e 0%, #e3c898 65%, #dfa6b0 100%);
+    background: var(--calm-text);
     transform-origin: 0 50%;
     transform: scaleX(0);
     opacity: 0;
@@ -4575,7 +4617,7 @@ body.theme-light .articles-grid > .article-card .article-card-body::before {
 }
 
 body.theme-light .aiseki-reading-progress {
-    background: linear-gradient(90deg, #6e4f23 0%, #983849 100%);
+    background: var(--calm-light-text);
 }
 
 
@@ -4851,9 +4893,9 @@ body.theme-light .modal-header {
 }
 
 body.theme-light.audience-women .modal-header {
-    background: #f2eaeb !important;
-    box-shadow: 0 -24px 0 0 #f2eaeb !important;
-    border-bottom-color: rgba(152, 56, 73, 0.22) !important;
+    background: #ffffff !important;
+    box-shadow: 0 -24px 0 0 #ffffff !important;
+    border-bottom-color: var(--calm-light-border) !important;
 }
 
 /* #comparison-modal 系列別サマリーカード：雑誌トーン統一 ＆ ライト時コントラスト完全対応 */
@@ -5076,9 +5118,9 @@ body:not(.theme-light) .sns-tab-btn {
 
 body:not(.theme-light) .guide-tab-pill.active,
 body:not(.theme-light) .sns-tab-btn.active {
-    background: var(--calm-accent-soft) !important;
-    border-color: rgba(200, 164, 110, 0.62) !important;
-    color: #f5ebd8 !important;
+    background: var(--cm-cta-bg) !important;
+    border-color: var(--cm-cta-bg) !important;
+    color: var(--cm-cta-text) !important;
     box-shadow: none !important;
 }
 
@@ -5138,15 +5180,17 @@ body.theme-light .sns-tab-btn.active {
     }
 }
 
-/* モーダル内「開催中イベント・キャンペーン」見出しの0px枠線除去＆エディトリアル配色統一 */
+/* モーダル内「開催中イベント・キャンペーン」見出しの0px枠線除去＆案2ニュートラル統一 */
 body:not(.theme-light) .modal-event-box {
     background: var(--calm-surface-2) !important;
-    border: 1px solid var(--calm-border-strong) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
 }
 
 body.theme-light .modal-event-box {
     background: var(--calm-light-surface-2) !important;
-    border: 1px solid var(--calm-light-border-strong) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
 }
 
 body:not(.theme-light) .modal-event-badge,
@@ -5159,23 +5203,25 @@ body.theme-light .modal-event-badge {
 }
 
 body:not(.theme-light) .modal-event-badge {
-    color: var(--calm-accent-text) !important;
+    color: var(--calm-text) !important;
 }
 
 body.theme-light .modal-event-badge {
-    color: var(--calm-light-accent) !important;
+    color: var(--calm-light-text) !important;
 }
 
 body:not(.theme-light) .event-cta-btn {
-    background: var(--calm-accent-soft) !important;
-    border: 1px solid rgba(200, 164, 110, 0.5) !important;
-    color: #f3e6cf !important;
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    border-radius: var(--r-cta, 12px) !important;
 }
 
 body.theme-light .event-cta-btn {
-    background: var(--calm-light-accent-soft) !important;
-    border: 1px solid rgba(110, 79, 35, 0.5) !important;
-    color: var(--calm-light-accent) !important;
+    background: var(--calm-light-surface) !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    border-radius: var(--r-cta, 12px) !important;
 }
 
 /* ==========================================================================
@@ -5210,11 +5256,11 @@ body.theme-light .event-cta-btn {
     border-radius: 50%;
     margin-right: 6px;
     vertical-align: middle;
-    background: #4ca87a;
+    background: #34d399;
 }
 
 body.theme-light .status-dot-live {
-    background: #22734b;
+    background: #10b981;
 }
 
 #pinned-list-container .section-title {
@@ -6488,9 +6534,10 @@ body.theme-light .cmi-secondary-btn {
     border-color: var(--calm-light-border-strong);
 }
 
-/* --- スマホ（768px以下）：詳細モーダルをクリーン・ミニマルなハーフ・ボトムシートとして表示 --- */
+/* --- スマホ（768px以下）：詳細モーダル＆メニューモーダルをクリーン・ミニマルなハーフ・ボトムシートとして表示 --- */
 @media (max-width: 768px) {
-    #analysis-modal:not(.hidden) {
+    #analysis-modal:not(.hidden),
+    #menu-modal:not(.hidden) {
         align-items: flex-end !important;
         padding: 0 !important;
     }
@@ -6505,7 +6552,18 @@ body.theme-light .cmi-secondary-btn {
         padding-top: 14px !important;
     }
 
-    #analysis-modal .modal-content::before {
+    #menu-modal .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 88vh !important;
+        margin: 0 !important;
+        border-radius: 24px 24px 0 0 !important;
+        border-bottom: none !important;
+        padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    #analysis-modal .modal-content::before,
+    #menu-modal .modal-content:not(:has(.sheet-drag-handle))::before {
         content: "";
         display: block;
         width: 40px;
@@ -6515,87 +6573,44 @@ body.theme-light .cmi-secondary-btn {
         margin: 0 auto 10px;
     }
 
-    body.theme-light #analysis-modal .modal-content::before {
+    body.theme-light #analysis-modal .modal-content::before,
+    body.theme-light #menu-modal .modal-content:not(:has(.sheet-drag-handle))::before {
         background: var(--calm-light-border-strong);
     }
 }
 
 
 /* ==========================================================================
-   26. 案A：Apple Editorial & Weather Bento 全ページ統一デザインシステム
-       （Apple Global Ribbon × Open Typography Hero × Modular Bento Tiles）
-   - 全公開ページ（35テンプレート）の旧ゴールド枠・左縦線・箱型ヒーローを一掃
-   - body:not(.staff-mode) スコープで社内モニター（/?staff=1）のコントラストを完全保護
-   - 未定義CSS変数ゼロ保証のため var() 参照は calm.css :root 定義済みトークンのみ使用
+   26. 案2（TableCheck・VACAN型）全ページ統一デザインシステム
+       - 全公開ページの旧ゴールド枠・左縦線・箱型ヒーローを一掃
+       - body:not(.staff-mode) スコープで社内モニター（/?staff=1）のコントラストを完全保護
+       - 未定義CSS変数ゼロ保証のため var() 参照は calm.css :root 定義済みトークンのみ使用
    ========================================================================== */
 
-/* --- 26-A. サブページ共通の旧ゴールド変数を Apple ニュートラルへ一括再バインド --- */
-body:not(.theme-light):not(.staff-mode) {
-    --bg-dark: #111113;
-    --card-bg: #1a1a1e;
-    --card-bg-2: #232329;
-    --card-elevated: #232329;
-    --card-sub-bg: #232329;
-    --text-main: #f4f4f5;
-    --text-sub: #b4b4be;
-    --accent: #f4f4f5;
-    --accent-gold: #e4e4e7;
-    --accent-text: #f4f4f5;
-    --accent-soft: rgba(244, 244, 245, 0.10);
-    --gold-tint: rgba(244, 244, 245, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.16);
-    --border-gold: rgba(255, 255, 255, 0.18);
-    --women: #f4a8b8;
-    --men: #93c5fd;
-}
-
-body.theme-light:not(.staff-mode) {
+/* --- 26-A. テスト互換維持用 audience-women ブロック（案2ニュートラル正準値へ統一、6533-6573の重複は先頭 :root / html.theme-light へ集約済） --- */
+body.theme-light.audience-women:not(.staff-mode) {
     --bg-dark: #f6f6f7;
-    --bg-page: #faf8f9;
+    --bg-page: #f6f6f7;
     --card-bg: #ffffff;
-    --card-bg-2: #ededf0;
-    --card-elevated: #f4f4f6;
-    --card-sub-bg: #f1f1f4;
+    --card-bg-2: #f2f2f5;
+    --card-elevated: #f2f2f5;
+    --card-sub-bg: #f2f2f5;
     --text-main: #18181b;
     --text-sub: #52525b;
     --accent: #18181b;
     --accent-gold: #18181b;
-    --accent-text: #18181b;
-    --accent-soft: rgba(24, 24, 27, 0.07);
+    --accent-text: #9f1239;
+    --accent-soft: rgba(190, 18, 60, 0.08);
     --gold-tint: rgba(24, 24, 27, 0.06);
     --border-subtle: rgba(24, 24, 27, 0.09);
-    --border-outline: rgba(24, 24, 27, 0.15);
+    --border-outline: rgba(24, 24, 27, 0.16);
     --border-strong: rgba(24, 24, 27, 0.16);
-    --border-gold: rgba(24, 24, 27, 0.18);
+    --border-gold: rgba(24, 24, 27, 0.16);
     --women: #be123c;
     --men: #1d4ed8;
 }
 
-body.theme-light.audience-women:not(.staff-mode) {
-    --bg-dark: #f2eaeb;
-    --bg-page: #f2eaeb;
-    --card-bg: #ffffff;
-    --card-bg-2: #e8dcde;
-    --card-elevated: #f7f1f2;
-    --card-sub-bg: #efe5e7;
-    --text-main: #221b1d;
-    --text-sub: #544146;
-    --accent: #88354b;
-    --accent-gold: #88354b;
-    --accent-text: #88354b;
-    --accent-soft: rgba(136, 53, 75, 0.12);
-    --gold-tint: rgba(136, 53, 75, 0.08);
-    --border-subtle: rgba(120, 62, 78, 0.16);
-    --border-outline: rgba(120, 62, 78, 0.28);
-    --border-strong: rgba(120, 62, 78, 0.28);
-    --border-gold: rgba(136, 53, 75, 0.34);
-    --women: #9a3950;
-    --men: #2b5478;
-}
-
-/* --- 26-B. Apple Global Ribbon（全ページ共通1行クリーンナビ）＆ トップヘッダー引き算 --- */
-/* トップページの重複テーマ切替バーを引き算（右上のライト切替＆表示切替に一本化・メニューモーダル内は維持） */
+/* --- 26-B. グローバルリボン（全ページ共通クリーンナビ）＆ トップヘッダー引き算 --- */
 header .theme-switcher-bar {
     display: none !important;
 }
@@ -6609,7 +6624,6 @@ body:not(.staff-mode) .container > header::after {
     display: none !important;
 }
 
-/* サブページの .portal-top-header / .top-header 下線を消し、直下のナビリボン上線に一本化 */
 body:not(.staff-mode) .portal-top-header,
 body:not(.staff-mode) .top-header {
     border-bottom: none !important;
@@ -6624,7 +6638,6 @@ body:not(.staff-mode) .brand-link {
     letter-spacing: -0.025em !important;
 }
 
-/* トップページのツールボタン群を軽やかな Apple ツールバーピルに整える */
 body:not(.theme-light):not(.staff-mode) .header-controls .header-btn {
     padding: 6px 11px !important;
     font-size: 0.76rem !important;
@@ -6661,14 +6674,14 @@ body.theme-light:not(.staff-mode) .header-controls #refresh-btn {
     background: #ffffff !important;
 }
 
-/* トップページ直下の .portal-global-nav とサブページの .portal-global-nav-row を同一 Apple Ribbon 化 */
+/* トップページ直下の .portal-global-nav とサブページの .portal-global-nav-row を統一（タップ高38px・PC 1280px 最適収まり） */
 body:not(.staff-mode) .container > header > .portal-global-nav {
     margin-top: 10px !important;
     margin-bottom: 0 !important;
-    padding: 6px 0 !important;
+    padding: 5px 0 !important;
     border-top: 1px solid var(--calm-border) !important;
     border-bottom: 1px solid var(--calm-border) !important;
-    gap: 4px !important;
+    gap: 3px !important;
 }
 
 body.theme-light:not(.staff-mode) .container > header > .portal-global-nav {
@@ -6677,11 +6690,11 @@ body.theme-light:not(.staff-mode) .container > header > .portal-global-nav {
 }
 
 body:not(.staff-mode) .portal-global-nav-row {
-    padding: 6px 0 !important;
+    padding: 5px 0 !important;
     margin-bottom: 22px !important;
     border-top: 1px solid var(--calm-border) !important;
     border-bottom: 1px solid var(--calm-border) !important;
-    gap: 8px !important;
+    gap: 6px !important;
 }
 
 body.theme-light:not(.staff-mode) .portal-global-nav-row {
@@ -6698,21 +6711,36 @@ body.theme-light:not(.staff-mode) .portal-global-nav-row {
         flex-wrap: wrap !important;
         overflow-x: visible !important;
         justify-content: flex-start !important;
-        gap: 4px !important;
+        gap: 4px 1px !important;
     }
 }
 
-/* 非アクティブ項目は枠線・箱背景ゼロのクリーン文字、現在地（.active）のみソリッド白/黒ピル */
+body:not(.staff-mode) .stats-cta-primary,
+body:not(.staff-mode) .stats-cta-secondary {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.38 !important;
+}
+
+body:not(.staff-mode) .portal-nav-link,
+body:not(.staff-mode) .portal-nav-item {
+    min-height: 38px !important;
+    min-block-size: 38px !important;
+    box-sizing: border-box !important;
+}
+
 body:not(.theme-light):not(.staff-mode) .portal-nav-link:not(.active),
 body:not(.theme-light):not(.staff-mode) .portal-nav-item:not(.active):not(.portal-theme-toggle-btn) {
     background: transparent !important;
     border: 1px solid transparent !important;
     color: var(--calm-sub) !important;
     box-shadow: none !important;
-    padding: 6px 11px !important;
-    font-size: 0.785rem !important;
+    padding: 6px 5.5px !important;
+    font-size: 0.74rem !important;
     font-weight: 600 !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .portal-nav-link:not(.active):hover,
@@ -6728,10 +6756,10 @@ body.theme-light:not(.staff-mode) .portal-nav-item:not(.active):not(.portal-them
     border: 1px solid transparent !important;
     color: var(--calm-light-sub) !important;
     box-shadow: none !important;
-    padding: 6px 11px !important;
-    font-size: 0.785rem !important;
+    padding: 6px 5.5px !important;
+    font-size: 0.74rem !important;
     font-weight: 600 !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
 }
 
 body.theme-light:not(.staff-mode) .portal-nav-link:not(.active):hover,
@@ -6742,45 +6770,41 @@ body.theme-light:not(.staff-mode) .portal-nav-item:not(.active):not(.portal-them
 }
 
 body:not(.theme-light):not(.staff-mode) .portal-nav-link.active,
-body:not(.theme-light):not(.staff-mode) .portal-nav-item.active {
-    background: var(--cm-cta-bg) !important;
-    border: 1px solid var(--cm-cta-bg) !important;
-    color: var(--cm-cta-text) !important;
-    padding: 6px 13px !important;
-    font-size: 0.785rem !important;
-    font-weight: 700 !important;
-    border-radius: 999px !important;
-    box-shadow: none !important;
-}
-
+body:not(.theme-light):not(.staff-mode) .portal-nav-item.active,
 body.theme-light:not(.staff-mode) .portal-nav-link.active,
 body.theme-light:not(.staff-mode) .portal-nav-item.active {
     background: var(--cm-cta-bg) !important;
     border: 1px solid var(--cm-cta-bg) !important;
     color: var(--cm-cta-text) !important;
-    padding: 6px 13px !important;
-    font-size: 0.785rem !important;
+    padding: 6px 9px !important;
+    font-size: 0.74rem !important;
     font-weight: 700 !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     box-shadow: none !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .portal-theme-toggle-btn {
+    min-height: 38px !important;
+    min-block-size: 38px !important;
+    box-sizing: border-box !important;
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border-strong) !important;
     color: var(--calm-text) !important;
-    border-radius: 999px !important;
-    padding: 5px 12px !important;
+    border-radius: var(--r-pill, 999px) !important;
+    padding: 6px 12px !important;
     font-size: 0.75rem !important;
     font-weight: 700 !important;
 }
 
 body.theme-light:not(.staff-mode) .portal-theme-toggle-btn {
+    min-height: 38px !important;
+    min-block-size: 38px !important;
+    box-sizing: border-box !important;
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     color: var(--calm-light-text) !important;
-    border-radius: 999px !important;
-    padding: 5px 12px !important;
+    border-radius: var(--r-pill, 999px) !important;
+    padding: 6px 12px !important;
     font-size: 0.75rem !important;
     font-weight: 700 !important;
 }
@@ -6806,7 +6830,13 @@ body.theme-light:not(.staff-mode) .hero-box,
 body.theme-light:not(.staff-mode) .hero-card,
 body.theme-light:not(.staff-mode) .areas-hero,
 body.theme-light:not(.staff-mode) .article-header {
-    border-bottom-color: var(--calm-light-border) !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-bottom: 1px solid var(--calm-light-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 6px 0 24px !important;
 }
 
 body:not(.staff-mode) .page-hero h1,
@@ -6818,7 +6848,7 @@ body:not(.staff-mode) .article-box h1,
 body:not(.staff-mode) .content-box h1 {
     font-size: clamp(1.48rem, 2.7vw, 2.02rem) !important;
     font-weight: 800 !important;
-    letter-spacing: -0.03em !important;
+    letter-spacing: -0.025em !important;
     line-height: 1.3 !important;
     margin: 0 0 12px !important;
 }
@@ -6843,7 +6873,6 @@ body.theme-light:not(.staff-mode) .areas-hero p {
     max-width: 780px;
 }
 
-/* キッカーバッジから茶金枠を外し、Apple News+ 風のクリーンマイクロピルへ */
 body:not(.theme-light):not(.staff-mode) .page-hero-badge,
 body:not(.theme-light):not(.staff-mode) .hero-kicker,
 body:not(.theme-light):not(.staff-mode) .hero-box .badge,
@@ -6854,7 +6883,7 @@ body:not(.theme-light):not(.staff-mode) .rec-badge {
     background: var(--calm-surface-2) !important;
     border: 1px solid var(--calm-border) !important;
     color: var(--calm-sub) !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 4px 12px !important;
     font-size: 0.71rem !important;
     font-weight: 700 !important;
@@ -6871,7 +6900,7 @@ body.theme-light:not(.staff-mode) .rec-badge {
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border) !important;
     color: var(--calm-light-sub) !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 4px 12px !important;
     font-size: 0.71rem !important;
     font-weight: 700 !important;
@@ -6884,7 +6913,9 @@ body:not(.staff-mode) .section-title,
 body:not(.staff-mode) .section-subhead,
 body:not(.staff-mode) .section-card h2,
 body:not(.staff-mode) h2.sec-h2,
-body:not(.staff-mode) .portal-wrap > h2 {
+body:not(.staff-mode) .portal-wrap > h2,
+body:not(.staff-mode) .portal-wrap main > h2,
+body:not(.staff-mode) main > h2 {
     border-left: none !important;
     background: transparent !important;
     padding-left: 0 !important;
@@ -6917,11 +6948,11 @@ body.theme-light:not(.staff-mode) .guide-box h2 {
     border-bottom-color: var(--calm-light-border) !important;
 }
 
-/* --- 26-D. 3秒ハシゴ診断（/concierge）：Apple Store コンフィギュレータ × 対比Bento --- */
+/* --- 26-D. 3秒ハシゴ診断（/concierge）：案2 コンフィギュレータ × 対比カード（r: 18px / 内側 13px） --- */
 body:not(.theme-light):not(.staff-mode) .concierge-console {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 24px 22px !important;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.20) !important;
 }
@@ -6929,7 +6960,7 @@ body:not(.theme-light):not(.staff-mode) .concierge-console {
 body.theme-light:not(.staff-mode) .concierge-console {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 24px 22px !important;
     box-shadow: 0 8px 24px rgba(24, 24, 27, 0.04) !important;
 }
@@ -6937,7 +6968,7 @@ body.theme-light:not(.staff-mode) .concierge-console {
 body:not(.staff-mode) .concierge-console h1 {
     font-size: clamp(1.38rem, 2.4vw, 1.76rem) !important;
     font-weight: 800 !important;
-    letter-spacing: -0.028em !important;
+    letter-spacing: -0.025em !important;
     line-height: 1.32 !important;
 }
 
@@ -6954,11 +6985,13 @@ body.theme-light:not(.staff-mode) .ctrl-label {
 }
 
 body:not(.theme-light):not(.staff-mode) .c-pill {
-    border-radius: 999px !important;
+    min-height: 38px;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 8px 15px !important;
     background: var(--calm-surface-2) !important;
     border: 1px solid var(--calm-border) !important;
     color: var(--calm-sub) !important;
+    box-sizing: border-box;
 }
 
 body:not(.theme-light):not(.staff-mode) .c-pill:hover {
@@ -6967,11 +7000,13 @@ body:not(.theme-light):not(.staff-mode) .c-pill:hover {
 }
 
 body.theme-light:not(.staff-mode) .c-pill {
-    border-radius: 999px !important;
+    min-height: 38px;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 8px 15px !important;
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border) !important;
     color: var(--calm-light-sub) !important;
+    box-sizing: border-box;
 }
 
 body.theme-light:not(.staff-mode) .c-pill:hover {
@@ -6980,34 +7015,34 @@ body.theme-light:not(.staff-mode) .c-pill:hover {
 }
 
 body:not(.theme-light):not(.staff-mode) .c-pill.active,
-body.theme-light:not(.staff-mode) .c-pill.active {
+body.theme-light:not(.staff-mode) .c-pill.active,
+body:not(.theme-light):not(.staff-mode) .c-pill[data-param="audience"][data-val="men"].active,
+body.theme-light:not(.staff-mode) .c-pill[data-param="audience"][data-val="men"].active,
+body:not(.theme-light):not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active,
+body.theme-light:not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active {
     background: var(--cm-cta-bg) !important;
     border-color: var(--cm-cta-bg) !important;
     color: var(--cm-cta-text) !important;
     font-weight: 700 !important;
 }
 
-body:not(.theme-light):not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active {
-    background: var(--calm-women) !important;
-    border-color: var(--calm-women) !important;
-    color: #111113 !important;
+body:not(.theme-light) :is(.ratio-bar, .ratio-bar-lg, .mini-ratio-bar).is-empty {
+    background: var(--calm-border) !important;
 }
 
-body.theme-light:not(.staff-mode) .c-pill[data-param="audience"][data-val="women"].active {
-    background: var(--calm-light-women) !important;
-    border-color: var(--calm-light-women) !important;
-    color: #ffffff !important;
+body.theme-light :is(.ratio-bar, .ratio-bar-lg, .mini-ratio-bar).is-empty {
+    background: var(--calm-light-border) !important;
 }
 
 body:not(.staff-mode) .area-status-strip {
-    border-radius: 18px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 14px 18px !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .verdict-card {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 22px !important;
 }
 
@@ -7019,7 +7054,7 @@ body:not(.theme-light):not(.staff-mode) .verdict-card--primary {
 body.theme-light:not(.staff-mode) .verdict-card {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 22px !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
 }
@@ -7030,7 +7065,7 @@ body.theme-light:not(.staff-mode) .verdict-card--primary {
 }
 
 body:not(.staff-mode) .rank-crown-pill {
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 4px 12px !important;
     background: var(--cm-cta-bg) !important;
     border-color: var(--cm-cta-bg) !important;
@@ -7038,7 +7073,7 @@ body:not(.staff-mode) .rank-crown-pill {
 }
 
 body:not(.staff-mode) .rank-backup-pill {
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 4px 12px !important;
 }
 
@@ -7047,32 +7082,33 @@ body:not(.staff-mode) .verdict-store-title a {
 }
 
 body:not(.staff-mode) .headcount-panel {
-    border-radius: 18px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 14px 16px !important;
 }
 
 body:not(.staff-mode) .reasons-list li {
     border-left: none !important;
-    border-radius: 14px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 10px 14px !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .switch-trigger-box {
     background: var(--calm-surface-2) !important;
     border: 1px solid var(--calm-border-strong) !important;
-    border-radius: 16px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 12px 14px !important;
 }
 
 body.theme-light:not(.staff-mode) .switch-trigger-box {
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border-strong) !important;
-    border-radius: 16px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 12px 14px !important;
 }
 
 body:not(.staff-mode) .btn-gold-action {
-    border-radius: 999px !important;
+    min-height: 40px;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 10px 18px !important;
     background: var(--cm-cta-bg) !important;
     border: 1px solid var(--cm-cta-bg) !important;
@@ -7080,57 +7116,57 @@ body:not(.staff-mode) .btn-gold-action {
     font-weight: 700 !important;
 }
 
-/* --- 26-E. 店舗詳細（/store/*）：iOS Weather モジュラーBentoタイル --- */
+/* --- 26-E. 店舗詳細（/store/*）：案2 外側18pxカード × 内側13pxメーター --- */
 body:not(.theme-light):not(.staff-mode) .live-hero-card {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border-strong) !important;
-    border-radius: 24px !important;
-    padding: 26px 24px !important;
+    border-radius: var(--r-card, 18px) !important;
+    padding: 24px 22px !important;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22) !important;
 }
 
 body.theme-light:not(.staff-mode) .live-hero-card {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border-strong) !important;
-    border-radius: 24px !important;
-    padding: 26px 24px !important;
+    border-radius: var(--r-card, 18px) !important;
+    padding: 24px 22px !important;
     box-shadow: 0 10px 26px rgba(24, 24, 27, 0.05) !important;
 }
 
 body:not(.staff-mode) .live-hero-card h1 {
     font-size: clamp(1.38rem, 2.5vw, 1.84rem) !important;
     font-weight: 800 !important;
-    letter-spacing: -0.028em !important;
+    letter-spacing: -0.025em !important;
     line-height: 1.32 !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .section-card {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 24px !important;
-    padding: 24px 22px !important;
+    border-radius: var(--r-card, 18px) !important;
+    padding: 22px 20px !important;
 }
 
 body.theme-light:not(.staff-mode) .section-card {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 24px !important;
-    padding: 24px 22px !important;
+    border-radius: var(--r-card, 18px) !important;
+    padding: 22px 20px !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .count-box {
     background: var(--calm-surface-2) !important;
-    border: 1px solid var(--calm-border) !important;
-    border-radius: 20px !important;
-    padding: 16px 12px !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
+    padding: 15px 12px !important;
 }
 
 body.theme-light:not(.staff-mode) .count-box {
-    background: var(--calm-light-bg) !important;
-    border: 1px solid var(--calm-light-border) !important;
-    border-radius: 20px !important;
-    padding: 16px 12px !important;
+    background: var(--calm-light-surface-2) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
+    padding: 15px 12px !important;
 }
 
 body:not(.staff-mode) .count-num {
@@ -7140,19 +7176,19 @@ body:not(.staff-mode) .count-num {
 }
 
 body:not(.staff-mode) .moat-detail-panel {
-    border-radius: 20px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 15px 16px !important;
 }
 
 body:not(.staff-mode) .moat-detail-card,
 body:not(.staff-mode) .stat-subcard,
 body:not(.staff-mode) .nearby-item {
-    border-radius: 18px !important;
+    border-radius: var(--r-inner, 13px) !important;
     padding: 14px 16px !important;
 }
 
 body:not(.staff-mode) .btn-primary {
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 10px 20px !important;
     background: var(--cm-cta-bg) !important;
     border: 1px solid var(--cm-cta-bg) !important;
@@ -7161,7 +7197,7 @@ body:not(.staff-mode) .btn-primary {
 }
 
 body:not(.theme-light):not(.staff-mode) .btn-secondary {
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 10px 18px !important;
     background: var(--calm-surface-2) !important;
     border: 1px solid var(--calm-border-strong) !important;
@@ -7169,7 +7205,7 @@ body:not(.theme-light):not(.staff-mode) .btn-secondary {
 }
 
 body.theme-light:not(.staff-mode) .btn-secondary {
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     padding: 10px 18px !important;
     background: var(--calm-light-surface-2) !important;
     border: 1px solid var(--calm-light-border-strong) !important;
@@ -7180,18 +7216,18 @@ body.theme-light:not(.staff-mode) .btn-secondary {
     body:not(.staff-mode) .live-hero-card,
     body:not(.staff-mode) .section-card {
         padding: 18px 15px !important;
-        border-radius: 20px !important;
+        border-radius: var(--r-card, 18px) !important;
     }
     body:not(.staff-mode) .count-box {
         padding: 12px 6px !important;
-        border-radius: 16px !important;
+        border-radius: var(--r-inner, 13px) !important;
     }
     body:not(.staff-mode) .count-num {
         font-size: 1.35rem !important;
     }
 }
 
-/* --- 26-F. コラム一覧＆全18記事（/columns, /guide/*, /grooming, /privacy）：Apple News+ --- */
+/* --- 26-F. コラム一覧＆全記事（/columns, /guide/*, /grooming, /privacy）：案2 角丸18px統一 --- */
 body:not(.staff-mode) .columns-filter-bar {
     background: transparent !important;
     border: none !important;
@@ -7209,6 +7245,7 @@ body.theme-light:not(.staff-mode) .columns-filter-label {
 }
 
 body:not(.theme-light):not(.staff-mode) .col-cat-btn {
+    min-height: 38px;
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
     color: var(--calm-sub) !important;
@@ -7216,6 +7253,7 @@ body:not(.theme-light):not(.staff-mode) .col-cat-btn {
 }
 
 body.theme-light:not(.staff-mode) .col-cat-btn {
+    min-height: 38px;
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
     color: var(--calm-light-sub) !important;
@@ -7234,14 +7272,14 @@ body:not(.theme-light):not(.staff-mode) .article-card,
 body:not(.theme-light):not(.staff-mode) .portal-article-card {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
 }
 
 body.theme-light:not(.staff-mode) .article-card,
 body.theme-light:not(.staff-mode) .portal-article-card {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.035) !important;
 }
 
@@ -7259,18 +7297,18 @@ body.theme-light:not(.staff-mode) .articles-grid > .article-card .article-card-b
 
 @media (min-width: 860px) {
     body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child {
-        border-radius: 24px !important;
+        border-radius: var(--r-card, 18px) !important;
         padding: 18px !important;
     }
     body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child .article-thumb-wrap {
-        border-radius: 16px !important;
+        border-radius: var(--r-inner, 13px) !important;
     }
     body:not(.staff-mode) .articles-grid:not(.is-filtered) > .article-card:first-child .article-card-body::before {
         content: "FEATURED STORY" !important;
         letter-spacing: 0.08em !important;
     }
     body:not(.staff-mode) .portal-featured-articles > .portal-article-card:first-child {
-        border-radius: 24px !important;
+        border-radius: var(--r-card, 18px) !important;
         border-color: var(--calm-border-strong) !important;
     }
     body.theme-light:not(.staff-mode) .portal-featured-articles > .portal-article-card:first-child {
@@ -7278,7 +7316,7 @@ body.theme-light:not(.staff-mode) .articles-grid > .article-card .article-card-b
     }
 }
 
-/* 記事内インラインBentoカード（左縦線・セリフ体巨大引用符を撤廃し角丸18〜20pxタイル化） */
+/* 記事内インラインカード（角丸18pxタイル化） */
 body:not(.staff-mode) .dialogue-box::before {
     content: none !important;
     display: none !important;
@@ -7291,7 +7329,7 @@ body:not(.theme-light):not(.staff-mode) .mechanism-note-box {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
     border-left: 1px solid var(--calm-border) !important;
-    border-radius: 18px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 16px 20px !important;
     color: var(--calm-text) !important;
 }
@@ -7303,7 +7341,7 @@ body.theme-light:not(.staff-mode) .mechanism-note-box {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
     border-left: 1px solid var(--calm-light-border) !important;
-    border-radius: 18px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 16px 20px !important;
     color: var(--calm-light-text) !important;
 }
@@ -7318,7 +7356,7 @@ body:not(.theme-light):not(.staff-mode) .cta-box {
     background-image: none !important;
     border: 1px solid var(--calm-border-strong) !important;
     border-top: 1px solid var(--calm-border-strong) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 20px 22px !important;
 }
 
@@ -7332,7 +7370,7 @@ body.theme-light:not(.staff-mode) .cta-box {
     background-image: none !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     border-top: 1px solid var(--calm-light-border-strong) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 20px 22px !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
 }
@@ -7342,7 +7380,7 @@ body:not(.theme-light):not(.staff-mode) .content-box,
 body:not(.theme-light):not(.staff-mode) .guide-box {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
 }
 
 body.theme-light:not(.staff-mode) .article-box,
@@ -7350,12 +7388,12 @@ body.theme-light:not(.staff-mode) .content-box,
 body.theme-light:not(.staff-mode) .guide-box {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: 0 4px 18px rgba(24, 24, 27, 0.03) !important;
 }
 
 body:not(.staff-mode) .article-eyecatch {
-    border-radius: 20px !important;
+    border-radius: var(--r-card, 18px) !important;
 }
 
 body:not(.staff-mode) .cta-btn,
@@ -7379,11 +7417,12 @@ body.theme-light:not(.staff-mode) .aiseki-reading-progress {
     background: var(--calm-light-text) !important;
 }
 
-/* --- 26-G. エリア・料金比較・統計・ブランド・女子ガイドのモジュラーBento統一 --- */
+/* --- 26-G. エリア・料金比較・統計・ブランド・女子ガイドの案2角丸（18px/13px）統一 --- */
 body:not(.staff-mode) .area-pill,
 body:not(.staff-mode) .brand-tab,
 body:not(.staff-mode) .area-tab-btn {
-    border-radius: 999px !important;
+    min-height: 38px;
+    border-radius: var(--r-pill, 999px) !important;
     border-style: solid !important;
 }
 
@@ -7405,7 +7444,7 @@ body:not(.theme-light):not(.staff-mode) .best-pick-banner {
     background-image: none !important;
     border: 1px solid var(--calm-border-strong) !important;
     border-left: 1px solid var(--calm-border-strong) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 18px 20px !important;
 }
 
@@ -7415,29 +7454,26 @@ body.theme-light:not(.staff-mode) .best-pick-banner {
     background-image: none !important;
     border: 1px solid var(--calm-light-border-strong) !important;
     border-left: 1px solid var(--calm-light-border-strong) !important;
-    border-radius: 22px !important;
+    border-radius: var(--r-card, 18px) !important;
     padding: 18px 20px !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
 }
 
-body:not(.staff-mode) .area-section-card {
-    border-radius: 24px !important;
-}
-
+body:not(.staff-mode) .area-section-card,
 body:not(.staff-mode) .live-store-card,
 body:not(.staff-mode) .tactical-card,
 body:not(.staff-mode) .brand-stat-card,
 body:not(.staff-mode) .fc-acc-kpi-card,
 body:not(.staff-mode) .store-card {
-    border-radius: 20px !important;
+    border-radius: var(--r-card, 18px) !important;
 }
 
-/* 女子向け裏ガイド（/for-women）：Apple Card 風クリスプ・ホワイト × クリーンローズ Bento */
+/* 女子向け裏ガイド（/for-women）：案2 ニュートラル面 × 最小ローズアクセント */
 body.theme-light:not(.staff-mode) .live-board,
 body.theme-light:not(.staff-mode) .ladies-pr-section {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: 0 6px 22px rgba(24, 24, 27, 0.04) !important;
 }
 
@@ -7445,16 +7481,16 @@ body:not(.theme-light):not(.staff-mode) .live-board,
 body:not(.theme-light):not(.staff-mode) .ladies-pr-section {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 24px !important;
+    border-radius: var(--r-card, 18px) !important;
 }
 
 body:not(.staff-mode) .live-pick-card,
 body:not(.staff-mode) .rule-card {
-    border-radius: 18px !important;
+    border-radius: var(--r-inner, 13px) !important;
 }
 
 body.theme-light:not(.staff-mode) .live-pick-card {
-    background: var(--calm-light-bg) !important;
+    background: var(--calm-light-surface-2) !important;
     border-color: var(--calm-light-border) !important;
 }
 
@@ -7462,7 +7498,7 @@ body.theme-light:not(.staff-mode) .btn-rose {
     background: var(--calm-light-women) !important;
     background-image: none !important;
     color: #ffffff !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     box-shadow: none !important;
 }
 
@@ -7470,11 +7506,11 @@ body:not(.theme-light):not(.staff-mode) .btn-rose {
     background: var(--calm-women) !important;
     background-image: none !important;
     color: #111113 !important;
-    border-radius: 999px !important;
+    border-radius: var(--r-pill, 999px) !important;
     box-shadow: none !important;
 }
 
-/* --- 26-H. 案3：iPhone Compare 並列スペック比較シート ＆ 全サイトミニマル表システム --- */
+/* --- 26-H. 並列スペック比較シート（SP横スワイプカルーセル） ＆ 全サイトミニマル表システム --- */
 body:not(.staff-mode) .section-card.apple-open-section {
     background: transparent !important;
     border: none !important;
@@ -7491,6 +7527,7 @@ body.theme-light:not(.staff-mode) .section-card.apple-open-section {
 body:not(.staff-mode) .apple-compare-grid,
 body:not(.staff-mode) .apple-compare-col,
 body:not(.staff-mode) .stats-table-wrap table,
+body:not(.staff-mode) .jis-stats-table-wrap table,
 body:not(.staff-mode) .data-table,
 body:not(.staff-mode) .spec-table,
 body:not(.staff-mode) .comp-table,
@@ -7504,6 +7541,7 @@ body:not(.staff-mode) .article-body table {
 body:not(.theme-light):not(.staff-mode) .apple-compare-col {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
+    border-radius: var(--r-card, 18px) !important;
     color: var(--calm-text) !important;
 }
 
@@ -7516,6 +7554,7 @@ body:not(.theme-light):not(.staff-mode) .apple-compare-col.is-current-row {
 body.theme-light:not(.staff-mode) .apple-compare-col {
     background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
+    border-radius: var(--r-card, 18px) !important;
     color: var(--calm-light-text) !important;
     box-shadow: 0 4px 18px rgba(24, 24, 27, 0.035) !important;
 }
@@ -7526,17 +7565,47 @@ body.theme-light:not(.staff-mode) .apple-compare-col.is-current-row {
     border-color: var(--calm-light-text) !important;
 }
 
+@media (max-width: 640px) {
+    body:not(.staff-mode) .apple-compare-grid {
+        display: grid !important;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(268px, 82vw);
+        grid-template-columns: none !important;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        column-gap: 12px;
+        row-gap: 0;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+    body:not(.staff-mode) .apple-compare-col {
+        grid-template-rows: subgrid;
+        grid-row-start: 1;
+        scroll-snap-align: start;
+        border-radius: var(--r-card, 18px) !important;
+        margin-bottom: 0 !important;
+    }
+}
+
+body:not(.staff-mode) .apple-seg-btn {
+    min-height: 38px !important;
+    min-block-size: 38px !important;
+}
+
 body:not(.theme-light):not(.staff-mode) .apple-seg-btn.active,
 body.theme-light:not(.staff-mode) .apple-seg-btn.active {
     background: var(--cm-cta-bg) !important;
     color: var(--cm-cta-text) !important;
 }
 
-/* 統計・コラム・モーダル内の全テーブル：外枠ボックス・縦罫線を撤廃し 1px 極細ヘアライン表へ統一 */
+/* 統計・コラム・モーダル内の全テーブル（.jis-stats-table-wrap 含む）：外枠ボックス・縦罫線を撤廃し 1px 極細ヘアライン表へ統一 */
 body:not(.staff-mode) .comp-table-wrap,
 body:not(.staff-mode) .data-table-wrap,
 body:not(.staff-mode) .table-scroll-wrapper,
-body:not(.staff-mode) .stats-table-wrap {
+body:not(.staff-mode) .stats-table-wrap,
+body:not(.staff-mode) .jis-stats-table-wrap,
+body:not(.staff-mode) .table-wrap {
     border: none !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -7547,6 +7616,8 @@ body:not(.staff-mode) .stats-table-wrap {
 }
 
 body:not(.staff-mode) .stats-table-wrap table,
+body:not(.staff-mode) .jis-stats-table-wrap table,
+body:not(.staff-mode) .table-wrap table,
 body:not(.staff-mode) .data-table,
 body:not(.staff-mode) .spec-table,
 body:not(.staff-mode) .comp-table,
@@ -7560,6 +7631,8 @@ body:not(.staff-mode) .article-body table {
 }
 
 body:not(.theme-light):not(.staff-mode) .stats-table-wrap th,
+body:not(.theme-light):not(.staff-mode) .jis-stats-table-wrap th,
+body:not(.theme-light):not(.staff-mode) .table-wrap th,
 body:not(.theme-light):not(.staff-mode) .data-table th,
 body:not(.theme-light):not(.staff-mode) .spec-table th,
 body:not(.theme-light):not(.staff-mode) .comp-table th,
@@ -7577,6 +7650,8 @@ body:not(.theme-light):not(.staff-mode) .article-body table th {
 }
 
 body.theme-light:not(.staff-mode) .stats-table-wrap th,
+body.theme-light:not(.staff-mode) .jis-stats-table-wrap th,
+body.theme-light:not(.staff-mode) .table-wrap th,
 body.theme-light:not(.staff-mode) .data-table th,
 body.theme-light:not(.staff-mode) .spec-table th,
 body.theme-light:not(.staff-mode) .comp-table th,
@@ -7594,6 +7669,8 @@ body.theme-light:not(.staff-mode) .article-body table th {
 }
 
 body:not(.theme-light):not(.staff-mode) .stats-table-wrap td,
+body:not(.theme-light):not(.staff-mode) .jis-stats-table-wrap td,
+body:not(.theme-light):not(.staff-mode) .table-wrap td,
 body:not(.theme-light):not(.staff-mode) .data-table td,
 body:not(.theme-light):not(.staff-mode) .spec-table td,
 body:not(.theme-light):not(.staff-mode) .comp-table td,
@@ -7608,6 +7685,8 @@ body:not(.theme-light):not(.staff-mode) .article-body table td {
 }
 
 body.theme-light:not(.staff-mode) .stats-table-wrap td,
+body.theme-light:not(.staff-mode) .jis-stats-table-wrap td,
+body.theme-light:not(.staff-mode) .table-wrap td,
 body.theme-light:not(.staff-mode) .data-table td,
 body.theme-light:not(.staff-mode) .spec-table td,
 body.theme-light:not(.staff-mode) .comp-table td,
@@ -7834,9 +7913,6 @@ body.theme-light:not(.staff-mode) .verdict-pill.verdict-neutral {
 
 /* エリア推奨バナー・2軒目カード・統計KPIカード・関連記事カード */
 body:not(.theme-light):not(.staff-mode) .best-pick-banner,
-body:not(.theme-light):not(.staff-mode) .second-venue-timing-badge,
-body:not(.theme-light):not(.staff-mode) .second-venue-timing-details,
-body:not(.theme-light):not(.staff-mode) .second-tip-phrase-box,
 body:not(.theme-light):not(.staff-mode) .fc-acc-kpi-card,
 body:not(.theme-light):not(.staff-mode) .live-tool-cta-box,
 body:not(.theme-light):not(.staff-mode) .cta-box,
@@ -7844,14 +7920,11 @@ body:not(.theme-light):not(.staff-mode) .related-article-card {
     background: var(--calm-surface) !important;
     background-image: none !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 20px !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: none !important;
 }
 
 body.theme-light:not(.staff-mode) .best-pick-banner,
-body.theme-light:not(.staff-mode) .second-venue-timing-badge,
-body.theme-light:not(.staff-mode) .second-venue-timing-details,
-body.theme-light:not(.staff-mode) .second-tip-phrase-box,
 body.theme-light:not(.staff-mode) .fc-acc-kpi-card,
 body.theme-light:not(.staff-mode) .live-tool-cta-box,
 body.theme-light:not(.staff-mode) .cta-box,
@@ -7859,8 +7932,28 @@ body.theme-light:not(.staff-mode) .related-article-card {
     background: #ffffff !important;
     background-image: none !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 20px !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: 0 4px 16px rgba(24, 24, 27, 0.03) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) .second-venue-timing-badge,
+body:not(.theme-light):not(.staff-mode) .second-venue-timing-details,
+body:not(.theme-light):not(.staff-mode) .second-tip-phrase-box {
+    background: var(--calm-surface) !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-border) !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .second-venue-timing-badge,
+body.theme-light:not(.staff-mode) .second-venue-timing-details,
+body.theme-light:not(.staff-mode) .second-tip-phrase-box {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
 }
 
 body:not(.staff-mode) .related-article-card {
@@ -7977,12 +8070,25 @@ body.theme-light:not(.staff-mode) .columns-hero-pill-link:focus-visible {
 }
 
 /* コラム・記事見出し＆リンクのニュートラル化、および Apple Compare タイトルの完全保護 */
-body:not(.staff-mode) .article-content h3 {
+body:not(.staff-mode) :is(.article-content, .article-body, .article-box) h3 {
+    border-left: none !important;
     padding-left: 0 !important;
 }
 
-body:not(.staff-mode) .article-content h3::before {
+body:not(.staff-mode) :is(.article-content, .article-body, .article-box) h3::before {
     display: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) :is(.stat-card-title, .stat-card-sub, .editorial-bridge-desc) {
+    color: var(--calm-sub, #b4b4be) !important;
+}
+
+body.theme-light:not(.staff-mode) :is(.stat-card-title, .stat-card-sub, .editorial-bridge-desc) {
+    color: var(--calm-light-sub, #52525b) !important;
+}
+
+body.theme-light:not(.staff-mode) :is(.stat-card-value, .editorial-bridge-title) {
+    color: var(--calm-light-text, #18181b) !important;
 }
 
 body:not(.theme-light):not(.staff-mode) .article-body h3,
@@ -8874,7 +8980,7 @@ body.theme-light .modal-store-page-cta {
     min-height: 48px;
     padding: 10px 14px;
     margin: 0 0 12px;
-    border-radius: 14px;
+    border-radius: var(--r-cta, 12px) !important;
     text-decoration: none;
     box-sizing: border-box;
     transition: opacity 0.15s ease;
@@ -9212,24 +9318,6 @@ html.is-pwa-standalone .pwa-install-banner {
    - コラム全テンプレートのライトモード高コントラスト保証（.role-card / .editorial-table / .related-article-card）
    - 店舗カードの「分析」ボタン可視ラベル＆WCAG 2.5.3 / 1.4.10 Reflow 対応
    ========================================================================== */
-html.theme-light {
-    --bg-color: var(--calm-light-bg);
-    --bg-dark: var(--calm-light-bg);
-    --card-bg: var(--calm-light-surface);
-    --card-bg-2: var(--calm-light-surface-2);
-    --border-subtle: var(--calm-light-border);
-    --border-strong: var(--calm-light-border-strong);
-    --text-primary: var(--calm-light-text);
-    --text-main: var(--calm-light-text);
-    --text-secondary: var(--calm-light-sub);
-    --text-sub: var(--calm-light-sub);
-    --accent: var(--calm-light-accent);
-    --accent-gold: var(--calm-light-accent);
-    --accent-text: var(--calm-light-accent);
-    --women: var(--calm-light-women);
-    --men: var(--calm-light-men);
-}
-
 body.theme-light .role-card,
 body.theme-light .related-article-card {
     background: var(--calm-light-surface) !important;
@@ -9975,12 +10063,13 @@ body.staff-mode .modal-quick-spec-bar {
 }
 
 /* モーダル最上部の即時スペック・マップ・出典クイックバー（カードタップ0ms表示） */
-.modal-quick-spec-bar {
+.modal-quick-spec-bar,
+#modal-quick-spec-bar {
     margin: 0 0 10px;
-    padding: 9px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--calm-border);
-    background: var(--calm-surface);
+    padding: 10px 12px;
+    border-radius: var(--r-inner, 13px) !important;
+    border: none !important;
+    background: var(--calm-surface-2) !important;
     font-variant-numeric: tabular-nums;
 }
 
@@ -9988,9 +10077,10 @@ body.staff-mode .modal-quick-spec-bar {
     display: none !important;
 }
 
-body.theme-light .modal-quick-spec-bar {
-    background: var(--calm-light-surface);
-    border-color: var(--calm-light-border);
+body.theme-light .modal-quick-spec-bar,
+body.theme-light #modal-quick-spec-bar {
+    background: var(--calm-light-surface-2) !important;
+    border: none !important;
 }
 
 .mqs-primary-row {
@@ -10662,7 +10752,8 @@ body.theme-light .mqs-meta-row {
         display: none !important;
     }
 
-    body:not(.staff-mode) #analysis-modal .sheet-drag-handle {
+    body:not(.staff-mode) #analysis-modal .sheet-drag-handle,
+    #menu-modal .sheet-drag-handle {
         display: block;
         position: relative;
         z-index: 32;
@@ -10670,10 +10761,11 @@ body.theme-light .mqs-meta-row {
         height: 4px;
         border-radius: 999px;
         background: var(--calm-border-strong);
-        margin: 2px auto 6px;
+        margin: 2px auto 8px;
     }
 
-    body.theme-light:not(.staff-mode) #analysis-modal .sheet-drag-handle {
+    body.theme-light:not(.staff-mode) #analysis-modal .sheet-drag-handle,
+    body.theme-light #menu-modal .sheet-drag-handle {
         background: var(--calm-light-border-strong);
     }
 
@@ -10688,7 +10780,7 @@ body.theme-light .mqs-meta-row {
     }
 
     body.theme-light.audience-women:not(.staff-mode) #analysis-modal .modal-header {
-        box-shadow: 0 -18px 0 0 #f2eaeb !important;
+        box-shadow: 0 -18px 0 0 #ffffff !important;
     }
 
     .sns-compact-pill,
@@ -10793,19 +10885,34 @@ body.theme-light.audience-women:not(.staff-mode) #analysis-modal .modal-header {
     box-shadow: 0 -24px 0 0 #ffffff !important;
 }
 
-/* #analysis-modal 内の4重ネスト（modal > modal-moat-box > moat-modal-card > moat-acc-track）を1階層カードへ整理 */
-#modal-moat-forecast-box.modal-moat-box {
-    background: transparent !important;
+@media (min-width: 769px) {
+    body:not(.staff-mode) .modal .modal-content,
+    body:not(.staff-mode) .articles-modal-content {
+        border-radius: var(--r-inspector, 20px) !important;
+    }
+}
+
+/* #analysis-modal 内側パネル群（#modal-moat-forecast-box / .chart-container / #modal-crowd-vote-box）を案2 第2面 --calm-surface-2 (r: 13px) へ統一 */
+#modal-moat-forecast-box.modal-moat-box,
+body:not(.theme-light) #modal-crowd-vote-box,
+body:not(.theme-light) .modal-vote-box,
+body:not(.theme-light) .chart-container {
+    background: var(--calm-surface-2) !important;
     border: none !important;
-    border-top: 1px solid var(--calm-border) !important;
-    border-radius: 0 !important;
-    padding: 12px 0 4px !important;
+    border-radius: var(--r-inner, 13px) !important;
+    padding: 12px 14px !important;
     margin: 8px 0 12px !important;
     box-shadow: none !important;
 }
 
-body.theme-light #modal-moat-forecast-box.modal-moat-box {
-    border-top-color: var(--calm-light-border) !important;
+body.theme-light #modal-moat-forecast-box.modal-moat-box,
+body.theme-light #modal-crowd-vote-box,
+body.theme-light .modal-vote-box,
+body.theme-light .chart-container {
+    background: var(--calm-light-surface-2) !important;
+    border: none !important;
+    border-radius: var(--r-inner, 13px) !important;
+    box-shadow: none !important;
 }
 
 body:not(.theme-light) .moat-modal-title {
@@ -10817,19 +10924,19 @@ body.theme-light .moat-modal-title {
 }
 
 body:not(.theme-light) .moat-modal-card {
-    background: var(--calm-surface-2) !important;
+    background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
-    border-radius: 12px !important;
+    border-radius: var(--r-chip, 10px) !important;
 }
 
 body.theme-light .moat-modal-card {
-    background: #f6f6f7 !important;
+    background: #ffffff !important;
     border: 1px solid var(--calm-light-border) !important;
-    border-radius: 12px !important;
+    border-radius: var(--r-chip, 10px) !important;
 }
 
 body:not(.theme-light) .moat-modal-card.tone-safe {
-    border-color: rgba(110, 231, 183, 0.28) !important;
+    border-color: rgba(52, 211, 153, 0.28) !important;
 }
 
 body:not(.theme-light) .moat-modal-card.tone-warn {
@@ -10853,6 +10960,26 @@ body.theme-light #analysis-modal .moat-acc-track {
     border-top-color: var(--calm-light-border) !important;
 }
 
+body:not(.theme-light) .date-btn,
+body:not(.theme-light) .vote-pill-btn {
+    min-height: 38px;
+    background: var(--calm-surface) !important;
+    border: 1px solid var(--calm-border-strong) !important;
+    color: var(--calm-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .date-btn,
+body.theme-light .vote-pill-btn {
+    min-height: 38px;
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border-strong) !important;
+    color: var(--calm-light-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
+    box-shadow: none !important;
+}
+
 /* --- Primitive B: モーダル内タブのモノクロソリッド統一 ＆ #menu-modal 2列 Bento --- */
 body:not(.theme-light):not(.staff-mode) .events-tab-btn.active,
 body:not(.theme-light):not(.staff-mode) .sns-tab-btn.active,
@@ -10860,6 +10987,7 @@ body:not(.theme-light):not(.staff-mode) .guide-tab-pill.active,
 body:not(.theme-light):not(.staff-mode) .guide-cat-btn.active,
 body:not(.theme-light):not(.staff-mode) .theme-pill-btn.active,
 body:not(.theme-light):not(.staff-mode) .chart-filter-btn.active,
+body:not(.theme-light):not(.staff-mode) .date-btn.active,
 body:not(.theme-light):not(.staff-mode) .second-tab-btn.active {
     background: #f4f4f5 !important;
     border-color: #f4f4f5 !important;
@@ -10874,6 +11002,7 @@ body.theme-light:not(.staff-mode) .guide-tab-pill.active,
 body.theme-light:not(.staff-mode) .guide-cat-btn.active,
 body.theme-light:not(.staff-mode) .theme-pill-btn.active,
 body.theme-light:not(.staff-mode) .chart-filter-btn.active,
+body.theme-light:not(.staff-mode) .date-btn.active,
 body.theme-light:not(.staff-mode) .second-tab-btn.active {
     background: #18181b !important;
     border-color: #18181b !important;
@@ -10887,20 +11016,20 @@ body:not(.staff-mode) #menu-modal .menu-theme-bar {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     padding: 4px;
-    border-radius: 12px;
+    border-radius: var(--r-cta, 12px);
     background: var(--calm-surface-2) !important;
     border: 1px solid var(--calm-border) !important;
 }
 
 body.theme-light:not(.staff-mode) #menu-modal .menu-theme-bar {
-    background: #f6f6f7 !important;
+    background: var(--calm-light-surface-2) !important;
     border-color: var(--calm-light-border) !important;
 }
 
 #menu-modal .menu-theme-bar .theme-pill-btn {
     min-height: 38px;
     padding: 6px 8px;
-    border-radius: 8px !important;
+    border-radius: var(--r-badge, 8px) !important;
     font-size: 0.8rem;
     font-weight: 700;
     justify-content: center;
@@ -10917,10 +11046,38 @@ body.theme-light:not(.staff-mode) #menu-modal .menu-theme-bar {
 
 #menu-modal .menu-grid-item {
     padding: 10px 11px !important;
-    border-radius: 12px !important;
+    border-radius: var(--r-inner, 13px) !important;
     align-items: flex-start !important;
     text-align: left !important;
     min-height: 56px;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light):not(.staff-mode) #menu-modal .menu-grid-item {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-text) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) #menu-modal .menu-grid-item:hover,
+body:not(.theme-light):not(.staff-mode) #menu-modal .menu-grid-item:active {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border-strong) !important;
+    transform: none !important;
+}
+
+body.theme-light:not(.staff-mode) #menu-modal .menu-grid-item {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid transparent !important;
+    color: var(--calm-light-text) !important;
+}
+
+body.theme-light:not(.staff-mode) #menu-modal .menu-grid-item:hover,
+body.theme-light:not(.staff-mode) #menu-modal .menu-grid-item:active {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    transform: none !important;
 }
 
 #menu-modal .menu-grid-text strong {
@@ -10930,10 +11087,61 @@ body.theme-light:not(.staff-mode) #menu-modal .menu-theme-bar {
     margin-bottom: 2px;
 }
 
+body:not(.theme-light) #menu-modal .menu-grid-text strong {
+    color: var(--calm-text) !important;
+}
+
+body.theme-light #menu-modal .menu-grid-text strong {
+    color: var(--calm-light-text) !important;
+}
+
 #menu-modal .menu-grid-text span {
     display: block;
     font-size: 0.7rem !important;
     line-height: 1.35 !important;
+}
+
+body:not(.theme-light) #menu-modal .menu-grid-text span,
+body:not(.theme-light) #menu-modal .menu-section-title {
+    color: var(--calm-sub) !important;
+}
+
+body.theme-light #menu-modal .menu-grid-text span,
+body.theme-light #menu-modal .menu-section-title {
+    color: var(--calm-light-sub) !important;
+}
+
+#menu-modal .menu-sub-link {
+    min-height: 38px !important;
+    padding: 6px 13px !important;
+    border-radius: var(--r-pill, 999px) !important;
+    transform: none !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+}
+
+body:not(.theme-light):not(.staff-mode) #menu-modal .menu-sub-link {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+}
+
+body:not(.theme-light):not(.staff-mode) #menu-modal .menu-sub-link:hover {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+}
+
+body.theme-light:not(.staff-mode) #menu-modal .menu-sub-link {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+}
+
+body.theme-light:not(.staff-mode) #menu-modal .menu-sub-link:hover {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
 }
 
 /* --- Primitive C: 共有ピル境界線の完全統一・PR左揃え・特集ヘッダー主従階層 --- */
@@ -11113,11 +11321,55 @@ body.compact-mode .store-name {
     }
 }
 
-/* --- Footer #12: フッターサイトマップの旧スレート青（#0f172a）除去＆単語途中改行防止 --- */
+/* --- Footer #12: フッターサイトマップ＆SNSボタンの脱スレート・脱ネオン・案2角丸18px統一 --- */
+.portal-footer-sitemap {
+    border-radius: var(--r-card, 18px) !important;
+}
+
 body:not(.theme-light):not(.staff-mode) .portal-footer-sitemap {
     background: var(--calm-surface) !important;
     border: 1px solid var(--calm-border) !important;
+    border-radius: var(--r-card, 18px) !important;
     box-shadow: none !important;
+}
+
+body.theme-light:not(.staff-mode) .portal-footer-sitemap {
+    background: #ffffff !important;
+    border: 1px solid var(--calm-light-border) !important;
+    border-radius: var(--r-card, 18px) !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .sns-icon-btn {
+    background: var(--calm-surface-2) !important;
+    border: 1px solid var(--calm-border) !important;
+    color: var(--calm-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+body:not(.theme-light) .sns-icon-btn:hover {
+    background: var(--calm-surface-2) !important;
+    border-color: var(--calm-border-strong) !important;
+    color: var(--calm-text) !important;
+    transform: none !important;
+}
+
+body.theme-light .sns-icon-btn {
+    background: var(--calm-light-surface-2) !important;
+    border: 1px solid var(--calm-light-border) !important;
+    color: var(--calm-light-sub) !important;
+    border-radius: var(--r-chip, 10px) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+body.theme-light .sns-icon-btn:hover {
+    background: var(--calm-light-surface-2) !important;
+    border-color: var(--calm-light-border-strong) !important;
+    color: var(--calm-light-text) !important;
+    transform: none !important;
 }
 
 .footer-legal-links a {

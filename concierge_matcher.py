@@ -853,37 +853,37 @@ def _build_area_summary(evaluated: list, audience: str) -> dict:
     avg_fpct = int(round((total_w / total_g) * 100)) if total_g > 0 else 50
 
     if total_g == 0 and open_cnt == 0:
-        badge = "🌙 営業時間外・今夜の事前作戦タイム"
+        badge = "営業時間外・今夜の事前作戦タイム"
         level = "off_hours"
         comment = "現在は営業時間外です。過去30日の時間帯統計をベースに今夜の本命＆ハシゴルートを算出しています。"
     elif total_g == 0:
-        badge = "✨ オープン直後・1軒目早割チャンス"
+        badge = "オープン直後・1軒目早割チャンス"
         level = "early"
         comment = "営業開始直後の立ち上がり時間帯です。20時前後の入店は早割単価でコストを抑えやすくなります。"
     elif audience == "women":
         if total_m >= total_w:
-            badge = "💎 男性先行エリア・女性待ち0分チャンス"
+            badge = "男性先行エリア・女性待ち0分チャンス"
             level = "good"
             comment = f"エリア全体で男性{total_m}名 vs 女性{total_w}名と男性が先行中！受付待ちなしで即案内されやすい好環境です。"
         elif avg_fpct >= 65:
-            badge = "⚠️ 女性集中気味・男性先行店の厳選推奨"
+            badge = "女性集中気味・男性先行店の厳選推奨"
             level = "caution"
             comment = f"エリア全体で女性比{avg_fpct}%と女性ペアが集中しています。受付待ちを避けるため本命店の男性数を必ず確認してください。"
         else:
-            badge = "⚖️ 男女バランス良好・快適稼働中"
+            badge = "男女バランス良好・快適稼働中"
             level = "balanced"
             comment = f"エリア合計{total_g}名（女性{total_w}名・男性{total_m}名）が稼働中。スムーズに相席しやすい時間帯です。"
     else:
         if avg_fpct >= 55 and total_w >= 10:
-            badge = "🔥 女性優位ボーナスタイム・今すぐ狙い目"
+            badge = "女性優位ボーナスタイム・今すぐ狙い目"
             level = "good"
             comment = f"エリア全体で女性{total_w}名・女性比{avg_fpct}%と女性優位！男性の入店待ちが少なく席替えも狙いやすい好況です。"
         elif avg_fpct <= 43 and total_g >= 12:
-            badge = "⚠️ 男性過多注意・穴場ピンポイント選択必須"
+            badge = "男性過多注意・穴場ピンポイント選択必須"
             level = "caution"
             comment = f"エリア全体では男性{total_m}名に対し女性{total_w}名（女性比{avg_fpct}%）とやや男余り傾向。本命店と第2候補の見極めが重要です。"
         else:
-            badge = "⚖️ 男女バランス安定・店舗間ギャップ注目"
+            badge = "男女バランス安定・店舗間ギャップ注目"
             level = "balanced"
             comment = f"エリア合計{total_g}名（女性{total_w}名・男性{total_m}名／女性比{avg_fpct}%）。店舗ごとの男女比の偏りを突くのが有効です。"
 

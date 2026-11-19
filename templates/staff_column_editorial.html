@@ -6,84 +6,12 @@
     <meta name="color-scheme" content="dark light">
     <meta name="robots" content="noindex, nofollow">
     <title>コラム・note編集部（4役合議・予約公開ボード）｜相席ナビ</title>
+    {% include '_staff_tokens.html' %}
     <style>
-        :root {
-            --bg: #111113;
-            --surface: #18181b;
-            --surface-2: #232329;
-            --input-bg: #111113;
-            --subtle-bg: rgba(255, 255, 255, 0.03);
-            --chip-bg: rgba(255, 255, 255, 0.06);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.16);
-            --text: #f4f4f5;
-            --sub: #c4c4cc;
-            --gold: #f4f4f5;
-            --gold-soft: rgba(244, 244, 245, 0.09);
-            --gold-ink: #f4f4f5;
-            --active-bg: #f4f4f5;
-            --active-ink: #111113;
-            --muted-warm: #d4d4d8;
-            --green: #6ee7b7;
-            --green-soft: rgba(110, 231, 183, 0.14);
-            --green-ink: #d1fae5;
-            --blue: #7dd3fc;
-            --blue-soft: rgba(125, 211, 252, 0.14);
-            --blue-ink: #e0f2fe;
-            --link-ink: #7dd3fc;
-            --rose: #f48fb1;
-            --rose-soft: rgba(244, 143, 177, 0.14);
-            --rose-ink: #fce4ec;
-            --amber: #fcd34d;
-            --amber-soft: rgba(252, 211, 77, 0.14);
-            --amber-ink: #fef3c7;
-            --red: #fca5a5;
-            --err-ink: #fecaca;
-            --purple: #d8b4fe;
-            --purple-soft: rgba(216, 180, 254, 0.14);
-            --purple-ink: #f3e8ff;
-            --teal: #5eead4;
-            --teal-soft: rgba(94, 234, 212, 0.14);
-            --teal-ink: #ccfbf1;
-        }
+        :root { --bg: #111113; --surface: #1a1a1e; --surface-2: #232329; --text: #f4f4f5; --sub: #b4b4be; }
         body.theme-light {
-            --bg: #f6f6f7;
-            --surface: #ffffff;
-            --surface-2: #ededf0;
-            --input-bg: #ffffff;
-            --subtle-bg: rgba(24, 24, 27, 0.04);
-            --chip-bg: rgba(24, 24, 27, 0.06);
-            --border: rgba(24, 24, 27, 0.10);
-            --border-strong: rgba(24, 24, 27, 0.20);
-            --text: #18181b;
-            --sub: #3f3f46;
-            --gold: #18181b;
-            --gold-soft: rgba(24, 24, 27, 0.06);
-            --gold-ink: #18181b;
-            --active-bg: #18181b;
-            --active-ink: #ffffff;
-            --muted-warm: #3f3f46;
-            --green: #064e3b;
-            --green-soft: rgba(6, 95, 70, 0.09);
-            --green-ink: #064e3b;
-            --blue: #075985;
-            --blue-soft: rgba(3, 105, 161, 0.09);
-            --blue-ink: #0c4a6e;
-            --link-ink: #075985;
-            --rose: #831843;
-            --rose-soft: rgba(157, 23, 77, 0.09);
-            --rose-ink: #831843;
-            --amber: #78350f;
-            --amber-soft: rgba(146, 64, 14, 0.10);
-            --amber-ink: #78350f;
-            --red: #991b1b;
-            --err-ink: #7f1d1d;
-            --purple: #581c87;
-            --purple-soft: rgba(107, 33, 168, 0.09);
-            --purple-ink: #4c1d95;
-            --teal: #115e59;
-            --teal-soft: rgba(15, 118, 110, 0.09);
-            --teal-ink: #134e4a;
+            color-scheme: light;
+            --bg: #f6f6f7; --surface: #ffffff; --surface-2: #f2f2f5; --text: #18181b; --sub: #52525b;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -130,7 +58,7 @@
             padding: 10px 14px;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
         }
         .tab-group {
             display: flex;
@@ -157,7 +85,7 @@
         .header-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
+            border-radius: var(--r-card, 18px);
             padding: 18px 20px;
             margin-bottom: 16px;
         }
@@ -177,7 +105,7 @@
         .note-export-panel {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 15px;
+            border-radius: var(--r-card, 18px);
             padding: 16px 18px;
             margin-bottom: 18px;
         }
@@ -194,7 +122,7 @@
         .note-step-box {
             background: var(--surface-2);
             border: 1px solid var(--border-strong);
-            border-radius: 11px;
+            border-radius: var(--r-inner, 13px);
             padding: 12px 14px;
             min-width: 0;
         }
@@ -215,7 +143,7 @@
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--input-bg);
             color: var(--text);
@@ -227,7 +155,7 @@
         .note-btn {
             cursor: pointer;
             padding: 7px 13px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--teal);
             background: var(--teal-soft);
             color: var(--teal-ink);
@@ -246,8 +174,8 @@
         }
         .theme-panel {
             background: var(--surface);
-            border: 1px solid var(--gold);
-            border-radius: 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-card, 18px);
             padding: 15px 18px;
             margin-bottom: 16px;
         }
@@ -284,7 +212,7 @@
             max-width: 100%;
             box-sizing: border-box;
             padding: 9px 13px;
-            border-radius: 9px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--input-bg);
             color: var(--text);
@@ -295,15 +223,15 @@
             box-sizing: border-box;
         }
         .ai-panel {
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.11) 0%, rgba(22, 24, 29, 0.96) 65%);
-            border: 1px solid rgba(168, 85, 247, 0.38);
-            border-radius: 16px;
+            background: var(--surface);
+            border: 1px solid var(--purple-border, rgba(216, 180, 254, 0.38));
+            border-radius: var(--r-card, 18px);
             padding: 15px 18px;
             margin-bottom: 18px;
         }
         body.theme-light .ai-panel {
-            background: linear-gradient(135deg, rgba(107, 63, 160, 0.08) 0%, #faf9f6 70%);
-            border-color: rgba(107, 63, 160, 0.28);
+            background: var(--surface);
+            border-color: var(--purple-border, rgba(107, 33, 168, 0.32));
         }
         .ai-panel-top {
             display: flex;
@@ -332,7 +260,7 @@
             font-size: 0.78rem;
             font-weight: 700;
             padding: 7px 13px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--purple);
             background: var(--purple-soft);
             color: var(--purple-ink);
@@ -361,7 +289,7 @@
             background: var(--chip-bg);
             border: 1px solid var(--border-strong);
             padding: 4px 10px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             max-width: 100%;
             overflow-wrap: anywhere;
             word-break: break-word;
@@ -380,7 +308,7 @@
         .role-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 13px;
+            border-radius: var(--r-card, 18px);
             padding: 14px 16px;
             min-width: 0;
         }
@@ -423,7 +351,7 @@
         .cand-card {
             background: var(--surface);
             border: 1px solid var(--border-strong);
-            border-radius: 15px;
+            border-radius: var(--r-card, 18px);
             padding: 18px;
             display: flex;
             flex-direction: column;
@@ -448,6 +376,7 @@
             border-radius: 999px;
             background: var(--surface-2);
             border: 1px solid var(--border-strong);
+            font-variant-numeric: tabular-nums;
         }
         .cand-card.winner .score-pill {
             background: var(--green-soft);
@@ -457,7 +386,7 @@
         .article-headline-box {
             background: var(--surface-2);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 11px 14px;
         }
         .article-headline-box h3 {
@@ -476,18 +405,19 @@
             gap: 6px;
             background: var(--surface-2);
             padding: 9px 12px;
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             font-size: 0.76rem;
             color: var(--sub);
+            font-variant-numeric: tabular-nums;
         }
         .score-bars span strong { color: var(--text); }
         .writer-memo {
             font-size: 0.79rem;
             color: var(--muted-warm);
             background: var(--gold-soft);
-            border-left: 3px solid var(--gold);
-            padding: 7px 11px;
-            border-radius: 4px;
+            border: 1px solid var(--gold-border);
+            padding: 8px 12px;
+            border-radius: var(--r-inner, 13px);
             overflow-wrap: anywhere;
             word-break: break-word;
         }
@@ -495,21 +425,22 @@
             font-size: 0.78rem;
             color: var(--purple-ink);
             background: var(--purple-soft);
-            border-left: 3px solid var(--purple);
-            padding: 7px 11px;
-            border-radius: 4px;
+            border: 1px solid var(--purple-border);
+            padding: 8px 12px;
+            border-radius: var(--r-inner, 13px);
             overflow-wrap: anywhere;
             word-break: break-word;
         }
         .desk-box {
             font-size: 0.77rem;
-            color: #d6d2c9;
+            color: var(--text);
             background: var(--subtle-bg);
-            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
             padding: 9px 12px;
         }
         body.theme-light .desk-box {
-            color: #3a3630;
+            color: var(--text);
         }
         .preview-tabs {
             display: flex;
@@ -519,7 +450,7 @@
         .ptab-btn {
             cursor: pointer;
             padding: 6px 12px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--bg);
             color: var(--sub);
@@ -540,14 +471,14 @@
             font-size: 0.81rem;
             background: var(--input-bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--r-inner, 13px);
             padding: 13px 14px;
             color: var(--text);
         }
         .publish-bar {
             background: var(--subtle-bg);
             border: 1px solid var(--border-strong);
-            border-radius: 12px;
+            border-radius: var(--r-inner, 13px);
             padding: 12px 14px;
             display: flex;
             flex-wrap: wrap;
@@ -564,7 +495,7 @@
         }
         .pub-input, .pub-select {
             padding: 7px 10px;
-            border-radius: 7px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--border-strong);
             background: var(--input-bg);
             color: var(--text);
@@ -575,7 +506,7 @@
         .copy-btn {
             cursor: pointer;
             padding: 8px 13px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--gold);
             background: var(--gold-soft);
             color: var(--gold-ink);
@@ -585,7 +516,7 @@
         .pub-now-btn {
             cursor: pointer;
             padding: 8px 14px;
-            border-radius: 8px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--green);
             background: var(--green-soft);
             color: var(--green-ink);
@@ -598,18 +529,20 @@
             max-width: 100%;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 13px;
+            border-radius: var(--r-card, 18px);
         }
         .audit-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.79rem;
             min-width: 720px;
+            font-variant-numeric: tabular-nums;
         }
         .audit-table th, .audit-table td {
             padding: 10px 12px;
             border-bottom: 1px solid var(--border);
             text-align: left;
+            font-variant-numeric: tabular-nums;
         }
         .audit-table th {
             background: var(--surface-2);
@@ -637,7 +570,7 @@
         .del-btn {
             cursor: pointer;
             padding: 4px 9px;
-            border-radius: 6px;
+            border-radius: var(--r-chip, 10px);
             border: 1px solid var(--rose);
             background: var(--rose-soft);
             color: var(--err-ink);
@@ -714,13 +647,13 @@
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
                 <div>
                     <div style="font-size:0.95rem; font-weight:800; color:var(--teal-ink);">
-                        📤 公開済み・予約済みコラムの「note.com 貼り付け用出力＆ワンタップコピー」（全 {{ editorial.existing_audit.total_columns }} 本対応）
+                        公開済み・予約済みコラムの「note.com 貼り付け用出力＆ワンタップコピー」（全 {{ editorial.existing_audit.total_columns }} 本対応）
                     </div>
                     <div style="font-size:0.77rem; color:var(--sub); margin-top:2px;">
                         過去に出した定番コラム・予約記事・編集部作成記事のどれでも、noteのエディタにそのまま貼れる形式（見出し <code>##</code>・会話引用 <code>&gt;</code>・箇条書き表・OGPカードURL・PRリンク自動除外）で即出力できます。
                     </div>
                 </div>
-                <a href="https://note.com/notes/new" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.77rem;">✍️ note投稿画面を開く ↗</a>
+                <a href="https://note.com/notes/new" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.77rem;">note投稿画面を開く ↗</a>
             </div>
 
             <div class="custom-topic-row">
@@ -732,10 +665,10 @@
                     {% endfor %}
                 </select>
                 <select id="note-export-mode" class="pub-select" onchange="loadNoteExportSelected()" title="note出力の文体・構成モード切替">
-                    <option value="essay" selected>📝 一人称・深層構造エッセイ変換（Web重複回避・推奨）</option>
-                    <option value="verbatim">📄 Webコラム構成そのまま変換</option>
+                    <option value="essay" selected>一人称・深層構造エッセイ変換（Web重複回避・推奨）</option>
+                    <option value="verbatim">Webコラム構成そのまま変換</option>
                 </select>
-                <button type="button" class="note-btn" id="note-export-load-btn" onclick="loadNoteExportSelected()">📤 note貼り付け原稿を出力する</button>
+                <button type="button" class="note-btn" id="note-export-load-btn" onclick="loadNoteExportSelected()">note貼り付け原稿を出力する</button>
             </div>
 
             <div id="note-export-status" style="font-size:0.78rem; color:var(--teal-ink); margin-top:8px; display:none;"></div>
@@ -745,12 +678,12 @@
                     <div class="note-step-head">
                         <span class="note-step-label">① 見出し画像（16:9 アイキャッチ）を保存してnoteへ設定</span>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <a id="note-export-eyecatch-link" href="#" target="_blank" rel="noopener noreferrer" class="note-btn">🖼️ 1. アイキャッチ画像を開く・長押し保存 ↗</a>
-                            <a id="note-export-article-link" href="#" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.75rem; padding:6px 11px;">🔗 元のWebコラムを確認 ↗</a>
+                            <a id="note-export-eyecatch-link" href="#" target="_blank" rel="noopener noreferrer" class="note-btn">1. アイキャッチ画像を開く・長押し保存 ↗</a>
+                            <a id="note-export-article-link" href="#" target="_blank" rel="noopener noreferrer" class="back-btn" style="font-size:0.75rem; padding:6px 11px;">元のWebコラムを確認 ↗</a>
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <img id="note-export-eyecatch-img" src="" alt="アイキャッチプレビュー" style="width:160px; max-width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--border-strong);">
+                        <img id="note-export-eyecatch-img" src="" alt="アイキャッチプレビュー" style="width:160px; max-width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:10px; border:1px solid var(--border-strong);">
                         <div id="note-export-eyecatch-url" style="font-size:0.74rem; color:var(--sub); word-break:break-all; flex:1; min-width:180px;"></div>
                     </div>
                 </div>
@@ -758,7 +691,7 @@
                 <div class="note-step-box">
                     <div class="note-step-head">
                         <span class="note-step-label">② 記事タイトル（noteの「記事タイトル」欄へ貼り付け）</span>
-                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-title', this)">📋 2. タイトルをコピー</button>
+                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-title', this)">2. タイトルをコピー</button>
                     </div>
                     <input type="text" id="note-export-title" class="note-text-input" value="">
                 </div>
@@ -767,20 +700,20 @@
                     <div class="note-step-head">
                         <span class="note-step-label" id="note-export-body-label">③ 本文原稿（noteの本文エディタへそのまま貼り付け）</span>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button type="button" class="note-btn" onclick="copyNoteField('note-export-body', this)">📋 3. 本文をコピー（noteエディタ貼付用）</button>
-                            <button type="button" class="copy-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="copyNoteFullAll(this)">📄 タイトル＋本文＋タグを一括コピー</button>
+                            <button type="button" class="note-btn" onclick="copyNoteField('note-export-body', this)">3. 本文をコピー（noteエディタ貼付用）</button>
+                            <button type="button" class="copy-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="copyNoteFullAll(this)">タイトル＋本文＋タグを一括コピー</button>
                         </div>
                     </div>
                     <textarea id="note-export-body" class="note-textarea" rows="13"></textarea>
                     <div style="font-size:0.73rem; color:var(--sub); margin-top:5px;">
-                        💡 noteの本文欄に貼り付けると <code>## 見出し</code>・<code>&gt; 会話引用</code>・<code>- 箇条書き</code> が自動整形されます。末尾のURL行の上でEnterを押すとアイキャッチ付きのリンクカードに変わります。
+                        ※ noteの本文欄に貼り付けると <code>## 見出し</code>・<code>&gt; 会話引用</code>・<code>- 箇条書き</code> が自動整形されます。末尾のURL行の上でEnterを押すとアイキャッチ付きのリンクカードに変わります。
                     </div>
                 </div>
 
                 <div class="note-step-box">
                     <div class="note-step-head">
                         <span class="note-step-label">④ ハッシュタグ（noteの「公開に進む」画面のタグ欄へ貼り付け）</span>
-                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-hashtags', this)">📋 4. ハッシュタグをコピー</button>
+                        <button type="button" class="note-btn" onclick="copyNoteField('note-export-hashtags', this)">4. ハッシュタグをコピー</button>
                     </div>
                     <input type="text" id="note-export-hashtags" class="note-text-input" value="">
                 </div>
@@ -788,17 +721,17 @@
         </div>
 
         <!-- Writing Tone & Perspective Selector -->
-        <div class="theme-panel" id="column-tone-step" style="border-color:var(--rose);">
+        <div class="theme-panel" id="column-tone-step" style="border-color:var(--rose-border);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
                 <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
-                    🌶️💄 Step 0：執筆トーン＆視点モード切替（現在：{{ editorial.tone_mode_label }}）
+                    Step 0：執筆トーン＆視点モード切替（現在：{{ editorial.tone_mode_label }}）
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
                         全編集部の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
                     </span>
                     <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
-                        📌 このトーンを全編集部の標準に保存
+                        このトーンを全編集部の標準に保存
                     </button>
                 </div>
             </div>
@@ -812,20 +745,20 @@
                 {% endfor %}
             </div>
             <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
-                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}💡 {{ tm.desc }}{% endif %}{% endfor %}
+                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}{{ tm.desc }}{% endif %}{% endfor %}
             </div>
         </div>
 
         <!-- Theme & Custom Topic Selector -->
         <div class="theme-panel">
-            <div style="font-size:0.8rem; font-weight:700; color:var(--gold); margin-bottom:8px;">🎯 Step 1：企画テーマ選択 または 自由お題オーダー</div>
+            <div style="font-size:0.8rem; font-weight:700; color:var(--gold); margin-bottom:8px;">Step 1：企画テーマ選択 または 自由お題オーダー</div>
             {% if editorial.pdca_directives and editorial.pdca_directives.recommended_custom_topic %}
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--green-soft); border:1px solid var(--green); border-radius:10px; padding:9px 13px; margin-bottom:11px; font-size:0.8rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:var(--green-soft); border:1px solid var(--green); border-radius:var(--r-inner, 13px); padding:9px 13px; margin-bottom:11px; font-size:0.8rem;">
                 <div>
-                    <strong style="color:var(--green-ink);">🧭 PDCA参謀の次回特命お題：</strong>
+                    <strong style="color:var(--green-ink);">PDCA参謀の次回特命お題：</strong>
                     <span>『{{ editorial.pdca_directives.recommended_custom_topic }}』</span>
                 </div>
-                <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}&tone={{ editorial.tone_mode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">⚡ この特命お題で執筆する</a>
+                <a href="/staff/column-editorial?theme={{ editorial.pdca_directives.recommended_column_theme or 'area_hopping' }}&topic={{ editorial.pdca_directives.recommended_custom_topic | urlencode }}&tone={{ editorial.tone_mode }}" class="pub-now-btn" style="text-decoration:none; padding:5px 11px; font-size:0.76rem;">この特命お題で執筆する</a>
             </div>
             {% endif %}
             <div class="theme-chips">
@@ -840,7 +773,7 @@
                 <input type="hidden" name="tone" value="{{ editorial.tone_mode }}">
                 <input type="hidden" name="refresh_ai" value="1">
                 <input type="text" name="topic" id="custom-topic-input" class="topic-input" value="{{ custom_topic }}" placeholder="自由テーマ入力（例：女子トイレで引かれる男の特徴、日曜20時の穴場勝負、雨の日の駅直結ラウンジなど）">
-                <button type="submit" class="copy-btn">🧠 このお題で4役合議・執筆コンペを実行</button>
+                <button type="submit" class="copy-btn">このお題で4役合議・執筆コンペを実行</button>
             </form>
         </div>
 
@@ -849,46 +782,46 @@
             <div class="ai-panel-top">
                 <div>
                     {% if editorial.ai_pending_async and editorial.gemini_status and editorial.gemini_status.configured %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'Claude Opus' }}：省トークン待機中（右ボタンまたはお題指定時に長文執筆を実行）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">{{ editorial.gemini_status.engine_badge or 'Claude Opus' }}：省トークン待機中（右ボタンまたはお題指定時に長文執筆を実行）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'active' %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">🟢 {{ editorial.gemini_status.engine_badge or 'AI本音コラム執筆' }}：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-on">{{ editorial.gemini_status.engine_badge or 'AI本音コラム執筆' }}：正常稼働中（{{ editorial.gemini_status.last_model }} ｜ {{ editorial.gemini_status.masked_key }}）</span>
                     {% elif editorial.gemini_status and editorial.gemini_status.state == 'degraded' %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（{{ editorial.gemini_status.masked_key }}）</span>
                     {% else %}
-                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">🟡 AIキー未設定（SNS編集部と共通キー・現在は実測データ連動ストーリー案で稼働中）</span>
+                    <span id="ai-status-pill" class="ai-status-pill ai-status-off">AIキー未設定（SNS編集部と共通キー・現在は実測データ連動ストーリー案で稼働中）</span>
                     {% endif %}
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerColumnAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">✨ AIコラム案を今すぐ執筆</button>
-                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">🔑 AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
+                    <button type="button" id="ai-regen-btn" class="ai-btn" onclick="triggerColumnAiRefresh(true, false)" style="display: {{ 'inline-block' if (editorial.gemini_status and editorial.gemini_status.configured) else 'none' }};">AIコラム案を今すぐ執筆</button>
+                    <button type="button" class="ai-btn" onclick="toggleKeyDrawer()">AIエンジン＆APIキー設定（Gemini / Claude 両対応）</button>
                 </div>
             </div>
 
             <div class="context-chips" id="context-chips">
-                <span class="context-chip">📅 {{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
-                <span class="context-chip">📊 全国稼働：女性 {{ editorial.research.national_women }}名 / 男性 {{ editorial.research.national_men }}名（女性比 {{ editorial.research.national_wpct }}%）</span>
+                <span class="context-chip">{{ editorial.research.calendar.tag }}：{{ editorial.research.calendar.note }}</span>
+                <span class="context-chip">全国稼働：女性 {{ editorial.research.national_women }}名 / 男性 {{ editorial.research.national_men }}名（女性比 {{ editorial.research.national_wpct }}%）</span>
                 {% if editorial.gemini_status and editorial.gemini_status.last_error and not editorial.ai_pending_async %}
-                <span class="context-chip" style="border-color:var(--rose); color:var(--err-ink);">⚠️ AI通信メモ：{{ editorial.gemini_status.last_error }}（安全案フォールバック済）</span>
+                <span class="context-chip" style="border-color:var(--rose); color:var(--err-ink);">AI通信メモ：{{ editorial.gemini_status.last_error }}（安全案フォールバック済）</span>
                 {% endif %}
             </div>
 
             <div id="gemini-key-drawer" class="key-drawer" style="display: none;">
                 <div style="font-size:0.78rem; color:var(--sub); margin-bottom:8px; line-height:1.55;">
-                    💡 SNS編集部と共通の両対応AIキー設定です。Google キーは上位 <code>Gemini Pro / 標準Flash</code> で動作し、さらに <code>sk-ant-...</code>（Anthropic Claude Opus）を追加すると人間味エッセイ特化エンジンへ即時切替できます。
+                    SNS編集部と共通の両対応AIキー設定です。Google キーは上位 <code>Gemini Pro / 標準Flash</code> で動作し、さらに <code>sk-ant-...</code>（Anthropic Claude Opus）を追加すると人間味エッセイ特化エンジンへ即時切替できます。
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.76rem; color:var(--sub); font-weight:700;">優先AIエンジン：</span>
-                    <button type="button" data-col-engine-pref="auto" class="ai-btn {{ 'is-active' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else 'is-inactive' }}" onclick="saveColEnginePref('auto')">⚡ 自動（Claude登録時はClaude優先）</button>
-                    <button type="button" data-col-engine-pref="gemini" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else 'is-inactive' }}" onclick="saveColEnginePref('gemini')">♊ 上位 Gemini Pro/Flash 優先</button>
-                    <button type="button" data-col-engine-pref="claude" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else 'is-inactive' }}" onclick="saveColEnginePref('claude')">✍️ Claude Opus × 2段階推敲 優先</button>
+                    <button type="button" data-col-engine-pref="auto" class="ai-btn {{ 'is-active' if (not editorial.gemini_status or editorial.gemini_status.engine_pref == 'auto') else 'is-inactive' }}" onclick="saveColEnginePref('auto')">自動（Claude登録時はClaude優先）</button>
+                    <button type="button" data-col-engine-pref="gemini" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'gemini') else 'is-inactive' }}" onclick="saveColEnginePref('gemini')">上位 Gemini Pro/Flash 優先</button>
+                    <button type="button" data-col-engine-pref="claude" class="ai-btn {{ 'is-active' if (editorial.gemini_status and editorial.gemini_status.engine_pref == 'claude') else 'is-inactive' }}" onclick="saveColEnginePref('claude')">Claude Opus × 2段階推敲 優先</button>
                 </div>
                 <div class="custom-topic-row" style="margin-bottom:6px;">
                     <input type="password" id="gemini-api-key-input" class="topic-input" placeholder="Google Geminiキー: AIzaSy... / AQ.... {% if editorial.gemini_status and editorial.gemini_status.gemini_configured %}（現在: {{ editorial.gemini_status.gemini_masked_key }}）{% endif %}" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="saveGeminiKey('gemini')">💾 Geminiキーを保存</button>
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('gemini')">Geminiキーを保存</button>
                 </div>
                 <div class="custom-topic-row">
                     <input type="password" id="claude-api-key-input" class="topic-input" placeholder="Anthropic Claudeキー（任意）: sk-ant-... {% if editorial.gemini_status and editorial.gemini_status.claude_configured %}（現在: {{ editorial.gemini_status.claude_masked_key }}）{% endif %}" autocomplete="off">
-                    <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">💾 Claudeキーを保存</button>
+                    <button type="button" class="copy-btn" onclick="saveGeminiKey('claude')">Claudeキーを保存</button>
                 </div>
                 <div id="gemini-key-msg" style="font-size:0.78rem; margin-top:6px; color:var(--green-ink);"></div>
             </div>
@@ -909,7 +842,7 @@
                 <span class="role-badge role-2">② プランナー（構成・カニバリ防止係）</span>
                 <h3>切り口設計・重複チェック</h3>
                 <p id="plan-angle-text">{{ editorial.plan.angle_summary }}</p>
-                <p style="margin-top:6px; color:var(--muted-warm); font-size:0.76rem;">🎯 読者像：{{ editorial.plan.target_reader }}</p>
+                <p style="margin-top:6px; color:var(--muted-warm); font-size:0.76rem;">読者像：{{ editorial.plan.target_reader }}</p>
             </div>
             <div class="role-card">
                 <span class="role-badge role-3">③ ライター（人間味ストーリー＆note執筆係）</span>
@@ -924,7 +857,7 @@
         </div>
 
         <h2 class="section-h2">
-            <span id="cands-heading">📝 コラム・note 提案候補（{{ editorial.evaluation.candidates | length }}案）＆ ワンクリック公開予約</span>
+            <span id="cands-heading">コラム・note 提案候補（{{ editorial.evaluation.candidates | length }}案）＆ ワンクリック公開予約</span>
             <span style="font-size:0.78rem; color:var(--sub);">集計時刻: {{ editorial.research.timestamp }}</span>
         </h2>
 
@@ -934,52 +867,52 @@
             <div class="cand-card {{ 'winner' if c.is_selected else '' }}">
                 <div class="cand-top">
                     <span style="font-size:0.92rem; font-weight:800;">
-                        {% if c.is_selected %}🏆 鬼デスク推薦 1位{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
+                        {% if c.is_selected %}鬼デスク推薦 1位{% else %}候補 {{ c.rank }}位{% endif %}：{{ c.style_label }}
                     </span>
                     <span class="score-pill">{{ c.total_score }}点 / 100</span>
                 </div>
 
                 <div class="article-headline-box">
-                    <h3>📖 {{ c.title }}</h3>
+                    <h3>{{ c.title }}</h3>
                     <p>{{ c.desc }}</p>
                 </div>
 
                 <div class="score-bars">
-                    <span>🗣️ 構造考察・現場リアリティ: <strong>{{ c.scores.human_story }}/35</strong>（会話{{ c.dialogue_count }}箇所）</span>
-                    <span>🛡️ ファクト＆ブランド呼称: <strong>{{ c.scores.fact_brand_hygiene }}/25</strong></span>
-                    <span>🔍 SEO構造・内部回遊: <strong>{{ c.scores.seo_structure }}/25</strong></span>
-                    <span>📣 X＆note書き分け: <strong>{{ c.scores.sns_note_ready }}/15</strong>（note独自率 {{ c.web_note_distinct_pct or 80 }}%・X {{ c.x_weight }}/280）</span>
+                    <span>構造考察・現場リアリティ: <strong>{{ c.scores.human_story }}/35</strong>（会話{{ c.dialogue_count }}箇所）</span>
+                    <span>ファクト＆ブランド呼称: <strong>{{ c.scores.fact_brand_hygiene }}/25</strong></span>
+                    <span>SEO構造・内部回遊: <strong>{{ c.scores.seo_structure }}/25</strong></span>
+                    <span>X＆note書き分け: <strong>{{ c.scores.sns_note_ready }}/15</strong>（note独自率 {{ c.web_note_distinct_pct or 80 }}%・X {{ c.x_weight }}/280）</span>
                 </div>
 
                 {% if c.mechanism_thesis %}
-                <div class="writer-memo" style="border-left:3px solid var(--gold);">
-                    <strong>🧠 構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>{{ c.mechanism_thesis }}
+                <div class="writer-memo">
+                    <strong>構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>{{ c.mechanism_thesis }}
                 </div>
                 {% endif %}
                 <div class="writer-memo">
-                    <strong>✍️ ライター構成意図：</strong>{{ c.writer_note }}
+                    <strong>ライター構成意図：</strong>{{ c.writer_note }}
                 </div>
                 {% if c.thinking_memo %}
                 <div class="thinking-memo">
-                    <strong>🧠 AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>{{ c.thinking_memo }}
+                    <strong>AI編集長の脳内メモ（導入3案コンペ＆推敲プロセス）：</strong>{{ c.thinking_memo }}
                 </div>
                 {% endif %}
 
                 <div class="desk-box">
-                    <strong>🧐 鬼デスク検閲コメント：</strong>
+                    <strong>鬼デスク検閲コメント：</strong>
                     {% for pr in c.pros %}
                     <div style="color:var(--green-ink);">✓ {{ pr }}</div>
                     {% endfor %}
                     {% for wn in c.warnings %}
-                    <div style="color:var(--err-ink);">⚠️ {{ wn }}</div>
+                    <div style="color:var(--err-ink);">・ {{ wn }}</div>
                     {% endfor %}
                 </div>
 
                 <div class="preview-tabs">
-                    <button type="button" class="ptab-btn active" onclick="switchPreviewTab({{ idx }}, 'web', this)">📖 Webコラム本文プレビュー</button>
-                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'note', this)">📝 note.com コピペ原稿（{{ c.note_char_count }}字）</button>
-                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'x', this)">𝕏 X新着告知スレッド（{{ c.x_weight }}/280）</button>
-                    <button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview({{ idx }}, this)">📋 表示中の原稿をコピー</button>
+                    <button type="button" class="ptab-btn active" onclick="switchPreviewTab({{ idx }}, 'web', this)">Webコラム本文プレビュー</button>
+                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'note', this)">note.com コピペ原稿（{{ c.note_char_count }}字）</button>
+                    <button type="button" class="ptab-btn" onclick="switchPreviewTab({{ idx }}, 'x', this)">X新着告知スレッド（{{ c.x_weight }}/280）</button>
+                    <button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview({{ idx }}, this)">表示中の原稿をコピー</button>
                 </div>
 
                 <div id="preview-web-{{ idx }}" class="doc-preview">{{ c.preview_text }}</div>
@@ -1010,8 +943,8 @@
                         </label>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button type="button" class="copy-btn" onclick="publishCandidate({{ idx }}, 'schedule', this)">🗓️ この日時で予約公開に登録</button>
-                        <button type="button" class="pub-now-btn" onclick="publishCandidate({{ idx }}, 'now', this)">🚀 今すぐサイトに即時公開</button>
+                        <button type="button" class="copy-btn" onclick="publishCandidate({{ idx }}, 'schedule', this)">この日時で予約公開に登録</button>
+                        <button type="button" class="pub-now-btn" onclick="publishCandidate({{ idx }}, 'now', this)">今すぐサイトに即時公開</button>
                     </div>
                 </div>
                 <div id="pub-result-{{ idx }}" style="font-size:0.82rem;"></div>
@@ -1021,7 +954,7 @@
 
         <!-- Audit Table of ALL Existing + Scheduled Columns -->
         <h2 class="section-h2" id="column-audit-section">
-            <span>🛡️ 全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧（全 {{ editorial.existing_audit.total_columns }} 本）</span>
+            <span>全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧（全 {{ editorial.existing_audit.total_columns }} 本）</span>
             <span style="font-size:0.8rem; color:var(--sub);">
                 会話ボックス導入済: <strong>{{ editorial.existing_audit.with_dialogue_count }}/{{ editorial.existing_audit.total_columns }}本</strong> ｜
                 単体『オリエンタル』違反: <strong>{{ editorial.existing_audit.total_bare_oriental }}件</strong> ｜
@@ -1054,9 +987,9 @@
                         </td>
                         <td>
                             {% if row.dialogue_count >= 2 %}
-                            <span class="pill-ok">💬 {{ row.dialogue_count }}箇所</span>
+                            <span class="pill-ok">{{ row.dialogue_count }}箇所</span>
                             {% elif row.dialogue_count == 1 %}
-                            <span class="pill-warn">💬 1箇所</span>
+                            <span class="pill-warn">1箇所</span>
                             {% else %}
                             <span style="color:var(--sub);">0箇所</span>
                             {% endif %}
@@ -1066,13 +999,13 @@
                             {% if row.bare_oriental_count == 0 %}
                             <span class="pill-ok">✓ 適合</span>
                             {% else %}
-                            <span style="color:var(--err-ink);">⚠️ 要修正({{ row.bare_oriental_count }})</span>
+                            <span style="color:var(--err-ink);">要修正({{ row.bare_oriental_count }})</span>
                             {% endif %}
                         </td>
                         <td><strong>{{ row.desk_score }}点</strong></td>
                         <td>
                             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                                <button type="button" class="note-btn" style="padding:4px 9px; font-size:0.72rem;" onclick="openNoteExportForSlug('{{ row.slug }}')">📝 note出力</button>
+                                <button type="button" class="note-btn" style="padding:4px 9px; font-size:0.72rem;" onclick="openNoteExportForSlug('{{ row.slug }}')">note出力</button>
                                 {% if row.is_dynamic %}
                                 <button type="button" class="del-btn" onclick="deleteDynamicColumn('{{ row.slug }}')">削除</button>
                                 {% endif %}
@@ -1180,7 +1113,7 @@
             if (stEl) {
                 stEl.style.display = "block";
                 stEl.style.color = "var(--teal-ink)";
-                stEl.textContent = "⏳ コラム本文をnote貼り付け用に整形しています...";
+                stEl.textContent = "コラム本文をnote貼り付け用に整形しています...";
             }
             if (btn) btn.disabled = true;
 
@@ -1191,14 +1124,14 @@
                 if (!res || !res.ok) {
                     if (stEl) {
                         stEl.style.color = "var(--err-ink)";
-                        stEl.textContent = "⚠️ " + ((res && res.error) || "出力に失敗しました");
+                        stEl.textContent = ((res && res.error) || "出力に失敗しました");
                     }
                     return;
                 }
                 if (stEl) {
                     stEl.style.color = "var(--teal-ink)";
                     var modeBadge = (res.mode === "verbatim") ? "Web構成忠実変換" : ("一人称・深層エッセイ書き分け｜Web非重複率 " + (res.distinct_from_web_pct != null ? res.distinct_from_web_pct : 80) + "%");
-                    stEl.textContent = "✅ 『" + (res.title || "") + "』のnote原稿（" + (res.char_count || 0) + "文字｜" + modeBadge + "）を出力しました！";
+                    stEl.textContent = "『" + (res.title || "") + "』のnote原稿（" + (res.char_count || 0) + "文字｜" + modeBadge + "）を出力しました。";
                 }
                 var box = document.getElementById("note-export-result");
                 if (box) box.style.display = "grid";
@@ -1224,7 +1157,7 @@
                 if (stEl) {
                     stEl.style.display = "block";
                     stEl.style.color = "var(--err-ink)";
-                    stEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                    stEl.textContent = ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
                 if (btn) btn.disabled = false;
@@ -1237,7 +1170,7 @@
             var val = el.value || "";
             writeClipboardWithFallback(val, function() {
                 var orig = btn.innerText;
-                btn.innerText = "✓ コピー完了！";
+                btn.innerText = "✓ コピー完了";
                 setTimeout(function() { btn.innerText = orig; }, 1800);
             });
         }
@@ -1249,7 +1182,7 @@
             var full = "# " + t + "\n\n" + b + "\n\n" + h;
             writeClipboardWithFallback(full, function() {
                 var orig = btn.innerText;
-                btn.innerText = "✓ 全文コピー完了！";
+                btn.innerText = "✓ 全文コピー完了";
                 setTimeout(function() { btn.innerText = orig; }, 1800);
             });
         }
@@ -1269,7 +1202,7 @@
                 if (res && res.ok) {
                     if (msgEl) {
                         msgEl.style.color = "var(--green-ink)";
-                        msgEl.textContent = "✅ " + res.message;
+                        msgEl.textContent = res.message;
                     }
                     var badge = document.getElementById("default-tone-badge");
                     if (badge) {
@@ -1277,12 +1210,12 @@
                     }
                 } else if (msgEl) {
                     msgEl.style.color = "var(--err-ink)";
-                    msgEl.textContent = "⚠️ " + ((res && res.error) || "保存に失敗しました");
+                    msgEl.textContent = ((res && res.error) || "保存に失敗しました");
                 }
             } catch (err) {
                 if (msgEl) {
                     msgEl.style.color = "var(--err-ink)";
-                    msgEl.textContent = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                    msgEl.textContent = ((err && err.message) || "通信エラーが発生しました");
                 }
             }
         }
@@ -1339,15 +1272,15 @@
             if (!container) return;
             container.innerHTML = CANDIDATES_DATA.map(function(c, idx) {
                 ACTIVE_TAB_BY_IDX[idx] = "web";
-                var rankTitle = (c.is_selected ? "🏆 鬼デスク推薦 1位：" : ("候補 " + c.rank + "位：")) + (c.style_label || "");
+                var rankTitle = (c.is_selected ? "鬼デスク推薦 1位：" : ("候補 " + c.rank + "位：")) + (c.style_label || "");
                 var sc = c.scores || {};
                 var prosHtml = (c.pros || []).map(function(p) { return '<div style="color:var(--green-ink);">✓ ' + escHtml(p) + '</div>'; }).join("");
-                var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:var(--err-ink);">⚠️ ' + escHtml(w) + '</div>'; }).join("");
+                var warnHtml = (c.warnings || []).map(function(w) { return '<div style="color:var(--err-ink);">・ ' + escHtml(w) + '</div>'; }).join("");
                 var thesisHtml = c.mechanism_thesis
-                    ? '<div class="writer-memo" style="border-left:3px solid var(--gold);"><strong>🧠 構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>' + escHtml(c.mechanism_thesis) + '</div>'
+                    ? '<div class="writer-memo"><strong>構造考察コア仮説（二面市場・行動経済学レンズ）：</strong>' + escHtml(c.mechanism_thesis) + '</div>'
                     : '';
                 var thinkHtml = c.thinking_memo
-                    ? '<div class="thinking-memo"><strong>🧠 AI編集長の脳内メモ（構造仮説＆Web/note書き分け推敲）：</strong>' + escHtml(c.thinking_memo) + '</div>'
+                    ? '<div class="thinking-memo"><strong>AI編集長の脳内メモ（構造仮説＆Web/note書き分け推敲）：</strong>' + escHtml(c.thinking_memo) + '</div>'
                     : '';
                 var eyeOpts = EYECATCH_PRESETS.map(function(ep) {
                     var sel = (ep.key === c.eyecatch_key) ? " selected" : "";
@@ -1362,24 +1295,24 @@
                             '<span class="score-pill">' + escHtml(c.total_score) + '点 / 100</span>' +
                         '</div>' +
                         '<div class="article-headline-box">' +
-                            '<h3>📖 ' + escHtml(c.title) + '</h3>' +
+                            '<h3>' + escHtml(c.title) + '</h3>' +
                             '<p>' + escHtml(c.desc) + '</p>' +
                         '</div>' +
                         '<div class="score-bars">' +
-                            '<span>🗣️ 構造考察・現場リアリティ: <strong>' + escHtml(sc.human_story) + '/35</strong>（会話' + escHtml(c.dialogue_count) + '箇所）</span>' +
-                            '<span>🛡️ ファクト＆ブランド呼称: <strong>' + escHtml(sc.fact_brand_hygiene) + '/25</strong></span>' +
-                            '<span>🔍 SEO構造・内部回遊: <strong>' + escHtml(sc.seo_structure) + '/25</strong></span>' +
-                            '<span>📣 X＆note書き分け: <strong>' + escHtml(sc.sns_note_ready) + '/15</strong>（note独自率 ' + escHtml(distinctPct) + '%・X ' + escHtml(c.x_weight) + '/280）</span>' +
+                            '<span>構造考察・現場リアリティ: <strong>' + escHtml(sc.human_story) + '/35</strong>（会話' + escHtml(c.dialogue_count) + '箇所）</span>' +
+                            '<span>ファクト＆ブランド呼称: <strong>' + escHtml(sc.fact_brand_hygiene) + '/25</strong></span>' +
+                            '<span>SEO構造・内部回遊: <strong>' + escHtml(sc.seo_structure) + '/25</strong></span>' +
+                            '<span>X＆note書き分け: <strong>' + escHtml(sc.sns_note_ready) + '/15</strong>（note独自率 ' + escHtml(distinctPct) + '%・X ' + escHtml(c.x_weight) + '/280）</span>' +
                         '</div>' +
                         thesisHtml +
-                        '<div class="writer-memo"><strong>✍️ ライター構成意図：</strong>' + escHtml(c.writer_note || "") + '</div>' +
+                        '<div class="writer-memo"><strong>ライター構成意図：</strong>' + escHtml(c.writer_note || "") + '</div>' +
                         thinkHtml +
-                        '<div class="desk-box"><strong>🧐 鬼デスク検閲コメント：</strong>' + prosHtml + warnHtml + '</div>' +
+                        '<div class="desk-box"><strong>鬼デスク検閲コメント：</strong>' + prosHtml + warnHtml + '</div>' +
                         '<div class="preview-tabs">' +
-                            '<button type="button" class="ptab-btn active" onclick="switchPreviewTab(' + idx + ', \'web\', this)">📖 Webコラム本文プレビュー</button>' +
-                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'note\', this)">📝 note.com コピペ原稿（' + escHtml(c.note_char_count) + '字）</button>' +
-                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'x\', this)">𝕏 X新着告知スレッド（' + escHtml(c.x_weight) + '/280）</button>' +
-                            '<button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview(' + idx + ', this)">📋 表示中の原稿をコピー</button>' +
+                            '<button type="button" class="ptab-btn active" onclick="switchPreviewTab(' + idx + ', \'web\', this)">Webコラム本文プレビュー</button>' +
+                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'note\', this)">note.com コピペ原稿（' + escHtml(c.note_char_count) + '字）</button>' +
+                            '<button type="button" class="ptab-btn" onclick="switchPreviewTab(' + idx + ', \'x\', this)">X新着告知スレッド（' + escHtml(c.x_weight) + '/280）</button>' +
+                            '<button type="button" class="copy-btn" style="margin-left:auto;" onclick="copyActivePreview(' + idx + ', this)">表示中の原稿をコピー</button>' +
                         '</div>' +
                         '<div id="preview-web-' + idx + '" class="doc-preview">' + escHtml(c.preview_text || "") + '</div>' +
                         '<div id="preview-note-' + idx + '" class="doc-preview" style="display:none;">' + escHtml(c.note_markdown || "") + '</div>' +
@@ -1391,8 +1324,8 @@
                                 '<label class="pub-field"><span>予約公開日時（JST）</span><input type="datetime-local" id="pubdt-input-' + idx + '" class="pub-input" value="' + escHtml(DEFAULT_SCHED_INPUT) + '"></label>' +
                             '</div>' +
                             '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
-                                '<button type="button" class="copy-btn" onclick="publishCandidate(' + idx + ', \'schedule\', this)">🗓️ この日時で予約公開に登録</button>' +
-                                '<button type="button" class="pub-now-btn" onclick="publishCandidate(' + idx + ', \'now\', this)">🚀 今すぐサイトに即時公開</button>' +
+                                '<button type="button" class="copy-btn" onclick="publishCandidate(' + idx + ', \'schedule\', this)">この日時で予約公開に登録</button>' +
+                                '<button type="button" class="pub-now-btn" onclick="publishCandidate(' + idx + ', \'now\', this)">今すぐサイトに即時公開</button>' +
                             '</div>' +
                         '</div>' +
                         '<div id="pub-result-' + idx + '" style="font-size:0.82rem;"></div>' +
@@ -1406,11 +1339,11 @@
             var regenBtn = document.getElementById("ai-regen-btn");
             if (!silentIfUnconfigured && pill) {
                 pill.className = "ai-status-pill ai-status-loading";
-                pill.textContent = "🧠 上位AI編集長が長考モードで導入3案を脳内コンペ・エッセイ執筆中...（約8〜15秒）";
+                pill.textContent = "上位AI編集長が長考モードで導入3案を脳内コンペ・エッセイ執筆中...（約8〜15秒）";
             }
             if (regenBtn) {
                 regenBtn.disabled = true;
-                regenBtn.textContent = "🧠 長考執筆中...";
+                regenBtn.textContent = "長考執筆中...";
             }
             var url = "/api/column-editorial?theme=" + encodeURIComponent(CURRENT_THEME) + "&topic=" + encodeURIComponent(CURRENT_TOPIC || "") + "&tone=" + encodeURIComponent(CURRENT_TONE || "");
             if (forceRefresh) url += "&refresh_ai=1";
@@ -1428,13 +1361,13 @@
                 if (pill) {
                     if (st.state === "active") {
                         pill.className = "ai-status-pill ai-status-on";
-                        pill.textContent = "🟢 " + (st.engine_badge || "上位AI本音コラム執筆") + "：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
+                        pill.textContent = (st.engine_badge || "上位AI本音コラム執筆") + "：正常稼働中（" + (st.last_model || "") + " ｜ " + (st.masked_key || "") + "）";
                     } else if (st.state === "degraded") {
                         pill.className = "ai-status-pill ai-status-off";
-                        pill.textContent = "🟠 AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（" + (st.masked_key || "") + "）";
+                        pill.textContent = "AI通信エラーのため現在は実測ストーリー安全案へ自動切替中（" + (st.masked_key || "") + "）";
                     } else {
                         pill.className = "ai-status-pill ai-status-off";
-                        pill.textContent = "🟡 AIキー未設定（現在は実測データ連動ストーリー案で稼働中）";
+                        pill.textContent = "AIキー未設定（現在は実測データ連動ストーリー案で稼働中）";
                     }
                 }
                 if (regenBtn) {
@@ -1451,23 +1384,23 @@
                     document.getElementById("writer-count-title").textContent = "Webコラム＋note＋X告知 " + cands.length + "案作成";
                 }
                 if (document.getElementById("cands-heading")) {
-                    document.getElementById("cands-heading").textContent = "📝 コラム・note 提案候補（" + cands.length + "案）＆ ワンクリック公開予約";
+                    document.getElementById("cands-heading").textContent = "コラム・note 提案候補（" + cands.length + "案）＆ ワンクリック公開予約";
                 }
                 renderCandidatesList(cands);
                 applied = true;
             } catch (err) {
                 if (pill && !silentIfUnconfigured) {
                     pill.className = "ai-status-pill ai-status-off";
-                    pill.textContent = "⚠️ AI執筆の取得に失敗しました（" + ((err && err.message) || "通信エラー") + "｜現在の実測ストーリー案を表示中）";
+                    pill.textContent = "AI執筆の取得に失敗しました（" + ((err && err.message) || "通信エラー") + "｜現在の実測ストーリー案を表示中）";
                 }
             } finally {
                 if (regenBtn) {
                     regenBtn.disabled = false;
-                    regenBtn.textContent = "🔄 別の長考ストーリー案を再生成";
+                    regenBtn.textContent = "別の長考ストーリー案を再生成";
                 }
                 if (!applied && pill && pill.classList.contains("ai-status-loading")) {
                     pill.className = "ai-status-pill ai-status-off";
-                    pill.textContent = "🟠 AI執筆の取得を中断しました（現在の実測ストーリー案を表示中）";
+                    pill.textContent = "AI執筆の取得を中断しました（現在の実測ストーリー案を表示中）";
                 }
             }
         }
@@ -1500,16 +1433,16 @@
                     })
                 }, 30000);
                 if (res && res.ok) {
-                    var statusWord = res.published_now ? "🚀 即時公開しました！" : ("🗓️ " + escHtml(res.publish_at_ja) + " で予約公開に登録しました！");
-                    msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:8px; background:var(--green-soft); border:1px solid var(--green); color:var(--green-ink);">' +
+                    var statusWord = res.published_now ? "即時公開しました。" : (escHtml(res.publish_at_ja) + " で予約公開に登録しました。");
+                    msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:var(--r-chip, 10px); background:var(--green-soft); border:1px solid var(--green); color:var(--green-ink);">' +
                         '<strong>' + statusWord + '</strong> ' +
-                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:var(--text); font-weight:800; margin-left:8px;">👉 記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
+                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:var(--text); font-weight:800; margin-left:8px;">記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
                     '</div>';
                 } else {
-                    msgEl.innerHTML = '<span style="color:var(--err-ink);">⚠️ ' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';
+                    msgEl.innerHTML = '<span style="color:var(--err-ink);">' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';
                 }
             } catch (err) {
-                msgEl.innerHTML = '<span style="color:var(--err-ink);">⚠️ ' + escHtml((err && err.message) || "通信エラーが発生しました") + '</span>';
+                msgEl.innerHTML = '<span style="color:var(--err-ink);">' + escHtml((err && err.message) || "通信エラーが発生しました") + '</span>';
             } finally {
                 btn.disabled = false;
                 btn.innerText = origLabel;
@@ -1556,17 +1489,17 @@
                     });
                     if (msg) {
                         msg.style.color = "var(--green-ink)";
-                        msg.innerText = "✅ " + data.message;
+                        msg.innerText = data.message;
                     }
                     triggerColumnAiRefresh(true, false);
                 } else if (msg) {
                     msg.style.color = "var(--err-ink)";
-                    msg.innerText = "⚠️ " + ((data && data.error) || "切り替えに失敗しました");
+                    msg.innerText = ((data && data.error) || "切り替えに失敗しました");
                 }
             } catch (err) {
                 if (msg) {
                     msg.style.color = "var(--err-ink)";
-                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                    msg.innerText = ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
                 _colAiConfigInFlight = false;
@@ -1582,7 +1515,7 @@
             if (!val) {
                 if (msg) {
                     msg.style.color = "var(--err-ink)";
-                    msg.innerText = "⚠️ APIキーを入力してください。";
+                    msg.innerText = "APIキーを入力してください。";
                 }
                 return;
             }
@@ -1600,18 +1533,18 @@
                 if (data && data.ok) {
                     if (msg) {
                         msg.style.color = "var(--green-ink)";
-                        msg.innerText = "✅ " + data.message;
+                        msg.innerText = data.message;
                     }
                     if (inp) inp.value = "";
                     triggerColumnAiRefresh(true, false);
                 } else if (msg) {
                     msg.style.color = "var(--err-ink)";
-                    msg.innerText = "⚠️ " + ((data && data.error) || "保存に失敗しました");
+                    msg.innerText = ((data && data.error) || "保存に失敗しました");
                 }
             } catch (err) {
                 if (msg) {
                     msg.style.color = "var(--err-ink)";
-                    msg.innerText = "⚠️ " + ((err && err.message) || "通信エラーが発生しました");
+                    msg.innerText = ((err && err.message) || "通信エラーが発生しました");
                 }
             } finally {
                 _colAiConfigInFlight = false;

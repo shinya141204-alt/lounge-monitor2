@@ -144,6 +144,7 @@ def _discover_public_routes(client):
             "/stats/weekend-index.json",
             "/stats/weekend-index.csv",
             "/ladies",
+            "/price",
             "/guide/compare",
             "/guide/strategy",
             "/xix",

@@ -90,20 +90,36 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <link rel="stylesheet" href="/static/portal.css?v=20">
     <style>
         :root {
-            --bg-dark: #111113;
-            --card-bg: #16171c;
-            --card-elevated: #1b1c22;
-            --text-main: #f4f4f5;
-            --text-sub: #b4b4be;
-            --women: #f4a8b8;
-            --men: #93c5fd;
-            --accent-gold: #c8a46e;
-            --accent-text: #e8cfa4;
-            --border-subtle: rgba(255, 255, 255, 0.09);
-            --border-strong: rgba(255, 255, 255, 0.16);
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-elevated: var(--calm-surface-2, #232329);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --accent-gold: var(--calm-accent, #e4e4e7);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-strong: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+        }
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-elevated: var(--calm-light-surface-2, #f2f2f5);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
+            --women: #9f1239;
+            --men: #1e40af;
+            --accent-gold: var(--calm-light-accent, #18181b);
+            --accent-text: var(--calm-light-text, #18181b);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-strong: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
         }
         * { box-sizing: border-box; }
         body {
@@ -111,7 +127,7 @@
             padding: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             line-height: 1.72;
         }
         .portal-wrap {
@@ -138,6 +154,7 @@
         .portal-brand-title {
             font-size: 1.45rem;
             font-weight: 800;
+            letter-spacing: -0.02em;
             color: var(--text-main);
             margin: 0;
         }
@@ -149,36 +166,89 @@
         }
         .breadcrumb a { color: var(--text-sub); text-decoration: none; }
         .breadcrumb a:hover { text-decoration: underline; }
-        .hero-box {
+        .hero-box.stats-open-hero {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid var(--border-subtle) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 6px 0 22px !important;
+            margin: 2px 0 24px !important;
+        }
+        .stats-method-card {
             background: var(--card-bg);
-            border: 1px solid var(--border-strong);
-            border-radius: 14px;
-            padding: 24px;
-            margin-bottom: 24px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 22px;
+            margin-top: 24px;
         }
         .kicker-pill {
             display: inline-block;
             font-size: 0.72rem;
             font-weight: 700;
             padding: 3px 10px;
-            border-radius: 999px;
+            border-radius: 8px;
+            background: var(--card-elevated);
             border: 1px solid var(--border-strong);
             color: var(--text-sub);
             margin-bottom: 10px;
         }
         h1 {
-            font-size: 1.38rem;
+            font-size: clamp(1.24rem, 3.6vw, 1.44rem);
             line-height: 1.42;
+            letter-spacing: -0.02em;
             margin: 0 0 10px;
             color: var(--text-main);
+            word-break: auto-phrase;
+            overflow-wrap: anywhere;
+            text-wrap: pretty;
         }
         h2 {
             font-size: 1.1rem;
             margin: 30px 0 10px;
             color: var(--text-main);
-            padding-left: 10px;
-            border-left: 2px solid var(--accent-gold);
+            padding-left: 0;
+            border-left: none;
             line-height: 1.4;
+        }
+        .stats-cta-row {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 10px;
+        }
+        .stats-cta-primary,
+        .stats-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .stats-cta-primary {
+            font-weight: 700;
+            background: var(--cm-cta-bg, #f4f4f5);
+            border: 1px solid var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+        }
+        html.theme-light .stats-cta-primary,
+        body.theme-light .stats-cta-primary {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
+        .stats-cta-secondary {
+            font-weight: 600;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
         }
         .kpi-row {
             display: grid;
@@ -189,8 +259,8 @@
         .kpi-box {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 16px 18px;
             font-variant-numeric: tabular-nums;
         }
         .kpi-label {
@@ -204,24 +274,30 @@
             font-weight: 800;
             color: var(--text-main);
             line-height: 1.25;
+            font-variant-numeric: tabular-nums;
         }
         .kpi-sub {
             font-size: 0.76rem;
             color: var(--text-sub);
             margin-top: 5px;
+            font-variant-numeric: tabular-nums;
+        }
+        .table-scroll-frame {
+            margin-bottom: 24px;
         }
         .stats-table-wrap {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            border-radius: 18px;
             overflow-x: auto;
-            margin-bottom: 24px;
+            margin-bottom: 0;
             font-variant-numeric: tabular-nums;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             min-width: 580px;
+            font-variant-numeric: tabular-nums;
         }
         th, td {
             padding: 11px 14px;
@@ -229,6 +305,7 @@
             border-bottom: 1px solid var(--border-subtle);
             font-size: 0.83rem;
             vertical-align: top;
+            font-variant-numeric: tabular-nums;
         }
         tr:last-child td { border-bottom: none; }
         th {
@@ -245,14 +322,22 @@
             font-size: 0.72rem;
             font-weight: 600;
             padding: 2px 8px;
-            border-radius: 6px;
+            border-radius: 8px;
+            background: var(--card-elevated);
             border: 1px solid var(--border-strong);
             color: var(--text-sub);
             white-space: nowrap;
         }
         .status-tag.done {
-            color: var(--accent-text);
-            border-color: rgba(200, 164, 110, 0.45);
+            background: rgba(52, 211, 153, 0.14);
+            border-color: rgba(52, 211, 153, 0.35);
+            color: #6ee7b7;
+        }
+        html.theme-light .status-tag.done,
+        body.theme-light .status-tag.done {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #065f46;
         }
         .bridge-grid {
             display: grid;
@@ -266,37 +351,23 @@
             justify-content: space-between;
             gap: 10px;
             background: var(--card-bg);
-            border: 1px solid var(--border-strong);
-            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
             padding: 16px 18px;
             text-decoration: none;
             color: var(--text-main);
+            transition: border-color 0.15s ease;
         }
         .bridge-card:hover {
-            border-color: var(--accent-gold);
-        }
-        body.theme-light {
-            --bg-dark: #f6f6f7;
-            --card-bg: #ffffff;
-            --card-elevated: #f1f1f4;
-            --text-main: #18181b;
-            --text-sub: #52525b;
-            --women: #be123c;
-            --men: #1d4ed8;
-            --accent-gold: #8c6a38;
-            --accent-text: #6b4e24;
-            --border-subtle: #e4e4e7;
-            --border-strong: #d4d4d8;
+            border-color: var(--border-strong);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}
-    <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
 </head>
 
 <body>
@@ -318,16 +389,16 @@
                 <a href="/">相席ナビ TOP</a> › <a href="/stats">統計データ白書</a> › <span>2026年 忘年会・年末年始データ白書</span>
             </nav>
 
-            <header class="hero-box">
+            <header class="hero-box stats-open-hero">
                 <span class="kicker-pill">SEASONAL PRIMARY DATA WHITEPAPER ｜ CC BY 4.0</span>
                 <h1>2026年 忘年会・クリスマス・年末年始 相席ラウンジ混雑＆大型ドーム終演連動データ白書</h1>
                 <p style="margin: 0; font-size: 0.88rem; color: var(--text-sub);">
                     運営：相席ナビ編集部（監修：<a href="/about" style="color: inherit; text-decoration: underline;">くわもん（相席ナビ編集長）</a>）<br>
                     オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）・ヤタコイ等の国内店舗における1分間隔の実測時系列ログと、全国6大ドーム・アリーナの公式公開公演日程、給与・冬季賞与支給窓カレンダーを統合した繁忙期リファレンスです。未到来日の数値は推測を一切排し、営業日到来後に実測ログから自動集計・追記されます。
                 </p>
-                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 0.8rem;">
-                    <a href="/stats" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-main); font-weight: 600; text-decoration: none;">通年の週間統計・90日予測検証を見る ›</a>
-                    <a href="/stats/monthly.csv" style="display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-main); font-weight: 600; text-decoration: none;">店舗別30日一次統計CSV（CC BY 4.0）</a>
+                <div class="stats-cta-row">
+                    <a href="/stats" class="stats-cta-primary">通年の週間統計・90日予測検証を見る&nbsp;›</a>
+                    <a href="/stats/monthly.csv" class="stats-cta-secondary">店舗別30日一次統計CSV（CC BY 4.0）</a>
                 </div>
             </header>
 
@@ -365,10 +436,10 @@
                     {% set fcs = (forecast_accuracy.summary if forecast_accuracy and forecast_accuracy.summary else {}) %}
                     {% if fcs.resolved_count and fcs.mae_wpct is not none %}
                     <div class="kpi-val">±{{ fcs.mae_wpct }}pt</div>
-                    <div class="kpi-sub">±10pt的中率 {{ fcs.within_10pt_pct }}%・{{ "{:,}".format(fcs.resolved_count) }}回照合（<a href="/stats#forecast-accuracy" style="color: var(--accent-text);">検証ログ ›</a>）</div>
+                    <div class="kpi-sub">±10pt的中率 {{ fcs.within_10pt_pct }}%・{{ "{:,}".format(fcs.resolved_count) }}回照合（<a href="/stats#forecast-accuracy" style="color: var(--accent-text); white-space: nowrap;">検証ログ&nbsp;›</a>）</div>
                     {% else %}
                     <div class="kpi-val">検証ログ蓄積中</div>
-                    <div class="kpi-sub">60分後照合データが揃い次第、自動算出します（<a href="/stats#forecast-accuracy" style="color: var(--accent-text);">検証詳細 ›</a>）</div>
+                    <div class="kpi-sub">60分後照合データが揃い次第、自動算出します（<a href="/stats#forecast-accuracy" style="color: var(--accent-text); white-space: nowrap;">検証詳細&nbsp;›</a>）</div>
                     {% endif %}
                 </div>
             </div>
@@ -377,34 +448,37 @@
             <p style="margin: -4px 0 12px; font-size: 0.84rem; color: var(--text-sub);">
                 忘年会ピーク・冬季賞与支給窓・クリスマス・仕事納めの各特異日について、日付コンテキスト分類（給与窓・賞与窓）と実測データ反映状況を公開しています。
             </p>
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">対象日</th>
-                            <th scope="col">繁忙期フェーズ・行動特性</th>
-                            <th scope="col">給与・賞与コンテキスト</th>
-                            <th scope="col">計測ステータス</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for m in (wp.milestones if wp and wp.milestones else []) %}
-                        <tr>
-                            <td style="font-weight: 700; white-space: nowrap;">{{ m.date_jst }}</td>
-                            <td>{{ m.label_ja }}</td>
-                            <td style="color: var(--text-sub);">
-                                {% if m.is_bonus_window and m.is_payday_window %}冬季賞与窓 ＋ 給料日窓
-                                {% elif m.is_bonus_window %}冬季賞与支給窓（12/5〜12/28）
-                                {% elif m.is_payday_window %}月次給料日窓（24〜27日・月末2日）
-                                {% else %}通常カレンダー帯{% endif %}
-                            </td>
-                            <td>
-                                <span class="status-tag{% if m.status != '到来後に実測値を自動追記' %} done{% endif %}">{{ m.status }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="年末繁忙期マイルストーン統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">対象日</th>
+                                <th scope="col">繁忙期フェーズ・行動特性</th>
+                                <th scope="col">給与・賞与コンテキスト</th>
+                                <th scope="col">計測ステータス</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in (wp.milestones if wp and wp.milestones else []) %}
+                            <tr>
+                                <td style="font-weight: 700; white-space: nowrap;">{{ m.date_jst }}</td>
+                                <td>{{ m.label_ja }}</td>
+                                <td style="color: var(--text-sub);">
+                                    {% if m.is_bonus_window and m.is_payday_window %}冬季賞与窓 ＋ 給料日窓
+                                    {% elif m.is_bonus_window %}冬季賞与支給窓（12/5〜12/28）
+                                    {% elif m.is_payday_window %}月次給料日窓（24〜27日・月末2日）
+                                    {% else %}通常カレンダー帯{% endif %}
+                                </td>
+                                <td>
+                                    <span class="status-tag{% if m.status != '到来後に実測値を自動追記' %} done{% endif %}">{{ m.status }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <h2>3. 全国6大ドーム・アリーナ公式公演日程 × 終演後ラウンジ流入マップ</h2>
@@ -412,81 +486,90 @@
                 大型音楽公演の終演後（主に19:30〜22:00台）は、最寄りターミナル駅の相席ラウンジへ2人組の女性来場者が流入しやすくなります。各会場の公式公開カレンダーから自動取得した直近スケジュールです。
             </p>
             {% if wp and wp.upcoming_arena_events %}
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">公演日</th>
-                            <th scope="col">会場名</th>
-                            <th scope="col">公開イベント・公演名</th>
-                            <th scope="col">終演目安</th>
-                            <th scope="col">回遊圏内の主要店舗</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ev in wp.upcoming_arena_events %}
-                        <tr>
-                            <td style="font-weight: 700; white-space: nowrap;">{{ ev.event_date }}</td>
-                            <td style="white-space: nowrap;">{{ ev.venue_name }}</td>
-                            <td>{{ ev.event_title }}</td>
-                            <td style="white-space: nowrap; color: var(--text-sub);">{{ ev.est_end_hour }}:00前後〜</td>
-                            <td style="font-size: 0.79rem; color: var(--text-sub);">{{ ev.nearby_stores | join(' / ') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="6大ドーム・アリーナ公式公演日程統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">公演日</th>
+                                <th scope="col">会場名</th>
+                                <th scope="col">公開イベント・公演名</th>
+                                <th scope="col">終演目安</th>
+                                <th scope="col">回遊圏内の主要店舗</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ev in wp.upcoming_arena_events %}
+                            <tr>
+                                <td style="font-weight: 700; white-space: nowrap;">{{ ev.event_date }}</td>
+                                <td style="white-space: nowrap;">{{ ev.venue_name }}</td>
+                                <td>{{ ev.event_title }}</td>
+                                <td style="white-space: nowrap; color: var(--text-sub);">{{ ev.est_end_hour }}:00前後〜</td>
+                                <td style="font-size: 0.79rem; color: var(--text-sub);">{{ ev.nearby_stores | join(' / ') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% else %}
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">監視対象の大型会場</th>
-                            <th scope="col">終演後の主な回遊ターミナル</th>
-                            <th scope="col">連動検知ロジック</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="font-weight: 700;">東京ドーム ／ さいたまスーパーアリーナ ／ Kアリーナ横浜</td>
-                            <td>新宿・渋谷・上野・池袋 ／ 大宮 ／ 横浜西口</td>
-                            <td style="color: var(--text-sub);">公式公開日程の事前予告＋終演帯の実測女性急増（+4名以上）の2段階で検知</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 700;">京セラドーム大阪 ／ バンテリンドーム ナゴヤ ／ みずほPayPayドーム福岡</td>
-                            <td>難波・心斎橋・梅田 ／ 栄・錦 ／ 天神・中洲</td>
-                            <td style="color: var(--text-sub);">日次自動クロールにより公演予定が確定次第、本テーブルへ自動反映</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="監視対象の大型会場統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">監視対象の大型会場</th>
+                                <th scope="col">終演後の主な回遊ターミナル</th>
+                                <th scope="col">連動検知ロジック</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-weight: 700;">東京ドーム ／ さいたまスーパーアリーナ ／ Kアリーナ横浜</td>
+                                <td>新宿・渋谷・上野・池袋 ／ 大宮 ／ 横浜西口</td>
+                                <td style="color: var(--text-sub);">公式公開日程の事前予告＋終演帯の実測女性急増（+4名以上）の2段階で検知</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 700;">京セラドーム大阪 ／ バンテリンドーム ナゴヤ ／ みずほPayPayドーム福岡</td>
+                                <td>難波・心斎橋・梅田 ／ 栄・錦 ／ 天神・中洲</td>
+                                <td style="color: var(--text-sub);">日次自動クロールにより公演予定が確定次第、本テーブルへ自動反映</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% endif %}
 
             {% if wp and wp.top_peak_stores %}
             <h2>4. 直近30日間の国内店舗・最高同時在店レコード TOP10</h2>
-            <div class="stats-table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">順位</th>
-                            <th scope="col">店舗名</th>
-                            <th scope="col">最高同時合計</th>
-                            <th scope="col">内訳（女性 / 男性）</th>
-                            <th scope="col">観測営業日</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for st in wp.top_peak_stores %}
-                        <tr>
-                            <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
-                            <td style="font-weight: 600;">{% if st.store_slug %}<a href="/store/{{ st.store_slug }}" style="color: var(--text-main); text-decoration: none;">{{ st.store_name }} ›</a>{% else %}{{ st.store_name }}{% endif %}</td>
-                            <td style="font-weight: 700;">{{ st.total }}名</td>
-                            <td><span class="w-num">女性 {{ st.women }}名</span> / <span class="m-num">男性 {{ st.men }}名</span></td>
-                            <td style="color: var(--text-sub);">{{ st.date }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="table-scroll-frame">
+                <span class="table-scroll-hint">横にスクロールできます →</span>
+                <div class="stats-table-wrap" tabindex="0" role="region" aria-label="最高同時在店レコードTOP10統計データ表">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">順位</th>
+                                <th scope="col">店舗名</th>
+                                <th scope="col">最高同時合計</th>
+                                <th scope="col">内訳（女性 / 男性）</th>
+                                <th scope="col">観測営業日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for st in wp.top_peak_stores %}
+                            <tr>
+                                <td style="font-weight: 700; color: var(--accent-text);">#{{ loop.index }}</td>
+                                <td style="font-weight: 600;">{% if st.store_slug %}<a href="/store/{{ st.store_slug }}" style="color: var(--text-main); text-decoration: none; white-space: nowrap;">{{ st.store_name }}&nbsp;›</a>{% else %}{{ st.store_name }}{% endif %}</td>
+                                <td style="font-weight: 700;">{{ st.total }}名</td>
+                                <td><span class="w-num">女性 {{ st.women }}名</span> / <span class="m-num">男性 {{ st.men }}名</span></td>
+                                <td style="color: var(--text-sub);">{{ st.date }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% endif %}
 
@@ -498,7 +581,7 @@
                         <div style="font-size: 0.94rem; font-weight: 700;">今夜どこ行く？3秒穴場＆徒歩ハシゴ診断</div>
                         <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-sub);">忘年会二次会で看板店が満席のとき、徒歩5分圏内の第2候補まで即座に判定します。</p>
                     </div>
-                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text);">現在地・人数で診断する ›</span>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text); white-space: nowrap;">現在地・人数で診断する&nbsp;›</span>
                 </a>
                 <a href="/grooming" data-cushion="1" class="bridge-card">
                     <div>
@@ -506,7 +589,7 @@
                         <div style="font-size: 0.94rem; font-weight: 700;">仕事帰り・二次会前の清潔感ケア＆満席時の予備手段</div>
                         <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-sub);">入店NGになりやすい服装の注意点と、全店男性待ちの夜に使える1対1アプリを整理しています。</p>
                     </div>
-                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text);">準備チェックリストを見る ›</span>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text); white-space: nowrap;">準備チェックリストを見る&nbsp;›</span>
                 </a>
                 <a href="/for-women" data-cushion="1" class="bridge-card">
                     <div>
@@ -514,16 +597,16 @@
                         <div style="font-size: 0.94rem; font-weight: 700;">女性ペア向け｜受付待ちゼロで即着席しやすい店舗一覧</div>
                         <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-sub);">ライブ終演後や女子会帰りに、寒い屋外で待たずすぐ案内される店舗をリアルタイム表示します。</p>
                     </div>
-                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text);">女性向けリアルタイム一覧 ›</span>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-text); white-space: nowrap;">女性向けリアルタイム一覧&nbsp;›</span>
                 </a>
             </div>
 
-            <section class="hero-box" style="margin-top: 24px; border-color: var(--border-subtle);">
+            <section class="stats-method-card">
                 <h2 style="margin: 0 0 8px; font-size: 1.02rem; border: none; padding-left: 0; color: var(--accent-text);">出典・データ引用について（CC BY 4.0）</h2>
                 <p style="margin: 0 0 10px; font-size: 0.84rem; color: var(--text-sub);">
-                    本白書の集計データおよび <a href="/stats/monthly.csv" style="color: var(--accent-text);">/stats/monthly.csv</a> は CC BY 4.0 ライセンスで公開しています。記事・SNS・AI検索等で引用される際は以下のクレジットをご記載ください。
+                    本白書の集計データおよび <a href="/stats/monthly.csv" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">/stats/monthly.csv</a> は CC BY 4.0 ライセンスで公開しています。記事・SNS・AI検索等で引用される際は以下のクレジットをご記載ください。
                 </p>
-                <div style="padding: 10px 12px; border-radius: 8px; background: var(--card-elevated); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--text-main);">
+                <div style="padding: 12px 14px; border-radius: 13px; background: var(--card-elevated); font-size: 0.8rem; color: var(--text-main);">
                     出典：相席ナビ編集部（監修：くわもん（相席ナビ編集長））「2026年 忘年会・クリスマス・年末年始 相席ラウンジ混雑＆大型ドーム終演連動データ白書」（https://aiseki-navi.com/stats/year-end-2026）
                 </div>
             </section>

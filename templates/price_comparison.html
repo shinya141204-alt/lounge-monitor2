@@ -36,7 +36,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=19">
+    <link rel="stylesheet" href="/static/portal.css?v=20">
 
     <script type="application/ld+json">
     {
@@ -99,29 +99,44 @@
 
     <style>
         :root {
-            --bg-dark: #0f1014;
-            --card-bg: #16171c;
-            --card-elevated: #1b1c22;
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-strong: rgba(255, 255, 255, 0.14);
-            --accent: #c8a46e;
-            --accent-soft: rgba(200, 164, 110, 0.14);
-            --accent-text: #f1e3cb;
-            --women: #d8a1aa;
-            --men: #93b1c9;
-            --text-main: #ebe8e3;
-            --text-sub: #9b978f;
+            --bg-dark: var(--calm-bg, #111113);
+            --card-bg: var(--calm-surface, #1a1a1e);
+            --card-elevated: var(--calm-surface-2, #232329);
+            --border-subtle: var(--calm-border, rgba(255, 255, 255, 0.08));
+            --border-strong: var(--calm-border-strong, rgba(255, 255, 255, 0.16));
+            --accent: var(--calm-text, #f4f4f5);
+            --accent-soft: rgba(244, 244, 245, 0.08);
+            --accent-text: var(--calm-text, #f4f4f5);
+            --women: var(--calm-women, #f4a8b8);
+            --men: var(--calm-men, #93c5fd);
+            --text-main: var(--calm-text, #f4f4f5);
+            --text-sub: var(--calm-sub, #b4b4be);
+        }
+        html.theme-light,
+        body.theme-light {
+            --bg-dark: var(--calm-light-bg, #f6f6f7);
+            --card-bg: var(--calm-light-surface, #ffffff);
+            --card-elevated: var(--calm-light-surface-2, #f2f2f5);
+            --border-subtle: var(--calm-light-border, rgba(24, 24, 27, 0.09));
+            --border-strong: var(--calm-light-border-strong, rgba(24, 24, 27, 0.16));
+            --accent: var(--calm-light-text, #18181b);
+            --accent-soft: rgba(24, 24, 27, 0.06);
+            --accent-text: var(--calm-light-text, #18181b);
+            --women: var(--calm-light-women-strong, #9f1239);
+            --men: var(--calm-light-men-strong, #1e40af);
+            --text-main: var(--calm-light-text, #18181b);
+            --text-sub: var(--calm-light-sub, #52525b);
         }
         * { box-sizing: border-box; }
         body {
             margin: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
             line-height: 1.68;
         }
         .wrap {
-            max-width: 1060px;
+            max-width: 1080px;
             margin: 0 auto;
             padding: 20px 16px 72px;
         }
@@ -142,10 +157,10 @@
             gap: 10px;
         }
         .portal-brand-title {
-            font-size: 1.5rem;
+            font-size: 1.45rem;
             font-weight: 800;
             color: var(--text-main);
-            letter-spacing: 0.06em;
+            letter-spacing: -0.02em;
             margin: 0;
         }
         .portal-brand-sub {
@@ -160,32 +175,35 @@
             color: var(--text-sub);
             margin: 8px 0 14px;
         }
-        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        .breadcrumb a { color: var(--text-sub); text-decoration: none; }
+        .breadcrumb a:hover { color: var(--text-main); }
 
         .hero-box {
-            background: var(--card-bg);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 24px 22px;
-            margin-bottom: 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-subtle);
+            border-radius: 0;
+            padding: 6px 0 22px;
+            margin-bottom: 18px;
         }
         .hero-kicker {
             display: inline-block;
             font-size: 0.72rem;
             font-weight: 600;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
             padding: 3px 10px;
-            border-radius: 99px;
-            background: transparent;
+            border-radius: 8px;
+            background: var(--card-elevated);
             color: var(--text-sub);
-            border: 1px solid var(--border-strong);
+            border: 1px solid var(--border-subtle);
             margin-bottom: 10px;
         }
         .hero-box h1 {
             margin: 0 0 10px;
             font-size: 1.36rem;
-            font-weight: 700;
-            line-height: 1.42;
+            font-weight: 800;
+            line-height: 1.4;
+            letter-spacing: -0.02em;
             color: var(--text-main);
         }
         .hero-box p {
@@ -198,8 +216,8 @@
         .section-card {
             background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 22px 20px;
+            border-radius: 18px;
+            padding: 20px;
             margin-bottom: 22px;
         }
         .section-title {
@@ -207,9 +225,10 @@
             font-size: 1.12rem;
             font-weight: 700;
             color: var(--text-main);
-            padding-left: 11px;
-            border-left: 2px solid var(--accent);
+            padding-left: 0;
+            border-left: none;
             line-height: 1.4;
+            letter-spacing: -0.015em;
         }
         .section-lead {
             margin: 0 0 16px;
@@ -251,8 +270,9 @@
                 line-height: 1.5;
             }
             .official-notice-box {
-                padding: 9px 12px !important;
+                padding: 10px 14px !important;
                 margin-bottom: 12px !important;
+                border-radius: 18px !important;
             }
             .official-notice-head {
                 display: flex;
@@ -268,9 +288,9 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                min-height: 30px;
-                padding: 3px 10px;
-                border-radius: 999px;
+                min-height: 38px;
+                padding: 6px 12px;
+                border-radius: 10px;
                 border: 1px solid var(--border-strong);
                 background: var(--card-elevated);
                 color: var(--text-main);
@@ -301,40 +321,48 @@
             .area-tab-btn {
                 flex: 0 0 auto;
                 white-space: nowrap;
-                min-height: 36px;
+                min-height: 38px;
             }
         }
         .area-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
             padding: 8px 13px;
-            border-radius: 8px;
-            border: 1px solid var(--border-strong);
-            background: var(--card-bg);
-            color: var(--text-main);
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            background: var(--card-elevated);
+            color: var(--text-sub);
             font-size: 0.81rem;
             font-weight: 600;
             cursor: pointer;
             transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
         }
         .area-tab-btn:hover {
-            background: var(--card-elevated);
-            border-color: rgba(200, 164, 110, 0.45);
-            color: var(--accent-text);
+            border-color: var(--border-strong);
+            color: var(--text-main);
         }
         .area-tab-btn.active {
-            background: var(--accent-soft);
-            border-color: rgba(200, 164, 110, 0.58);
-            color: var(--accent-text);
+            background: var(--cm-cta-bg, #f4f4f5);
+            border-color: var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+            font-weight: 700;
+        }
+        body.theme-light .area-tab-btn.active {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
         }
 
         .cluster-panel { display: none; }
         .cluster-panel.active { display: block; }
 
         .best-pick-banner {
-            background: var(--card-elevated);
-            border: 1px solid rgba(200, 164, 110, 0.35);
-            border-left: 3px solid var(--accent);
-            border-radius: 12px;
-            padding: 14px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-strong);
+            border-radius: 18px;
+            padding: 16px 18px;
             margin-bottom: 16px;
             display: flex;
             align-items: center;
@@ -344,12 +372,11 @@
         }
         .best-pick-banner.is-standby {
             border-color: var(--border-subtle);
-            border-left-color: rgba(255, 255, 255, 0.22);
         }
         .best-pick-title {
             font-size: 0.91rem;
             font-weight: 700;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
         .best-pick-banner.is-standby .best-pick-title {
             color: var(--text-main);
@@ -360,31 +387,41 @@
             margin-top: 3px;
         }
         .best-pick-cta {
-            padding: 7px 14px;
-            border-radius: 8px;
-            background: var(--card-bg);
-            border: 1px solid rgba(200, 164, 110, 0.5);
-            color: var(--accent-text);
-            font-size: 0.79rem;
-            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 8px 15px;
+            border-radius: 12px;
+            background: var(--cm-cta-bg, #f4f4f5);
+            border: 1px solid var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+            font-size: 0.8rem;
+            font-weight: 700;
             text-decoration: none;
             white-space: nowrap;
         }
+        body.theme-light .best-pick-cta {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
         .best-pick-cta:hover {
-            background: var(--accent-soft);
+            opacity: 0.9;
         }
 
         /* Side-by-side comparison table */
         .comp-table-wrap {
             overflow-x: auto;
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            border-radius: 13px;
         }
         .comp-table {
             width: 100%;
             border-collapse: collapse;
             min-width: 780px;
             font-size: 0.82rem;
+            font-variant-numeric: tabular-nums;
         }
         .comp-table th {
             background: var(--card-elevated);
@@ -405,7 +442,7 @@
         }
         .comp-table tr:last-child td { border-bottom: none; }
         .comp-table tr.best-row {
-            background: rgba(200, 164, 110, 0.05);
+            background: var(--card-elevated);
         }
 
         .brand-pill {
@@ -414,58 +451,61 @@
             font-weight: 600;
             letter-spacing: 0.03em;
             padding: 2px 7px;
-            border-radius: 4px;
+            border-radius: 6px;
             margin-right: 4px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-strong);
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
             color: var(--text-main);
         }
 
         .crown-tag {
             display: inline-block;
             font-size: 0.67rem;
-            font-weight: 600;
+            font-weight: 700;
             padding: 2px 8px;
-            border-radius: 99px;
-            background: var(--accent-soft);
-            color: var(--accent-text);
-            border: 1px solid rgba(200, 164, 110, 0.55);
+            border-radius: 8px;
+            background: var(--card-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border-strong);
             margin-left: 4px;
         }
 
         .active-slot-chip {
-            background: rgba(200, 164, 110, 0.09);
-            border: 1px solid rgba(200, 164, 110, 0.36);
-            border-radius: 6px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
             padding: 4px 8px;
             margin-bottom: 6px;
             font-size: 0.74rem;
             font-weight: 600;
-            color: var(--accent-text);
+            color: var(--text-main);
         }
 
         .verdict-pill {
             display: inline-block;
             font-size: 0.72rem;
-            font-weight: 600;
+            font-weight: 700;
             padding: 3px 9px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 5px;
-            border: 1px solid var(--border-strong);
+            border: 1px solid var(--border-subtle);
             color: var(--text-main);
         }
-        .verdict-hot { background: var(--accent-soft); color: var(--accent-text); border-color: rgba(200, 164, 110, 0.55); }
-        .verdict-good { background: rgba(216, 161, 170, 0.12); color: #ebd0d5; border-color: rgba(216, 161, 170, 0.42); }
-        .verdict-warn,
-        .verdict-low { background: rgba(255, 255, 255, 0.03); color: var(--text-sub); border-color: var(--border-strong); }
-        .verdict-neutral { background: transparent; color: var(--text-sub); border-color: var(--border-strong); }
+        .verdict-hot { background: rgba(52, 211, 153, 0.14); color: #34d399; border-color: rgba(52, 211, 153, 0.28); }
+        body.theme-light .verdict-hot { background: rgba(16, 185, 129, 0.12); color: #065f46; border-color: rgba(16, 185, 129, 0.28); }
+        .verdict-good { background: rgba(244, 168, 184, 0.14); color: #f4a8b8; border-color: rgba(244, 168, 184, 0.28); }
+        body.theme-light .verdict-good { background: rgba(159, 18, 57, 0.09); color: #9f1239; border-color: rgba(159, 18, 57, 0.24); }
+        .verdict-warn { background: rgba(251, 191, 36, 0.14); color: #fcd34d; border-color: rgba(251, 191, 36, 0.28); }
+        body.theme-light .verdict-warn { background: rgba(245, 158, 11, 0.13); color: #92400e; border-color: rgba(245, 158, 11, 0.26); }
+        .verdict-low { background: var(--card-elevated); color: var(--text-sub); border-color: var(--border-subtle); }
+        .verdict-neutral { background: transparent; color: var(--text-sub); border-color: var(--border-subtle); }
 
         .ev-item {
             font-size: 0.77rem;
-            background: rgba(255, 255, 255, 0.025);
+            background: var(--card-bg);
             border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            padding: 6px 8px;
+            border-radius: 8px;
+            padding: 6px 9px;
             margin-bottom: 5px;
             color: var(--text-main);
         }
@@ -474,12 +514,12 @@
         .ev-badge-women {
             display: inline-block;
             font-size: 0.65rem;
-            font-weight: 600;
+            font-weight: 700;
             padding: 1px 6px;
-            border-radius: 4px;
-            background: transparent;
-            border: 1px solid var(--border-strong);
-            color: var(--accent);
+            border-radius: 5px;
+            background: var(--card-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-sub);
             margin-right: 5px;
         }
 
@@ -491,17 +531,21 @@
         .verify-card {
             background: var(--card-elevated);
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
+            border-radius: 13px;
             padding: 15px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            font-variant-numeric: tabular-nums;
         }
         .mini-ratio-bar {
             height: 6px;
             border-radius: 99px;
-            background: rgba(147, 177, 201, 0.32);
+            background: rgba(147, 197, 253, 0.22);
             overflow: hidden;
+        }
+        body.theme-light .mini-ratio-bar {
+            background: rgba(29, 78, 216, 0.15);
         }
         .mini-ratio-fill {
             height: 100%;
@@ -512,15 +556,93 @@
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--accent);
+            background: #34d399;
             vertical-align: middle;
             margin-right: 4px;
         }
+        body.theme-light .sync-dot {
+            background: #10b981;
+        }
+        .price-share-btn {
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            background: var(--card-elevated);
+            color: var(--text-main);
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .price-bridge-cta {
+            min-height: 40px;
+            max-width: 100%;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: var(--cm-cta-bg, #f4f4f5);
+            border: 1px solid var(--cm-cta-bg, #f4f4f5);
+            color: var(--cm-cta-text, #111113);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            text-align: center;
+            line-height: 1.35;
+        }
+        body.theme-light .price-bridge-cta {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
+        .price-bridge-sub {
+            min-height: 40px;
+            max-width: 100%;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-strong);
+            color: var(--text-main);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            line-height: 1.35;
+        }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=51">
+    <link rel="stylesheet" href="/static/calm.css?v=52">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
-    <style>html.theme-light{background-color:#f6f6f7;}</style>
+    <style>
+        html.theme-light { background-color: #f6f6f7; }
+        body.theme-light {
+            --women: var(--calm-light-women-strong, #9f1239) !important;
+            --men: var(--calm-light-men-strong, #1e40af) !important;
+        }
+        body:not(.staff-mode) .apple-compare-col,
+        body:not(.staff-mode) .best-pick-banner,
+        body:not(.staff-mode) .official-notice-box {
+            border-radius: 18px !important;
+        }
+        body:not(.staff-mode) .verify-card,
+        body:not(.staff-mode) .price-comp-bridge-bar,
+        body:not(.staff-mode) .apple-compare-picker {
+            border-radius: 13px !important;
+        }
+        body:not(.staff-mode) .apple-seg-btn,
+        body:not(.staff-mode) .area-tab-btn {
+            min-height: 38px !important;
+        }
+    </style>
     <link rel="expect" href="#portal-shell" blocking="render">
 </head>
 
@@ -571,9 +693,9 @@
                 </a>
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span style="font-size: 0.74rem; color: var(--text-sub);">現在エリアの比較結果を共有：</span>
-                    <button type="button" onclick="sharePriceComparison('x')" style="min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">𝕏 ポスト</button>
-                    <button type="button" onclick="sharePriceComparison('line')" style="min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card-elevated); color: var(--text-main); font-size: 0.75rem; font-weight: 600; cursor: pointer;">LINE共有</button>
-                    <button type="button" id="copy-comp-share-btn" onclick="sharePriceComparison('copy')" style="min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--accent-soft); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; cursor: pointer;">告知文をコピー</button>
+                    <button type="button" class="price-share-btn" onclick="sharePriceComparison('x')">𝕏 ポスト</button>
+                    <button type="button" class="price-share-btn" onclick="sharePriceComparison('line')">LINE共有</button>
+                    <button type="button" id="copy-comp-share-btn" class="price-share-btn" onclick="sharePriceComparison('copy')">告知文をコピー</button>
                 </div>
             </div>
             </div>
@@ -728,15 +850,15 @@
                         <div class="apple-spec-row">
                             <div class="apple-spec-label">開催中の特典・企画</div>
                             {% for mp in st.men_perks %}
-                            <div class="apple-spec-sub"><strong style="color: var(--text-main);">男性特典：</strong>{{ mp.title }}</div>
+                            <div class="apple-spec-sub"><strong style="color: var(--text-main);">男性特典：</strong>{{ mp.title | clean_badge | strip_emoji }}</div>
                             {% endfor %}
                             {% for we in st.women_events[:1] %}
-                            <div class="apple-spec-sub"><strong style="color: var(--women);">女性企画：</strong>{{ we.title }}</div>
+                            <div class="apple-spec-sub"><strong style="color: var(--women);">女性企画：</strong>{{ we.title | clean_badge | strip_emoji }}</div>
                             {% endfor %}
                         </div>
 
                         <div class="apple-spec-row">
-                            <div class="verdict-pill {{ st.verdict_cls }}" data-verdict-badge>{{ st.verdict_badge }}</div>
+                            <div class="verdict-pill {{ st.verdict_cls }}" data-verdict-badge>{{ st.verdict_badge | clean_badge | strip_emoji }}</div>
                             <details class="apple-spec-fold">
                                 <summary>判定理由・店舗情報 ▾</summary>
                                 <div class="apple-spec-fold-body">
@@ -760,14 +882,14 @@
             </div>
             {% endfor %}
 
-            <div class="price-comp-bridge-bar" data-nosnippet style="margin-top: 16px; padding: 14px 16px; border-radius: 10px; background: var(--card-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div class="price-comp-bridge-bar" data-nosnippet style="margin-top: 16px; padding: 14px 16px; border-radius: 13px; background: var(--card-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div style="flex: 1 1 280px;">
-                    <div style="font-size: 0.72rem; font-weight: 700; color: var(--accent-text); margin-bottom: 2px;">料金比較の次の一手｜現在の女性比率×待機コストで最適店を自動選出</div>
+                    <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-sub); margin-bottom: 2px;">料金比較の次の一手｜現在の女性比率×待機コストで最適店を自動選出</div>
                     <div style="font-size: 0.85rem; color: var(--text-main);">10分単価が安くても男性過多の店舗では待機料金がかさみます。いま女性優位で実質負担が抑えられる穴場店を3秒で診断できます。</div>
                 </div>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <a href="/concierge" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'cushion_click',label:'/concierge @ /price-comparison'}),keepalive:true});}catch(e){}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 8px; background: var(--accent-soft); border: 1px solid rgba(200, 164, 110, 0.55); color: var(--accent-text); font-size: 0.79rem; font-weight: 700; text-decoration: none; white-space: nowrap;">3秒穴場＆徒歩ハシゴ診断 ›</a>
-                    <a href="https://machinavi-data.com/?from=aiseki#diagnose" target="_blank" rel="noopener" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'sister_bridge_click',label:'all:price_compare:all'}),keepalive:true});}catch(e){}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-strong); color: var(--text-main); font-size: 0.79rem; font-weight: 600; text-decoration: none; white-space: nowrap;">予約制街コン・婚活と実質コスパを比較（マチナビ） ›</a>
+                    <a href="/concierge" class="price-bridge-cta" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'cushion_click',label:'/concierge @ /price-comparison'}),keepalive:true});}catch(e){}">3秒穴場＆徒歩ハシゴ診断 ›</a>
+                    <a href="https://machinavi-data.com/?from=aiseki#diagnose" target="_blank" rel="noopener" class="price-bridge-sub" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'sister_bridge_click',label:'all:price_compare:all'}),keepalive:true});}catch(e){}">予約制街コン・婚活と実質コスパを比較（マチナビ） ›</a>
                 </div>
             </div>
         </section>
@@ -828,12 +950,12 @@
                     <div>
                         {% for mp in st.men_perks[:1] %}
                         <div class="ev-item">
-                            <span class="ev-badge-men">男性特典</span> {{ mp.title }}
+                            <span class="ev-badge-men">男性特典</span> {{ mp.title | clean_badge | strip_emoji }}
                         </div>
                         {% endfor %}
                         {% for we in st.women_events[:1] %}
                         <div class="ev-item">
-                            <span class="ev-badge-women">女性企画</span> {{ we.title }}
+                            <span class="ev-badge-women">女性企画</span> {{ we.title | clean_badge | strip_emoji }}
                         </div>
                         {% endfor %}
                     </div>
@@ -1076,10 +1198,10 @@
                 <div style="font-size: 0.8rem; color: var(--text-sub); margin-top: 2px;">仕事帰りの口元・皮脂テカリ対策や満席時の予備アプリ比較、女性ペアがいま待ちゼロで座れる店舗ボードを男女別に整理しています。</div>
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <a href="/grooming" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
+                <a href="/grooming" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; min-height: 40px; padding: 10px 16px; border-radius: 12px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
                     男性向け｜身だしなみ＆満席時の予備策 ›
                 </a>
-                <a href="/for-women" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 10px 16px; border-radius: 999px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
+                <a href="/for-women" data-cushion="1" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 6px; min-height: 40px; padding: 10px 16px; border-radius: 12px; background: var(--card-elevated); border: 1px solid var(--border-strong); color: var(--text-main); text-decoration: none; font-size: 0.83rem; font-weight: 700; max-width: 100%;">
                     女性向け｜待ちゼロ店舗＆席替えガイド ›
                 </a>
             </div>
