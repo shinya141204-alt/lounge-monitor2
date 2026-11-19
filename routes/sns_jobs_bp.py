@@ -1147,6 +1147,10 @@ def api_moshimo_reel_queue():
             raw_ev = payload.get('evergreen_recycle', request.args.get('evergreen_recycle', '0'))
             ev_on = bool(raw_ev) if isinstance(raw_ev, bool) else (str(raw_ev).strip().lower() in ('1', 'true', 'on', 'yes'))
             moshimo_reel_queue.set_evergreen_recycle_enabled(ev_on)
+        if 'live_reel_fallback' in payload or 'live_reel_fallback' in request.args:
+            raw_lf = payload.get('live_reel_fallback', request.args.get('live_reel_fallback', '0'))
+            lf_on = bool(raw_lf) if isinstance(raw_lf, bool) else (str(raw_lf).strip().lower() in ('1', 'true', 'on', 'yes'))
+            moshimo_reel_queue.set_live_reel_fallback_enabled(lf_on)
         if 'youtube_enabled' in payload or 'youtube_privacy' in payload or 'youtube_live_reels' in payload:
             import youtube_poster
             if 'youtube_enabled' in payload:

@@ -507,7 +507,8 @@ class TestGcpCreditsAndYouTubeAutoPost(unittest.TestCase):
         self.assertEqual(r_sns.status_code, 200)
         html_sns = r_sns.get_data(as_text=True)
         self.assertIn("moshimo-publish-yt-btn", html_sns)
-        self.assertIn("平日20:00 YouTube自動公開", html_sns)
+        self.assertIn("月〜土20:00 YouTube自動公開", html_sns)
+        self.assertIn("ライブ人数リール自動切替", html_sns)
         self.assertIn("GCPクレジット優先消化ON", html_sns)
 
     def test_ep3_hard_pinned_and_gsc_auto_sync_cohort_decomposition(self):

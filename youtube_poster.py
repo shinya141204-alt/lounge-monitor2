@@ -642,8 +642,9 @@ def select_due_youtube_moshimo_episode(now_jst: Optional[datetime.datetime] = No
     Select the Moshimo episode due for YouTube Shorts on `biz_date`'s `20:00` JST slot:
       1. Never publish more than 1 Moshimo episode to YouTube on the same `biz_date`.
       2. Exact `scheduled_date == biz_date` match wins first (keeps IG & YouTube on the exact same episode).
-      3. Catch-up on Mon–Fri (`weekday in 0..4`) for unposted episodes (`#1`/`#2` are pinned as done).
-      4. Evergreen Recycle on Tue/Thu (`>= 21` days cooldown) once all 10 have aired and recycle is ON.
+      3. Catch-up on Mon–Sat (`weekday in 0..5`) for unposted episodes (`#1`/`#2`/`#3` are pinned as done),
+         preserving Sunday as a rest day.
+      4. Evergreen Recycle on Tue/Thu (`>= 21` days cooldown) once all episodes have aired and recycle is ON.
     """
     import moshimo_reel_queue
 
@@ -663,8 +664,8 @@ def select_due_youtube_moshimo_episode(now_jst: Optional[datetime.datetime] = No
             if os.path.isfile(moshimo_reel_queue.resolve_episode_local_path(ep)):
                 return dict(ep)
 
-    # 2. Weekday catch-up (Mon–Fri)
-    if biz_weekday in (0, 1, 2, 3, 4):
+    # 2. Overdue catch-up on Mon–Sat (never on Sunday rest day)
+    if biz_weekday in (0, 1, 2, 3, 4, 5):
         for ep in all_eps:
             already, _, _ = find_synced_youtube_video_for_episode(ep, allow_blocking=True)
             if ep["scheduled_date"] < biz_date and not already:

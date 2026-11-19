@@ -2253,7 +2253,7 @@
                         <div class="flywheel-gear-num" style="margin-top:6px;">待機 {{ fw_mq.remaining_count|default(0, true) }} / {{ fw_mq.total_episodes|default(10, true) }}本</div>
                         <div class="flywheel-gear-meta">
                             投稿済 {{ fw_mq.posted_count|default(0, true) }}本 ・ 21日再配信 {{ 'ON' if fw_mq.evergreen_recycle else 'OFF' }}<br>
-                            {% if fw_mq.next_episode is mapping %}次回: #{{ fw_mq.next_episode.order|default('', true) }}（{{ fw_mq.next_episode.scheduled_date|default('', true) }} 20:00）{% else %}エバーグリーン火・木再配信＆Live速報稼働{% endif %}<br>
+                            {% if fw_mq.next_episode is mapping %}次回: #{{ fw_mq.next_episode.order|default('', true) }}（{{ fw_mq.next_episode.scheduled_date|default('', true) }} 20:00）{% else %}エバーグリーン火・木再配信（もしも専業）{% endif %}<br>
                             IGリール経由流入: <strong>{{ fw_mq.ig_reels_visits|default(0, true) }}回</strong>（CV {{ fw_mq.ig_reels_conversions|default(0, true) }}件）
                         </div>
                     </div>

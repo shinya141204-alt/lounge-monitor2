@@ -20,8 +20,10 @@ class MoshimoReelQueueTests(unittest.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self._prev_dir = os.environ.get("JOB_STATE_DIR")
         self._prev_ev = os.environ.get("MOSHIMO_EVERGREEN_RECYCLE_DEFAULT")
+        self._prev_lf = os.environ.get("MOSHIMO_LIVE_REEL_FALLBACK_DEFAULT")
         os.environ["JOB_STATE_DIR"] = self._tmpdir.name
         os.environ["MOSHIMO_EVERGREEN_RECYCLE_DEFAULT"] = "0"
+        os.environ["MOSHIMO_LIVE_REEL_FALLBACK_DEFAULT"] = "0"
         with job_state._lock:
             job_state._keys = None
             job_state._kv = None
@@ -40,6 +42,10 @@ class MoshimoReelQueueTests(unittest.TestCase):
             os.environ.pop("MOSHIMO_EVERGREEN_RECYCLE_DEFAULT", None)
         else:
             os.environ["MOSHIMO_EVERGREEN_RECYCLE_DEFAULT"] = self._prev_ev
+        if self._prev_lf is None:
+            os.environ.pop("MOSHIMO_LIVE_REEL_FALLBACK_DEFAULT", None)
+        else:
+            os.environ["MOSHIMO_LIVE_REEL_FALLBACK_DEFAULT"] = self._prev_lf
         self._tmpdir.cleanup()
 
     def test_all_fifteen_moshimo_assets_captions_and_youtube_pack_valid(self):
@@ -52,6 +58,8 @@ class MoshimoReelQueueTests(unittest.TestCase):
         self.assertEqual(st["total_episodes"], 15)
         self.assertEqual(st["remaining_count"], 15)
         self.assertEqual(st["posted_count"], 0)
+        self.assertFalse(st["live_reel_fallback"])
+        self.assertEqual(st["schedule_cadence"], "mon_sat_6x")
         self.assertTrue(st["youtube_bio_url"].endswith("/?s=short_bio"))
         self.assertTrue(st["instagram_bio_url"].endswith("/?s=ig_bio"))
 
@@ -86,7 +94,7 @@ class MoshimoReelQueueTests(unittest.TestCase):
             self.assertNotIn("/link/", yt_desc)
             self.assertNotIn("/link/", yt_pin)
 
-    def test_fifteen_episode_schedule_saturday_live_and_evergreen_recycle(self):
+    def test_fifteen_episode_6x_week_moshimo_only_and_evergreen_recycle(self):
         sample_stores = [{"id": "jis_umeda", "name": "JIS UMEDA", "women": 40, "men": 25}]
 
         with (
@@ -126,13 +134,14 @@ class MoshimoReelQueueTests(unittest.TestCase):
             self.assertEqual(res_sun["status"], "skipped")
             self.assertIn("Sunday rest day", res_sun["reason"])
 
-            # 4) Mon..Fri 2026-11-16..20 -> ep2..ep6 publish on weekdays
+            # 4) Mon..Sat 2026-11-16..21 -> ep2..ep7 publish 6x/week (including Saturday 11/21!)
             week1_expected = [
                 (16, "ep2_matching_app"),
                 (17, "ep3_women_free"),
                 (18, "ep4_last_train"),
                 (19, "ep5_crowd_paradox"),
                 (20, "ep6_rainy_payday"),
+                (21, "ep7_dome_live"),
             ]
             for day_num, exp_ep in week1_expected:
                 dt = datetime.datetime(2026, 11, day_num, 20, 10, tzinfo=JST)
@@ -140,25 +149,20 @@ class MoshimoReelQueueTests(unittest.TestCase):
                 self.assertEqual(r["status"], "success")
                 self.assertEqual(r["ep_id"], exp_ep)
 
-            # 5) Sat 2026-11-21 20:10 JST -> Peak Saturday serves live-data Reel while ep7..ep11 wait for Mon..Fri
-            sat2_20 = datetime.datetime(2026, 11, 21, 20, 10, tzinfo=JST)
-            res_sat2 = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=sat2_20)
-            self.assertEqual(res_sat2["status"], "success")
-            self.assertEqual(res_sat2["reel_type"], "live_top5")
-            self.assertEqual(mock_live_fallback.call_count, 1)
-
-            # 6) Sun 2026-11-22 20:10 JST -> Sunday rest day skipped
+            # 5) Sun 2026-11-22 20:10 JST -> Sunday rest day skipped
             sun2_20 = datetime.datetime(2026, 11, 22, 20, 10, tzinfo=JST)
             res_sun2 = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=sun2_20)
             self.assertEqual(res_sun2["status"], "skipped")
+            self.assertIn("Sunday rest day", res_sun2["reason"])
 
-            # 7) Mon..Fri 2026-11-23..27 -> ep7..ep11 publish in order (Season 2 starts Fri 11/27!)
+            # 6) Mon..Sat 2026-11-23..28 -> ep8..ep13 publish 6x/week (Season 2 starts Thu 11/26!)
             week2_expected = [
-                (23, "ep7_dome_live"),
-                (24, "ep8_no_change"),
-                (25, "ep9_sunday_night"),
-                (26, "ep10_solo_night"),
-                (27, "ep11_no_read_receipt"),
+                (23, "ep8_no_change"),
+                (24, "ep9_sunday_night"),
+                (25, "ep10_solo_night"),
+                (26, "ep11_no_read_receipt"),
+                (27, "ep12_no_mirror"),
+                (28, "ep13_no_smartphone"),
             ]
             for day_num, exp_ep in week2_expected:
                 dt = datetime.datetime(2026, 11, day_num, 20, 10, tzinfo=JST)
@@ -166,28 +170,16 @@ class MoshimoReelQueueTests(unittest.TestCase):
                 self.assertEqual(r["status"], "success")
                 self.assertEqual(r["ep_id"], exp_ep)
 
-            # 8) Sat 2026-11-28 -> live fallback; Sun 2026-11-29 -> Sunday rest day skipped
-            sat3_20 = datetime.datetime(2026, 11, 28, 20, 10, tzinfo=JST)
-            res_sat3 = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=sat3_20)
-            self.assertEqual(res_sat3["status"], "success")
-            self.assertEqual(res_sat3["reel_type"], "live_top5")
-            # Saturday 22:50 slot IS allowed during campaign when no Moshimo aired today
-            sat3_2250 = datetime.datetime(2026, 11, 28, 22, 55, tzinfo=JST)
-            res_sat3_late = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="22:50", now_jst=sat3_2250)
-            self.assertEqual(res_sat3_late["status"], "success")
-            self.assertEqual(res_sat3_late["reel_type"], "live_top5")
-
+            # 7) Sun 2026-11-29 -> Sunday rest day skipped (20:00 & 22:50)
             sun3_20 = datetime.datetime(2026, 11, 29, 20, 10, tzinfo=JST)
             res_sun3 = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=sun3_20)
             self.assertEqual(res_sun3["status"], "skipped")
             self.assertIn("Sunday rest day", res_sun3["reason"])
 
-            # 9) Mon..Thu 2026-11-30..12-03 -> ep12..ep15 publish in order
+            # 8) Mon..Tue 2026-11-30..12-01 -> ep14..ep15 publish in order
             week3_expected = [
-                (11, 30, "ep12_no_mirror"),
-                (12, 1, "ep13_no_smartphone"),
-                (12, 2, "ep14_no_tokyo_friday"),
-                (12, 3, "ep15_no_live_count"),
+                (11, 30, "ep14_no_tokyo_friday"),
+                (12, 1, "ep15_no_live_count"),
             ]
             for mon_num, day_num, exp_ep in week3_expected:
                 dt = datetime.datetime(2026, mon_num, day_num, 20, 10, tzinfo=JST)
@@ -198,33 +190,42 @@ class MoshimoReelQueueTests(unittest.TestCase):
             self.assertEqual(mock_post_ig.call_count, 15)
             self.assertFalse(moshimo_reel_queue.any_unposted_moshimo_episodes())
 
-            # 10) Fri 2026-12-04 20:10 & 22:55 JST -> All 15 done; seamlessly falls back to live Reel
-            fri_20 = datetime.datetime(2026, 12, 4, 20, 10, tzinfo=JST)
-            res_fri = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=fri_20)
-            self.assertEqual(res_fri["status"], "success")
-            self.assertEqual(res_fri["reel_type"], "live_top5")
-            fri_2250 = datetime.datetime(2026, 12, 4, 22, 55, tzinfo=JST)
-            res_fri_late = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="22:50", now_jst=fri_2250)
-            self.assertEqual(res_fri_late["status"], "success")
-            self.assertEqual(res_fri_late["reel_type"], "live_top5")
+            # 9) Wed 2026-12-02 20:10 & 22:55 JST -> Moshimo-only mode skips live-headcount auto-reels!
+            wed_20 = datetime.datetime(2026, 12, 2, 20, 10, tzinfo=JST)
+            res_wed_off = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=wed_20)
+            self.assertEqual(res_wed_off["status"], "skipped")
+            self.assertIn("Moshimo-only", res_wed_off["reason"])
+            wed_2250 = datetime.datetime(2026, 12, 2, 22, 55, tzinfo=JST)
+            res_wed_late = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="22:50", now_jst=wed_2250)
+            self.assertEqual(res_wed_late["status"], "skipped")
+            self.assertIn("Moshimo-only", res_wed_late["reason"])
+            self.assertEqual(mock_live_fallback.call_count, 0)
 
-            # 11) Evergreen recycle ON:
+            # 10) Evergreen recycle ON in Moshimo-only mode:
+            #     - Mon 2026-12-07 (wrong weekday) -> skipped (no live Reel pollution)
             #     - Tue 2026-12-08 (>=21d after 11/14) -> recycles ep1_vanished
-            #     - Mon 2026-12-07 (wrong weekday) -> live fallback
-            #     - Wed 2026-12-09 (wrong weekday) -> live fallback
+            #     - Wed 2026-12-09 (wrong weekday) -> skipped (no live Reel pollution)
             moshimo_reel_queue.set_evergreen_recycle_enabled(True)
-            mon_live = datetime.datetime(2026, 12, 7, 20, 10, tzinfo=JST)
-            res_mon = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=mon_live)
-            self.assertEqual(res_mon["reel_type"], "live_top5")
+            mon_skip = datetime.datetime(2026, 12, 7, 20, 10, tzinfo=JST)
+            res_mon = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=mon_skip)
+            self.assertEqual(res_mon["status"], "skipped")
 
             tue_recycle = datetime.datetime(2026, 12, 8, 20, 10, tzinfo=JST)
             res_rec = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=tue_recycle)
             self.assertEqual(res_rec["status"], "success")
             self.assertEqual(res_rec["ep_id"], "ep1_vanished")
 
-            wed_live = datetime.datetime(2026, 12, 9, 20, 10, tzinfo=JST)
-            res_wed = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=wed_live)
-            self.assertEqual(res_wed["reel_type"], "live_top5")
+            wed_skip = datetime.datetime(2026, 12, 9, 20, 10, tzinfo=JST)
+            res_wed = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=wed_skip)
+            self.assertEqual(res_wed["status"], "skipped")
+            self.assertEqual(mock_live_fallback.call_count, 0)
+
+            # 11) Explicit opt-in (`set_live_reel_fallback_enabled(True)`) restores live fallback when desired
+            moshimo_reel_queue.set_live_reel_fallback_enabled(True)
+            res_optin = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=wed_skip)
+            self.assertEqual(res_optin["status"], "success")
+            self.assertEqual(res_optin["reel_type"], "live_top5")
+            self.assertEqual(mock_live_fallback.call_count, 1)
 
     def test_evergreen_21_day_cooldown_and_2250_suppression(self):
         sample_stores = [{"id": "jis_umeda", "name": "JIS UMEDA", "women": 40, "men": 25}]
@@ -246,12 +247,13 @@ class MoshimoReelQueueTests(unittest.TestCase):
                 instagram_poster,
                 "publish_live_reel_to_instagram",
                 return_value={"status": "success", "ok": True, "reel_type": "live_top5"},
-            ),
+            ) as mock_live,
         ):
-            # Tue 2026-12-08 (13d elapsed < 21d cooldown) -> must fall back to live Reel
+            # Tue 2026-12-08 (13d elapsed < 21d cooldown) -> skipped (Moshimo-only mode, zero live fallback)
             tue_too_soon = datetime.datetime(2026, 12, 8, 20, 10, tzinfo=JST)
             r_early = moshimo_reel_queue.dispatch_scheduled_ig_reel(sample_stores, slot_label="20:00", now_jst=tue_too_soon)
-            self.assertEqual(r_early["reel_type"], "live_top5")
+            self.assertEqual(r_early["status"], "skipped")
+            self.assertEqual(mock_live.call_count, 0)
 
             # Thu 2026-12-17 (22d elapsed >= 21d cooldown) -> recycles ep1_vanished, then suppresses 22:50 same night
             thu_ready = datetime.datetime(2026, 12, 17, 20, 10, tzinfo=JST)

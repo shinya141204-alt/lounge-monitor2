@@ -1542,25 +1542,31 @@
             <div class="moshimo-head">
                 <div>
                     <h2 class="moshimo-title" id="moshimo-queue-heading">3Dボクセル『もしもシリーズ』自動投稿キュー（IGリール ＆ YouTubeショート同時自動公開）</h2>
-                    <p class="moshimo-sub">平日（月〜金）20:00 JST に事前レンダリング済3Dリールを Instagram（@aiseki_navi1）と YouTubeショート（@aiseki_navi）へ自動配信（ElevenLabs音声トークン消費ゼロ）。土曜ピークはリアルタイム速報へ自動切替します。</p>
+                    <p class="moshimo-sub">週6（月〜土）20:00 JST に事前レンダリング済3Dリールを Instagram（@aiseki_navi1）と YouTubeショート（@aiseki_navi）へ自動配信（日曜休養・ElevenLabs音声トークン消費ゼロ）。リールはもしもシリーズ専業（ライブ人数リール自動切替デフォルトOFF）です。</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:7px; align-items:flex-end;">
                     <div class="reel-auto-box">
                         <input type="checkbox" id="moshimo-queue-enabled-toggle" {{ 'checked' if moshimo_queue.enabled else '' }} style="accent-color:var(--green); width:16px; height:16px;">
                         <label for="moshimo-queue-enabled-toggle" style="cursor:pointer;">
-                            平日20:00 IG自動配信：<strong id="moshimo-enabled-text" style="color:{{ 'var(--green)' if moshimo_queue.enabled else 'var(--sub)' }};">{{ 'ON（稼働中）' if moshimo_queue.enabled else 'OFF' }}</strong>
+                            月〜土20:00 IG自動配信：<strong id="moshimo-enabled-text" style="color:{{ 'var(--green)' if moshimo_queue.enabled else 'var(--sub)' }};">{{ 'ON（稼働中）' if moshimo_queue.enabled else 'OFF' }}</strong>
                         </label>
                     </div>
                     <div class="reel-auto-box">
                         <input type="checkbox" id="moshimo-yt-enabled-toggle" {{ 'checked' if _yt_auto.get('enabled', true) else '' }} style="accent-color:var(--green); width:16px; height:16px;">
                         <label for="moshimo-yt-enabled-toggle" style="cursor:pointer;">
-                            平日20:00 YouTube自動公開：<strong id="moshimo-yt-enabled-text" style="color:{{ 'var(--green)' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('var(--amber)' if _yt_auto.get('enabled', true) else 'var(--sub)') }};">{{ 'ON（稼働中）' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('認可待ち' if _yt_auto.get('enabled', true) else 'OFF') }}</strong>
+                            月〜土20:00 YouTube自動公開：<strong id="moshimo-yt-enabled-text" style="color:{{ 'var(--green)' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('var(--amber)' if _yt_auto.get('enabled', true) else 'var(--sub)') }};">{{ 'ON（稼働中）' if (_yt_auto.get('enabled', true) and _yt_auto.get('has_upload_scope')) else ('認可待ち' if _yt_auto.get('enabled', true) else 'OFF') }}</strong>
                         </label>
                     </div>
                     <div class="reel-auto-box">
                         <input type="checkbox" id="moshimo-evergreen-toggle" {{ 'checked' if moshimo_queue.evergreen_recycle else '' }} style="accent-color:var(--blue); width:16px; height:16px;">
                         <label for="moshimo-evergreen-toggle" style="cursor:pointer;">
                             一巡後の火・木21日再配信：<strong id="moshimo-evergreen-text" style="color:{{ 'var(--blue)' if moshimo_queue.evergreen_recycle else 'var(--sub)' }};">{{ 'ON（永続稼働）' if moshimo_queue.evergreen_recycle else 'OFF' }}</strong>
+                        </label>
+                    </div>
+                    <div class="reel-auto-box">
+                        <input type="checkbox" id="moshimo-live-fallback-toggle" {{ 'checked' if moshimo_queue.live_reel_fallback else '' }} style="accent-color:var(--amber); width:16px; height:16px;">
+                        <label for="moshimo-live-fallback-toggle" style="cursor:pointer;">
+                            ライブ人数リール自動切替：<strong id="moshimo-live-fallback-text" style="color:{{ 'var(--amber)' if moshimo_queue.live_reel_fallback else 'var(--sub)' }};">{{ 'ON（空き枠でLive）' if moshimo_queue.live_reel_fallback else 'OFF（もしも専業）' }}</strong>
                         </label>
                     </div>
                 </div>
@@ -1600,7 +1606,7 @@
                         {% if moshimo_queue.next_episode %}
                         #{{ moshimo_queue.next_episode.order }}（{{ moshimo_queue.next_episode.scheduled_date }} 20:00）
                         {% else %}
-                        全話配信済（21日再配信＆Live速報稼働）
+                        全話配信済（21日再配信・もしも専業稼働）
                         {% endif %}
                     </div>
                 </div>
@@ -4209,6 +4215,19 @@
                         "OFF",
                         "evergreen_recycle",
                         "var(--blue)"
+                    );
+                });
+            }
+            var lfToggle = document.getElementById("moshimo-live-fallback-toggle");
+            if (lfToggle) {
+                lfToggle.addEventListener("change", function() {
+                    _saveMoshimoToggle(
+                        { live_reel_fallback: lfToggle.checked },
+                        "moshimo-live-fallback-text",
+                        "ON（空き枠でLive）",
+                        "OFF（もしも専業）",
+                        "live_reel_fallback",
+                        "var(--amber)"
                     );
                 });
             }

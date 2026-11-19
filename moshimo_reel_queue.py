@@ -6,19 +6,16 @@ Schedules and publishes pre-rendered 3D Voxel Moshimo `.mp4` episodes hosted und
 1-click YouTube Shorts (`@aiseki_navi`) title, description/pinned-comment, and MP4 download
 packages so cross-channel short-video publishing never stalls.
 
-Anti-cannibalization & uninterrupted continuity rules:
-  1. When a Moshimo episode is due on the `20:00` JST slot (`Mon–Fri`, plus initial kick-off),
+Anti-cannibalization & Moshimo-only continuity rules (6x/week Mon–Sat):
+  1. When a Moshimo episode is due on the `20:00` JST slot (`Mon–Sat`, skipping Sunday rest days),
      it publishes that episode and marks `moshimo_posted_date:{biz_date}` + timestamp.
-  2. When a Moshimo episode has published on `biz_date` (or on `Mon–Thu` / `Sun` while the
-     Moshimo campaign still has unposted episodes), the `22:50` late-night auto-reel slot is
-     suppressed so each Moshimo Reel enjoys an uncontested 24-hour discovery window.
-  3. On `Fri`/`Sat` nights with no due Moshimo episode, or automatically once all queued
-     Moshimo episodes have finished, scheduled jobs seamlessly fall back to live real-time
-     Reels (`instagram_poster.publish_live_reel_to_instagram`).
-  4. Optional Evergreen Winner Recycle (`moshimo_evergreen_recycle_enabled`): once all fresh
+  2. Automatic live-headcount Reels (`instagram_poster.publish_live_reel_to_instagram`) are disabled
+     by default (`moshimo_live_reel_fallback_enabled=0`) so 3-second-drop live Reels never dilute
+     Instagram Reels watch-time or profile grid consistency (manual buttons remain available).
+  3. Sunday (`weekday == 6`) is preserved as an algorithm rest day.
+  4. Evergreen Winner Recycle (`moshimo_evergreen_recycle_enabled`, ON by default): once all fresh
      episodes have aired and `>= 21` days have elapsed since an episode's last post, `Tue/Thu`
-     `20:00` slots can automatically re-air top Moshimo episodes while `Mon/Wed/Fri/Sat` run
-     live data Reels.
+     `20:00` slots automatically re-air top Moshimo episodes until new Season episodes are added.
 """
 
 import datetime
@@ -35,6 +32,7 @@ _REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MOSHIMO_QUEUE_ENABLED_KEY = "moshimo_reel_queue_enabled"
 MOSHIMO_EVERGREEN_CYCLE_KEY = "moshimo_evergreen_recycle_enabled"
+MOSHIMO_LIVE_FALLBACK_KEY = "moshimo_live_reel_fallback_enabled"
 MOSHIMO_CUSTOM_EPISODES_KEY = "moshimo_custom_episodes_v1"
 MOSHIMO_EPISODE_DONE_PREFIX = "moshimo_reel_posted:"
 MOSHIMO_EPISODE_LAST_TS_PREFIX = "moshimo_reel_last_ts:"
@@ -184,7 +182,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep7_dome_live",
         "order": 7,
-        "scheduled_date": "2026-11-23",
+        "scheduled_date": "2026-11-21",
         "title": "もし5万人のドーム公演が一斉に終わったら？",
         "youtube_title": "もし5万人のドームライブが一斉に終わったら？終演45分後に街で起きる混雑変化 #もしもシリーズ #ライブ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep7_dome_live.mp4",
@@ -206,7 +204,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep8_no_change",
         "order": 8,
-        "scheduled_date": "2026-11-24",
+        "scheduled_date": "2026-11-23",
         "title": "もし相席ラウンジから「席替え」が消えたら？",
         "youtube_title": "もし相席ラウンジから「席替え」が消えたら？110分粘る人vs45分で動く人 #もしもシリーズ #コスパ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep8_no_change.mp4",
@@ -230,7 +228,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep9_sunday_night",
         "order": 9,
-        "scheduled_date": "2026-11-25",
+        "scheduled_date": "2026-11-24",
         "title": "もし日曜21時半に会社員が一斉に帰ったら？",
         "youtube_title": "もし日曜21時半に会社員が一斉に帰ったら？22時から始まる逆転現象 #もしもシリーズ #日曜の夜 #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep9_sunday_night.mp4",
@@ -253,7 +251,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep10_solo_night",
         "order": 10,
-        "scheduled_date": "2026-11-26",
+        "scheduled_date": "2026-11-25",
         "title": "もし夜の街に「1人参戦」だけで入ったら？",
         "youtube_title": "もし夜の街に「1人参戦」だけで入ったら？実は全国43店舗が1名OK #もしもシリーズ #ひとり飲み #出張",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep10_solo_night.mp4",
@@ -276,7 +274,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep11_no_read_receipt",
         "order": 11,
-        "scheduled_date": "2026-11-27",
+        "scheduled_date": "2026-11-26",
         "title": "もし日本から「既読」が消えたら？",
         "youtube_title": "もし日本から「既読」が消えたら？既読スルーが最後の優しさだった理由 #もしもシリーズ #既読スルー #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep11_no_read_receipt.mp4",
@@ -298,7 +296,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep12_no_mirror",
         "order": 12,
-        "scheduled_date": "2026-11-30",
+        "scheduled_date": "2026-11-27",
         "title": "もし日本から「鏡」が消えたら？",
         "youtube_title": "もし日本から「鏡」が消えたら？70cmの距離で起きること #もしもシリーズ #身だしなみ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep12_no_mirror.mp4",
@@ -320,7 +318,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep13_no_smartphone",
         "order": 13,
-        "scheduled_date": "2026-12-01",
+        "scheduled_date": "2026-11-28",
         "title": "もし夜の街から「スマホ」が消えたら？",
         "youtube_title": "もし夜の街から「スマホ」が消えたら？最初の10分で起きること #もしもシリーズ #スマホ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep13_no_smartphone.mp4",
@@ -341,7 +339,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep14_no_tokyo_friday",
         "order": 14,
-        "scheduled_date": "2026-12-02",
+        "scheduled_date": "2026-11-30",
         "title": "もし東京から「金曜の夜」が消えたら？",
         "youtube_title": "もし東京から「金曜の夜」が消えたら？地方の深夜0時に起きる逆転 #もしもシリーズ #金曜の夜 #出張",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep14_no_tokyo_friday.mp4",
@@ -362,7 +360,7 @@ MOSHIMO_EPISODES = (
     {
         "ep_id": "ep15_no_live_count",
         "order": 15,
-        "scheduled_date": "2026-12-03",
+        "scheduled_date": "2026-12-01",
         "title": "もし夜の街から「店内の人数」が消えたら？",
         "youtube_title": "もし夜の街から「店内の人数」が消えたら？全国63店舗の実測で検証 #もしもシリーズ #金曜の夜 #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep15_no_live_count.mp4",
@@ -400,13 +398,13 @@ def _business_dt(now_jst: datetime.datetime = None) -> datetime.datetime:
 
 
 def _next_weekday_after(date_str: str) -> str:
-    """Return the next `Mon–Fri` `YYYY-MM-DD` strictly after `date_str`."""
+    """Return the next `Mon–Sat` (6x/week, skipping Sunday rest day) `YYYY-MM-DD` strictly after `date_str`."""
     try:
         d = datetime.date.fromisoformat(str(date_str or "").strip()[:10])
     except Exception:
         d = datetime.datetime.now(_JST).date()
     d = d + datetime.timedelta(days=1)
-    while d.weekday() >= 5:  # Skip Sat (5) & Sun (6)
+    while d.weekday() == 6:  # Skip Sun (6) rest day
         d = d + datetime.timedelta(days=1)
     return d.isoformat()
 
@@ -430,7 +428,7 @@ def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
     _valid_rel_re = _re.compile(r"^/static/reels/moshimo/[A-Za-z0-9_.-]+\.mp4$")
     out = [dict(ep) for ep in MOSHIMO_EPISODES]
     seen = {ep["ep_id"] for ep in out}
-    last_date = out[-1]["scheduled_date"] if out else "2026-12-03"
+    last_date = out[-1]["scheduled_date"] if out else "2026-12-01"
     next_order = len(out) + 1
     for c_ep in _load_custom_episodes(allow_blocking=allow_blocking):
         try:
@@ -528,13 +526,28 @@ def is_evergreen_recycle_enabled(allow_blocking: bool = False) -> bool:
     raw = job_state.get_value(MOSHIMO_EVERGREEN_CYCLE_KEY, allow_blocking=allow_blocking)
     if raw is not None and str(raw).strip() != "":
         return str(raw).strip().lower() in ("1", "true", "on", "yes")
-    env_raw = (os.environ.get("MOSHIMO_EVERGREEN_RECYCLE_DEFAULT") or "0").strip().lower()
+    env_raw = (os.environ.get("MOSHIMO_EVERGREEN_RECYCLE_DEFAULT") or "1").strip().lower()
     return env_raw in ("1", "true", "on", "yes")
 
 
 def set_evergreen_recycle_enabled(enabled: bool) -> bool:
     val = bool(enabled)
     job_state.set_value(MOSHIMO_EVERGREEN_CYCLE_KEY, "1" if val else "0")
+    return val
+
+
+def is_live_reel_fallback_enabled(allow_blocking: bool = False) -> bool:
+    """OFF by default (Moshimo-only Reels mode) so 3s-drop live-headcount Reels never dilute IG Reels metrics."""
+    raw = job_state.get_value(MOSHIMO_LIVE_FALLBACK_KEY, allow_blocking=allow_blocking)
+    if raw is not None and str(raw).strip() != "":
+        return str(raw).strip().lower() in ("1", "true", "on", "yes")
+    env_raw = (os.environ.get("MOSHIMO_LIVE_REEL_FALLBACK_DEFAULT") or "0").strip().lower()
+    return env_raw in ("1", "true", "on", "yes")
+
+
+def set_live_reel_fallback_enabled(enabled: bool) -> bool:
+    val = bool(enabled)
+    job_state.set_value(MOSHIMO_LIVE_FALLBACK_KEY, "1" if val else "0")
     return val
 
 
@@ -637,9 +650,12 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
 
     due = select_due_moshimo_episode(now_jst=now_jst)
     evergreen_on = is_evergreen_recycle_enabled(allow_blocking=allow_blocking)
+    live_fallback_on = is_live_reel_fallback_enabled(allow_blocking=allow_blocking)
     return {
         "enabled": is_moshimo_queue_enabled(allow_blocking=allow_blocking),
         "evergreen_recycle": evergreen_on,
+        "live_reel_fallback": live_fallback_on,
+        "schedule_cadence": "mon_sat_6x",
         "biz_date": biz_date,
         "posted_today": has_moshimo_posted_on_biz_date(biz_date),
         "total_episodes": len(all_eps),
@@ -701,8 +717,8 @@ def select_due_moshimo_episode(now_jst: datetime.datetime = None) -> dict:
       1. Never publish more than 1 Moshimo episode on the same `biz_date`.
       2. Exact match (`scheduled_date == biz_date`) wins immediately.
       3. Catch-up fallback: if an earlier episode (`scheduled_date < biz_date`) was missed due to a
-         transient outage, catch it up on `Mon–Fri` (`weekday in 0..4`), skipping Sunday rest days (`weekday == 6`).
-      4. Optional Evergreen Recycle: once all episodes have aired and `evergreen_recycle` is enabled,
+         transient outage, catch it up on `Mon–Sat` (`weekday in 0..5`), skipping Sunday rest days (`weekday == 6`).
+      4. Evergreen Recycle: once all episodes have aired and `evergreen_recycle` is enabled,
          re-air eligible episodes (`>= 21d` since last post) on `Tue/Thu`.
     """
     biz_dt = _business_dt(now_jst)
@@ -720,8 +736,8 @@ def select_due_moshimo_episode(now_jst: datetime.datetime = None) -> dict:
             if os.path.isfile(resolve_episode_local_path(ep)):
                 return dict(ep)
 
-    # 2. Overdue catch-up on Mon–Fri (never on Sunday rest day)
-    if biz_weekday in (0, 1, 2, 3, 4):
+    # 2. Overdue catch-up on Mon–Sat (never on Sunday rest day)
+    if biz_weekday in (0, 1, 2, 3, 4, 5):
         for ep in all_eps:
             if ep["scheduled_date"] < biz_date and not is_episode_posted(ep["ep_id"]):
                 if os.path.isfile(resolve_episode_local_path(ep)):
@@ -895,11 +911,13 @@ def dispatch_scheduled_ig_reel(
 ) -> dict:
     """
     Unified scheduled Instagram Reel dispatcher called by `worker.py` and `app.py`:
-      - Prioritizes due Moshimo episodes at `20:00` JST.
-      - Suppresses `22:50` late-night auto-reels on days a Moshimo Reel ran (and Mon–Thu / Sun during the campaign).
-      - Preserves Sunday as an algorithm rest day while Moshimo episodes remain queued.
-      - Falls back cleanly to `instagram_poster.publish_live_reel_to_instagram` on Fri/Sat nights with no
-        Moshimo scheduled, or once all queued Moshimo episodes have been published.
+      - Prioritizes due Moshimo episodes at `20:00` JST (`Mon–Sat`, 6x/week).
+      - Preserves Sunday as an algorithm rest day during active campaigns.
+      - Runs in Moshimo-only Reels mode by default (`live_reel_fallback=False`), skipping
+        automatic live-headcount Reels (including the `22:50` slot) to protect Reels retention
+        and profile grid quality. Manual live-Reel endpoints remain available.
+      - When `live_reel_fallback` is explicitly enabled, falls back to `publish_live_reel_to_instagram`
+        on open slots not covered by Moshimo episodes.
     """
     now_jst = _normalize_now_jst(now_jst)
     biz_dt = _business_dt(now_jst)
@@ -907,21 +925,26 @@ def dispatch_scheduled_ig_reel(
     biz_weekday = biz_dt.weekday()
 
     queue_on = is_moshimo_queue_enabled(allow_blocking=False)
+    live_fallback_on = is_live_reel_fallback_enabled(allow_blocking=False)
     has_remaining = any_unposted_moshimo_episodes() if queue_on else False
     is_late_slot = instagram_poster._is_late_night_reel_slot(slot_label)
 
-    # 1. Anti-cannibalization guard on 22:50 late-night slot
+    # 1. Anti-cannibalization & Moshimo-only guard on 22:50 late-night slot
     if is_late_slot:
         if has_moshimo_posted_on_biz_date(biz_date):
             reason = f"Suppressed {slot_label} auto-reel because Moshimo Reel already posted on {biz_date}"
             logging.info(f"[moshimo_reel_queue] {reason}")
             return {"status": "skipped", "ok": False, "skipped": True, "reason": reason}
-        if queue_on and has_remaining and biz_weekday in (0, 1, 2, 3, 6):
-            reason = f"Suppressed {slot_label} weekday/Sunday auto-reel during active Moshimo 5x/week campaign"
+        if not live_fallback_on:
+            reason = f"Skipped {slot_label} live-headcount auto-reel (Moshimo-only Reels mode)"
+            logging.info(f"[moshimo_reel_queue] {reason}")
+            return {"status": "skipped", "ok": False, "skipped": True, "reason": reason}
+        if queue_on and has_remaining and biz_weekday in (0, 1, 2, 3, 4, 6):
+            reason = f"Suppressed {slot_label} auto-reel during active Moshimo 6x/week campaign"
             logging.info(f"[moshimo_reel_queue] {reason}")
             return {"status": "skipped", "ok": False, "skipped": True, "reason": reason}
 
-    # 2. Primary 20:00 slot Moshimo dispatch
+    # 2. Primary 20:00 slot Moshimo dispatch (Mon–Sat 6x/week + Tue/Thu Evergreen recycle)
     if not is_late_slot and queue_on:
         due_ep = select_due_moshimo_episode(now_jst=now_jst)
         if due_ep is not None:
@@ -934,11 +957,15 @@ def dispatch_scheduled_ig_reel(
                 now_jst=now_jst,
             )
         if has_remaining and biz_weekday == 6:
-            reason = "Sunday rest day during active Moshimo 5x/week campaign"
+            reason = "Sunday rest day during active Moshimo 6x/week campaign"
             logging.info(f"[moshimo_reel_queue] {reason}")
             return {"status": "skipped", "ok": False, "skipped": True, "reason": reason}
 
-    # 3. Fallback to live real-time data Reel (Fri/Sat live surge or post-campaign)
+    # 3. Optional live-headcount Reel fallback (OFF by default in Moshimo-only Reels mode)
+    if not live_fallback_on:
+        reason = "Skipped live-headcount auto-reel fallback (Moshimo-only Reels mode)"
+        logging.info(f"[moshimo_reel_queue] {reason}")
+        return {"status": "skipped", "ok": False, "skipped": True, "reason": reason}
     if not stores or is_seed:
         return {"status": "skipped", "ok": False, "skipped": True, "reason": "No visible non-seed live stores"}
     return instagram_poster.publish_live_reel_to_instagram(
