@@ -163,21 +163,22 @@ MOSHIMO_EPISODES = (
         "order": 6,
         "scheduled_date": "2026-11-20",
         "title": "もし給料日前の「雨の夜」に街へ出たら？",
-        "youtube_title": "もし給料日前の「雨の夜」に街へ出たら？9.6万件実測で判明した穴場 #もしもシリーズ #雑学",
+        "youtube_title": "もし給料日前の「雨の夜」に街へ出たら？いちばん出かけたくない夜が穴場だった #もしもシリーズ #雨の日 #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep6_rainy_payday.mp4",
         "duration_sec": 44.9,
         "related_column_path": "/guide/rain-payday",
         "thumb_offset_ms": 500,
         "pinned_comment": (
-            "いちばん条件のいい夜は、いちばん出かけたくない夜でした。雨の給料日前に行ったことある人いますか？\n"
-            "▼ 雨天の駅直結店ランキングはチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+            "雨の給料日前、家を出られた人いますか？（いちばん条件のいい夜は、いちばん出かけたくない夜でした）\n"
+            "▼ 雨の夜の駅直結・地下直結ビルのリアルタイム男女比は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から（営業時間中は毎分更新）"
         ),
         "caption": (
-            "毎月15〜24日の給料日前、9.6万件の実測ログでは給料日直後（54.7%）より女性比率が62.1%（+7.4pt）まで上がります。\n"
-            "さらに雨の夜は前髪を守りたい女性がオリエンタルラウンジ新宿（72.7%）やJIS梅田（64.7%）など地下直結ビルへ集中。\n\n"
-            "その頃、男性陣は家で残高と天気予報を確認中…いちばん条件のいい夜は、いちばん出かけたくない夜でした。\n"
-            "※雨の夜のリアルタイム男女比はプロフィールの『相席ナビ』から\n"
-            "#もしもシリーズ #雨の日 #給料日前 #データ分析 #相席ナビ"
+            "給料日前の、雨の夜。\n"
+            "9.6万件ログの検証では給料日前（15〜24日）の女性比率は62.1%まで上がり、雨天時は前髪を守りたい女性が地下直結・駅直結のビルへ集まります。\n"
+            "その頃、男性陣は家で残高と天気予報を確認中。いちばん条件のいい夜は、いちばん出かけたくない夜でした。\n\n"
+            "次の雨の夜、あなたの街の駅直結ビルはいま何名いるでしょうか？\n"
+            "全国63店舗のリアルタイム男女比（営業時間中は毎分更新）はプロフィールの『相席ナビ』から。\n"
+            "#もしもシリーズ #雨の日 #給料日前 #データ分析 #雑学 #相席ナビ"
         ),
     },
     {
@@ -185,21 +186,21 @@ MOSHIMO_EPISODES = (
         "order": 7,
         "scheduled_date": "2026-11-23",
         "title": "もし5万人のドーム公演が一斉に終わったら？",
-        "youtube_title": "もし5万人のドームライブが一斉に終わったら？終演45分後の街データ #もしもシリーズ #ライブ",
+        "youtube_title": "もし5万人のドームライブが一斉に終わったら？終演45分後に街で起きる混雑変化 #もしもシリーズ #ライブ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep7_dome_live.mp4",
         "duration_sec": 42.9,
         "related_column_path": "/guide/dome-live-after-surge",
         "thumb_offset_ms": 500,
         "pinned_comment": (
-            "この夜に効くひとことは、ひとつだけ。「誰推しですか？」（ライブ帰りの熱狂に遭遇した夜、ありますか）\n"
-            "▼ 6大ドーム日程×現在人数はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+            "ライブ帰りの熱狂に遭遇した夜、ありますか？（この夜に効くひとことは「誰推しですか？」だけ）\n"
+            "▼ 全国6大ドーム公演日程と周辺エリアの混雑波形は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』で公開中"
         ),
         "caption": (
-            "ドームライブが20時半に終わる夜、会場まわりの居酒屋が満席になった45分後、感想を語りたい女性2人組が梅田や新宿の大型ラウンジへ合流します。\n"
-            "実測ピークではJIS梅田で女性206名を記録。\n\n"
-            "ただし彼女たちが話したいのは今日のセットリスト。この夜に効くひとことはひとつだけ、「誰推しですか」。\n"
-            "※ドーム公演連動の現在人数はプロフィールの『相席ナビ』から\n"
-            "#もしもシリーズ #ドームライブ #推し活 #梅田 #新宿 #相席ナビ"
+            "ドーム公演が終わった夜。会場まわりの居酒屋が満席になった45分後、感想を語り合いたいグループが梅田や新宿の大型ラウンジへ合流します。\n"
+            "2026年11月集計のピークでは、JIS（ジス）梅田で女性206名を記録。\n\n"
+            "ただし彼女たちが話したいのは、今日のセットリスト。この夜に効くひとことはひとつだけ、「誰推しですか」。\n\n"
+            "全国6大ドーム日程と連動した周辺エリアのリアルタイム混雑波形は、プロフィールの『相席ナビ』から見られます。\n"
+            "#もしもシリーズ #ドームライブ #梅田 #新宿 #データ分析 #相席ナビ"
         ),
     },
     {
@@ -207,22 +208,23 @@ MOSHIMO_EPISODES = (
         "order": 8,
         "scheduled_date": "2026-11-24",
         "title": "もし相席ラウンジから「席替え」が消えたら？",
-        "youtube_title": "もし相席ラウンジから「席替え」が消えたら？110分粘る人vs45分の損益分岐点 #もしもシリーズ",
+        "youtube_title": "もし相席ラウンジから「席替え」が消えたら？110分粘る人vs45分で動く人 #もしもシリーズ #コスパ #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep8_no_change.mp4",
         "duration_sec": 39.6,
         "related_column_path": "/guide/cost-break-even",
         "thumb_offset_ms": 500,
         "pinned_comment": (
-            "相席でいちばん長かった沈黙、教えてください（相手のお仕事、3回聞いてまだ覚えてない人へ）\n"
-            "▼ 今の女性人数＆2軒目マップはチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+            "相席でいちばん長かった沈黙、教えてください（彼は相手のお仕事を3回聞いて、まだ覚えていません）\n"
+            "▼ 45分で席を立ったあと歩いて行ける2軒目マップ（全国63店舗対応）は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
         ),
         "caption": (
-            "席替えシステムが消えると、噛み合わない席でも110分粘ってお会計は約9,800円。\n"
-            "「お仕事、何されてるんですか？」は本日3回目、終電の改札でそのまま解散します。\n\n"
-            "現実の損益分岐点は着席から45分前後。45分で夜カフェへ移れば約6,400円と3,000円以上お得です。\n"
-            "ちなみに110分座った彼、相手のお仕事をまだ覚えていません。\n"
-            "※全店舗の時間帯料金＆現在人数比較はプロフィールの『相席ナビ』から\n"
-            "#もしもシリーズ #相席ラウンジ #コスパ #損益分岐点 #相席ナビ"
+            "席替えが消えると、噛み合わない席でも立てないまま110分。\n"
+            "「お仕事、何されてるんですか？」は本日3回目です。\n\n"
+            "現実の損益分岐点は、着席から45分前後。会話のピーク直後に動くのが、10分従量課金ではいちばん傷が浅い選択です。\n"
+            "110分座った彼、相手のお仕事をまだ覚えていません。\n\n"
+            "よく行く街で「45分で移れる2軒目」、いくつ思い浮かびますか？\n"
+            "全国63店舗ぶんの徒歩圏2軒目ガイドはプロフィールの『相席ナビ』にまとめてあります。\n"
+            "#もしもシリーズ #相席ラウンジ #コスパ #損益分岐点 #2軒目 #相席ナビ"
         ),
     },
     {
@@ -230,21 +232,22 @@ MOSHIMO_EPISODES = (
         "order": 9,
         "scheduled_date": "2026-11-25",
         "title": "もし日曜21時半に会社員が一斉に帰ったら？",
-        "youtube_title": "もし日曜21時半に会社員が一斉に帰ったら？22時から始まる逆転現象 #もしもシリーズ #日曜の夜",
+        "youtube_title": "もし日曜21時半に会社員が一斉に帰ったら？22時から始まる逆転現象 #もしもシリーズ #日曜の夜 #雑学",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep9_sunday_night.mp4",
         "duration_sec": 43.5,
         "related_column_path": "/guide/sunday-lounge-strategy",
         "thumb_offset_ms": 500,
         "pinned_comment": (
-            "谷間の30分に入った経験、ありますか？（日曜の会社員の魔法はシンデレラより2時間半早く解けます）\n"
-            "▼ 曜日・時間別の人数波形はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+            "日曜の夜、何時に帰る派ですか？（会社員の魔法はシンデレラより2時間半早く解けます）\n"
+            "▼ 日曜21:30の帰宅波と22:00からの入れ替わり波形は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
         ),
         "caption": (
-            "日曜夜の平均女性比率は61.2%と高水準ですが、金曜より2時間早い「21時30分」に会社員が一斉に駅へ帰宅します。\n"
-            "日曜の会社員の魔法はシンデレラより2時間半早く解け、22時からは月曜休みの美容師・アパレル層が合流。\n\n"
-            "谷間の30分に入った人だけが、誰の金曜にも間に合いません。\n"
-            "※日曜夜のリアルタイム人数波形はプロフィールの『相席ナビ』から\n"
-            "#もしもシリーズ #日曜の夜 #美容師の休日 #データ分析 #相席ナビ"
+            "日曜夜の平均女性比率は61.2%と高水準ながら、金曜より2時間早い「21時30分」に会社員が一斉に駅へ向かいます。\n"
+            "魔法はシンデレラより2時間半早く解け、22時からは月曜休みのサービス業・アパレル層が合流。\n\n"
+            "谷間の30分に入った人だけが、誰の金曜にも間に合いません。\n\n"
+            "次の日曜22時、あなたの街は「帰る波」と「来る波」どちらが先に動くか。\n"
+            "曜日・時間帯別の人数波形と現在状況はプロフィールの『相席ナビ』から確認できます。\n"
+            "#もしもシリーズ #日曜の夜 #データ分析 #雑学 #相席ラウンジ #相席ナビ"
         ),
     },
     {
@@ -252,21 +255,131 @@ MOSHIMO_EPISODES = (
         "order": 10,
         "scheduled_date": "2026-11-26",
         "title": "もし夜の街に「1人参戦」だけで入ったら？",
-        "youtube_title": "もし夜の街に「1人参戦」だけで入ったら？全国43店舗の意外な実態 #もしもシリーズ #ひとり飲み",
+        "youtube_title": "もし夜の街に「1人参戦」だけで入ったら？実は全国43店舗が1名OK #もしもシリーズ #ひとり飲み #出張",
         "static_rel_path": "/static/reels/moshimo/moshimo_ep10_solo_night.mp4",
         "duration_sec": 42.8,
         "related_column_path": "/guide/solo-vs-pair",
         "thumb_offset_ms": 500,
         "pinned_comment": (
-            "今夜は彼が、既読スルーする番です。1人参戦したことある人いますか？\n"
-            "▼ 1名OK店舗＆リアルタイム人数はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+            "1人で入れる店、あなたの街に何店あるか知っていますか？（今夜は彼が、既読スルーする番です）\n"
+            "▼ 1名OK店舗フィルターと現在の男女比は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』で街ごとに検索できます"
         ),
         "caption": (
-            "予定が空いてふらっと1人で向かうと、一部店舗は2名以上限定で門前払い。\n"
-            "誘える友達がいたらそもそも1人で来ていませんが、実はJIS全9店・オリエンタルラウンジ24店・ASOBIBAR全10店など計43店舗は1名入店OK。\n\n"
-            "相方に気を使わず自分のペースで動けるソロは身軽。深夜に届いた友達からの「ごめん寝てた」には、既読スルーする番です。\n"
-            "※1名入店OK店舗と今の男女比はプロフィールの『相席ナビ』から\n"
-            "#もしもシリーズ #ひとり飲み #出張 #相席ラウンジ #相席ナビ"
+            "予定が空いてふらっと1人で向かうと、一部の都心大型店は2名以上限定で門前払い。\n"
+            "誘える友達がいたら、そもそも1人で来ていません。\n\n"
+            "実はJIS（ジス）は新宿を除く9店、オリエンタルラウンジは24店、ASOBIBAR（アソビバー）は全10店の計43店舗が1名入店OK（シングルチャージがかかる店あり）。\n"
+            "深夜に届いた友達の「ごめん寝てた」には、今夜は彼が既読スルーする番です。\n\n"
+            "あなたの街の「1名OK店舗」リストと今の男女比は、プロフィールの『相席ナビ』から10秒で絞り込めます。\n"
+            "#もしもシリーズ #ひとり飲み #出張 #相席ラウンジ #雑学 #相席ナビ"
+        ),
+    },
+    {
+        "ep_id": "ep11_no_read_receipt",
+        "order": 11,
+        "scheduled_date": "2026-11-27",
+        "title": "もし日本から「既読」が消えたら？",
+        "youtube_title": "もし日本から「既読」が消えたら？既読スルーが最後の優しさだった理由 #もしもシリーズ #既読スルー #雑学",
+        "static_rel_path": "/static/reels/moshimo/moshimo_ep11_no_read_receipt.mp4",
+        "duration_sec": 33.9,
+        "related_column_path": "/guide/line-exchange-reality",
+        "thumb_offset_ms": 500,
+        "pinned_comment": (
+            "既読スルー、した側ですか？された側ですか？（彼はいまも「読んでないだけ」と言っています）\n"
+            "▼ 記憶容量の壁を越えるLINE連絡のコツと全国63店舗のリアルタイム人数は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+        ),
+        "caption": (
+            "既読スルーされた夜、ありますか。\n\n"
+            "相席ナビの検証コラムでは、相席ラウンジで女性が1晩に3組・計6名と話すモデルケースをもとに、翌日の「昨日はありがとうございました！」が誰からなのか思い出せない記憶容量の壁を検証しました。\n"
+            "つまり既読スルーは「もう待たなくていい」の合図。既読が消えたら、彼は一生待てます。\n\n"
+            "今夜、あなたの街のラウンジに何名集まっているかと「既読スルー回避の検証コラム」はプロフィールの『相席ナビ』から。\n"
+            "#もしもシリーズ #既読スルー #LINE交換 #相席ラウンジ #雑学 #相席ナビ"
+        ),
+    },
+    {
+        "ep_id": "ep12_no_mirror",
+        "order": 12,
+        "scheduled_date": "2026-11-30",
+        "title": "もし日本から「鏡」が消えたら？",
+        "youtube_title": "もし日本から「鏡」が消えたら？70cmの距離で起きること #もしもシリーズ #身だしなみ #雑学",
+        "static_rel_path": "/static/reels/moshimo/moshimo_ep12_no_mirror.mp4",
+        "duration_sec": 38.1,
+        "related_column_path": "/guide/dress-code-cleanliness",
+        "thumb_offset_ms": 500,
+        "pinned_comment": (
+            "家を出る前、最後に鏡を見るのは何分前ですか？（彼は「もともと見ていない」そうです）\n"
+            "▼ 5ブランド別NGドレスコードと全国63店舗のリアルタイム状況は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から"
+        ),
+        "caption": (
+            "今朝、鏡を何秒見ましたか。\n\n"
+            "多くの相席ラウンジでは、テーブル幅約70cmの真上から2700K前後の暖色スポット照明が落ちるため、昼間は気にならなかった夕方のヒゲやTゾーンの皮脂を照明がきっちり拾います。\n"
+            "女性の身支度は目安90分。鏡が消えていちばん困るのは男性のはず、なのですが。\n\n"
+            "オリエンタルラウンジ・ag（アグ）・JIS（ジス）・ヤタコイ・ASOBIBAR（アソビバー）の5ブランド別ドレスコード比較と今夜のリアルタイム人数は、プロフィールの『相席ナビ』から。\n"
+            "#もしもシリーズ #身だしなみ #清潔感 #相席ラウンジ #雑学 #相席ナビ"
+        ),
+    },
+    {
+        "ep_id": "ep13_no_smartphone",
+        "order": 13,
+        "scheduled_date": "2026-12-01",
+        "title": "もし夜の街から「スマホ」が消えたら？",
+        "youtube_title": "もし夜の街から「スマホ」が消えたら？最初の10分で起きること #もしもシリーズ #スマホ #雑学",
+        "static_rel_path": "/static/reels/moshimo/moshimo_ep13_no_smartphone.mp4",
+        "duration_sec": 36.9,
+        "related_column_path": "/guide/first-10-minutes",
+        "thumb_offset_ms": 500,
+        "pinned_comment": (
+            "会話が止まったとき、スマホを触る派ですか？グラスを触る派ですか？\n"
+            "▼ スマホが「表・裏どちら向き」で置かれたら黄色信号か。検証コラム『相席の最初の10分』はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』内ガイドから"
+        ),
+        "caption": (
+            "会話が止まった瞬間、何を見ていますか。\n\n"
+            "相席ラウンジのボックス席は隣との距離が約40〜50cm。コラム『相席の最初の10分』では、最初の5〜10分で「もう1杯」か「席替え」かが決まる構造と、テーブル上のスマホの向きサインをまとめました。\n\n"
+            "スマホが表・裏どちら向きで置かれたら黄色信号か——答えと全国63店舗のリアルタイム人数は、プロフィールの『相席ナビ』内コラムから確認できます。\n"
+            "#もしもシリーズ #スマホ #会話 #相席ラウンジ #雑学 #相席ナビ"
+        ),
+    },
+    {
+        "ep_id": "ep14_no_tokyo_friday",
+        "order": 14,
+        "scheduled_date": "2026-12-02",
+        "title": "もし東京から「金曜の夜」が消えたら？",
+        "youtube_title": "もし東京から「金曜の夜」が消えたら？地方の深夜0時に起きる逆転 #もしもシリーズ #金曜の夜 #出張",
+        "static_rel_path": "/static/reels/moshimo/moshimo_ep14_no_tokyo_friday.mp4",
+        "duration_sec": 37.4,
+        "related_column_path": "/guide/local-vs-urban",
+        "thumb_offset_ms": 500,
+        "pinned_comment": (
+            "あなたの街の夜、本番は何時からですか？（東京から来た彼は、馬刺しが気に入って明日も20時に来るそうです）\n"
+            "▼ 都心vs地方の深夜0時リアルタイム人数比較は、チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から（営業時間中は毎分更新）"
+        ),
+        "caption": (
+            "金曜20時すぎの熊本・下通。東京の感覚でラウンジを覗くと、記録した一夜は女性8名・男性4名。「地方は流行ってないのかな」と帰りたくなります。\n\n"
+            "しかし着席型51店舗・9.6万件ログの比較では、地方店は20〜22時比で深夜0〜2時に女性が121%へ増加。都心が終電で引いていく時間に、地方の夜はようやく本番です。\n\n"
+            "あなたの街の深夜0時は何名動くか——全国63店舗のリアルタイム比較はプロフィールの『相席ナビ』から。\n"
+            "#もしもシリーズ #金曜の夜 #地方の夜 #出張 #雑学 #相席ナビ"
+        ),
+    },
+    {
+        "ep_id": "ep15_no_live_count",
+        "order": 15,
+        "scheduled_date": "2026-12-03",
+        "title": "もし夜の街から「店内の人数」が消えたら？",
+        "youtube_title": "もし夜の街から「店内の人数」が消えたら？全国63店舗の実測で検証 #もしもシリーズ #金曜の夜 #雑学",
+        "static_rel_path": "/static/reels/moshimo/moshimo_ep15_no_live_count.mp4",
+        "duration_sec": 38.2,
+        "related_column_path": "/guide/brand-waveform-asymmetry",
+        "thumb_offset_ms": 500,
+        "pinned_comment": (
+            "勘で入って大外れだった店、ありますか？（彼は並んだ末に、男たちと目が合いました）\n"
+            "▼ クイズ：次の金曜の夜、あなたの街でいちばん女性が多いビルはどこ？答え合わせはチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から（全国63店舗・営業時間中は毎分更新）"
+        ),
+        "caption": (
+            "もし店内の人数が見えなくなったら、店選びはぜんぶガチャ。頼れるのは勘と評判だけなので、全員が同じ有名店に並びます。\n\n"
+            "現実には、全国63店舗の人数が営業時間中は1分ごとに公開されています（累計ログ28万件超）。\n"
+            "2026年11月集計ではJIS（ジス）梅田が平均女性65.6名・ピーク206名・女性比63.6%。徒歩4分の別の店と女性比率が15〜25ポイント違う夜もあります。\n\n"
+            "次の金曜の夜、あなたの街でいちばん女性が多いビルはどこだと思いますか？\n"
+            "勘で予想してから、プロフィールの『相席ナビ』で答え合わせしてみてください。\n"
+            "#もしもシリーズ #金曜の夜 #相席ラウンジ #データ分析 #雑学 #相席ナビ"
         ),
     },
 )
@@ -312,12 +425,12 @@ def _load_custom_episodes(allow_blocking: bool = False) -> list:
 
 
 def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
-    """Combine built-in episodes (`#1..#10`) with any validated custom episodes added via `job_state`."""
+    """Combine built-in episodes (`#1..#15`) with any validated custom episodes added via `job_state`."""
     import re as _re
     _valid_rel_re = _re.compile(r"^/static/reels/moshimo/[A-Za-z0-9_.-]+\.mp4$")
     out = [dict(ep) for ep in MOSHIMO_EPISODES]
     seen = {ep["ep_id"] for ep in out}
-    last_date = out[-1]["scheduled_date"] if out else "2026-11-26"
+    last_date = out[-1]["scheduled_date"] if out else "2026-12-03"
     next_order = len(out) + 1
     for c_ep in _load_custom_episodes(allow_blocking=allow_blocking):
         try:
@@ -326,11 +439,13 @@ def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
             if not eid or eid in seen or not _valid_rel_re.match(rel_p):
                 continue
             sched = str(c_ep.get("scheduled_date") or "").strip()[:10]
-            if not sched:
+            try:
+                datetime.date.fromisoformat(sched)
+            except Exception:
                 sched = _next_weekday_after(last_date)
             order_val = int(c_ep.get("order") or next_order)
             dur_raw = c_ep.get("duration_sec")
-            dur_val = float(dur_raw) if dur_raw is not None else 0.0
+            dur_val = float(dur_raw) if dur_raw is not None and str(dur_raw).strip() != "" else None
             thumb_val = int(c_ep.get("thumb_offset_ms") or 500)
         except (TypeError, ValueError):
             continue
@@ -355,14 +470,22 @@ def get_all_moshimo_episodes(allow_blocking: bool = False) -> list:
 
 
 def build_youtube_shorts_description(ep: dict) -> str:
-    """Build ready-to-paste YouTube Shorts description / pinned comment with `@aiseki_navi` profile cue."""
+    """Build ready-to-paste YouTube Shorts description with clean `@aiseki_navi` channel-top CTA (no duplicate IG-profile wording)."""
     base_cap = str(ep.get("caption") or "").strip()
     col_path = str(ep.get("related_column_path") or "").strip()
-    lines = [
-        base_cap,
-        "",
-        "▼ 全国63店舗のリアルタイム男女比・待ち時間予測はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から見られます",
-    ]
+    cleaned_lines = []
+    for ln in base_cap.splitlines():
+        if "プロフィールの『相席ナビ』" in ln:
+            # Replace IG-only profile pointer with YouTube channel-top pointer so no duplicate/conflicting CTA appears
+            ln = ln.replace("プロフィールの『相席ナビ』", "チャンネルトップ（@aiseki_navi）のリンク『相席ナビ』")
+        cleaned_lines.append(ln)
+    yt_cap = "\n".join(cleaned_lines).strip()
+    lines = [yt_cap]
+    if "@aiseki_navi" not in yt_cap:
+        lines.extend([
+            "",
+            "▼ 全国63店舗のリアルタイム男女比・待ち時間予測（営業時間中は毎分更新）はチャンネルトップ（@aiseki_navi）のリンク『相席ナビ』から",
+        ])
     if col_path and col_path.startswith("/"):
         lines.append(f"（データ検証コラム：相席ナビ内 {col_path} ）")
     return "\n".join(lines).strip()
@@ -489,7 +612,7 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
             "youtube_description": yt_desc,
             "youtube_pinned_comment": yt_pinned,
             "caption": ep["caption"],
-            "duration_sec": float(ep.get("duration_sec") or 30.0),
+            "duration_sec": float(ep["duration_sec"]) if ep.get("duration_sec") is not None else None,
             "related_column_path": str(ep.get("related_column_path") or "/columns"),
             "static_rel_path": ep["static_rel_path"],
             "video_url": f"{instagram_poster.SITE_URL}{ep['static_rel_path']}?v={ep['ep_id']}",
@@ -530,6 +653,7 @@ def get_moshimo_queue_status(now_jst: datetime.datetime = None, allow_blocking: 
         "due_today": due["ep_id"] if due else None,
         "next_episode": next_ep_summary,
         "youtube_bio_url": f"{instagram_poster.SITE_URL}/?s=short_bio",
+        "instagram_bio_url": f"{instagram_poster.SITE_URL}/?s=ig_bio",
         "episodes": items,
     }
 

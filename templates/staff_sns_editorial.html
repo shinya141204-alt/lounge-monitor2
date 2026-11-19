@@ -1618,7 +1618,7 @@
 
             {% if _mq_init %}
             <div class="moshimo-grid">
-                <div class="moshimo-ep-list" role="listbox" aria-label="もしもシリーズ全10話リスト">
+                <div class="moshimo-ep-list" role="listbox" aria-label="もしもシリーズ配信リスト">
                     {% for ep in _mq_eps %}
                     {% set is_next = (moshimo_queue.next_episode and moshimo_queue.next_episode.ep_id == ep.ep_id) %}
                     <button type="button"
