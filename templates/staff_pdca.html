@@ -201,6 +201,138 @@
         body.theme-light .bar-fill {
             background: var(--text);
         }
+        .phase-banner {
+            background: var(--inner-card);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-inner, 13px);
+            padding: 10px 13px;
+            margin-bottom: 12px;
+        }
+        .phase-banner-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .phase-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            background: var(--green-soft);
+            border: 1px solid var(--green);
+            color: var(--green-ink);
+        }
+        .phase-target-meta {
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        progress.phase-progress {
+            appearance: none;
+            border: 0 solid;
+            overflow: clip;
+            display: block;
+            inline-size: 100%;
+            block-size: 8px;
+            border-radius: 999px;
+            background: var(--track-bg);
+            margin: 0 0 5px;
+        }
+        progress.phase-progress::-webkit-progress-bar {
+            background: transparent;
+        }
+        progress.phase-progress::-webkit-progress-value {
+            background: var(--green);
+            border-radius: 999px;
+            transition: inline-size 0.25s;
+        }
+        progress.phase-progress::-moz-progress-bar {
+            background: var(--green);
+            border-radius: 999px;
+            transition: inline-size 0.25s;
+        }
+        .phase-hint-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.73rem;
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        .phase-mode-fieldset {
+            margin: 0 0 10px;
+            padding: 10px 12px;
+            border-radius: var(--r-inner, 13px);
+            background: var(--inner-card);
+            border: 1px solid var(--border-strong);
+            min-width: 0;
+        }
+        .phase-mode-fieldset legend {
+            padding: 0 4px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .phase-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 6px;
+        }
+        @media (max-width: 520px) {
+            .phase-mode-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .phase-radio-vh {
+            position: absolute;
+            clip-path: inset(50%);
+            overflow: hidden;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            border: 0;
+            white-space: nowrap;
+        }
+        .phase-mode-pill {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            min-height: 38px;
+            padding: 6px 10px;
+            border-radius: var(--r-chip, 10px);
+            border: 1px solid var(--border-strong);
+            background: var(--surface);
+            color: var(--sub);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .phase-mode-pill:hover {
+            color: var(--text);
+            border-color: var(--text);
+        }
+        .phase-radio-vh:checked + .phase-mode-pill {
+            background: var(--active-bg);
+            border-color: var(--active-bg);
+            color: var(--active-ink);
+            font-weight: 800;
+        }
+        .phase-radio-vh:focus-visible + .phase-mode-pill {
+            outline: 2px solid var(--gold);
+            outline-offset: 2px;
+        }
         .control-card {
             display: flex;
             flex-direction: column;
@@ -1068,13 +1200,32 @@
             </div>
         </div>
 
-        <div id="pdca-toast" class="toast-msg"></div>
+        <div id="pdca-toast" class="toast-msg" role="status" aria-live="polite"></div>
 
-        <!-- Hero: Overall Health + Real KPI Strip + Autonomous Switches -->
+        {% set gp = (d.growth_phase if d.growth_phase is defined and d.growth_phase is mapping else None) or (pdca_obj.growth_phase if pdca_obj.growth_phase is defined and pdca_obj.growth_phase is mapping else {}) %}
+        {% set ins = (d.inflow_north_star if d.inflow_north_star is defined and d.inflow_north_star is mapping else None) or (pdca_obj.inflow_north_star if pdca_obj.inflow_north_star is defined and pdca_obj.inflow_north_star is mapping else {}) %}
+        {% set iwow = ins.inflow_wow if ins.inflow_wow is defined and ins.inflow_wow is mapping else {} %}
+        {% set pwow = ins.pv_wow if ins.pv_wow is defined and ins.pv_wow is mapping else {} %}
+        {% set cur_phase_mode = pdca_settings.growth_phase_mode|default(gp.mode|default('auto', true), true) %}
+
+        <!-- Hero: Growth Phase Milestone + Inflow-First KPI Strip + Autonomous Switches -->
         <div class="hero-grid" id="pdca-hero">
             <div class="card">
                 <h1>自律PDCA作戦参謀・グロース統括ボード</h1>
-                <p class="lead">サイトPV・記事別アフィリエイトCTR・SNS <code>?s=</code> 流入コホート・現場店舗の需要ギャップを横断分析し、SNS編集部とコラム編集部へ自動で次の一手をフィードバックします。</p>
+                <p class="lead">外部からの純新規流入（Google/AI検索・ショート動画・SNS <code>?s=</code>）と前週比成長率を最優先で診断し、成長フェーズに合わせてSNS鬼デスクとコラム編集部へ自動フィードバックします。</p>
+
+                <div class="phase-banner">
+                    <div class="phase-banner-top">
+                        <span class="phase-pill" id="pdca-phase-label">{{ gp.label|default('Phase 1｜流入拡大最優先', true) }}（{{ gp.mode_badge|default('自動判定', true) }}）</span>
+                        <span class="phase-target-meta">{{ gp.target_label|default('第1目標: 100〜300 PV/日（月間3,000〜1万PV）', true) }}</span>
+                    </div>
+                    <progress class="phase-progress" max="100" value="{{ gp.milestone_pct|default(0, true)|int }}" aria-labelledby="pdca-phase-label"></progress>
+                    <div class="phase-hint-row">
+                        <span>{{ gp.next_phase_hint|default('まずは初期突破ライン 100 PV/日を目指します', true) }}</span>
+                        <span>達成率 {{ gp.milestone_pct|default(0, true) }}%（月換算 {{ '{:,}'.format(gp.monthly_pv_pace|default(0, true)|int) }} PV）</span>
+                    </div>
+                </div>
+
                 <div class="score-box">
                     <div class="score-big">{{ d.overall_score|default(0, true) }}<small> / 100点</small></div>
                     <div style="font-size:0.79rem; color:var(--sub);">
@@ -1097,59 +1248,92 @@
                 </div>
                 {% set fn = d.funnel if d.funnel is defined and d.funnel is mapping else {} %}
                 {% set rv = d.revenue if d.revenue is defined and d.revenue is mapping else {} %}
-                <div class="kpi-strip" aria-label="直近期間の実測KPIサマリー">
+                <div class="kpi-strip" aria-label="直近期間の実測流入・グロースKPIサマリー">
                     <div class="kpi-cell">
-                        <div class="kpi-label">直近{{ days }}日 総PV</div>
-                        <div class="kpi-val">{{ '{:,}'.format(fn.pv_total|default(0, true)|int) }}</div>
-                        <div class="kpi-sub">下層・記事閲覧 {{ '{:,}'.format(fn.article_views|default(0, true)|int) }}回</div>
+                        <div class="kpi-label">外部純新規流入（前週比）</div>
+                        <div class="kpi-val">{{ '{:,}'.format(ins.external_inflow_total|default(sns_eff.total_tracked_inflows|default(0, true), true)|int) }}件</div>
+                        <div class="kpi-sub">{{ iwow.short_label|default('比較ログ蓄積中', true) }}</div>
                     </div>
                     <div class="kpi-cell">
-                        <div class="kpi-label">広告クリック / 全体CTR</div>
-                        <div class="kpi-val">{{ fn.aff_total|default(0, true) }}件</div>
-                        <div class="kpi-sub">CTR {{ fn.aff_ctr_pct|default(0, true) }}%</div>
+                        <div class="kpi-label">1日平均PV ／ 直近{{ days }}日総PV</div>
+                        <div class="kpi-val">{{ ins.daily_pv|default(0, true) }} <small style="font-size:0.74rem; font-weight:700;">PV/日</small></div>
+                        <div class="kpi-sub">総PV {{ '{:,}'.format(fn.pv_total|default(0, true)|int) }}（記事 {{ '{:,}'.format(fn.article_views|default(0, true)|int) }}回）</div>
                     </div>
                     <div class="kpi-cell">
-                        <div class="kpi-label">SNS <code>?s=</code> 流入 / CV</div>
+                        <div class="kpi-label">検索SEO ＆ ショート動画流入</div>
+                        <div class="kpi-val">検索 {{ ins.search_inflow_total|default(sns_eff.total_search_visits|default(0, true), true) }} ／ 動画 {{ ins.short_video_inflow_total|default(0, true) }}</div>
+                        <div class="kpi-sub">{% if ins.gsc_impressions is defined and ins.gsc_impressions is not none %}GSC表示 {{ '{:,}'.format(ins.gsc_impressions|int) }}回{% else %}最優先2大集客チャネル{% endif %}</div>
+                    </div>
+                    <div class="kpi-cell">
+                        <div class="kpi-label">SNS <code>?s=</code> 流入 ／ 回遊</div>
                         <div class="kpi-val">{{ sns_eff.total_sns_visits|default(0, true) }}回</div>
-                        <div class="kpi-sub">24h以内CV {{ sns_eff.total_sns_conversions|default(0, true) }}件</div>
-                    </div>
-                    <div class="kpi-cell">
-                        <div class="kpi-label">月間期待収益ペース</div>
-                        <div class="kpi-val">¥{{ '{:,}'.format(rv.est_monthly_pace_yen|default(0, true)|int) }}</div>
-                        <div class="kpi-sub">期間累計 約¥{{ '{:,}'.format(rv.est_total_yen|default(0, true)|int) }}</div>
+                        <div class="kpi-sub">回遊 {{ fn.engagement_rate_pct|default(0, true) }}% ｜ 24h以内CV {{ sns_eff.total_sns_conversions|default(0, true) }}件</div>
                     </div>
                 </div>
+                {% set axes_list = d.score_axes if d.score_axes is defined and d.score_axes is iterable and d.score_axes is not string and d.score_axes is not mapping and d.score_axes else [] %}
+                {% if axes_list %}
+                <div class="axis-grid">
+                    {% for ax in axes_list %}
+                    <div class="axis-item">
+                        <div class="axis-top"><span>{{ ax.label|default('-', true) }}</span><span>{{ ax.score|default(0, true) }}/{{ ax.max_score|default(25, true) }}</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ ax.pct|default(0, true)|int }}%;"></div></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
                 {% set sb_te = sb.traffic_engagement|default(0, true)|float %}
                 {% set sb_me = sb.monetization_efficiency|default(0, true)|float %}
                 {% set sb_sd = sb.sns_diversity_inflow|default(0, true)|float %}
                 {% set sb_cp = sb.content_pipeline_health|default(0, true)|float %}
                 <div class="axis-grid">
                     <div class="axis-item">
-                        <div class="axis-top"><span>集客・サイト回遊</span><span>{{ sb.traffic_engagement|default(0, true) }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_te / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>純新規流入・前週比成長</span><span>{{ sb.traffic_engagement|default(0, true) }}/35</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_te / 35 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>収益・広告CTR効率</span><span>{{ sb.monetization_efficiency|default(0, true) }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_me / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>検索SEO・AI検索基盤</span><span>{{ sb.content_pipeline_health|default(0, true) }}/30</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_cp / 30 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow|default(0, true) }}/25</span></div>
+                        <div class="axis-top"><span>ショート動画・SNS誘導</span><span>{{ sb.sns_diversity_inflow|default(0, true) }}/25</span></div>
                         <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_sd / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health|default(0, true) }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_cp / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>有効回遊・定着率</span><span>{{ sb.monetization_efficiency|default(0, true) }}/10</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_me / 10 * 100)|round|int }}%;"></div></div>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <div class="card control-card">
                 <div>
-                    <div style="font-size:0.86rem; font-weight:800; color:var(--gold); margin-bottom:10px;">自律PDCAオートパイロット設定（毎日 17:35 / 03:35 自動実行）</div>
-                    <div class="toggle-row" style="margin-bottom:9px;">
+                    <div style="font-size:0.86rem; font-weight:800; color:var(--gold); margin-bottom:8px;">PDCA評価フェーズ＆オートパイロット設定（毎日 17:35 / 03:35 自動実行）</div>
+                    <fieldset class="phase-mode-fieldset">
+                        <legend>評価フェーズモード（PVマイルストーン連動）</legend>
+                        <div class="phase-mode-grid">
+                            <div>
+                                <input type="radio" id="phase-mode-auto" name="growth_phase_mode" value="auto" class="phase-radio-vh" {{ 'checked' if cur_phase_mode == 'auto' else '' }} data-pdca-change="save-settings">
+                                <label for="phase-mode-auto" class="phase-mode-pill"><span>自動判定（推奨）</span><span>PV連動</span></label>
+                            </div>
+                            <div>
+                                <input type="radio" id="phase-mode-p1" name="growth_phase_mode" value="phase1_inflow" class="phase-radio-vh" {{ 'checked' if cur_phase_mode == 'phase1_inflow' else '' }} data-pdca-change="save-settings">
+                                <label for="phase-mode-p1" class="phase-mode-pill"><span>Phase 1 固定</span><span>流入最優先</span></label>
+                            </div>
+                            <div>
+                                <input type="radio" id="phase-mode-p2" name="growth_phase_mode" value="phase2_engagement" class="phase-radio-vh" {{ 'checked' if cur_phase_mode == 'phase2_engagement' else '' }} data-pdca-change="save-settings">
+                                <label for="phase-mode-p2" class="phase-mode-pill"><span>Phase 2 固定</span><span>回遊・定着</span></label>
+                            </div>
+                            <div>
+                                <input type="radio" id="phase-mode-p3" name="growth_phase_mode" value="phase3_monetize" class="phase-radio-vh" {{ 'checked' if cur_phase_mode == 'phase3_monetize' else '' }} data-pdca-change="save-settings">
+                                <label for="phase-mode-p3" class="phase-mode-pill"><span>Phase 3 固定</span><span>収益最大化</span></label>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="toggle-row" style="margin-bottom:8px;">
                         <div>
-                            <div class="toggle-title">① SNS切り口配分＆優先紹介コラムの自動最適化</div>
-                            <div class="toggle-desc">流入実績の高い切り口をSNS鬼デスクで自動加点し、高CTR記事・未露出記事をX 18:00枠へ優先セットします。</div>
+                            <div class="toggle-title">① 流入実績順のSNS切り口加点＆優先記事セット</div>
+                            <div class="toggle-desc">純新規流入を生んだ切り口を鬼デスクで自動加点し、高流入・GSC検索需要記事をX 18:00枠へ優先セットします。</div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-auto-sns" {{ 'checked' if pdca_settings.auto_optimize_sns else '' }} data-pdca-change="save-settings">
@@ -1159,7 +1343,7 @@
                     <div class="toggle-row">
                         <div>
                             <div class="toggle-title">② 予約コラム在庫切れ時のフルオート執筆・予約補充</div>
-                            <div class="toggle-desc">OFF時は特命お題提案＋ワンクリック承認（推奨）。ONにすると予約待機が残り1本以下の際、鬼デスク85点以上の新規コラムを自動で予約補充します。</div>
+                            <div class="toggle-desc">OFF時は特命お題提案＋ワンクリック承認（推奨）。ONで待機残り1本以下の際に鬼デスク85点以上の記事を自動予約補充します。</div>
                         </div>
                         <label class="switch">
                             <input type="checkbox" id="toggle-auto-col" {{ 'checked' if pdca_settings.auto_replenish_columns else '' }} data-pdca-change="save-settings">
@@ -1175,16 +1359,16 @@
             <div class="ws-subtab-shell master-section-jumpbar">
                 <div class="ws-tablist" role="tablist" aria-label="PDCA参謀セクション切り替え">
                     <button type="button" role="tab" class="ws-tab" id="ws-tab-actions" data-ws-tab="actions" aria-selected="true">
-                        <span>勝ち筋・最優先TOP3</span>
-                    </button>
-                    <button type="button" role="tab" class="ws-tab" id="ws-tab-monetization" data-ws-tab="monetization" aria-selected="false">
-                        <span>案件CTR・記事機会損失</span>
+                        <span>流入勝ち筋・最優先TOP3</span>
                     </button>
                     <button type="button" role="tab" class="ws-tab" id="ws-tab-learning" data-ws-tab="learning" aria-selected="false">
-                        <span>SNS効率・3層学習スタジオ</span>
+                        <span>検索SEO・動画・SNS効率</span>
                     </button>
                     <button type="button" role="tab" class="ws-tab" id="ws-tab-automation" data-ws-tab="automation" aria-selected="false">
                         <span>4歯車・自動編成・実行ログ</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-monetization" data-ws-tab="monetization" aria-selected="false">
+                        <span>記事回遊・収益導線</span>
                     </button>
                 </div>
                 <div class="ws-subtab-tools">
@@ -1215,9 +1399,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
                     <h2 style="font-size:1.02rem; margin:0 0 3px;">今週の最優先グロース・アクションTOP3</h2>
-                    <div style="font-size:0.78rem; color:var(--sub);">実測PV・案件CVR・現場男女比ギャップから算出した、今週マスター管理者が打つべき最もレバレッジの高い3大施策です。</div>
+                    <div style="font-size:0.78rem; color:var(--sub);">現在の評価フェーズ（{{ gp.label|default('Phase 1｜流入拡大最優先', true) }}）に基づき、純新規流入・検索CTR・ショート動画リーチを最大化する3手を提示します（収益導線提案は {{ gp.min_pv_for_funnel_action|default(50, true) }} PV以上の高流入ページ発生時のみ表示）。</div>
                 </div>
-                <span class="ultra-badge">収益＆成長インテリジェンス</span>
+                <span class="ultra-badge">{{ gp.short_label|default('流入拡大最優先', true) }}モード</span>
             </div>
             {% if growth_actions %}
             <div class="growth-grid">
@@ -2388,23 +2572,35 @@
             copyTextSafe(txt, 'ショート動画の構成メモ＆誘導URLをコピーしました');
         }
 
-        async function savePdcaSettings() {
+        async function savePdcaSettings(changedEl) {
             const snsEl = document.getElementById('toggle-auto-sns');
             const colEl = document.getElementById('toggle-auto-col');
+            const checkedPhaseEl = document.querySelector('input[name="growth_phase_mode"]:checked');
+            const phaseRadios = document.querySelectorAll('input[name="growth_phase_mode"]');
             const autoSns = snsEl ? snsEl.checked : false;
             const autoCol = colEl ? colEl.checked : false;
+            const phaseMode = checkedPhaseEl ? checkedPhaseEl.value : 'auto';
+            const isPhaseChange = Boolean(changedEl && changedEl.name === 'growth_phase_mode');
             if (snsEl) snsEl.disabled = true;
             if (colEl) colEl.disabled = true;
+            phaseRadios.forEach((r) => { r.disabled = true; });
+            let redirected = false;
             try {
                 const j = await fetchJsonSafe('/api/pdca/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({
                         auto_optimize_sns: autoSns,
-                        auto_replenish_columns: autoCol
+                        auto_replenish_columns: autoCol,
+                        growth_phase_mode: phaseMode
                     })
                 }, 20000);
                 if (j && j.ok) {
+                    if (isPhaseChange) {
+                        redirected = true;
+                        window.location.href = `/staff/pdca?days=${CURRENT_DAYS}`;
+                        return;
+                    }
                     syncDirectiveChips(j.active_directives || {});
                     showToast(`自律PDCA設定を保存しました（SNS最適化: ${autoSns ? 'ON' : 'OFF'} ／ 在庫切れ自動コラム補充: ${autoCol ? 'ON' : 'OFF'}）`);
                 } else {
@@ -2413,8 +2609,11 @@
             } catch (e) {
                 showToast('設定保存エラー: ' + ((e && e.message) || '通信エラーが発生しました'));
             } finally {
-                if (snsEl) snsEl.disabled = false;
-                if (colEl) colEl.disabled = false;
+                if (!redirected) {
+                    if (snsEl) snsEl.disabled = false;
+                    if (colEl) colEl.disabled = false;
+                    phaseRadios.forEach((r) => { r.disabled = false; });
+                }
             }
         }
 
@@ -2988,7 +3187,7 @@
                 const el = ev.target && ev.target.closest ? ev.target.closest('[data-pdca-change]') : null;
                 if (!el) return;
                 if (el.getAttribute('data-pdca-change') === 'save-settings') {
-                    savePdcaSettings();
+                    savePdcaSettings(el);
                 }
             });
         }

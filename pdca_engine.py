@@ -52,11 +52,114 @@ def reset_pdca_cache_for_tests():
     turbo_store.clear_ai_cache("pdca_briefing")
 
 
+VALID_GROWTH_PHASE_MODES = (
+    "auto",
+    "phase1_inflow",
+    "phase2_engagement",
+    "phase3_monetize",
+)
+
+GROWTH_PHASE_SPECS = {
+    "phase1_inflow": {
+        "phase_number": 1,
+        "label": "Phase 1｜流入拡大最優先",
+        "short_label": "流入拡大最優先",
+        "step1_target_daily_pv": 100,
+        "target_daily_pv": 300,
+        "target_label": "第1目標: 100〜300 PV/日（月間3,000〜1万PV）",
+        "min_pv_for_funnel_action": 50,
+    },
+    "phase2_engagement": {
+        "phase_number": 2,
+        "label": "Phase 2｜回遊定着＆2ステップ強化",
+        "short_label": "回遊定着＆初期収益化",
+        "step1_target_daily_pv": 500,
+        "target_daily_pv": 1000,
+        "target_label": "第2目標: 300〜1,000 PV/日（月間1万〜3万PV）",
+        "min_pv_for_funnel_action": 20,
+    },
+    "phase3_monetize": {
+        "phase_number": 3,
+        "label": "Phase 3｜収益CVR・EPC最大化",
+        "short_label": "収益CVR・EPC最大化",
+        "step1_target_daily_pv": 1500,
+        "target_daily_pv": 3000,
+        "target_label": "第3目標: 1,000〜3,000 PV/日（高EPC収益運用）",
+        "min_pv_for_funnel_action": 5,
+    },
+}
+
+
+def _normalize_growth_phase_mode(raw_mode: str) -> str:
+    m = str(raw_mode or "auto").strip().lower()
+    return m if m in VALID_GROWTH_PHASE_MODES else "auto"
+
+
+def resolve_growth_phase(daily_pv: float, mode: str = "auto") -> dict:
+    """Resolve active Growth Phase (auto by daily PV milestone or explicit manual override)."""
+    norm_mode = _normalize_growth_phase_mode(mode)
+    dpv = max(0.0, float(daily_pv or 0.0))
+    is_auto = norm_mode == "auto"
+    if is_auto:
+        if dpv < 300.0:
+            active_phase = "phase1_inflow"
+        elif dpv < 1000.0:
+            active_phase = "phase2_engagement"
+        else:
+            active_phase = "phase3_monetize"
+    else:
+        active_phase = norm_mode
+
+    spec = GROWTH_PHASE_SPECS[active_phase]
+    target_pv = float(spec["target_daily_pv"])
+    step1_pv = float(spec["step1_target_daily_pv"])
+    milestone_pct = min(100, max(0, int(round((dpv / target_pv) * 100)))) if target_pv > 0 else 0
+    step1_pct = min(100, max(0, int(round((dpv / step1_pv) * 100)))) if step1_pv > 0 else 0
+
+    if active_phase == "phase1_inflow":
+        if dpv < 100.0:
+            rem = max(1, int(round(100.0 - dpv)))
+            hint = f"まずは初期突破ライン 100 PV/日（月間3,000PV）まであと {rem} PV/日"
+        elif dpv < 300.0:
+            rem = max(1, int(round(300.0 - dpv)))
+            hint = f"100 PV/日達成！Phase 2移行ライン（300 PV/日・月間1万PV）まであと {rem} PV/日"
+        else:
+            hint = "300 PV/日を達成済み（自動判定またはPhase 2へ移行可能）"
+    elif active_phase == "phase2_engagement":
+        if dpv < 1000.0:
+            rem = max(1, int(round(1000.0 - dpv)))
+            hint = f"Phase 3（収益最大化・1,000 PV/日）移行まであと {rem} PV/日"
+        else:
+            hint = "1,000 PV/日を達成済み（Phase 3へ移行可能）"
+    else:
+        hint = "高トラフィック帯：検索・ショート動画流入を維持しつつ2ステップCVR・EPCを最適化"
+
+    return {
+        "mode": norm_mode,
+        "active_phase": active_phase,
+        "phase_number": spec["phase_number"],
+        "label": spec["label"],
+        "short_label": spec["short_label"],
+        "is_auto": is_auto,
+        "mode_badge": "自動判定" if is_auto else "手動固定",
+        "daily_pv": round(dpv, 1),
+        "monthly_pv_pace": int(round(dpv * 30.0)),
+        "step1_target_daily_pv": int(step1_pv),
+        "target_daily_pv": int(target_pv),
+        "step1_pct": step1_pct,
+        "milestone_pct": milestone_pct,
+        "target_label": spec["target_label"],
+        "min_pv_for_funnel_action": spec["min_pv_for_funnel_action"],
+        "next_phase_hint": hint,
+    }
+
+
 def get_pdca_settings(allow_blocking: bool = True) -> dict:
     default_replenish = os.environ.get("PDCA_AUTO_REPLENISH_DEFAULT", "0").strip().lower() in ("1", "true", "yes", "on")
     defaults = {
         "auto_optimize_sns": True,
         "auto_replenish_columns": default_replenish,
+        "growth_phase_mode": "auto",
         "updated_at": "",
     }
     raw = job_state.get_value(PDCA_SETTINGS_KEY, allow_blocking=allow_blocking)
@@ -68,6 +171,7 @@ def get_pdca_settings(allow_blocking: bool = True) -> dict:
             defaults.update({
                 "auto_optimize_sns": bool(parsed.get("auto_optimize_sns", True)),
                 "auto_replenish_columns": bool(parsed.get("auto_replenish_columns", default_replenish)),
+                "growth_phase_mode": _normalize_growth_phase_mode(parsed.get("growth_phase_mode", "auto")),
                 "updated_at": str(parsed.get("updated_at") or ""),
             })
     except Exception:
@@ -75,18 +179,29 @@ def get_pdca_settings(allow_blocking: bool = True) -> dict:
     return defaults
 
 
-def update_pdca_settings(auto_optimize_sns: bool = None, auto_replenish_columns: bool = None) -> dict:
+def update_pdca_settings(
+    auto_optimize_sns: bool = None,
+    auto_replenish_columns: bool = None,
+    growth_phase_mode: str = None,
+) -> dict:
     cur = get_pdca_settings(allow_blocking=True)
     if auto_optimize_sns is not None:
         cur["auto_optimize_sns"] = bool(auto_optimize_sns)
     if auto_replenish_columns is not None:
         cur["auto_replenish_columns"] = bool(auto_replenish_columns)
+    if growth_phase_mode is not None:
+        cur["growth_phase_mode"] = _normalize_growth_phase_mode(growth_phase_mode)
     cur["updated_at"] = datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
     job_state.set_value(PDCA_SETTINGS_KEY, json.dumps(cur, ensure_ascii=False))
     with _pdca_lock:
         _directives_mem_cache["ts"] = 0.0
         _directives_mem_cache["data"] = None
         _directives_mem_cache["verified"] = False
+    try:
+        with _site_perf_cache_lock:
+            _site_perf_cache.clear()
+    except Exception:
+        pass
     return cur
 
 
@@ -728,11 +843,13 @@ def _build_sns_channel_efficiency(
     offer_breakdown: list,
     reels_logged_extra: int = 0,
     yt_shorts_logged: int = 0,
+    active_phase: str = "phase1_inflow",
 ) -> dict:
     """
-    Compare X / Threads / Instagram / Reels / YouTube Shorts / Search inflow efficiency,
-    surface the #1 channel, best time slot & editorial style, and generate Reels video concepts.
+    Compare Search / Reels / YouTube Shorts / X / Threads / Instagram inflow efficiency,
+    surface the #1 acquisition channel, best time slot & editorial style, and generate Reels video concepts.
     """
+    is_inflow_first = active_phase in ("phase1_inflow", "phase2_engagement")
     ig_carousel_logged = sum(
         1 for h in (ig_hist or [])
         if not str(h.get("selected_style") or "").lower().startswith(("reel", "short", "tiktok", "moshimo"))
@@ -744,31 +861,13 @@ def _build_sns_channel_efficiency(
 
     channel_defs = [
         {
-            "channel_key": "x",
-            "label": "𝕏 X（旧Twitter）",
-            "default_slot": "22:00（1軒目→2軒目移動前）",
-            "default_style": "街別ギャップ・ハシゴ型 (hub_gap)",
-            "posts_logged": len(x_hist or []),
-            "priority": 4,
-            "base_tactic": "20時・22時速報の1行目フックを『街別ギャップ・普段比異変』に寄せ、リプ欄に高CTRコラム＋?s=識別リンクを徹底固定。",
-        },
-        {
-            "channel_key": "threads",
-            "label": "🧵 Threads（スレッズ）",
-            "default_slot": "20:30（仕事帰り・女子組リサーチ帯）",
-            "default_style": "街の温度差エッセイ型 (threads_city_story)",
-            "posts_logged": len(th_hist or []),
-            "priority": 3,
-            "base_tactic": "宣伝感を消した『運営モニター裏話・男女の本音エッセイ』で共感保存を取り、奇数日リンク＆プロフ導線で /for-women とトップへ送客。",
-        },
-        {
-            "channel_key": "instagram",
-            "label": "📸 Instagram（カルーセル・保存枠）",
-            "default_slot": "19:30（木〜土曜の予定決め・保存帯）",
-            "default_style": "週末予測カルーセル＆女子得保存ガイド",
-            "posts_logged": ig_carousel_logged,
-            "priority": 2,
-            "base_tactic": "週末穴場5枚スライド（/staff/sns-kit）で保存数を稼ぎ、ストーリーズのリンクスタンプ（?s=ig_story）からリアルタイム順位へ直結。",
+            "channel_key": "search",
+            "label": "🔍 自然検索・AI検索 (Google / AI)",
+            "default_slot": "19:00〜23:00（入店前リサーチ・エリア比較帯）",
+            "default_style": "店舗・エリア比較SEO＆一次統計コラム (ref_google)",
+            "posts_logged": 0,
+            "priority": 6 if is_inflow_first else 4,
+            "base_tactic": "Search Consoleのお宝クエリ（4〜20位・高表示）のタイトル最適化と、ドーム終演・エリア比較コラムの予約公開で検索・AI引用流入を複利拡大。",
         },
         {
             "channel_key": "reels",
@@ -777,7 +876,7 @@ def _build_sns_channel_efficiency(
             "default_style": "3Dボクセル『もしもシリーズ』＆3秒ギャップ実証型",
             "posts_logged": ig_reels_logged,
             "priority": 5,
-            "base_tactic": "月〜金20:00は3D『もしもシリーズ』キューから自動投稿し、土曜ピークはリアルタイムTOP5リールを自動補完してプロフリンクへ誘導。",
+            "base_tactic": "月〜金20:00は3D『もしもシリーズ』キューから自動投稿し、週末ピークは同駅徒歩5分ギャップ実証リールで非フォロワー層をプロフリンクへ誘導。",
         },
         {
             "channel_key": "youtube_shorts",
@@ -786,16 +885,34 @@ def _build_sns_channel_efficiency(
             "default_style": "3Dボクセル『もしもシリーズ』35秒検証 (short_bio)",
             "posts_logged": int(yt_shorts_logged or 0),
             "priority": 5,
-            "base_tactic": "SNS編集部のYouTubeショート連携パックから1クリックでタイトル・固定コメントをコピー投稿し、プロフ『?s=short_bio』経由のサイト流入を計測。",
+            "base_tactic": "SNS編集部のYouTubeショート連携パックからタイトル・固定コメントを展開し、プロフ『?s=short_bio』経由の検索・関連動画流入を獲得。",
         },
         {
-            "channel_key": "search",
-            "label": "🔍 自然検索・AI検索 (Google / AI)",
-            "default_slot": "19:00〜23:00（入店前リサーチ・エリア比較帯）",
-            "default_style": "一次統計データ＆予約コラム自動公開 (ref_google)",
-            "posts_logged": 0,
+            "channel_key": "x",
+            "label": "𝕏 X（旧Twitter）",
+            "default_slot": "22:00（1軒目→2軒目移動前）",
+            "default_style": "街別ギャップ・ハシゴ型 (hub_gap)",
+            "posts_logged": len(x_hist or []),
             "priority": 4,
-            "base_tactic": "Search Consoleのお宝クエリ（高表示・低CTR）をPDCA画面で特定し、週2本の予約コラム自動解禁でロングテール検索とAI引用を継続拡大。",
+            "base_tactic": "20時・22時速報の1行目フックを『具体店名×普段比ギャップ』に寄せ、リプ欄に高流入コラム＋?s=識別リンクを徹底固定。",
+        },
+        {
+            "channel_key": "threads",
+            "label": "🧵 Threads（スレッズ）",
+            "default_slot": "20:30（仕事帰り・女子組リサーチ帯）",
+            "default_style": "街の温度差エッセイ型 (threads_city_story)",
+            "posts_logged": len(th_hist or []),
+            "priority": 3,
+            "base_tactic": "宣伝感を消した『データ観察エッセイ・男女の本音』で共感保存を取り、奇数日リンク＆プロフ導線でトップと /for-women へ送客。",
+        },
+        {
+            "channel_key": "instagram",
+            "label": "📸 Instagram（カルーセル・保存枠）",
+            "default_slot": "19:30（木〜土曜の予定決め・保存帯）",
+            "default_style": "週末予測カルーセル＆女子得保存ガイド",
+            "posts_logged": ig_carousel_logged,
+            "priority": 2,
+            "base_tactic": "SNS編集部の週末5枚組スライドで保存数を稼ぎ、ストーリーズのリンクスタンプ（?s=ig_story）からリアルタイム順位へ直結。",
         },
     ]
 
@@ -823,7 +940,10 @@ def _build_sns_channel_efficiency(
         ch_rev_yen[ck] += rev_y
         seen_tag_visits[norm_t] += v
         seen_tag_cvs[norm_t] += cv
-        score_w = v + cush * 2 + cv * 5 + int(rev_y / 60)
+        if is_inflow_first:
+            score_w = v * 4 + cush * 2 + cv
+        else:
+            score_w = v + cush * 2 + cv * 5 + int(rev_y / 60)
         if hr:
             ch_hours[ck][hr] += score_w
         if st:
@@ -863,13 +983,14 @@ def _build_sns_channel_efficiency(
                 ch_visits[ck_v] += delta_v
                 seen_tag_visits[norm_v_tag] += delta_v
                 if hr_v:
-                    ch_hours[ck_v][hr_v] += delta_v
+                    ch_hours[ck_v][hr_v] += delta_v * (4 if is_inflow_first else 1)
                 if st_v:
-                    ch_styles[ck_v][st_v] += delta_v
+                    ch_styles[ck_v][st_v] += delta_v * (4 if is_inflow_first else 1)
                     style_agg[st_v]["visits"] += delta_v
 
     total_tracked_inflows = sum(ch_visits.values())
     total_search_visits = int(ch_visits.get("search", 0))
+    total_short_video_visits = int(ch_visits.get("reels", 0)) + int(ch_visits.get("youtube_shorts", 0))
     total_sns_visits = max(0, total_tracked_inflows - total_search_visits)
     share_denom = total_tracked_inflows if total_tracked_inflows > 0 else 0
     channels_out = []
@@ -884,7 +1005,10 @@ def _build_sns_channel_efficiency(
         epc_v = round(rev_y / float(v), 1) if v > 0 else 0.0
         cvr = round((cv / v) * 100, 1) if v > 0 else 0.0
         share_pct = round((v / share_denom) * 100, 1) if share_denom > 0 else 0.0
-        eff_score = round(cv * 15.0 + cush_c * 3.0 + (rev_y / 35.0) + v * 2.5 + cvr * 0.3, 1)
+        if is_inflow_first:
+            eff_score = round(v * 10.0 + cush_c * 2.5 + cv * 1.5, 1)
+        else:
+            eff_score = round(cv * 15.0 + cush_c * 3.0 + (rev_y / 35.0) + v * 2.5 + cvr * 0.3, 1)
 
         if ch_hours.get(ck):
             top_hr = max(ch_hours[ck], key=ch_hours[ck].get)
@@ -914,7 +1038,7 @@ def _build_sns_channel_efficiency(
             "best_time_slot": best_slot,
             "best_style_label": best_style,
             "tactic": cdef["base_tactic"],
-            "_sort_key": (eff_score, v, cdef["priority"]),
+            "_sort_key": (v, eff_score, cdef["priority"]) if is_inflow_first else (eff_score, v, cdef["priority"]),
         })
 
     channels_out.sort(key=lambda x: x["_sort_key"], reverse=True)
@@ -928,9 +1052,9 @@ def _build_sns_channel_efficiency(
         else:
             ch["bar_pct"] = 0
         if idx == 1 and (ch["visits"] > 0 or ch["conversions"] > 0):
-            ch["status_badge"] = "🥇 サイト誘導効率 No.1"
-        elif ch["channel_key"] in ("reels", "youtube_shorts") and ch["visits"] == 0:
-            ch["status_badge"] = "🚀 高リーチ拡大枠"
+            ch["status_badge"] = "🥇 サイト流入牽引 No.1" if is_inflow_first else "🥇 サイト誘導効率 No.1"
+        elif ch["channel_key"] in ("search", "reels", "youtube_shorts") and ch["visits"] == 0:
+            ch["status_badge"] = "🚀 最優先グロース枠"
         elif ch["visits"] > 0:
             ch["status_badge"] = "📈 流入稼働中"
         else:
@@ -949,7 +1073,7 @@ def _build_sns_channel_efficiency(
             "visits": sv,
             "conversions": scv,
             "cvr_pct": scvr,
-            "score": sv + scv * 6,
+            "score": (sv * 4 + scv) if is_inflow_first else (sv + scv * 6),
         })
     style_ranking.sort(key=lambda x: x["score"], reverse=True)
 
@@ -982,7 +1106,7 @@ def _build_sns_channel_efficiency(
             "title": reel1_title,
             "hook_0_3s": f"「正直、金曜の{hub_name}で看板だけ見て1軒目に並ぶ人、かなり損してます…」",
             "body_outline": reel1_outline,
-            "cta_route": "プロフリンク『?s=reel_hub_gap』→ トップ現在人数＆混雑回避アプリ枠",
+            "cta_route": "プロフリンク『?s=reel_hub_gap』（YTショートは『?s=short_bio』）→ トップ現在人数ボード",
             "best_post_time": "金曜・土曜 21:15〜21:45",
             "data_status": "measured" if has_measured_hub else "prior_estimate",
         },
@@ -1000,22 +1124,22 @@ def _build_sns_channel_efficiency(
             "theme_tag": "reel_40min_rule",
             "title": "【18秒・損益分岐】男余りの店で90分粘って課金する人 vs 40分で見切って勝つ人の差",
             "hook_0_3s": "「相席で一番お金と時間を溶かすパターン、40分で見切れないサンクコストです」",
-            "body_outline": "滞在時間と課金メーターの損益分岐グラフを1枚見せ、渋い夜は40分で2軒目移動または即時マッチング枠へ切り替える常連の立ち回りを解説。",
-            "cta_route": "プロフリンク『?s=reel_40min』→ /guide/cost-break-even ＆ 即時合流アプリ枠",
+            "body_outline": "滞在時間と課金メーターの損益分岐グラフを1枚見せ、渋い夜は40分で2軒目移動または近隣穴場へ切り替える常連の立ち回りを解説。",
+            "cta_route": "プロフリンク『?s=reel_40min』→ /concierge 3秒穴場診断 ＆ /guide/cost-break-even",
             "best_post_time": "水曜・金曜 20:30〜21:00",
         },
     ]
 
     if total_tracked_inflows > 0:
         summary_insight = (
-            f"現在の最効率チャネルは『{top_ch['label']}』（流入 {top_ch['visits']}件 / CV {top_ch['conversions']}件）。"
-            f"強化すべき時間帯は {top_ch['best_time_slot']}、勝ち切り口は『{rec_style_label}』です。"
-            f"月〜金20:00の3D『もしもシリーズ』自動配信＋YouTubeショート同時展開と検索予約コラムで複利流入を伸ばします。"
+            f"現在のサイト流入首位は『{top_ch['label']}』（純流入 {top_ch['visits']}件 ／ 検索 {total_search_visits}件・ショート動画 {total_short_video_visits}件）。"
+            f"主力時間帯は {top_ch['best_time_slot']}、伸びている切り口は『{rec_style_label}』です。"
+            f"Google/AI検索SEOと平日20:00の3D『もしもシリーズ』（IGリール＋YouTubeショート）の2本柱で流入母数を拡大します。"
         )
     else:
         summary_insight = (
-            f"『?s=』・外部Referer流入ログ蓄積フェーズです。『{top_ch['label']}』を軸にしつつ、"
-            f"平日20:00の3D『もしもシリーズ』（IGリール自動＋YouTubeショート `?s=short_bio`）とGoogle検索の連動で新規流入を拡大します。"
+            "外部純新規流入（検索『ref_google』・ショート動画『?s=short_bio / reel_*』・SNS『?s=』）の初期ブースト段階です。"
+            "最優先2軸である『Google/AI検索SEO（店舗・エリア・ドーム終演特集）』と『縦型ショート動画（平日20:00 3Dもしも＋週末ギャップ実証）』から着地母数を作ります。"
         )
 
     return {
@@ -1026,6 +1150,7 @@ def _build_sns_channel_efficiency(
         "recommended_style_label": rec_style_label,
         "total_sns_visits": total_sns_visits,
         "total_search_visits": total_search_visits,
+        "total_short_video_visits": total_short_video_visits,
         "total_tracked_inflows": total_tracked_inflows,
         "total_sns_conversions": sum(v for k, v in ch_cvs.items() if k != "search"),
         "total_search_conversions": int(ch_cvs.get("search", 0)),
@@ -1153,100 +1278,476 @@ def _build_flywheel_status(
     }
 
 
+def _sum_external_inflow_visits(summary_dict: dict) -> dict:
+    """Count pure external arrival visits (`sns_inflow` excluding `cv:` / `cush:` / `cvslot:`) grouped by acquisition pillar."""
+    all_labels = (summary_dict or {}).get("all_by_label") or {}
+    inflow_map = all_labels.get("sns_inflow") or {}
+    by_event = (summary_dict or {}).get("by_event") or {}
+    bare_channel_keys = {"x", "threads", "instagram", "reels", "tiktok", "note", "youtube_shorts", "search"}
+
+    ch_counts = collections.defaultdict(int)
+    seen_tags = collections.defaultdict(int)
+
+    for raw_lbl, cnt in inflow_map.items():
+        c_int = int(cnt or 0)
+        if c_int <= 0:
+            continue
+        src_part = str(raw_lbl).split("@", 1)[0].strip() if "@" in str(raw_lbl) else str(raw_lbl).strip()
+        if src_part.lower().startswith(("cv:", "cush:", "cvslot:")):
+            continue
+        norm_t = analytics.normalize_inflow_source(src_part) or src_part.lower()
+        if not norm_t:
+            continue
+        ck, _, _ = _classify_sns_tag(norm_t)
+        ch_counts[ck] += c_int
+        seen_tags[norm_t] += c_int
+
+    for ev_k, ev_cnt in by_event.items():
+        ev_str = str(ev_k or "").strip()
+        if not ev_str.lower().startswith("sns_inflow:"):
+            continue
+        sub = ev_str.split(":", 1)[1].strip()
+        if sub.lower().startswith(("cv:", "cush:", "cvslot:")):
+            continue
+        norm_t = analytics.normalize_inflow_source(sub) or sub.lower()
+        if not norm_t:
+            continue
+        ck, _, _ = _classify_sns_tag(norm_t)
+        already = ch_counts[ck] if norm_t in bare_channel_keys else seen_tags[norm_t]
+        delta = max(0, int(ev_cnt or 0) - already)
+        if delta > 0:
+            ch_counts[ck] += delta
+            seen_tags[norm_t] += delta
+
+    search_v = int(ch_counts.get("search", 0))
+    short_v = int(ch_counts.get("reels", 0)) + int(ch_counts.get("youtube_shorts", 0))
+    social_text_v = int(ch_counts.get("x", 0)) + int(ch_counts.get("threads", 0)) + int(ch_counts.get("instagram", 0))
+    total_v = search_v + short_v + social_text_v
+    return {
+        "total": total_v,
+        "search": search_v,
+        "short_video": short_v,
+        "social_text": social_text_v,
+        "by_channel": dict(ch_counts),
+    }
+
+
+def _compute_wow_delta(curr_7d: int, prev_7d: int) -> dict:
+    """Compute honest Week-over-Week (7d vs prior 7d) growth without fabricating percentages when denominator is 0."""
+    c7 = max(0, int(curr_7d or 0))
+    p7 = max(0, int(prev_7d or 0))
+    if p7 > 0:
+        pct = round(((c7 - p7) / float(p7)) * 100.0, 1)
+        sign = "+" if pct > 0 else ""
+        direction = "up" if pct >= 5.0 else ("down" if pct <= -5.0 else "flat")
+        return {
+            "curr_7d": c7,
+            "prev_7d": p7,
+            "wow_pct": pct,
+            "status": "measured",
+            "direction": direction,
+            "short_label": f"前週比 {sign}{pct}%",
+            "detail_label": f"前週 {p7:,} → 直近7日 {c7:,}（{sign}{pct}%）",
+        }
+    if c7 > 0:
+        return {
+            "curr_7d": c7,
+            "prev_7d": 0,
+            "wow_pct": None,
+            "status": "new_growth",
+            "direction": "up",
+            "short_label": f"新規 +{c7:,}",
+            "detail_label": f"前週 0 → 直近7日 {c7:,}（初速発生中）",
+        }
+    return {
+        "curr_7d": 0,
+        "prev_7d": 0,
+        "wow_pct": None,
+        "status": "accumulating",
+        "direction": "zero",
+        "short_label": "比較ログ蓄積中",
+        "detail_label": "前週・直近7日とも 0（計測蓄積中）",
+    }
+
+
+def _compute_inflow_north_star(
+    stats_window: dict,
+    stats_7d: dict,
+    stats_14d: dict,
+    days: int,
+    closed_loop_feedback: dict = None,
+) -> dict:
+    """Build North Star external inflow & WoW growth telemetry for the PDCA hero & diagnostics."""
+    win_inf = _sum_external_inflow_visits(stats_window)
+    inf_7d = _sum_external_inflow_visits(stats_7d)
+    inf_14d = _sum_external_inflow_visits(stats_14d)
+
+    prev_7d_inflow = max(0, inf_14d["total"] - inf_7d["total"])
+    prev_7d_search = max(0, inf_14d["search"] - inf_7d["search"])
+    prev_7d_short = max(0, inf_14d["short_video"] - inf_7d["short_video"])
+
+    pv_7d = int(((stats_7d or {}).get("funnel") or {}).get("pv_total") or 0)
+    pv_14d = int(((stats_14d or {}).get("funnel") or {}).get("pv_total") or 0)
+    prev_7d_pv = max(0, pv_14d - pv_7d)
+
+    inflow_wow = _compute_wow_delta(inf_7d["total"], prev_7d_inflow)
+    pv_wow = _compute_wow_delta(pv_7d, prev_7d_pv)
+    search_wow = _compute_wow_delta(inf_7d["search"], prev_7d_search)
+    short_wow = _compute_wow_delta(inf_7d["short_video"], prev_7d_short)
+
+    gsc_diag = dict(((closed_loop_feedback or {}).get("gsc_diagnostics")) or {})
+    yt_diag = dict(((closed_loop_feedback or {}).get("youtube_shorts_diagnostics")) or {})
+
+    days_norm = max(1.0, float(days or 14))
+    pv_tot = int(((stats_window or {}).get("funnel") or {}).get("pv_total") or 0)
+
+    return {
+        "window_days": int(days or 14),
+        "external_inflow_total": win_inf["total"],
+        "daily_external_inflow": round(win_inf["total"] / days_norm, 1),
+        "search_inflow_total": win_inf["search"],
+        "short_video_inflow_total": win_inf["short_video"],
+        "social_text_inflow_total": win_inf["social_text"],
+        "daily_pv": round(pv_tot / days_norm, 1),
+        "inflow_wow": inflow_wow,
+        "pv_wow": pv_wow,
+        "search_wow": search_wow,
+        "short_video_wow": short_wow,
+        "gsc_impressions": gsc_diag.get("total_impressions"),
+        "gsc_clicks": gsc_diag.get("total_clicks"),
+        "gsc_opportunity_count": len(gsc_diag.get("opportunity_queries") or []),
+        "yt_shorts_views": yt_diag.get("total_views"),
+    }
+
+
+def _compute_phase_calibrated_scores(
+    active_phase: str,
+    pv_tot: int,
+    daily_pv: float,
+    eng_rate: float,
+    aff_tot: int,
+    daily_aff: float,
+    aff_ctr_pct: float,
+    attributed_aff: int,
+    active_offer_cats: int,
+    cushion_total: int,
+    inflow_ns: dict,
+    active_sns_channels: int,
+    reels_active: bool,
+    moshimo_enabled: bool,
+    style_diversity_count: int,
+    col_audit: dict,
+    upcoming_count: int,
+    sleeping_ratio: float,
+) -> tuple:
+    """
+    Compute Phase-Calibrated 100-Point Score + 4 Score Axes + legacy `score_breakdown` mirror.
+      - Phase 1 (`phase1_inflow`, Milestone 100〜300 PV/day):
+          Axis 1: 純新規流入・前週比成長 (35pt)
+          Axis 2: 検索SEO・AI検索基盤 (30pt)
+          Axis 3: ショート動画・SNS誘導 (25pt)
+          Axis 4: 有効回遊・定着率 (10pt)
+      - Phase 2 (`phase2_engagement`, Milestone 300〜1,000 PV/day):
+          30 / 25 / 25 / 20
+      - Phase 3 (`phase3_monetize`, Milestone 1,000+ PV/day):
+          25 / 20 / 20 / 35
+    """
+    days_norm = max(1.0, float(inflow_ns.get("window_days") or 14))
+    ext_daily = float(inflow_ns.get("external_inflow_total") or 0) / days_norm
+    srch_daily = float(inflow_ns.get("search_inflow_total") or 0) / days_norm
+    short_daily = float(inflow_ns.get("short_video_inflow_total") or 0) / days_norm
+    social_daily = float(inflow_ns.get("social_text_inflow_total") or 0) / days_norm
+    gsc_impr = int(inflow_ns.get("gsc_impressions") or 0)
+    gsc_clicks = int(inflow_ns.get("gsc_clicks") or 0)
+    yt_views = int(inflow_ns.get("yt_shorts_views") or 0)
+
+    inf_wow = inflow_ns.get("inflow_wow") or {}
+    pv_wow = inflow_ns.get("pv_wow") or {}
+    best_wow_pct = inf_wow.get("wow_pct") if inf_wow.get("wow_pct") is not None else pv_wow.get("wow_pct")
+    has_new_growth = (inf_wow.get("status") == "new_growth") or (pv_wow.get("status") == "new_growth")
+
+    if active_phase == "phase1_inflow":
+        # 1. Pure New Inflow & WoW Growth (max 35pt — calibrated to 100〜300 PV/day milestone)
+        pv_step1_pts = int(round(min(1.0, daily_pv / 100.0) * 14))
+        pv_step2_pts = int(round(min(1.0, max(0.0, daily_pv - 100.0) / 200.0) * 8))
+        ext_pts = int(round(min(1.0, ext_daily / 25.0) * 7))
+        if best_wow_pct is not None:
+            wow_pts = 6 if best_wow_pct >= 20.0 else (4 if best_wow_pct >= 5.0 else (2 if best_wow_pct >= -5.0 and pv_tot > 0 else 0))
+        elif has_new_growth:
+            wow_pts = 5 if (pv_tot >= 20 or inflow_ns.get("external_inflow_total", 0) >= 5) else 3
+        else:
+            wow_pts = 0
+        ax_inflow = min(35, pv_step1_pts + pv_step2_pts + ext_pts + wow_pts)
+
+        # 2. Search SEO & AI Search Foundation (max 30pt)
+        srch_visit_pts = int(round(min(1.0, (srch_daily + (gsc_clicks / 28.0)) / 18.0) * 12))
+        gsc_pts = 6 if gsc_impr >= 500 else (4 if gsc_impr >= 100 else (2 if gsc_impr >= 10 else 0))
+        col_base_pts = (3 if col_audit.get("total_bare_oriental", 0) == 0 else 0) + min(3, int(col_audit.get("total_columns", 0) / 12))
+        queue_pts = 4 if upcoming_count >= 2 else (2 if upcoming_count == 1 else 0)
+        exp_pts = 2 if sleeping_ratio <= 0.35 else (1 if sleeping_ratio <= 0.65 else 0)
+        ax_seo = min(30, srch_visit_pts + gsc_pts + col_base_pts + queue_pts + exp_pts)
+
+        # 3. Short Video & SNS Profile Inflow (max 25pt)
+        short_visit_pts = int(round(min(1.0, short_daily / 12.0) * 10))
+        social_visit_pts = int(round(min(1.0, social_daily / 10.0) * 6))
+        video_pipe_pts = (2 if moshimo_enabled else 0) + (2 if reels_active else 0) + (1 if yt_views > 0 else 0)
+        ch_div_pts = min(4, active_sns_channels + (1 if style_diversity_count >= 2 else 0))
+        ax_sns = min(25, short_visit_pts + social_visit_pts + video_pipe_pts + ch_div_pts)
+
+        # 4. Engaged Site Circulation & Readiness (max 10pt — no penalty for low affiliate CV in Phase 1)
+        eng_pts = 5 if eng_rate >= 20.0 else (3 if eng_rate >= 10.0 else (1 if eng_rate > 0 else 0))
+        cush_pts = 3 if cushion_total >= 5 else (2 if cushion_total >= 1 else 0)
+        ready_pts = 2 if (aff_tot > 0 or pv_tot >= 30) else 1
+        ax_ret = min(10, eng_pts + cush_pts + ready_pts)
+
+        axes = [
+            {"key": "inflow_growth", "label": "純新規流入・前週比成長", "score": ax_inflow, "max_score": 35, "pct": round(ax_inflow / 35.0 * 100)},
+            {"key": "search_seo", "label": "検索SEO・AI検索基盤", "score": ax_seo, "max_score": 30, "pct": round(ax_seo / 30.0 * 100)},
+            {"key": "short_video_sns", "label": "ショート動画・SNS誘導", "score": ax_sns, "max_score": 25, "pct": round(ax_sns / 25.0 * 100)},
+            {"key": "engaged_retention", "label": "有効回遊・定着率", "score": ax_ret, "max_score": 10, "pct": round(ax_ret / 10.0 * 100)},
+        ]
+        overall = ax_inflow + ax_seo + ax_sns + ax_ret
+        legacy_breakdown = {
+            "traffic_engagement": ax_inflow,
+            "monetization_efficiency": ax_ret,
+            "sns_diversity_inflow": ax_sns,
+            "content_pipeline_health": ax_seo,
+        }
+        return overall, legacy_breakdown, axes
+
+    if active_phase == "phase2_engagement":
+        ax_inflow = min(30, int(round(min(1.0, daily_pv / 600.0) * 20)) + int(round(min(1.0, ext_daily / 60.0) * 6)) + (4 if (best_wow_pct or 0) >= 5.0 or has_new_growth else 1))
+        ax_seo = min(25, int(round(min(1.0, srch_daily / 40.0) * 12)) + (5 if gsc_impr >= 500 else 2) + (4 if col_audit.get("total_bare_oriental", 0) == 0 else 0) + min(4, upcoming_count * 2))
+        ax_sns = min(25, int(round(min(1.0, (short_daily + social_daily) / 35.0) * 16)) + min(5, active_sns_channels * 2) + (4 if reels_active else 0))
+        ax_mon = min(20, (6 if eng_rate >= 18.0 else 3) + min(6, cushion_total) + min(8, int(round(min(1.0, daily_aff / 3.0) * 8))))
+        axes = [
+            {"key": "inflow_growth", "label": "流入成長（目標1,000PV/日）", "score": ax_inflow, "max_score": 30, "pct": round(ax_inflow / 30.0 * 100)},
+            {"key": "search_seo", "label": "検索SEO・記事資産", "score": ax_seo, "max_score": 25, "pct": round(ax_seo / 25.0 * 100)},
+            {"key": "short_video_sns", "label": "ショート動画・SNS誘導", "score": ax_sns, "max_score": 25, "pct": round(ax_sns / 25.0 * 100)},
+            {"key": "engaged_monetize", "label": "2ステップ回遊・初期収益", "score": ax_mon, "max_score": 20, "pct": round(ax_mon / 20.0 * 100)},
+        ]
+        overall = ax_inflow + ax_seo + ax_sns + ax_mon
+        return overall, {
+            "traffic_engagement": ax_inflow,
+            "monetization_efficiency": ax_mon,
+            "sns_diversity_inflow": ax_sns,
+            "content_pipeline_health": ax_seo,
+        }, axes
+
+    # Phase 3 (`phase3_monetize`)
+    ax_inflow = min(25, int(round(min(1.0, daily_pv / 1500.0) * 18)) + (4 if eng_rate >= 15.0 else 2) + (3 if (best_wow_pct or 0) >= 0 else 0))
+    ax_seo = min(20, int(round(min(1.0, srch_daily / 80.0) * 10)) + (5 if col_audit.get("total_bare_oriental", 0) == 0 else 0) + min(5, upcoming_count * 2 + 1))
+    ax_sns = min(20, int(round(min(1.0, (short_daily + social_daily) / 60.0) * 12)) + min(5, active_sns_channels * 2) + (3 if reels_active else 0))
+    ax_mon = min(
+        35,
+        int(round(min(1.0, daily_aff / 10.0) * 18))
+        + (8 if aff_ctr_pct >= 2.0 else (4 if aff_ctr_pct >= 1.0 else 0))
+        + (5 if attributed_aff > 0 else 0)
+        + (4 if active_offer_cats >= 3 else (2 if active_offer_cats >= 1 else 0)),
+    )
+    axes = [
+        {"key": "inflow_growth", "label": "トラフィック規模維持", "score": ax_inflow, "max_score": 25, "pct": round(ax_inflow / 25.0 * 100)},
+        {"key": "search_seo", "label": "検索SEO・一次統計資産", "score": ax_seo, "max_score": 20, "pct": round(ax_seo / 20.0 * 100)},
+        {"key": "short_video_sns", "label": "ショート動画・SNS送客", "score": ax_sns, "max_score": 20, "pct": round(ax_sns / 20.0 * 100)},
+        {"key": "monetize_epc", "label": "収益CVR・EPC効率", "score": ax_mon, "max_score": 35, "pct": round(ax_mon / 35.0 * 100)},
+    ]
+    overall = ax_inflow + ax_seo + ax_sns + ax_mon
+    return overall, {
+        "traffic_engagement": ax_inflow,
+        "monetization_efficiency": ax_mon,
+        "sns_diversity_inflow": ax_sns,
+        "content_pipeline_health": ax_seo,
+    }, axes
+
+
 def _build_weekly_growth_actions(
     demand_gap: dict,
     offer_breakdown: list,
     monetization_gaps: list,
     sns_efficiency: dict,
     upcoming_count: int,
+    growth_phase: dict = None,
+    closed_loop_feedback: dict = None,
+    flywheel_status: dict = None,
 ) -> list:
     """
-    Build prioritized TOP 3 Weekly Growth Actions (`weekly_growth_actions`) for the Master administrator:
-      1. Funnel Tuning Proposal (導線改善提案)
-      2. Column Theme Proposal (コラムテーマ提案)
-      3. Reels Short-Video Proposal (リール動画ネタ提案)
+    Build Phase-Adaptive TOP 3 Weekly Growth Actions (`weekly_growth_actions`) for the Master administrator.
+    In Phase 1 (`phase1_inflow` — Inflow First):
+      1. Search SEO & GSC CTR Optimization (`seo_ctr_boost`)
+      2. Search & Crowd-Demand Special Column (`column_theme`)
+      3. Short Video (3D Moshimo / 15s Gap Reels / YT Shorts) Hook & Bio Inflow (`reels_video`)
+      * Monetization (`funnel_tuning`) is strictly gated behind `pv >= min_pv_for_funnel_action` (50 PV in Phase 1).
     """
+    active_phase = (growth_phase or {}).get("active_phase") or "phase1_inflow"
+    min_pv_gate = int((growth_phase or {}).get("min_pv_for_funnel_action") or (50 if active_phase == "phase1_inflow" else 20))
+
     top_gap = monetization_gaps[0] if monetization_gaps else None
     top_offer = offer_breakdown[0] if offer_breakdown else OFFER_CATEGORIES[0]
     hub_info = (demand_gap or {}).get("top_hub") or {}
     hub_label = hub_info.get("cluster_label") or "梅田・茶屋町"
+    area_slug = hub_info.get("area_slug") or "umeda"
     rec_theme = (demand_gap or {}).get("recommended_theme") or "area_hopping"
     rec_topic = (demand_gap or {}).get("recommended_topic") or f"{hub_label}エリアの男女比ギャップと徒歩5分ハシゴ基準"
     reels_top = ((sns_efficiency or {}).get("reels_recommendations") or [{}])[0]
 
-    # Action A: Funnel Improvement (導線改善提案)
-    if top_gap:
-        funnel_urgency = 95 if top_gap.get("severity") in ("critical", "high") else 82
-        funnel_action = {
-            "action_type": "funnel_tuning",
-            "category_badge": "💰 導線改善提案",
-            "title": f"『{top_gap['title'][:28]}』に {top_gap['recommended_funnel'][:24]} を追加",
+    gsc_diag = dict(((closed_loop_feedback or {}).get("gsc_diagnostics")) or {})
+    opp_queries = gsc_diag.get("opportunity_queries") or []
+    arena_ev = (demand_gap or {}).get("upcoming_arena_event")
+    mq_info = ((flywheel_status or {}).get("moshimo_queue")) or {}
+
+    # Pillar 1: Search SEO & AI Search CTR Boost (最優先チャネル①: Google/AI検索SEO)
+    if opp_queries:
+        q0 = opp_queries[0]
+        q_txt = str(q0.get("query") or "")
+        q_impr = int(float(q0.get("impressions") or 0))
+        q_clk = int(float(q0.get("clicks") or 0))
+        q_pos = round(float(q0.get("position") or 0), 1)
+        q_path = str(q0.get("page") or q0.get("target_path") or "")
+        if q_path.startswith("http"):
+            try:
+                q_path = urllib.parse.urlsplit(q_path).path or "/columns"
+            except Exception:
+                q_path = "/columns"
+        seo_cta = q_path if q_path.startswith("/") else "/staff/pdca?tab=automation#pdca-flywheel"
+        seo_action = {
+            "action_type": "seo_ctr_boost",
+            "category_badge": "🔍 検索SEO・CTR改善提案",
+            "title": f"GSCお宝クエリ『{q_txt[:24]}』（平均{q_pos}位・表示{q_impr}回）のタイトル＆冒頭結論改善",
             "why": (
-                f"現在 {top_gap['pv']} PV（広告CV {top_gap['aff_clicks']}件 / CVR {top_gap['cvr_pct']}%）で機会損失が発生中。"
-                f"勝ち案件『{top_offer['short_label']}』への送客余地が最大です。"
+                f"Google検索で既に {q_impr}回 表示されていますがクリックは {q_clk}件。"
+                "新記事をゼロから書くより、4〜20位圏内クエリの検索CTRを引き上げる方が最速で純新規流入が増えます。"
             ),
-            "how_to": f"配置位置：{top_gap['placement_position']}（推奨リンク：{', '.join(top_gap['recommended_links'][:2])}）",
-            "expected_impact": f"ページCVR {top_gap['target_cvr_pct']}%到達で期間あたり +{top_gap['est_missed_clicks']}件以上の広告クリック増",
-            "cta_label": "対象ページと収益枠を確認する →",
-            "cta_url": top_gap["path"] if top_gap["path"].startswith("/") else "/staff/analytics",
-            "_urgency": funnel_urgency,
+            "how_to": "対象ページのタイトル・メタ説明文・冒頭3行に検索キーワードと実測男女比の結論を明記し、比較表を上部へ配置する。",
+            "expected_impact": "自然検索クリック率（CTR）改善による継続的な純新規オーガニック流入の獲得",
+            "cta_label": "対象ページとGSC検索データを確認する →",
+            "cta_url": seo_cta,
+            "_urgency": 97 if active_phase == "phase1_inflow" else 88,
+        }
+    elif arena_ev and isinstance(arena_ev, dict):
+        v_name = arena_ev.get("venue_name") or arena_ev.get("venue") or "主要ドーム"
+        ev_title = str(arena_ev.get("title") or arena_ev.get("event_title") or "大型ライブ")[:22]
+        ev_date = str(arena_ev.get("event_date") or arena_ev.get("date") or "")
+        ar_topic = urllib.parse.quote(f"{v_name}終演21時台の周辺相席サージ検証と穴場店舗マップ", safe="")
+        seo_action = {
+            "action_type": "seo_ctr_boost",
+            "category_badge": "🔍 検索SEO・イベント流入提案",
+            "title": f"直近公演『{ev_date} {v_name}（{ev_title}）』終演サージ×周辺店舗SEOの先行仕込み",
+            "why": (
+                f"直近30日以内に {v_name} の大型公演が控えています。"
+                "競合が持たない『終演後21時台の来店サージ×徒歩圏店舗比較』はGoogle検索とAI検索の双方で独占流入を狙えます。"
+            ),
+            "how_to": f"対象エリアページ（/area/{area_slug}）と終演サージ検証コラムの内部リンクを結び、Search Console連携で順位を追跡する。",
+            "expected_impact": "公演日〜週末にかけてのイベント検索・エリア名検索からの純新規着地増",
+            "cta_label": "コラム編集部で終演サージ企画を開く →",
+            "cta_url": f"/staff/column-editorial?theme=area_hopping&topic={ar_topic}",
+            "_urgency": 95 if active_phase == "phase1_inflow" else 86,
         }
     else:
-        funnel_action = {
-            "action_type": "funnel_tuning",
-            "category_badge": "💰 導線改善提案",
-            "title": f"勝ち枠『{top_offer['short_label']}』を /grooming ＆上位コラム中盤へ横展開",
-            "why": f"現在クリックシェア首位の『{top_offer['short_label']}』（{top_offer['clicks']}件）は対面直前読者との相性が抜群です。",
-            "how_to": "会話ボックス直後に /grooming 内部リンク、記事末尾まとめ前に直接CTAボタンを2段配置。",
-            "expected_impact": "サイト全体のアフィリエイトCTR +0.8〜1.5pt 底上げ",
-            "cta_label": "収益スロット設定を確認する →",
-            "cta_url": "/staff/analytics",
-            "_urgency": 78,
+        seo_action = {
+            "action_type": "seo_ctr_boost",
+            "category_badge": "🔍 検索SEO・クエリ発掘提案",
+            "title": f"『{hub_label}』店舗・エリア比較SEO強化 ＆ Search Console 4〜20位クエリ同期",
+            "why": (
+                f"流入拡大フェーズ（目標100〜300 PV/日）では『店舗名＋混雑/男女比/料金』『{hub_label} 相席』の検索上位化が最大の複利資産になります。"
+            ),
+            "how_to": f"4歯車タブからGSC 28日クエリを同期して表示済みゼロクリック語を特定し、/area/{area_slug} と主要店舗ページの見出し・内部リンクを強化する。",
+            "expected_impact": "Google検索・AI検索からの安定した毎日型の純新規流入ベース構築",
+            "cta_label": "4歯車・Search Console連携を確認する →",
+            "cta_url": "/staff/pdca?tab=automation#pdca-flywheel",
+            "_urgency": 95 if active_phase == "phase1_inflow" else 85,
         }
 
-    # Action B: Column Theme Proposal (コラムテーマ提案)
-    col_urgency = 92 if upcoming_count <= 1 else 84
+    # Pillar 2: Demand-Gap Data Column Proposal (検索＆SNS両取りの需要ギャップ記事)
+    col_urgency = (94 if upcoming_count <= 1 else 91) if active_phase == "phase1_inflow" else (92 if upcoming_count <= 1 else 84)
     encoded_topic = urllib.parse.quote(rec_topic, safe="")
     if hub_info.get("has_measured_gap"):
         headcount_prefix = "ピーク実測女性" if hub_info.get("is_off_hours_benchmark") else "稼働女性"
         col_why_stats = f"（{headcount_prefix} {hub_info.get('live_women', 0)}名 / 店舗間実測差 {hub_info.get('gap_pt', 0)}pt）"
     else:
         col_why_stats = "（夜間ピーク参考モデル・実測波形蓄積中）"
+    watch_cnt = int((demand_gap or {}).get("watch_intent_total") or 0)
+    watch_note = f"・空席ウォッチ登録 {watch_cnt}件" if watch_cnt > 0 else ""
     column_action = {
         "action_type": "column_theme",
-        "category_badge": "📖 コラムテーマ提案",
+        "category_badge": "📖 需要ギャップ特命コラム",
         "title": f"特命コラム『{rec_topic}』を執筆・予約（現在待機在庫 {upcoming_count}本）",
         "why": (
-            f"現場データで『{hub_label}』{col_why_stats}の注目度がトップ。"
-            "検索SEOとX 18:00・新着スレッド双方で流入を取りやすいテーマです。"
+            f"現場データで『{hub_label}』{col_why_stats}{watch_note}の需要ギャップが最大。"
+            "ロングテール検索SEOとX新着スレッド・noteエッセイの同時流入を狙えるテーマです。"
         ),
-        "how_to": "オリエンタルラウンジ・ag・JISの実測比較表と会話ボックスを入れ、2ステップ構造で /grooming・/for-women・/concierge へ自然にブリッジする。",
-        "expected_impact": "公開初週のSNSスレッド流入＋ロングテール検索からの高意欲PV獲得",
+        "how_to": "オリエンタルラウンジ・ag（アグ）・JIS（ジス）の実測比較表と会話ボックスを入れ、/concierge やエリア比較へ回遊導線を張る。",
+        "expected_impact": "検索ロングテール資産の積み上げ＋公開初週のSNS・note横断流入獲得",
         "cta_label": "コラム編集部でこのお題を開く →",
         "cta_url": f"/staff/column-editorial?theme={rec_theme}&topic={encoded_topic}",
         "_urgency": col_urgency,
     }
 
-    # Action C: Reels Video Proposal (リール動画ネタ提案)
+    # Pillar 3: Short Video (IG Reels / YouTube Shorts / TikTok) Bio Inflow Proposal (最優先チャネル②)
+    rem_ep = int(mq_info.get("remaining_count") or 0)
+    moshimo_note = f"（平日20:00『3Dもしも』残り{rem_ep}話稼働中）" if rem_ep > 0 else ""
     reels_action = {
         "action_type": "reels_video",
-        "category_badge": "🎬 リール動画ネタ提案",
-        "title": reels_top.get("title") or f"【15秒Reels】{hub_label}の店舗間男女比ギャップ実証ショート動画",
+        "category_badge": "🎬 ショート動画・プロフ誘導",
+        "title": reels_top.get("title") or f"【15秒ショート】{hub_label}の徒歩5分・男女比ギャップ実証動画",
         "why": (
-            f"SNS集客首位『{(sns_efficiency or {}).get('top_channel_label', 'X')}』に加え、"
-            "フォロワー外へ爆発的に届く縦型ショート動画（Reels / TikTok）を掛け合わせると新規母数が一気に広がります。"
+            f"非フォロワー層へ一気にリーチできる縦型ショート動画（IGリール / YouTubeショート / TikTok）{moshimo_note}は、"
+            "初期フェーズで純新規プロフ流入（?s=short_bio / ?s=reel_hub_gap）を作る最強エンジンです。"
         ),
         "how_to": (
-            f"冒頭3秒フック：{reels_top.get('hook_0_3s', '')} ｜ "
-            f"推奨投稿帯：{reels_top.get('best_post_time', '金曜 21:30')} ｜ 誘導先：{reels_top.get('cta_route', '?s=reel_hub_gap')}"
+            f"冒頭2秒フック：{reels_top.get('hook_0_3s', '')} ｜ "
+            f"平日20:00は3DもしもをYTショートへ同時展開、週末 {reels_top.get('best_post_time', '金曜 21:30')} は実測ギャップ動画を配信。"
         ),
-        "expected_impact": "非フォロワー層からのプロフ遷移＆『?s=reel_*』経由の新規サイト流入開拓",
+        "expected_impact": "非フォロワー層からのプロフ遷移＆『?s=short_bio / ?s=reel_*』経由の純新規訪問増",
         "cta_label": "9:16 ショート動画スタジオを開く →",
         "cta_url": "/staff/sns-editorial?channel=instagram#reel-studio-section",
-        "_urgency": 80,
+        "_urgency": 92 if active_phase == "phase1_inflow" else 82,
     }
 
-    actions = sorted([funnel_action, column_action, reels_action], key=lambda x: x["_urgency"], reverse=True)
+    candidates = [seo_action, column_action, reels_action]
+
+    # High-PV Gate on Monetization Action:
+    # In Phase 1, ONLY include `funnel_tuning` if a non-home content/article page (`path != "/"`) ALREADY has >= 50 PV.
+    if active_phase == "phase1_inflow":
+        gated_gap = next(
+            (g for g in (monetization_gaps or []) if g.get("path") != "/" and int(g.get("pv") or 0) >= min_pv_gate),
+            None,
+        )
+    else:
+        gated_gap = top_gap if (top_gap and int(top_gap.get("pv") or 0) >= min_pv_gate) else None
+
+    if gated_gap:
+        funnel_urgency = (
+            93 if active_phase == "phase1_inflow"
+            else (98 if gated_gap.get("severity") in ("critical", "high") else 89)
+        )
+        candidates.append({
+            "action_type": "funnel_tuning",
+            "category_badge": "💰 高PV記事・2ステップ導線改善",
+            "title": f"高流入『{gated_gap['title'][:26]}』（{gated_gap['pv']} PV）に {gated_gap['recommended_funnel'][:22]} を追加",
+            "why": (
+                f"既に {gated_gap['pv']} PV の集客に成功していますが、2ステップ送客（CV {gated_gap['aff_clicks']}件 / CVR {gated_gap['cvr_pct']}%）で離脱が発生中。"
+                f"集客済みページの回遊・収益受け皿（{top_offer['short_label']}）を整える好機です。"
+            ),
+            "how_to": f"配置位置：{gated_gap['placement_position']}（推奨内部導線：{', '.join(gated_gap['recommended_links'][:2])}）",
+            "expected_impact": f"既存流入を取りこぼさず期間あたり +{gated_gap['est_missed_clicks']}件以上の送客増",
+            "cta_label": "対象ページと導線を確認する →",
+            "cta_url": gated_gap["path"] if gated_gap["path"].startswith("/") else "/staff/analytics",
+            "_urgency": funnel_urgency,
+        })
+    elif active_phase == "phase3_monetize":
+        candidates.append({
+            "action_type": "funnel_tuning",
+            "category_badge": "💰 収益導線最適化",
+            "title": f"勝ち枠『{top_offer['short_label']}』を /grooming ＆上位コラム中盤へ横展開",
+            "why": f"クリック首位の『{top_offer['short_label']}』（{top_offer['clicks']}件）は対面直前読者との相性が抜群です。",
+            "how_to": "会話ボックス直後に /grooming 内部リンク、クッションページ側で即決CTAを整理。",
+            "expected_impact": "サイト全体のアフィリエイトCTR +0.8〜1.5pt 底上げ",
+            "cta_label": "収益スロット設定を確認する →",
+            "cta_url": "/staff/analytics?tab=affiliate",
+            "_urgency": 96,
+        })
+
+    actions = sorted(candidates, key=lambda x: x["_urgency"], reverse=True)[:3]
     for idx, act_item in enumerate(actions, start=1):
         act_item["priority"] = idx
         act_item.pop("_urgency", None)
@@ -1432,11 +1933,26 @@ def _detect_hot_cluster_and_topic(
         ]
         rec_theme, rec_topic = weekend_pool[(now_j.day + hr) % len(weekend_pool)]
 
+    watch_intent_total = 0
+    upcoming_arena_event = None
+    try:
+        import local_db
+        w_map = local_db.get_watch_intent_counts(hours=14 * 24) or {}
+        if isinstance(w_map, dict):
+            watch_intent_total = sum(int(v or 0) for v in w_map.values() if isinstance(v, (int, float)))
+        arenas = local_db.get_upcoming_arena_events(days_ahead=30, limit=5) or []
+        if arenas:
+            upcoming_arena_event = arenas[0]
+    except Exception:
+        pass
+
     return {
         "top_hub": top_hub,
         "cluster_ranking": cluster_scores[:4],
         "recommended_theme": rec_theme,
         "recommended_topic": rec_topic,
+        "watch_intent_total": watch_intent_total,
+        "upcoming_arena_event": upcoming_arena_event,
     }
 
 
@@ -1451,16 +1967,20 @@ def _site_perf_cache_key(live_stores, days, allow_blocking):
         db_path = str(getattr(local_db, "DB_PATH", ""))
     except Exception:
         db_path = ""
+    try:
+        phase_mode = get_pdca_settings(allow_blocking=False).get("growth_phase_mode", "auto")
+    except Exception:
+        phase_mode = "auto"
     store_sig = tuple(sorted(
         (str(s.get("name") or ""), int(s.get("women") or 0), int(s.get("men") or 0), bool(s.get("is_open_now", True)))
         for s in (live_stores or []) if isinstance(s, dict)
     ))
     # id(analytics.summary) changes when tests patch it, so mocked runs never share entries
-    return (db_path, int(days or 14), bool(allow_blocking), hash(store_sig), id(analytics.summary))
+    return (db_path, int(days or 14), bool(allow_blocking), phase_mode, hash(store_sig), id(analytics.summary))
 
 
 def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
-    """Run comprehensive Check diagnostics (60s TTL memo keyed by DB_PATH / days / live store signature)."""
+    """Run comprehensive Check diagnostics (60s TTL memo keyed by DB_PATH / days / phase_mode / live store signature)."""
     import copy
     import sys
     bypass = ("unittest" in sys.modules or "pytest" in sys.modules) and os.environ.get("PDCA_CACHE_IN_TESTS") != "1"
@@ -1492,11 +2012,13 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
 
 
 def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14, allow_blocking: bool = True) -> dict:
-    """Run comprehensive Check diagnostics across traffic, affiliate CTR, SNS inflows, and content queue."""
+    """Run Phase-Adaptive Check diagnostics across pure external inflows, WoW growth, SEO, Short Video/SNS, and funnels."""
     import ops_governance
     live_stores = ops_governance.filter_visible_stores(list(live_stores or []))
+    settings = get_pdca_settings(allow_blocking=allow_blocking)
     stats = analytics.summary(days=days, allow_blocking=allow_blocking)
     stats_7d = stats if days == 7 else analytics.summary(days=7, allow_blocking=allow_blocking)
+    stats_14d = stats if days == 14 else analytics.summary(days=14, allow_blocking=allow_blocking)
     all_labels = stats.get("all_by_label") or {}
     pv_by_path = all_labels.get("page_view") or {}
     aff_by_label = all_labels.get("affiliate_click") or {}
@@ -1504,6 +2026,13 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     inflow_by_label = all_labels.get("sns_inflow") or {}
     store_opens = all_labels.get("store_open") or {}
     funnel = stats.get("funnel") or {}
+
+    days_norm = max(1.0, float(days or 14))
+    pv_tot = int(funnel.get("pv_total") or 0)
+    daily_pv = pv_tot / days_norm
+    growth_phase = resolve_growth_phase(daily_pv=daily_pv, mode=settings.get("growth_phase_mode", "auto"))
+    active_phase = growth_phase["active_phase"]
+    is_inflow_first = active_phase in ("phase1_inflow", "phase2_engagement")
 
     # 1. Cross-reference PV, Cushion Bridge Clicks, and Affiliate Clicks per page
     aff_by_ref_path = collections.defaultdict(int)
@@ -1538,8 +2067,10 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             badge = "🌱 新着・露出強化枠"
         elif pvs >= 15 and affs == 0 and cush_clks == 0:
             badge = "⚠️ 導線ロス（高PV・CV0）"
+        elif pvs >= 10:
+            badge = "📈 集客牽引中"
         elif pvs == 0:
-            badge = "💤 SNS送客待ち"
+            badge = "💤 SNS・検索露出待ち"
         else:
             badge = "📈 安定稼働"
         article_perf.append({
@@ -1555,13 +2086,24 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             "status_badge": badge,
         })
 
-    article_perf_by_score = sorted(
-        article_perf,
-        key=lambda x: (x["aff_clicks"] * 15 + x["ctr_pct"] * 5 + x["pv"], 1 if x["is_new_release"] else 0),
-        reverse=True,
-    )
+    if is_inflow_first:
+        article_perf_by_score = sorted(
+            article_perf,
+            key=lambda x: (
+                x["pv"] * 3 + x["cushion_clicks"] * 12 + x["aff_clicks"] * 20,
+                x["pv"],
+                1 if x["is_new_release"] else 0,
+            ),
+            reverse=True,
+        )
+    else:
+        article_perf_by_score = sorted(
+            article_perf,
+            key=lambda x: (x["aff_clicks"] * 15 + x["ctr_pct"] * 5 + x["pv"], 1 if x["is_new_release"] else 0),
+            reverse=True,
+        )
 
-    # 2. Aggregate SNS `?s=` Inflow Cohorts (Visits -> 2-Step Cushion -> Slot-Weighted EPC Revenue) + SNS Editorial Logs
+    # 2. Aggregate External & SNS `?s=` Inflow Cohorts + SNS Editorial Logs
     inflow_visits = collections.defaultdict(int)
     inflow_cvs = collections.defaultdict(int)
     inflow_cushions = collections.defaultdict(int)
@@ -1594,7 +2136,11 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     inflow_cohorts = []
     all_tags = sorted(
         set(inflow_visits.keys()) | set(inflow_cvs.keys()) | set(inflow_cushions.keys()) | set(inflow_slot_clicks.keys()),
-        key=lambda t: (inflow_cvs[t] * 12 + inflow_cushions[t] * 3 + inflow_visits[t]),
+        key=lambda t: (
+            (inflow_visits[t] * 10 + inflow_cushions[t] * 3 + inflow_cvs[t] * 2)
+            if is_inflow_first
+            else (inflow_cvs[t] * 12 + inflow_cushions[t] * 3 + inflow_visits[t])
+        ),
         reverse=True,
     )
     for tag in all_tags:
@@ -1631,7 +2177,11 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         })
         _, _, st_key = _classify_sns_tag(tag)
         if st_key:
-            style_inflow_score[st_key] += v_cnt + (cush_cnt * 2) + (cv_cnt * 5) + int(slot_rev_yen / 45)
+            if is_inflow_first:
+                # Phase 1/2: rank SNS editorial styles primarily by real visitor inflow
+                style_inflow_score[st_key] += (v_cnt * 4) + (cush_cnt * 2) + cv_cnt
+            else:
+                style_inflow_score[st_key] += v_cnt + (cush_cnt * 2) + (cv_cnt * 5) + int(slot_rev_yen / 45)
 
     # Inspect recent SNS Editorial history across X, Threads, Instagram, and TikTok/Reels
     x_hist = sns_editorial.get_recent_editorial_history("x", limit=10, allow_blocking=allow_blocking)
@@ -1683,15 +2233,14 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             elif style_usage_counts.get(st, 0) >= 4 and pts == 0:
                 sns_style_boosts[st] = -2
         if top_pts < 3:
-            # Blend cold-start exploration when total inflow evidence is below 3 weighted points (e.g. 1 accidental visit)
             sns_style_boosts.setdefault("ai_live_adlib", 2)
     else:
-        # Cold-start smart rotation: encourage under-used high-humanity styles & AI live ad-lib
+        # Cold-start smart rotation: encourage high-curiosity city gap & live ad-lib hooks
         sns_style_boosts["ai_live_adlib"] = 3
         sns_style_boosts["hub_gap"] = 3 if style_usage_counts.get("hub_gap", 0) < 3 else 0
         sns_style_boosts["usual_anomaly"] = 2 if style_usage_counts.get("usual_anomaly", 0) < 2 else 0
 
-    # Closed-Loop Feedback Integration (Threads/X Hook Insights + IG Reels Bandit + note CTR)
+    # Closed-Loop Feedback Integration (Threads/X Hook Insights + IG Reels Bandit + note CTR + GSC)
     closed_loop_feedback = {}
     try:
         import sns_insights_loop
@@ -1727,7 +2276,7 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         allow_blocking=allow_blocking,
     )
 
-    # 3b. Google AI Ultra Revenue & Growth Intelligence (4 Pillars)
+    # 3b. North Star Inflow & 4-Gear Flywheel Intelligence
     offer_breakdown = _build_offer_breakdown(stats, stats_7d, days=days)
     monetization_gaps = _detect_monetization_gaps(
         pv_by_path,
@@ -1746,14 +2295,22 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         offer_breakdown=offer_breakdown,
         reels_logged_extra=reels_logged_extra,
         yt_shorts_logged=yt_shorts_logged,
+        active_phase=active_phase,
     )
     flywheel_status = _build_flywheel_status(
         closed_loop_feedback=closed_loop_feedback,
         sns_channel_efficiency=sns_channel_efficiency,
         upcoming_cols=upcoming_cols,
-        settings=get_pdca_settings(allow_blocking=allow_blocking),
+        settings=settings,
         demand_gap=demand_gap,
         allow_blocking=allow_blocking,
+    )
+    inflow_north_star = _compute_inflow_north_star(
+        stats_window=stats,
+        stats_7d=stats_7d,
+        stats_14d=stats_14d,
+        days=days,
+        closed_loop_feedback=closed_loop_feedback,
     )
     weekly_growth_actions = _build_weekly_growth_actions(
         demand_gap=demand_gap,
@@ -1761,17 +2318,45 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
         monetization_gaps=monetization_gaps,
         sns_efficiency=sns_channel_efficiency,
         upcoming_count=upcoming_count,
+        growth_phase=growth_phase,
+        closed_loop_feedback=closed_loop_feedback,
+        flywheel_status=flywheel_status,
     )
 
-    # Select Top 4 priority columns for SNS promotion (high CTR winners + new releases + killer comparison guides + under-exposed gems)
-    winners_paths = [a["path"] for a in article_perf_by_score if a["aff_clicks"] > 0][:2]
+    leaky_articles = [
+        a for a in article_perf
+        if a["pv"] >= 10 and a["aff_clicks"] == 0 and a.get("cushion_clicks", 0) == 0
+    ]
+    leaky_path_set = {a["path"] for a in leaky_articles}
+
+    # Select Top 4 priority columns for SNS & X 18:00 promotion:
+    # In Phase 1/2 (Inflow First): prioritize engaged/high-inflow winners + GSC opportunity pages + new releases + high-search-intent comparison guides!
+    if is_inflow_first:
+        winners_paths = [
+            a["path"] for a in article_perf_by_score
+            if (a["aff_clicks"] > 0 or a["cushion_clicks"] > 0 or (a["pv"] >= 3 and a["path"] not in leaky_path_set))
+        ][:2]
+        gsc_opp_paths = []
+        for q_item in (((closed_loop_feedback.get("gsc_diagnostics") or {}).get("opportunity_queries")) or []):
+            qp = str(q_item.get("page") or q_item.get("target_path") or "")
+            if qp.startswith("http"):
+                try:
+                    qp = urllib.parse.urlsplit(qp).path
+                except Exception:
+                    qp = ""
+            if qp.startswith("/guide/") and qp not in gsc_opp_paths:
+                gsc_opp_paths.append(qp)
+    else:
+        winners_paths = [a["path"] for a in article_perf_by_score if a["aff_clicks"] > 0][:2]
+        gsc_opp_paths = []
+
     new_rel_paths = [a["path"] for a in article_perf if a["is_new_release"]][:1]
     killer_seed_paths = [
-        "/guide/lounge-vs-screened-date",
-        "/guide/dress-code-cleanliness",
         "/guide/last-train-cliff",
-        "/guide/first-10-minutes",
+        "/guide/lounge-vs-screened-date",
         "/guide/price-event-comparison",
+        "/guide/first-10-minutes",
+        "/guide/dress-code-cleanliness",
     ]
     under_exposed = [
         a["path"] for a in article_perf
@@ -1784,30 +2369,36 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
                 if len(under_exposed) >= 2:
                     break
     priority_column_paths = []
-    for p in (winners_paths + new_rel_paths + under_exposed + killer_seed_paths):
+    for p in (winners_paths + gsc_opp_paths[:1] + new_rel_paths + under_exposed + killer_seed_paths):
         if p not in priority_column_paths:
             priority_column_paths.append(p)
         if len(priority_column_paths) >= 4:
             break
 
-    # 4. Build "What's Working (Wins)" & "What's Not Working (Bottlenecks)"
+    # 4. Build Phase-Aware "What's Working (Wins)" & "What's Not Working (Bottlenecks)"
     wins = []
     issues = []
 
-    pv_tot = funnel.get("pv_total", 0)
     aff_tot = sum(item["clicks"] for item in offer_breakdown) or funnel.get("aff_total", 0)
     eng_rate = funnel.get("engagement_rate_pct", 0.0)
+    ext_tot = inflow_north_star["external_inflow_total"]
+    inf_wow = inflow_north_star["inflow_wow"]
 
+    if ext_tot > 0:
+        wins.append({
+            "title": f"外部純新規流入が稼働中：計 {ext_tot:,}件（{inf_wow['short_label']}｜検索 {inflow_north_star['search_inflow_total']}・動画 {inflow_north_star['short_video_inflow_total']}）",
+            "detail": f"最上位流入枠は『{(inflow_cohorts[0]['label'] if inflow_cohorts else sns_channel_efficiency['top_channel_label'])}』。流入実績の高い切り口をSNS鬼デスクの採点へ自動加点しています。",
+        })
     if pv_tot > 0:
         wins.append({
-            "title": f"サイト回遊・店舗チェックが稼働中（直近{days}日 PV {pv_tot:,}回 ／ エンゲージ率 {eng_rate}%）",
-            "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・2軒目マップ検索 {funnel.get('map_total', 0)}回が発生し、リアルタイム比較ツールとして機能しています。",
+            "title": f"サイト訪問・店舗比較が稼働中（直近{days}日 PV {pv_tot:,}回 ／ 1日平均 {inflow_north_star['daily_pv']} PV ／ 回遊率 {eng_rate}%）",
+            "detail": f"店舗詳細タップ {funnel.get('store_open_total', 0)}回・記事閲覧 {funnel.get('article_views', 0)}回が発生し、直帰せず比較ツールとして使われています。",
         })
     if aff_tot > 0 and article_perf_by_score and article_perf_by_score[0]["aff_clicks"] > 0:
         top_art = article_perf_by_score[0]
         wins.append({
             "title": f"収益牽引コンテンツ：『{top_art['title'][:26]}…』（広告クリック {top_art['aff_clicks']}件 / CTR {top_art['ctr_pct']}%）",
-            "detail": f"全体でアフィリエイト送客 {aff_tot}件（CTR {funnel.get('aff_ctr_pct', 0)}%）。勝ち記事をXリプ欄の優先送客リストへ自動セットしました。",
+            "detail": f"全体でアフィリエイト送客 {aff_tot}件（CTR {funnel.get('aff_ctr_pct', 0)}%）。高反応記事をXリプ欄の優先紹介リストへ自動セットしました。",
         })
     elif aff_tot > 0 and offer_breakdown:
         top_off = offer_breakdown[0]
@@ -1815,33 +2406,36 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             "title": f"収益送客が稼働中：『{top_off['short_label']}』を筆頭に計{aff_tot}件クリック（全体CTR {funnel.get('aff_ctr_pct', 0)}%）",
             "detail": f"首位カテゴリは {top_off['clicks']}件（シェア {top_off['share_pct']}%）。ページ別クリック計測（?from= 属性）でハブ・記事別の寄与を追跡中です。",
         })
-    if inflow_cohorts:
-        best_in = inflow_cohorts[0]
-        wins.append({
-            "title": f"SNS集客トップ枠：{best_in['label']}（{best_in['visits']}流入 / CV {best_in['conversions']}件）",
-            "detail": "実際にサイト訪問を生んでいる投稿切り口を特定し、SNS鬼デスクの採点ボーナスに自動反映しています。",
-        })
     wins.append({
-        "title": f"全{col_audit['total_columns']}コラムの人間味＆ブランド呼称監査クリア（平均 {col_audit['avg_desk_score']}点）",
-        "detail": f"会話ボックス導入 {col_audit['with_dialogue_count']}/{col_audit['total_columns']}本・ブランド略称NG表記 {col_audit['total_bare_oriental']}件（オリエンタルラウンジ統一済）と高品質を維持中です。",
+        "title": f"検索SEO＆AI引用の基盤コラム {col_audit['total_columns']}本が監査クリア（平均 {col_audit['avg_desk_score']}点）",
+        "detail": f"会話ボックス導入 {col_audit['with_dialogue_count']}/{col_audit['total_columns']}本・ブランドNG略称 {col_audit['total_bare_oriental']}件と、Google/AI検索に評価される一次データ品質を維持中です。",
     })
 
-    # Bottlenecks / Issues
-    leaky_articles = [
-        a for a in article_perf
-        if a["pv"] >= 10 and a["aff_clicks"] == 0 and a.get("cushion_clicks", 0) == 0
-    ]
+    # Bottlenecks / Issues (Always surface SNS delivery errors first so operational alerts are never truncated)
+    for err_label, err_msg in sns_delivery_errors[:2]:
+        issues.append({
+            "title": f"SNS配信ヘルス警告：{err_label} で送信エラーを検知",
+            "detail": err_msg[:180],
+            "action_taken": "SNS編集部（/staff/sns-editorial）でトークン状態・直近配信ログを確認してください。",
+        })
+
     if leaky_articles:
         lk = leaky_articles[0]
         issues.append({
             "title": f"導線ボトルネック記事：『{lk['title'][:26]}…』（{lk['pv']} PVあるのに広告クリック0件）",
-            "detail": "記事は読まれていますが次アクションに繋がっていません。2ステップ原則に沿った /grooming・/for-women・/concierge への文脈ブリッジ強化が有効です。",
-            "action_taken": "優先送客枠を成約直結コラムへ切り替えつつ、改善対象リストにマークしました。",
+            "detail": "記事への流入は取れていますが、読了後に離脱しています。2ステップ原則に沿った /concierge・/grooming・/for-women への回遊ブリッジ強化が有効です。",
+            "action_taken": "優先送客枠を高エンゲージ記事へ切り替えつつ、回遊改善リストにマークしました。",
         })
-    elif aff_tot == 0:
+    elif active_phase == "phase1_inflow" and daily_pv < 100.0:
         issues.append({
-            "title": "アフィリエイト遷移データがまだ少なめ（記事・ガイドへの送客母数アップが必要）",
-            "detail": "トップページの人数確認だけで離脱するユーザーが多いため、SNSリプ欄やトップから成約直結コラム（1対1比較・清潔感・40分見切り等）への誘導を増やす余地があります。",
+            "title": f"初期グロース第1関門（100 PV/日）まであと {max(1, int(round(100.0 - daily_pv)))} PV/日（現在 {inflow_north_star['daily_pv']} PV/日）",
+            "detail": "いまはアフィリエイトCV率を追うより、①Google/AI検索（店舗・エリア・ドーム終演）と ②縦型ショート動画（3Dもしも＆15秒街別ギャップ）からの純新規着地を増やすことが最優先です。",
+            "action_taken": f"TOP3提案と自動加点を『流入拡大最優先』へ統一し、X 18:00枠に『{priority_column_paths[0]}』など検索・SNS両取り記事をセットしました。",
+        })
+    elif aff_tot == 0 and active_phase != "phase1_inflow":
+        issues.append({
+            "title": "アフィリエイト遷移データがまだ少なめ（記事・ガイドへの2ステップ送客強化）",
+            "detail": "トップページの人数確認だけで離脱するユーザーを /concierge・/grooming・/for-women へ回遊させる余地があります。",
             "action_taken": f"X 18:00枠・リプ欄の優先紹介コラムに『{priority_column_paths[0]}』などキラー記事4本を自動セットしました。",
         })
 
@@ -1849,15 +2443,8 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     if sleeping_articles:
         issues.append({
             "title": f"露出不足の埋もれコラムが {len(sleeping_articles)}本 存在（例：『{sleeping_articles[0]['title'][:24]}…』）",
-            "detail": "せっかく人間味のある会話入りコラムがあるのに、SNSからのリンク露出が回っておらず検索流入待ちになっています。",
-            "action_taken": "Xコラムの優先ローテーション枠に未露出の成約直結記事を自動で組み込みました。",
-        })
-
-    for err_label, err_msg in sns_delivery_errors[:2]:
-        issues.append({
-            "title": f"SNS配信ヘルス警告：{err_label} で送信エラーを検知",
-            "detail": err_msg[:180],
-            "action_taken": "SNS編集部（/staff/sns-editorial）でトークン状態・直近配信ログを確認してください。",
+            "detail": "一次データ入りのコラム資産がSNS・内部リンクから十分露出しておらず、検索クローラーと新規読者の流入機会を逃しています。",
+            "action_taken": "X 18:00枠の優先ローテーションに未露出の高検索意図コラムを自動で組み込みました。",
         })
 
     if demand_gap["top_hub"].get("has_measured_gap"):
@@ -1869,66 +2456,56 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     else:
         gap_mode_note = "夜間ピーク注目クラスタ（波形蓄積中）"
     issues.append({
-        "title": f"エリア需要ギャップ：いま『{demand_gap['top_hub']['cluster_label']}』の注目度が高い（{gap_mode_note}）",
-        "detail": f"稼働・ピーク波形と店舗チェック数に対して、『{demand_gap['top_hub']['cluster_label']}』特化の実践ストーリー記事を増やすと検索・SNS双方で伸びやすい状態です。",
+        "title": f"検索＆SNS需要ギャップ：いま『{demand_gap['top_hub']['cluster_label']}』の注目度が高い（{gap_mode_note}）",
+        "detail": f"稼働波形・店舗チェック数に対して『{demand_gap['top_hub']['cluster_label']}』特化の実測比較コンテンツを足すと、エリア検索とショート動画の双方で新規流入が伸びやすい状態です。",
         "action_taken": f"コラム編集部の次回特命お題に『{demand_gap['recommended_topic']}』を自動発注しました。",
     })
 
     if upcoming_count <= 1:
         issues.append({
             "title": f"公開予約待機中のコラム在庫が残り {upcoming_count}本 です",
-            "detail": "継続的なSEO評価とX新着スレッド流入を止めないため、週1〜2本の予約ストック維持が理想です。",
-            "action_taken": "下の特命お題ボタン（または在庫自動補充モードON）で即座に次週分を補充できます。",
+            "detail": "Google検索インデックス拡大と新着スレッド流入を止めないため、週1〜2本の予約ストック維持が効果的です。",
+            "action_taken": "下の特命お題ボタン（または在庫自動補充モードON）で次週分を補充できます。",
         })
 
-    # 5. Calibrated 4-Axis 100-Point Health Score (scales with daily pace so real growth headroom is visible)
-    days_norm = max(1.0, float(days))
-    daily_pv = pv_tot / days_norm
+    # 5. Phase-Calibrated 4-Axis 100-Point Score
     daily_aff = aff_tot / days_norm
     attributed_aff = sum(cnt for rp, cnt in aff_by_ref_path.items() if rp and rp != "-")
     active_offer_cats = sum(1 for o in offer_breakdown if o.get("clicks", 0) > 0)
-    total_sns_visits = sns_channel_efficiency.get("total_sns_visits", 0)
-    active_sns_channels = sum(1 for ch in sns_channel_efficiency.get("channels", []) if ch.get("visits", 0) > 0 or ch.get("posts_logged", 0) > 0)
+    active_sns_channels = sum(
+        1 for ch in sns_channel_efficiency.get("channels", [])
+        if ch.get("channel_key") != "search" and (ch.get("visits", 0) > 0 or ch.get("posts_logged", 0) > 0)
+    )
     reels_ch = next((ch for ch in sns_channel_efficiency.get("channels", []) if ch.get("channel_key") == "reels"), {})
     reels_active = (reels_ch.get("visits", 0) > 0) or (reels_ch.get("posts_logged", 0) > 0)
+    moshimo_enabled = bool(((flywheel_status.get("moshimo_queue") or {}).get("enabled", True)))
     sleeping_ratio = (len(sleeping_articles) / max(1, len(article_perf))) if article_perf else 0.0
 
-    s_traffic = min(
-        25,
-        (6 if pv_tot > 0 else 4)
-        + min(12, int(round((daily_pv / 180.0) * 12)))
-        + min(4, int(pv_tot / 150))
-        + (3 if eng_rate >= 15 else (1 if eng_rate >= 8 else 0)),
+    overall_score, score_breakdown, score_axes = _compute_phase_calibrated_scores(
+        active_phase=active_phase,
+        pv_tot=pv_tot,
+        daily_pv=daily_pv,
+        eng_rate=eng_rate,
+        aff_tot=aff_tot,
+        daily_aff=daily_aff,
+        aff_ctr_pct=float(funnel.get("aff_ctr_pct") or 0.0),
+        attributed_aff=attributed_aff,
+        active_offer_cats=active_offer_cats,
+        cushion_total=int(funnel.get("cushion_clicks_total") or 0),
+        inflow_ns=inflow_north_star,
+        active_sns_channels=active_sns_channels,
+        reels_active=reels_active,
+        moshimo_enabled=moshimo_enabled,
+        style_diversity_count=len(style_usage_counts),
+        col_audit=col_audit,
+        upcoming_count=upcoming_count,
+        sleeping_ratio=sleeping_ratio,
     )
-    s_monetize = min(
-        25,
-        (5 if aff_tot > 0 else 4)
-        + min(8, int(round(min(1.0, daily_aff / 4.0) * 8)))
-        + min(4, int(aff_tot / 5))
-        + (4 if funnel.get("aff_ctr_pct", 0) >= 2.0 else (2 if funnel.get("aff_ctr_pct", 0) >= 1.0 else 0))
-        + (2 if attributed_aff > 0 else 0)
-        + (2 if active_offer_cats >= 3 else (1 if active_offer_cats >= 1 else 0)),
-    )
-    s_sns = min(
-        25,
-        6
-        + min(8, int(round(min(1.0, (total_sns_visits / days_norm) / 10.0) * 8)))
-        + min(5, active_sns_channels * 2)
-        + (3 if reels_active else 0)
-        + (3 if sum(inflow_cvs.values()) > 0 else (1 if len(style_usage_counts) >= 2 else 0)),
-    )
-    s_content = min(
-        25,
-        8
-        + (7 if col_audit["total_bare_oriental"] == 0 else 0)
-        + min(5, int(col_audit["total_columns"] / 4))
-        + min(3, upcoming_count * 2)
-        + (2 if sleeping_ratio <= 0.35 else (1 if sleeping_ratio <= 0.6 else 0)),
-    )
-    overall_score = s_traffic + s_monetize + s_sns + s_content
 
     directives = {
         "updated_at": datetime.datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"),
+        "growth_phase": active_phase,
+        "growth_phase_label": growth_phase["label"],
         "sns_style_boosts": sns_style_boosts,
         "hook_archetype_boosts": dict(closed_loop_feedback.get("hook_archetype_boosts") or {}),
         "sns_prompt_feedback": str(closed_loop_feedback.get("sns_prompt_feedback") or ""),
@@ -1960,12 +2537,10 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
     return {
         "days": days,
         "overall_score": overall_score,
-        "score_breakdown": {
-            "traffic_engagement": s_traffic,
-            "monetization_efficiency": s_monetize,
-            "sns_diversity_inflow": s_sns,
-            "content_pipeline_health": s_content,
-        },
+        "growth_phase": growth_phase,
+        "inflow_north_star": inflow_north_star,
+        "score_axes": score_axes,
+        "score_breakdown": score_breakdown,
         "funnel": funnel,
         "revenue": reconciled_revenue,
         "wins": wins[:4],
@@ -1990,41 +2565,51 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
 
 
 def _build_rule_based_briefing_text(diag: dict) -> str:
-    """Rich, sharp Chief Strategist fallback briefing weaving live revenue, funnel gaps, SNS efficiency, and top actions."""
+    """Phase-aware Chief Strategist fallback briefing tailored to Inflow-First vs Monetization phases."""
+    gp = diag.get("growth_phase") or {}
+    active_phase = gp.get("active_phase") or "phase1_inflow"
+    phase_lbl = gp.get("label") or "Phase 1｜流入拡大最優先"
+    inflow_ns = diag.get("inflow_north_star") or {}
     hub_label = diag["demand_gap"]["top_hub"]["cluster_label"]
     gap_pt = diag["demand_gap"]["top_hub"]["gap_pt"]
-    offers = diag.get("offer_breakdown") or []
-    gaps = diag.get("monetization_gaps") or []
-    sns_eff = diag.get("sns_channel_efficiency") or {}
-
-    top_offer = offers[0] if offers else None
-    if top_offer and top_offer.get("clicks", 0) > 0:
-        offer_line = f"収益面では『{top_offer['short_label']}』が {top_offer['clicks']}クリック（シェア {top_offer['share_pct']}%）と頭ひとつ抜けて反応が良く、ここが今の明確な勝ち筋です。"
-    else:
-        offer_line = f"収益面はこれからクリック母数を積むフェーズですが、相席直前の読者には『{top_offer['short_label'] if top_offer else 'メンズスキンケア'}』と混雑回避アプリ枠の2軸が一番刺さります。"
-
-    if gaps and gaps[0].get("pv", 0) > 0:
-        g0 = gaps[0]
-        gap_line = (
-            f"一方で一番もったいない機会損失は『{g0['path']}』（{g0['pv']} PV / CVR {g0['cvr_pct']}%）です。"
-            f"{g0['placement_position']}に {g0['recommended_funnel']} を整えるだけで、取りこぼしている成約をすぐ拾えます。"
-        )
-    else:
-        gap_line = "導線面では、会話系・2軒目系コラムの中盤に『/grooming（身だしなみ特集）』、料金・終電系コラムの表直下に『3秒穴場診断＆1対1デート比較』を先回り配置しておくのが鉄則です。"
-
-    top_ch_lbl = sns_eff.get("top_channel_label") or "𝕏 X（旧Twitter）"
-    best_slot = sns_eff.get("recommended_time_slot") or "22:00枠"
-    next_topic = diag["proposed_directives"]["recommended_custom_topic"]
-    # Never print prior/fallback gap values (e.g. 21pt) as if they were measured
     has_measured_gap = bool(diag["demand_gap"]["top_hub"].get("has_measured_gap"))
     gap_note = f"店舗間男女比差 {gap_pt}pt" if has_measured_gap else "店舗間男女比差は計測中"
+    next_topic = diag["proposed_directives"]["recommended_custom_topic"]
+    sns_eff = diag.get("sns_channel_efficiency") or {}
+    top_ch_lbl = sns_eff.get("top_channel_label") or "🔍 自然検索・AI検索 (Google / AI)"
+
+    if active_phase == "phase1_inflow":
+        ext_tot = int(inflow_ns.get("external_inflow_total") or 0)
+        wow_lbl = ((inflow_ns.get("inflow_wow") or {}).get("short_label")) or "計測蓄積中"
+        dpv = inflow_ns.get("daily_pv", 0.0)
+        hint = gp.get("next_phase_hint") or "第1目標 100〜300 PV/日"
+        return (
+            f"現在は【{phase_lbl}】モード（スコア {diag['overall_score']}点/100点 ｜ 1日平均 {dpv} PV・外部純新規流入 {ext_tot:,}件［{wow_lbl}］）。"
+            f"{hint}の突破が最優先ミッションです。\n\n"
+            f"いまは細かいアフィリエイトCTRを追うより、複利で積み上がる『Google検索・AI検索SEO（店舗別・エリア比較・ドーム終演サージ）』と、"
+            f"非フォロワー層へ一気に届く『縦型ショート動画（平日20時 3Dもしも自動配信＋YouTubeショート同時展開）』の2軸にリソースを集中させましょう（現在首位チャネル：{top_ch_lbl}）。\n\n"
+            f"今週は現場需要が最も熱い『{hub_label}』（{gap_note}）を狙う特命コラム『{next_topic}』の予約と、Search Consoleお宝クエリのタイトル改善をセットで進めるのが最短ルートです。"
+        )
+
+    offers = diag.get("offer_breakdown") or []
+    gaps = diag.get("monetization_gaps") or []
+    top_offer = offers[0] if offers else None
+    if top_offer and top_offer.get("clicks", 0) > 0:
+        offer_line = f"収益面では『{top_offer['short_label']}』が {top_offer['clicks']}クリック（シェア {top_offer['share_pct']}%）と好反応です。"
+    else:
+        offer_line = f"集客母数を回遊導線へ繋ぐフェーズに入り、『{top_offer['short_label'] if top_offer else 'マッチングアプリ'}』への2ステップ送客が鍵になります。"
+
+    if gaps and gaps[0].get("pv", 0) >= int(gp.get("min_pv_for_funnel_action") or 20):
+        g0 = gaps[0]
+        gap_line = f"高流入ページ『{g0['path']}』（{g0['pv']} PV）の {g0['placement_position']} に {g0['recommended_funnel']} を配置して取りこぼしを回収しましょう。"
+    else:
+        gap_line = "検索SEOとショート動画での純新規流入ペースを維持しながら、/concierge・/grooming・/for-women への2ステップ回遊率を高めていきましょう。"
 
     return (
-        f"総合コンディションは {diag['overall_score']}点/100点。{offer_line}"
-        f"集客では『{top_ch_lbl}』の {best_slot} が最も効率よくサイト誘導を作れています。\n\n"
+        f"現在は【{phase_lbl}】モード（総合スコア {diag['overall_score']}点/100点）。{offer_line}"
+        f"集客は『{top_ch_lbl}』が牽引しています。\n\n"
         f"{gap_line}\n\n"
-        f"今週の勝負手として、現場関心が最も熱い『{hub_label}』（{gap_note}）を狙い撃つ特命コラム『{next_topic}』の予約と、"
-        f"金曜21時半の15秒ショート動画（街別ギャップ実証）をセットで回していきましょう。"
+        f"今週の特命コラム『{next_topic}』（注目エリア：{hub_label}・{gap_note}）と週末15秒ギャップ動画でさらなる流入上積みを狙います。"
     )
 
 
@@ -2034,15 +2619,18 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
     if not use_ai or not sns_editorial.has_any_ai_key(allow_blocking=(not cache_only)):
         return {"text": fallback_summary, "is_ai": False, "model": ""}
 
+    gp = diag.get("growth_phase") or {}
+    active_phase = gp.get("active_phase") or "phase1_inflow"
     top_offer_key = diag["offer_breakdown"][0]["category_key"] if diag.get("offer_breakdown") else ""
     top_gap_path = diag["monetization_gaps"][0]["path"] if diag.get("monetization_gaps") else ""
     sig = (
-        "v4_claude5",
+        "v5_inflow_phase",
+        active_phase,
         sns_editorial.get_ai_engine_pref(allow_blocking=False),
         bool(sns_editorial.get_claude_api_key(allow_blocking=False)),
         diag["overall_score"],
         diag["funnel"].get("pv_total", 0),
-        diag["funnel"].get("aff_total", 0),
+        (diag.get("inflow_north_star") or {}).get("external_inflow_total", 0),
         diag["proposed_directives"]["recommended_custom_topic"],
         top_offer_key,
         top_gap_path,
@@ -2065,28 +2653,11 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
 
     sns_eff = diag.get("sns_channel_efficiency") or {}
     prompt_payload = {
+        "growth_phase": gp,
+        "inflow_north_star": diag.get("inflow_north_star") or {},
         "overall_score": diag["overall_score"],
+        "score_axes": diag.get("score_axes") or [],
         "funnel": diag["funnel"],
-        "revenue": diag.get("revenue") or {},
-        "offer_breakdown_top3": [
-            {
-                "category": o["short_label"],
-                "clicks": o["clicks"],
-                "share_pct": o["share_pct"],
-                "trend_7d": o["trend_7d_label"],
-            }
-            for o in (diag.get("offer_breakdown") or [])[:3]
-        ],
-        "monetization_gaps_top2": [
-            {
-                "path": g["path"],
-                "pv": g["pv"],
-                "cvr_pct": g["cvr_pct"],
-                "add_funnel": g["recommended_funnel"],
-                "where": g["placement_position"],
-            }
-            for g in (diag.get("monetization_gaps") or [])[:2]
-        ],
         "sns_efficiency": {
             "top_channel": sns_eff.get("top_channel_label"),
             "best_slot": sns_eff.get("recommended_time_slot"),
@@ -2098,11 +2669,21 @@ def _generate_pdca_briefing(diag: dict, use_ai: bool = True, cache_only: bool = 
         "issues": [i["title"] for i in diag["issues"]],
         "next_directives": diag["proposed_directives"],
     }
+    if active_phase == "phase1_inflow":
+        focus_instruction = (
+            "現在は『Phase 1：流入拡大最優先（目標 100〜300 PV/日）』です。アフィリエイト収益や細かいCVRの話は控え、"
+            "「①外部純新規流入と前週比（WoW）の現在地」「②最優先2大エンジンである Google/AI検索SEO（GSCお宝クエリ・店舗/エリア/ドーム終演特集）と縦型ショート動画（IGリール・YouTubeショート 3Dもしも＆街別ギャップ）の伸ばし方」「③今週仕掛ける特命コラムと具体アクション」を、"
+        )
+    else:
+        focus_instruction = (
+            f"現在は『{gp.get('label', 'グロースフェーズ')}』です。"
+            "「①純新規流入・チャネル別の勝ち筋」「②高PVページの2ステップ回遊・収益導線の改善点」「③今週仕掛ける特命コラムとショート動画の勝負手」を、"
+        )
     prompt = (
-        "あなたは『相席ナビ』のグロース統括・作戦参謀長（編集長）です。以下の実測PDCA＆収益インテリジェンス診断データを読み、"
-        "マスター管理者に向けて「①いま一番数字が出ている勝ち筋（案件カテゴリ・SNSチャネル）」「②高PVなのに取りこぼしている機会損失ページと足すべき具体導線（/grooming・/for-women・2軒目一休予約・審査制1対1比較等）」「③今週仕掛けるべき特命コラム・リール動画の勝負手」を、"
+        "あなたは『相席ナビ』のグロース統括・作戦参謀長（編集長）です。以下の実測PDCA診断データを読み、"
+        f"マスター管理者に向けて{focus_instruction}"
         "頼もしい人間の参謀が隣で本音でブリーフィングするような鋭く自然な口語（260〜380文字程度、箇条書きではなく読みやすい2〜3段落）でまとめてください。\n"
-        "※ブランド名は必ず正式名称『オリエンタルラウンジ』と表記し、『ラウンジ』を省いた呼称や『オリラジ』は絶対に使わないこと。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
+        "※存在しない数値の捏造は厳禁。ブランド名は必ず正式名称『オリエンタルラウンジ』と表記し、『ラウンジ』を省いた呼称や『オリラジ』は絶対に使わないこと。JSON形式 `{\"briefing\": \"...\"}` のみ返してください。\n\n"
         f"{json.dumps(prompt_payload, ensure_ascii=False)}"
     )
 
@@ -2218,6 +2799,8 @@ def run_pdca_cycle(
             _record_pdca_history({
                 "timestamp": directives["updated_at"],
                 "overall_score": diag["overall_score"],
+                "growth_phase": (diag.get("growth_phase") or {}).get("active_phase", "phase1_inflow"),
+                "growth_phase_label": (diag.get("growth_phase") or {}).get("label", "Phase 1｜流入拡大最優先"),
                 "focus_hub": directives["focus_hub_label"],
                 "recommended_topic": directives["recommended_custom_topic"],
                 "boosted_styles": applied_boosts,
@@ -2232,7 +2815,9 @@ def run_pdca_cycle(
         "auto_published_result": auto_published_result,
         "gemini_status": sns_editorial.get_gemini_status(allow_blocking=False),
         "history": get_pdca_history(limit=8, allow_blocking=allow_blocking),
-        # Top-level convenience mirrors for Revenue & Growth Intelligence
+        # Top-level convenience mirrors for Growth & Revenue Intelligence
+        "growth_phase": diag.get("growth_phase") or {},
+        "inflow_north_star": diag.get("inflow_north_star") or {},
         "offer_breakdown": diag["offer_breakdown"],
         "monetization_gaps": diag["monetization_gaps"],
         "sns_channel_efficiency": diag["sns_channel_efficiency"],

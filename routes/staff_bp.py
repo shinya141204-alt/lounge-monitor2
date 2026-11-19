@@ -1393,7 +1393,7 @@ def api_pdca():
 
 @staff_bp.route('/api/pdca/settings', methods=['POST'])
 def api_pdca_settings():
-    """Master-only endpoint to toggle autonomous SNS optimization and low-stock column auto-replenishment."""
+    """Master-only endpoint to update growth phase mode, autonomous SNS optimization, and low-stock column auto-replenishment."""
     guard = _check_master_api_csrf()
     if guard is not None:
         return guard
@@ -1403,10 +1403,29 @@ def api_pdca_settings():
         return json_err
     auto_sns = payload.get('auto_optimize_sns') if 'auto_optimize_sns' in payload else None
     auto_col = payload.get('auto_replenish_columns') if 'auto_replenish_columns' in payload else None
+    phase_mode = None
+    if 'growth_phase_mode' in payload:
+        raw_pm = payload.get('growth_phase_mode')
+        if not isinstance(raw_pm, str) or raw_pm.strip().lower() not in pdca_engine.VALID_GROWTH_PHASE_MODES:
+            return jsonify({'ok': False, 'error': '無効なグロースフェーズ指定です'}), 400
+        phase_mode = raw_pm.strip().lower()
     updated = pdca_engine.update_pdca_settings(
         auto_optimize_sns=auto_sns,
         auto_replenish_columns=auto_col,
+        growth_phase_mode=phase_mode,
     )
+    if phase_mode is not None:
+        with core.data_lock:
+            live_s = list(core.latest_data.get('full_data') or [])
+        pdca_engine.run_pdca_cycle(
+            live_s,
+            days=14,
+            apply_actions=True,
+            use_ai=False,
+            ai_cache_only=True,
+            record_log=False,
+            allow_blocking=True,
+        )
     return jsonify({
         'ok': True,
         'settings': updated,

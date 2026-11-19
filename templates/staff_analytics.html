@@ -1198,17 +1198,17 @@
     </div>
     {% endif %}
 
-    <div class="ws-bridge-bar" aria-label="主要収益KPIとクイック移動">
+    <div class="ws-bridge-bar" aria-label="主要流入・収益KPIとクイック移動">
         <div class="ws-bridge-metrics">
-            <span class="ws-bridge-metric">総PV<strong>{{ "{:,}".format(f.pv_total) }}</strong></span>
+            <span class="ws-bridge-metric">総PV<strong>{{ "{:,}".format(f.pv_total) }}</strong> ({{ (f.pv_total / (days if days > 0 else 1))|round(1) }} PV/日)</span>
             <span class="ws-bridge-metric">アフィリエイトClick<strong>{{ "{:,}".format(f.aff_total) }}</strong>{% if (f.aff_impressions_total or 0) > 0 %} ({{ f.aff_slot_ctr_pct }}%){% endif %}</span>
             <span class="ws-bridge-metric">推定収益<strong>¥{{ "{:,}".format(rev.est_total_yen) }}</strong> (月換算 ¥{{ "{:,}".format(rev.est_monthly_pace_yen) }})</span>
-            {% if pdca_directives and pdca_directives.next_column_brief and pdca_directives.next_column_brief.title %}
-            <span class="ws-bridge-metric">PDCA特命<strong>{{ pdca_directives.next_column_brief.title | truncate(24, True, '…') }}</strong></span>
+            {% if pdca_directives and pdca_directives.growth_phase_label %}
+            <span class="ws-bridge-metric">現在PDCA<strong>{{ pdca_directives.growth_phase_label }}</strong></span>
             {% endif %}
         </div>
         <div class="ws-bridge-links">
-            <a href="/staff/pdca?days={{ days }}" class="ws-bridge-link">PDCA参謀（勝ち筋TOP3）を開く →</a>
+            <a href="/staff/pdca?days={{ days if days in (7, 14, 30) else 14 }}" class="ws-bridge-link">PDCA参謀（流入勝ち筋TOP3）を開く →</a>
             {% if aff_status %}
             <button type="button" class="ws-bridge-link" data-ws-goto-tab="affiliate">アフィリエイト枠管理 ({{ aff_status.slots|length }}枠)</button>
             {% endif %}

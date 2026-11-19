@@ -116,58 +116,91 @@ def _score_article_opportunities(signals: dict) -> list[dict]:
     return candidates
 
 
-def _score_monetization_and_ui_opportunities(signals: dict) -> list[dict]:
-    out = []
+def _score_short_video_and_sns_opportunities(signals: dict) -> list[dict]:
+    pdca_sum = signals.get("pdca_engine_summary") or {}
+    sns_eff = pdca_sum.get("sns_channel_efficiency") or {}
+    dgap = pdca_sum.get("demand_gap") or {}
+    top_hub = (dgap.get("top_hub") or {}).get("cluster_label") or "新宿・梅田"
+    reels_list = sns_eff.get("reels_recommendations") or []
+    r0 = reels_list[0] if reels_list else {}
+    short_v = int(((pdca_sum.get("inflow_north_star") or {}).get("short_video_inflow_total")) or 0)
+
+    return [
+        {
+            "type": "short_video_inflow",
+            "skill": "/ui",
+            "score": 142.0,
+            "title": r0.get("title") or f"縦型ショート動画（3Dもしも平日20時＋{top_hub}15秒ギャップ実証）のプロフ誘導強化",
+            "rationale": (
+                f"非フォロワー層へ爆発的に届くショート動画（IGリール・YouTubeショート・TikTok｜現在純流入 {short_v}件）は、"
+                "Phase 1（目標 100〜300 PV/日）でGoogle検索SEOと並ぶ最優先集客エンジン。"
+                f"冒頭2秒フック『{r0.get('hook_0_3s', '同駅徒歩5分の男女比ギャップ実証')}』から `?s=short_bio` / `?s=reel_hub_gap` へ直結させる。"
+            ),
+            "target_files": ["moshimo_reel_queue.py", "reel_generator.py", "templates/staff_sns_editorial.html"],
+        }
+    ]
+
+
+def _score_monetization_and_ui_opportunities(signals: dict, active_phase: str = "phase1_inflow", min_pv_gate: int = 50) -> tuple[list[dict], list[dict]]:
+    """Return `(eligible_for_top3, deferred_monetization_backlog)` respecting the Phase 1 High-PV gate."""
+    eligible = []
+    backlog = []
     aff_cands = signals.get("affiliate_slot_optimization_candidates") or []
     unmonetized = [c for c in aff_cands if c.get("is_unmonetized_url")]
     duplicates = [c for c in aff_cands if c.get("is_duplicate_url")]
 
     if unmonetized:
         names = ", ".join(f"`{c['slot_id']}`" for c in unmonetized)
-        out.append({
+        item = {
             "type": "affiliate_upgrade",
             "skill": "/affiliate",
-            "score": 160.0,
+            "score": 160.0 if active_phase == "phase3_monetize" else 88.0,
             "title": f"未収益化公式直URL枠（{len(unmonetized)}枠）のASP計測リンク差し替え",
-            "rationale": f"現在 {names} がASP計測タグなしの公式直URLになっているため、クリックが発生しても成果報酬が ¥0 になる機会損失が発生中（想定EPC ¥105〜¥160）。",
+            "rationale": f"現在 {names} がASP計測タグなしの公式直URL（Phase 2以降の収益取りこぼし防止用として事前整備推奨）。",
             "target_files": ["affiliate_manager.py", "app.py", "static/affiliate_config.js", "templates/for_women.html"],
-        })
+        }
+        if active_phase == "phase1_inflow":
+            backlog.append(item)
+        else:
+            eligible.append(item)
 
     if duplicates:
         names = ", ".join(f"`{c['slot_id']}`" for c in duplicates)
-        out.append({
+        item = {
             "type": "affiliate_diversify",
             "skill": "/affiliate",
-            "score": 120.0,
+            "score": 120.0 if active_phase == "phase3_monetize" else 82.0,
             "title": f"重複遷移先アフィリエイト枠（{len(duplicates)}枠）の別ASP案件分離テスト",
-            "rationale": f"{names} が同一遷移先URLを共有中。『即時合流アプリ』と『審査制1対1カフェデート』を別案件に分離することで2ステップ誘導のCVRとEPCを最大化可能。",
+            "rationale": f"{names} が同一遷移先URLを共有中。『即時合流アプリ』と『審査制1対1カフェデート』の分離はトラフィック拡大後に効果大。",
             "target_files": ["affiliate_manager.py", "static/affiliate_config.js", "templates/grooming.html"],
-        })
+        }
+        if active_phase == "phase1_inflow":
+            backlog.append(item)
+        else:
+            eligible.append(item)
 
     pdca_sum = signals.get("pdca_engine_summary") or {}
-    for gap in (pdca_sum.get("monetization_gaps") or [])[:2]:
-        if isinstance(gap, dict) and gap.get("title"):
-            out.append({
-                "type": "funnel_ui_upgrade",
-                "skill": "/ui",
-                "score": 115.0,
-                "title": str(gap.get("title")),
-                "rationale": str(gap.get("reason") or gap.get("detail") or "高PVページから /grooming・/for-women への2ステップ送客率改善余地あり。"),
-                "target_files": ["templates/store_detail.html", "templates/price_comparison.html"],
-            })
-
-    if not out:
-        out.append({
+    for gap in (pdca_sum.get("monetization_gaps") or [])[:3]:
+        if not isinstance(gap, dict) or not gap.get("title"):
+            continue
+        gpv = int(gap.get("pv") or 0)
+        gp_path = str(gap.get("path") or "")
+        entry = {
             "type": "funnel_ui_upgrade",
             "skill": "/ui",
-            "score": 110.0,
-            "title": "店舗詳細（`/store/<slug>`）の『男余り・待ち発生時』別業態/事前準備2ステップ導線のマイクロコピー最適化",
-            "rationale": "混雑・待機発生タイミングのユーザーは代替手段（審査制デート・2軒目予約・身だしなみ準備）への関心が高く、押し売り感ゼロで最高EPC帯へ送客可能。",
-            "target_files": ["templates/store_detail.html", "templates/grooming.html", "templates/for_women.html"],
-        })
+            "score": 148.0 if gpv >= min_pv_gate else 85.0,
+            "title": f"高流入ページ『{gap.get('title')}』（{gpv} PV）の2ステップ導線改善",
+            "rationale": str(gap.get("action_proposal") or f"現在 {gpv} PV に対し広告遷移 {gap.get('aff_clicks', 0)}件。/grooming・/for-women への2ステップ送客余地あり。"),
+            "target_files": ["templates/store_detail.html", "templates/price_comparison.html"],
+        }
+        if (gpv >= min_pv_gate and (active_phase != "phase1_inflow" or gp_path != "/")) or active_phase != "phase1_inflow":
+            eligible.append(entry)
+        else:
+            backlog.append(entry)
 
-    out.sort(key=lambda x: -x["score"])
-    return out
+    eligible.sort(key=lambda x: -x["score"])
+    backlog.sort(key=lambda x: -x["score"])
+    return eligible, backlog
 
 
 def _find_previous_signals(current_path: Path, current_collected_at: str = "") -> dict | None:
@@ -205,41 +238,74 @@ def main() -> int:
         return 1
 
     signals = json.loads(in_p.read_text(encoding="utf-8"))
-    art_ops = _score_article_opportunities(signals)
-    mon_ops = _score_monetization_and_ui_opportunities(signals)
+    pdca_sum = signals.get("pdca_engine_summary") or {}
+    gp = pdca_sum.get("growth_phase") or {}
+    ins = pdca_sum.get("inflow_north_star") or {}
+    active_phase = gp.get("active_phase") or "phase1_inflow"
+    phase_label = gp.get("label") or "Phase 1｜流入拡大最優先"
+    target_label = gp.get("target_label") or "第1目標: 100〜300 PV/日（月間3,000〜1万PV）"
+    min_pv_gate = int(gp.get("min_pv_for_funnel_action") or (50 if active_phase == "phase1_inflow" else 20))
 
-    # バランスよく「収益/導線 最優先1〜2手」＋「データコラム 最優先1〜2手」から上位3手を厳選
+    art_ops = _score_article_opportunities(signals)
+    short_ops = _score_short_video_and_sns_opportunities(signals)
+    mon_eligible, mon_backlog = _score_monetization_and_ui_opportunities(
+        signals,
+        active_phase=active_phase,
+        min_pv_gate=min_pv_gate,
+    )
+
+    # Phase 1（流入拡大最優先）：①検索SEO/CTR改善またはイベント・エリア記事 ②需要ギャップ記事 ③ショート動画プロフ誘導（高PV記事のみ導線改善参入）
     top3 = []
-    if mon_ops:
-        top3.append(mon_ops[0])
-    if art_ops:
-        top3.append(art_ops[0])
-    remaining = sorted(mon_ops[1:] + art_ops[1:], key=lambda x: -x["score"])
-    if remaining:
-        top3.append(remaining[0])
+    seo_ops = [x for x in art_ops if x["type"] in ("seo_rewrite_or_new", "seo_page_ctr_rewrite")]
+    content_ops = [x for x in art_ops if x["type"] not in ("seo_rewrite_or_new", "seo_page_ctr_rewrite")]
+
+    if active_phase == "phase1_inflow":
+        if seo_ops:
+            top3.append(seo_ops[0])
+        if content_ops:
+            top3.append(content_ops[0])
+        if short_ops and len(top3) < 3:
+            top3.append(short_ops[0])
+        pool = [x for x in (seo_ops[1:] + content_ops[1:] + mon_eligible + short_ops[1:]) if x not in top3]
+        pool.sort(key=lambda x: -x["score"])
+        while len(top3) < 3 and pool:
+            top3.append(pool.pop(0))
+        remaining = pool + mon_backlog
+    else:
+        if mon_eligible:
+            top3.append(mon_eligible[0])
+        if art_ops:
+            top3.append(art_ops[0])
+        pool = sorted([x for x in (mon_eligible[1:] + art_ops[1:] + short_ops) if x not in top3], key=lambda x: -x["score"])
+        if pool:
+            top3.append(pool.pop(0))
+        remaining = pool + mon_backlog
 
     prev = _find_previous_signals(in_p, str(signals.get("collected_at") or ""))
-    diff_note = "初回スナップショット（次回実行時に前回との記事数・未収益化枠数・需要推移差分が自動表示されます）"
+    diff_note = "初回スナップショット（次回実行時に前回との外部純新規流入・記事数・需要推移差分が自動表示されます）"
     if isinstance(prev, dict):
         prev_guides = int(((prev.get("guide_coverage") or {}).get("total_guide_templates")) or 0)
         cur_guides = int(((signals.get("guide_coverage") or {}).get("total_guide_templates")) or 0)
-        prev_unmon = len(prev.get("affiliate_slot_optimization_candidates") or [])
-        cur_unmon = len(signals.get("affiliate_slot_optimization_candidates") or [])
+        prev_inf = int(((((prev.get("pdca_engine_summary") or {}).get("inflow_north_star")) or {}).get("external_inflow_total")) or 0)
+        cur_inf = int(ins.get("external_inflow_total") or 0)
         diff_note = (
-            f"前回（{prev.get('collected_at', '-')}）比：公開コラム `{prev_guides} → {cur_guides}本` "
-            f"／ 要改善アフィリ枠 `{prev_unmon} → {cur_unmon}枠`"
+            f"前回（{prev.get('collected_at', '-')}）比：外部純新規流入 `{prev_inf} → {cur_inf}件` "
+            f"／ 公開コラム `{prev_guides} → {cur_guides}本`"
         )
 
+    wow_note = ((ins.get("inflow_wow") or {}).get("short_label")) or "計測蓄積中"
     md_lines = [
         f"# 相席ナビ 週次グロースPDCA 最優先アクションプラン（{iso_year}-W{iso_week:02d}）",
         "",
         f"- **算出日時**: {now_jst.strftime('%Y-%m-%d %H:%M:%S JST')}",
+        f"- **現在フェーズ**: **{phase_label}**（{target_label}）",
+        f"- **North Star 流入指標**: 外部純新規流入 `{ins.get('external_inflow_total', 0)}件`（{wow_note}） ／ 1日平均 `{ins.get('daily_pv', 0.0)} PV/日`",
         f"- **根拠データ**: `{in_p.relative_to(REPO_ROOT) if in_p.is_relative_to(REPO_ROOT) else in_p}`（集計窓 {signals.get('window_days')}日）",
         f"- **前回サイクル比較**: {diff_note}",
         "",
         "---",
         "",
-        "## 今週実行すべき「必勝3手」（需要 × 未充足度 × 収益期待EPC順）",
+        f"## 今週実行すべき「必勝3手」（{phase_label}基準）",
         "",
     ]
 
@@ -254,10 +320,10 @@ def main() -> int:
     md_lines.extend([
         "---",
         "",
-        "## バックログ候補（次点）",
+        "## 次点・Phase 2以降の収益化準備バックログ",
         "",
     ])
-    for item in remaining[1:5]:
+    for item in remaining[:5]:
         md_lines.append(f"- **[{item['skill']}] {item['title']}**（スコア `{item['score']}`）：{item['rationale']}")
 
     out_p = Path(args.out_path)
