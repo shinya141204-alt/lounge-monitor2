@@ -1320,84 +1320,37 @@
             {% endif %}
         </div>
 
-        <nav class="master-section-jumpbar" aria-label="ページ内セクション移動">
-            <span class="master-jump-label">セクション移動</span>
-            <a href="#sns-delivery-health" class="master-jump-chip">配信ステータス・トークン</a>
-            <a href="#sns-ai-engine" class="master-jump-chip">AI執筆エンジン</a>
-            {% if channel == 'instagram' %}
-            <a href="#moshimo-queue-section" class="master-jump-chip">3Dもしも自動キュー</a>
-            {% endif %}
-            {% if channel in ('instagram', 'tiktok') %}
-            <a href="#reel-studio-section" class="master-jump-chip">ショート動画スタジオ</a>
-            {% endif %}
-            <a href="#candidates-grid" class="master-jump-chip">提案候補＆採点ボード</a>
-        </nav>
-
         <div class="header-card">
-            <h1>SNS編集部｜{{ editorial.channel_label }} 4役合議・採点ボード</h1>
-            <p>X・Threads・Instagram・TikTok・noteの全媒体で定型ボット感を排除。①現場データ発掘（天気・曜日連動） → ②編成係 → ③執筆係 → ④鬼デスク（数値検閲＆100点採点）が合議して最良の1案を自動採用します。</p>
+            <h1>SNS編集部｜{{ editorial.channel_label }} 4役合議・動画スタジオ</h1>
+            <p>投稿案合議・ショート動画スタジオ・週末5枚組画像キット・配信設定を上部タブで瞬時に切り替えられます。</p>
         </div>
 
-        <!-- Writing Tone & Perspective Selector (Spicy / Female Real / Mix / Standard) -->
-        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--rose-border);">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
-                    執筆トーン＆視点セレクター（現在表示：{{ editorial.tone_mode_label }}）
-                </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
-                        自動投稿の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
-                    </span>
-                    <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
-                        このトーンを自動投稿の標準に保存
+        <div class="ws-workspace" data-ws-param="tab">
+            <div class="ws-subtab-shell master-section-jumpbar">
+                <div class="ws-tablist" role="tablist" aria-label="SNS・動画編集部セクション切り替え">
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-proposals" data-ws-tab="proposals" aria-selected="true">
+                        <span>投稿案・4役合議</span>
+                        <span class="ws-tab-count">{{ editorial.evaluation.candidates | length }}案</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-video" data-ws-tab="video" aria-selected="false">
+                        <span>ショート動画・もしもキュー</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-weekend-kit" data-ws-tab="weekend_kit" aria-selected="false">
+                        <span>週末画像キット</span>
+                        <span class="ws-tab-count">5枚組</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-settings" data-ws-tab="settings" aria-selected="false">
+                        <span>配信設定・AI・投稿履歴</span>
                     </button>
                 </div>
-            </div>
-            <div class="tab-group" aria-label="執筆トーン切替">
-                {% for tm in editorial.tone_modes %}
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ tm.key }}&situation={{ editorial.situation }}"
-                   class="{{ 'active' if editorial.tone_mode == tm.key else '' }}"
-                   title="{{ tm.desc }}">
-                    {{ tm.short_label }}{% if editorial.default_tone_mode == tm.key %} ★標準{% endif %}
-                </a>
-                {% endfor %}
-            </div>
-            <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
-                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}{{ tm.desc }}{% endif %}{% endfor %}
-            </div>
-        </div>
-
-        <!-- Situation Specialization Selector (F2.2) -->
-        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--amber-border);">
-            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <div style="font-size:0.84rem; font-weight:800; color:var(--amber-ink);">
-                    🎯 シチュエーション特化セレクター（現在：{{ editorial.situation_label or '通常（指定なし）' }}）
-                </div>
-                <div style="font-size:0.74rem; color:var(--sub);">
-                    特定の現場切り口（2軒目・待ちゼロ・雨天等）でワンクリック再編成
+                <div class="ws-subtab-tools">
+                    <button type="button" class="ws-expand-all-btn" data-ws-expand-all aria-pressed="false">全タブ展開</button>
                 </div>
             </div>
-            <div class="tab-group" aria-label="シチュエーション切替">
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}"
-                   class="{{ 'active' if not editorial.situation else '' }}"
-                   title="通常編成（各SNSの標準スタイルローテーション）">
-                    通常（指定なし）
-                </a>
-                {% for sit in editorial.situation_specs %}
-                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}&situation={{ sit.key }}"
-                   class="{{ 'active' if editorial.situation == sit.key else '' }}"
-                   title="{{ sit.desc }}">
-                    {{ sit.short_label }}
-                </a>
-                {% endfor %}
-            </div>
-            {% if editorial.situation_meta %}
-            <div style="font-size:0.76rem; color:var(--amber-ink);">
-                <strong>{{ editorial.situation_meta.label }}：</strong>{{ editorial.situation_meta.desc }}
-            </div>
-            {% endif %}
-        </div>
 
+            <!-- Sub-Tab 4: Delivery Health, Tokens, AI Engine & History -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-settings" aria-labelledby="ws-tab-settings" data-ws-panel="settings" hidden="until-found">
+                <div class="ws-tabpanel-inner">
         <!-- Automated SNS Delivery Health & Token Diagnostic Panel -->
         {% set dh = editorial.delivery_health or {} %}
         <div class="header-card" id="sns-delivery-health" style="padding:14px 18px; border-color:var(--green-border);">
@@ -1545,6 +1498,42 @@
             </div>
         </div>
 
+        <h2 class="section-h2">直近の{{ editorial.channel_label }} 採用ログ（本番投稿履歴）</h2>
+        <div class="history-list">
+            {% if editorial.history %}
+                {% for h in editorial.history %}
+                <div class="history-item">
+                    <div class="history-head">
+                        <span><strong>{{ h.timestamp }}（{{ h.slot_label }}枠）</strong> — 採用：{{ h.selected_style_label }}</span>
+                        <span>評価スコア：<strong>{{ h.selected_score }}点</strong></span>
+                    </div>
+                    <div style="color:var(--sub); margin-bottom:6px;">{{ h.desk_summary }}</div>
+                    {% if h.selected_thinking_memo %}
+                    <div class="thinking-memo" style="margin-bottom:6px;"><strong>当時のAI長考メモ：</strong>{{ h.selected_thinking_memo }}</div>
+                    {% endif %}
+                    <div class="tweet-preview">{{ h.selected_text }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="history-item" style="color:var(--sub);">まだ{{ editorial.channel_label }}の自動投稿合議ログがありません。次回の自動投稿からここに各係の提案と採点履歴が記録されます。</div>
+            {% endif %}
+        </div>
+                </div>
+            </div>
+
+            <!-- Sub-Tab 2: Short Video Studio & 3D Moshimo Queue -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-video" aria-labelledby="ws-tab-video" data-ws-panel="video" hidden="until-found">
+                <div class="ws-tabpanel-inner">
+        {% if channel != 'instagram' %}
+        <div class="ws-bridge-bar" style="margin-bottom:14px;">
+            <div class="ws-bridge-metrics">
+                <span class="ws-bridge-metric">3Dボクセル『もしもシリーズ』自動投稿キュー（IGリール ＆ YouTubeショート連動）は Instagram 媒体ビューで操作できます</span>
+            </div>
+            <div class="ws-bridge-links">
+                <a href="/staff/sns-editorial?channel=instagram&amp;tab=video" class="ws-bridge-link">Instagram 3Dもしもキューを開く →</a>
+            </div>
+        </div>
+        {% endif %}
         {% if channel == 'instagram' and moshimo_queue %}
         {% set _mq_eps = moshimo_queue.episodes or [] %}
         {% set _mq_init = moshimo_queue.next_episode or (_mq_eps[0] if _mq_eps else none) %}
@@ -2106,10 +2095,146 @@
                 </div>
             </details>
         </div>
+                </div>
+            </div>
 
+            <!-- Sub-Tab 3: Integrated Weekend 5-Slide Image Kit (IG / Threads) -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-weekend-kit" aria-labelledby="ws-tab-weekend-kit" data-ws-panel="weekend_kit" hidden="until-found">
+                <div class="ws-tabpanel-inner">
+                {% if sns_kit_ctx and sns_kit_captions %}
+                <section class="wk-kit-card" id="weekend-kit-section" aria-labelledby="weekend-kit-heading">
+                    <div class="wk-kit-head">
+                        <div>
+                            <h2 id="weekend-kit-heading" style="margin:0 0 4px; font-size:1.05rem; font-weight:800;">Instagram / Threads「週末狙い目予報」5枚組画像キット</h2>
+                            <p style="margin:0; font-size:0.78rem; color:var(--sub); font-variant-numeric:tabular-nums;">
+                                対象週末：{{ sns_kit_ctx.weekend_label }} ｜ 集計時刻：{{ sns_kit_ctx.generated_at }} ｜ 1080×1350px 縦長カルーセル全5枚
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" class="copy-btn" data-sns-kit-post="ig">Instagramへ5枚組を今すぐ投稿</button>
+                            <button type="button" class="back-btn" style="cursor:pointer;" data-sns-kit-post="threads">Threadsへ今すぐ投稿</button>
+                            <a href="/staff/sns-kit/download.zip" class="back-btn" style="text-decoration:none;">全5枚＋キャプションをZIP保存</a>
+                        </div>
+                    </div>
+                    <div id="wk-kit-status-msg" role="status" aria-live="polite" style="font-size:0.78rem; color:var(--green-ink); margin-bottom:10px; display:none;"></div>
+
+                    <div class="wk-slides-grid">
+                        {% set _wk_labels = ['1. 表紙カバー', '2. 盛り上がりTOP5', '3. 高女性比率・穴場TOP5', '4. 時間帯別の立ち回り', '5. プロフィール誘導CTA'] %}
+                        {% for i in range(1, 6) %}
+                        <div class="wk-slide-item">
+                            <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.74rem; font-weight:700;">
+                                <span>{{ _wk_labels[i - 1] }}</span>
+                                <span style="color:var(--sub); font-size:0.68rem;">4:5</span>
+                            </div>
+                            <img src="/staff/sns-kit/slide/{{ i }}.png?t={{ sns_kit_cache_bust }}" alt="{{ _wk_labels[i - 1] }}" width="1080" height="1350" loading="lazy">
+                            <a href="/staff/sns-kit/slide/{{ i }}.png?download=1" download="aiseki_navi_slide_0{{ i }}.png" class="back-btn" style="justify-content:center; font-size:0.73rem; padding:5px 8px;">スライド{{ i }}を単体保存</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="wk-captions-grid">
+                        <div class="wk-caption-box">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                                <strong style="font-size:0.82rem;">Instagram用キャプション（タグ付き）</strong>
+                                <button type="button" class="copy-btn" style="padding:4px 10px; font-size:0.73rem;" data-sns-kit-copy="wk-cap-ig">コピーする</button>
+                            </div>
+                            <textarea id="wk-cap-ig" class="wk-caption-area" readonly>{{ sns_kit_captions.instagram_caption }}</textarea>
+                        </div>
+                        <div class="wk-caption-box">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                                <strong style="font-size:0.82rem;">Threads用テキスト案 1（データ速報調）</strong>
+                                <button type="button" class="copy-btn" style="padding:4px 10px; font-size:0.73rem;" data-sns-kit-copy="wk-cap-th1">コピーする</button>
+                            </div>
+                            <textarea id="wk-cap-th1" class="wk-caption-area" style="min-height:92px; margin-bottom:10px;" readonly>{{ sns_kit_captions.threads_post_1 }}</textarea>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                                <strong style="font-size:0.82rem;">Threads用テキスト案 2（共感フック調）</strong>
+                                <button type="button" class="copy-btn" style="padding:4px 10px; font-size:0.73rem;" data-sns-kit-copy="wk-cap-th2">コピーする</button>
+                            </div>
+                            <textarea id="wk-cap-th2" class="wk-caption-area" style="min-height:92px;" readonly>{{ sns_kit_captions.threads_post_2 }}</textarea>
+                        </div>
+                    </div>
+                </section>
+                {% else %}
+                <div class="header-card">
+                    <p>週末画像キットを読み込めませんでした。<a href="/staff/sns-kit" style="color:var(--gold);">単体ページで開く →</a></p>
+                </div>
+                {% endif %}
+                </div>
+            </div>
+
+            <!-- Sub-Tab 1: Proposals, Tone/Situation Controls & 4-Role Desk -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-proposals" aria-labelledby="ws-tab-proposals" data-ws-panel="proposals">
+                <div class="ws-tabpanel-inner">
+        <!-- Writing Tone & Perspective Selector (Spicy / Female Real / Mix / Standard) -->
+        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--rose-border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:0.84rem; font-weight:800; color:var(--rose-ink);">
+                    執筆トーン＆視点セレクター（現在表示：{{ editorial.tone_mode_label }}）
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span id="default-tone-badge" style="font-size:0.74rem; color:var(--sub);">
+                        自動投稿の標準トーン：<strong style="color:var(--text);">{{ editorial.default_tone_mode }}</strong>
+                    </span>
+                    <button type="button" class="copy-btn" style="padding:5px 11px; font-size:0.74rem;" onclick="saveDefaultToneMode()">
+                        このトーンを自動投稿の標準に保存
+                    </button>
+                </div>
+            </div>
+            <div class="tab-group" aria-label="執筆トーン切替">
+                {% for tm in editorial.tone_modes %}
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ tm.key }}&situation={{ editorial.situation }}"
+                   class="{{ 'active' if editorial.tone_mode == tm.key else '' }}"
+                   title="{{ tm.desc }}">
+                    {{ tm.short_label }}{% if editorial.default_tone_mode == tm.key %} ★標準{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <div id="tone-save-msg" style="font-size:0.76rem; color:var(--sub);">
+                {% for tm in editorial.tone_modes %}{% if tm.key == editorial.tone_mode %}{{ tm.desc }}{% endif %}{% endfor %}
+            </div>
+        </div>
+
+        <!-- Situation Specialization Selector (F2.2) -->
+        <div class="channel-bar" style="flex-direction:column; align-items:stretch; gap:10px; border-color:var(--amber-border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:0.84rem; font-weight:800; color:var(--amber-ink);">
+                    シチュエーション特化セレクター（現在：{{ editorial.situation_label or '通常（指定なし）' }}）
+                </div>
+                <div style="font-size:0.74rem; color:var(--sub);">
+                    特定の現場切り口（2軒目・待ちゼロ・雨天等）でワンクリック再編成
+                </div>
+            </div>
+            <div class="tab-group" aria-label="シチュエーション切替">
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}"
+                   class="{{ 'active' if not editorial.situation else '' }}"
+                   title="通常編成（各SNSの標準スタイルローテーション）">
+                    通常（指定なし）
+                </a>
+                {% for sit in editorial.situation_specs %}
+                <a href="/staff/sns-editorial?channel={{ channel }}&slot={{ slot_label }}&tone={{ editorial.tone_mode }}&situation={{ sit.key }}"
+                   class="{{ 'active' if editorial.situation == sit.key else '' }}"
+                   title="{{ sit.desc }}">
+                    {{ sit.short_label }}
+                </a>
+                {% endfor %}
+            </div>
+            {% if editorial.situation_meta %}
+            <div style="font-size:0.76rem; color:var(--amber-ink);">
+                <strong>{{ editorial.situation_meta.label }}：</strong>{{ editorial.situation_meta.desc }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Collapsible 4 Roles & AI Image Prompt Book -->
+        <details class="ws-secondary-disclosure">
+            <summary>
+                <span>4役合議プロセス詳細 ＆ AIアイキャッチ画像プロンプト帳</span>
+                <span style="font-size:0.75rem; color:var(--sub);">クリックで展開 ▾</span>
+            </summary>
+            <div class="ws-secondary-disclosure-body">
         <!-- AI Eyecatch & Image Prompt Book (F2.3) -->
         {% if editorial.image_prompts %}
-        <details class="reel-veo-details" style="margin-bottom:20px;" open>
+        <details class="reel-veo-details" style="margin-bottom:16px;">
             <summary style="border-color:var(--gold);">
                 <span>🎨 AIアイキャッチ・画像生成プロンプト帳（{{ editorial.channel_label }}最適化）</span>
                 <span style="font-size:0.74rem; color:var(--gold);">▼ クリックで開閉</span>
@@ -2182,6 +2307,8 @@
                 <p id="desk-summary-text">{{ editorial.evaluation.desk_summary }}</p>
             </div>
         </div>
+            </div>
+        </details>
 
         <h2 class="section-h2">
             <span id="candidates-heading-title">{{ editorial.channel_label }} 提案{{ editorial.evaluation.candidates | length }}案とデスクの評価スコア{% if channel != 'instagram' %}（{{ slot_label }}枠）{% endif %}</span>
@@ -2279,26 +2406,8 @@
             </div>
             {% endfor %}
         </div>
-
-        <h2 class="section-h2">直近の{{ editorial.channel_label }} 採用ログ（本番投稿履歴）</h2>
-        <div class="history-list">
-            {% if editorial.history %}
-                {% for h in editorial.history %}
-                <div class="history-item">
-                    <div class="history-head">
-                        <span><strong>{{ h.timestamp }}（{{ h.slot_label }}枠）</strong> — 採用：{{ h.selected_style_label }}</span>
-                        <span>評価スコア：<strong>{{ h.selected_score }}点</strong></span>
-                    </div>
-                    <div style="color:var(--sub); margin-bottom:6px;">{{ h.desk_summary }}</div>
-                    {% if h.selected_thinking_memo %}
-                    <div class="thinking-memo" style="margin-bottom:6px;"><strong>🧠 当時のAI長考メモ：</strong>{{ h.selected_thinking_memo }}</div>
-                    {% endif %}
-                    <div class="tweet-preview">{{ h.selected_text }}</div>
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="history-item" style="color:var(--sub);">まだ{{ editorial.channel_label }}の自動投稿合議ログがありません。次回の自動投稿からここに各係の提案と採点履歴が記録されます。</div>
-            {% endif %}
+            </div>
         </div>
     </div>
 
@@ -3554,6 +3663,9 @@
         }
 
         function applyCandidateToReelStudio(reelType, candIdx) {
+            if (window.activateStaffWorkspaceTab) {
+                window.activateStaffWorkspaceTab("video", "reel-studio-section");
+            }
             var rt = reelType || "tiktok_gap_shock";
             _currentReelType = rt;
             selectReelTextTab(rt);
@@ -4198,6 +4310,45 @@
             }
             _bindMoshimoQueueEvents();
             _bindVoiceNarrationStudioEvents();
+            document.addEventListener("click", async function(ev) {
+                var copyBtn = ev.target.closest("[data-sns-kit-copy]");
+                if (copyBtn) {
+                    var targetId = copyBtn.getAttribute("data-sns-kit-copy");
+                    copyText(targetId, copyBtn);
+                    return;
+                }
+                var postBtn = ev.target.closest("[data-sns-kit-post]");
+                if (postBtn && !postBtn.disabled) {
+                    var pTarget = postBtn.getAttribute("data-sns-kit-post");
+                    var stEl = document.getElementById("wk-kit-status-msg");
+                    postBtn.disabled = true;
+                    if (stEl) {
+                        stEl.style.display = "block";
+                        stEl.style.color = "var(--sub)";
+                        stEl.textContent = pTarget === "ig" ? "Instagramへ5枚組カルーセルを送信中..." : "Threadsへ自動投稿を送信中...";
+                    }
+                    try {
+                        var pUrl = pTarget === "ig" ? "/api/trigger-ig-post?mode=carousel&force=1" : "/api/trigger-threads-post?slot=22:00&force=1";
+                        var resData = await fetchJsonSafe(pUrl, {
+                            method: "POST",
+                            headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" }
+                        }, 45000);
+                        if (stEl) {
+                            stEl.style.color = "var(--green-ink)";
+                            stEl.textContent = (resData && resData.queued)
+                                ? "バックグラウンド投稿キューに投入しました（約10〜20秒で自動配信されます）"
+                                : "自動投稿リクエストを受け付けました";
+                        }
+                    } catch (err) {
+                        if (stEl) {
+                            stEl.style.color = "var(--err-ink)";
+                            stEl.textContent = "エラー: " + ((err && err.message) || "通信エラーが発生しました");
+                        }
+                    } finally {
+                        postBtn.disabled = false;
+                    }
+                }
+            });
             selectReelTextTab(_currentReelType);
             loadReelStudioInfo(_currentReelType, false);
             if (INITIAL_FORCE_REFRESH) {

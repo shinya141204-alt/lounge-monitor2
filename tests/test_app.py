@@ -2703,10 +2703,12 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
                 'ページ別計測へ移行中',
                 '/staff/sns-editorial?channel=instagram#reel-studio-section',
                 'class="sleeping-details"',
-                '#pdca-growth-actions',
-                '#pdca-sns',
-                '#pdca-articles',
-                '#pdca-history',
+                'id="pdca-growth-actions"',
+                'id="pdca-sns"',
+                'id="pdca-articles"',
+                'id="pdca-history"',
+                'data-ws-tab="actions"',
+                'data-ws-tab="monetization"',
             ):
                 self.assertIn(expected_snippet, ui_html)
 
@@ -3258,7 +3260,7 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
             'https://example.com/tapple-instant',
         )
 
-        # Master /staff/analytics renders both management panels cleanly
+        # Master /staff/analytics renders affiliate slot manager, and /staff/ops renders Sheets & governance panels
         with self.client.session_transaction() as sess:
             sess['is_staff'] = True
             sess['is_master'] = True
@@ -3266,8 +3268,12 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
         self.assertEqual(r_ana.status_code, 200)
         ana_html = r_ana.data.decode('utf-8')
         self.assertIn('id="affiliate-slot-manager"', ana_html)
-        self.assertIn('id="sheets-retention-manager"', ana_html)
         self.assertIn('タップル A8', ana_html)
+        r_ops = self.client.get('/staff/ops')
+        self.assertEqual(r_ops.status_code, 200)
+        ops_html = r_ops.data.decode('utf-8')
+        self.assertIn('id="sheets-retention-manager"', ops_html)
+        self.assertIn('id="ops-governance-hub"', ops_html)
 
     def test_sheets_retention_compresses_daily_summary_and_rotates_multi_sheets(self):
         from unittest.mock import patch

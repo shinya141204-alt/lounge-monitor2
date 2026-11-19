@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
+    <meta name="robots" content="noindex, nofollow">
+    <title>運営・設定コンソール（オーナー専用）｜相席ナビ</title>
+    {% include '_staff_tokens.html' %}
+    <style>
+        :root { --bg: #111113; --surface: #1a1a1e; --surface-2: #232329; --text: #f4f4f5; --sub: #b4b4be; }
+        body.theme-light {
+            color-scheme: light;
+            --bg: #f6f6f7; --surface: #ffffff; --surface-2: #f2f2f5; --text: #18181b; --sub: #52525b;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        html, body { max-width: 100%; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif;
+            line-height: 1.55;
+        }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 16px 16px 76px;
+        }
+        [id] { scroll-margin-top: 96px; }
+        .header-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-card, 18px);
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-title h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin: 0 0 3px;
+            letter-spacing: -0.01em;
+        }
+        .header-title .sub {
+            color: var(--sub);
+            font-size: 0.78rem;
+            margin: 0;
+        }
+        .ops-kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .ops-kpi-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
+            padding: 12px 14px;
+        }
+        .ops-kpi-label {
+            font-size: 0.73rem;
+            color: var(--sub);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .ops-kpi-val {
+            font-size: 1.18rem;
+            font-weight: 800;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+        .ops-kpi-sub {
+            font-size: 0.72rem;
+            color: var(--sub);
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .ops-section {
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-card, 18px);
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .ops-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .ops-header h2 {
+            font-size: 1.02rem;
+            font-weight: 800;
+            margin: 0 0 4px;
+        }
+        .ops-header p {
+            margin: 0;
+            font-size: 0.77rem;
+            color: var(--sub);
+        }
+        .gov-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+            gap: 14px;
+        }
+        .gov-box {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
+            padding: 15px 16px;
+            min-width: 0;
+        }
+        .gov-box h3 {
+            margin: 0 0 6px;
+            font-size: 0.94rem;
+            font-weight: 800;
+        }
+        .gov-sub {
+            margin: 0 0 12px;
+            font-size: 0.75rem;
+            color: var(--sub);
+        }
+        .ops-input {
+            width: 100%;
+            max-width: 100%;
+            background: var(--input-bg);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--r-chip, 10px);
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            font-family: inherit;
+        }
+        @media (max-width: 560px) {
+            .ops-input { font-size: 16px; }
+        }
+        .ops-input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+        .ops-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .ops-btn {
+            cursor: pointer;
+            border: 1px solid var(--gold-border);
+            background: var(--gold-soft);
+            color: var(--gold-ink);
+            font-size: 0.76rem;
+            font-weight: 700;
+            min-height: 36px;
+            padding: 6px 12px;
+            border-radius: var(--r-chip, 10px);
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ops-btn:hover { filter: brightness(1.06); }
+        .ops-btn.secondary {
+            background: var(--surface-2);
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+        .ops-btn.danger {
+            border-color: var(--red);
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+        }
+        .ops-msg {
+            margin-top: 8px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            display: none;
+        }
+        .ws-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .ws-chip {
+            font-size: 0.72rem;
+            padding: 3px 9px;
+            border-radius: var(--r-chip, 10px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--sub);
+            font-variant-numeric: tabular-nums;
+        }
+        .ws-chip strong { color: var(--text); }
+        .inq-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
+            padding: 11px 13px;
+            margin-bottom: 8px;
+        }
+        .inq-item.is-prio {
+            border-color: var(--red);
+            background: var(--rose-soft);
+        }
+        .inq-item.is-resolved {
+            background: var(--card-inner);
+            border: 1px dashed var(--border-strong);
+        }
+        .inq-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 5px;
+            font-size: 0.74rem;
+        }
+        .inq-cat-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.69rem;
+            font-weight: 800;
+            border: 1px solid var(--border-strong);
+            background: var(--chip-bg);
+            color: var(--text);
+        }
+        .inq-cat-badge.prio {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #ffffff;
+        }
+        .inq-body {
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 6px 0;
+            color: var(--text);
+        }
+        .brand-toggle-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+        .toggle-chip {
+            cursor: pointer;
+            min-height: 36px;
+            padding: 6px 11px;
+            border-radius: var(--r-chip, 10px);
+            border: 1px solid var(--border-strong);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 0.76rem;
+            font-weight: 700;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toggle-chip.is-hidden {
+            border-color: var(--red);
+            background: var(--rose-soft);
+            color: var(--rose-ink);
+        }
+        .store-toggle-list {
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--r-chip, 10px);
+            background: var(--surface);
+            padding: 6px;
+        }
+        .store-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.77rem;
+        }
+        .store-toggle-row:last-child { border-bottom: none; }
+        .cap-meter-box {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
+            padding: 13px 15px;
+            margin-bottom: 12px;
+        }
+        .cap-meter-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 7px;
+        }
+        .cap-bar-track {
+            width: 100%;
+            height: 9px;
+            background: var(--track-bg);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 9px;
+        }
+        .cap-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: var(--green);
+            transition: width 0.3s ease;
+        }
+        .cap-bar-fill.warn { background: var(--amber); }
+        .cap-bar-fill.critical { background: var(--red); }
+        .mini-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .funnel-card {
+            background: var(--card-inner);
+            border: 1px solid var(--border);
+            border-radius: var(--r-inner, 13px);
+            padding: 12px 14px;
+        }
+        .funnel-label {
+            font-size: 0.74rem;
+            color: var(--sub);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .funnel-num-row {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .funnel-big {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .funnel-unit {
+            font-size: 0.76rem;
+            color: var(--sub);
+        }
+        .audit-alert-row {
+            padding: 9px 12px;
+            border-radius: var(--r-chip, 10px);
+            background: var(--amber-soft);
+            border: 1px solid var(--amber-border);
+            color: var(--amber-ink);
+            font-size: 0.78rem;
+            margin-top: 8px;
+        }
+        code { overflow-wrap: anywhere; word-break: break-word; }
+    </style>
+</head>
+<body>
+<script>
+    (function() {
+        try {
+            if (localStorage.getItem('olg_view_theme') === 'light') {
+                document.body.classList.add('theme-light');
+            }
+        } catch (e) {}
+    })();
+    function toggleStaffTheme() {
+        var isLight = document.body.classList.toggle('theme-light');
+        try {
+            localStorage.setItem('olg_view_theme', isLight ? 'light' : 'default');
+        } catch (e) {}
+        var btn = document.getElementById('staff-theme-toggle-btn');
+        if (btn) btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+    }
+</script>
+<div class="wrap">
+    {% set master_active_tab = 'ops' %}
+    {% include '_master_nav.html' %}
+
+    <div class="header-card">
+        <div class="header-title">
+            <h1>運営・設定コンソール</h1>
+            <p class="sub">お問い合わせ対応・店舗/ブランド緊急非表示・スタッフ認証管理・データ基盤＆予測AI保守を1画面で統合管理します</p>
+        </div>
+        <div class="ops-btn-group">
+            <a href="/staff/ops?format=json" class="ops-btn secondary">ステータスJSON</a>
+        </div>
+    </div>
+
+    {% set cap = (retention_status.capacity if retention_status else {}) or {} %}
+    <div class="ops-kpi-strip">
+        <div class="ops-kpi-card">
+            <div class="ops-kpi-label">未対応お問い合わせ</div>
+            <div class="ops-kpi-val">{{ ops_gov.unread_total if ops_gov else 0 }} 件</div>
+            <div class="ops-kpi-sub">優先（削除・訂正等）: {{ ops_gov.unread_priority if ops_gov else 0 }} 件</div>
+        </div>
+        <div class="ops-kpi-card">
+            <div class="ops-kpi-label">現在非表示の店舗数</div>
+            <div class="ops-kpi-val">{{ ops_gov.effective_hidden_store_count if ops_gov else 0 }} 店舗</div>
+            <div class="ops-kpi-sub">ブランド {{ ops_gov.hidden_brand_count if ops_gov else 0 }} 件 ／ 個別 {{ ops_gov.hidden_store_count if ops_gov else 0 }} 件</div>
+        </div>
+        <div class="ops-kpi-card">
+            <div class="ops-kpi-label">一般スタッフ認証</div>
+            <div class="ops-kpi-val">{{ '管理画面変更済' if (ops_gov and ops_gov.has_custom_staff_passcode) else '初期環境変数' }}</div>
+            <div class="ops-kpi-sub">{{ ('最終失効: ' ~ ops_gov.last_staff_force_logout_at) if (ops_gov and ops_gov.last_staff_force_logout_at) else '有効期限 7日間' }}</div>
+        </div>
+        <div class="ops-kpi-card">
+            <div class="ops-kpi-label">Google Sheets 使用率</div>
+            <div class="ops-kpi-val">{{ cap.get('usage_pct', 0.0) }}%</div>
+            <div class="ops-kpi-sub">{{ "{:,}".format(cap.get('total_grid_cells', 0)) }} / 10,000,000 セル</div>
+        </div>
+    </div>
+
+    <div class="ws-workspace" data-ws-param="tab">
+        <div class="ws-subtab-shell master-section-jumpbar">
+            <div class="ws-tablist" role="tablist" aria-label="運営・設定の切り替え">
+                <button type="button" role="tab" class="ws-tab" id="ws-tab-inquiries" data-ws-tab="inquiries" aria-selected="true">
+                    <span>お問い合わせ・緊急非表示</span>
+                    {% if ops_gov and ops_gov.unread_total > 0 %}
+                    <span class="ws-tab-count">{{ ops_gov.unread_total }}</span>
+                    {% endif %}
+                </button>
+                <button type="button" role="tab" class="ws-tab" id="ws-tab-security" data-ws-tab="security" aria-selected="false">
+                    <span>認証・通知Webhook</span>
+                </button>
+                <button type="button" role="tab" class="ws-tab" id="ws-tab-system" data-ws-tab="system" aria-selected="false">
+                    <span>データ基盤・AI精度監査</span>
+                </button>
+            </div>
+            <div class="ws-subtab-tools">
+                <button type="button" class="ws-expand-all-btn" data-ws-expand-all aria-pressed="false">全タブ展開</button>
+            </div>
+        </div>
+
+        <!-- Sub-Tab 1: Inquiries & Emergency Store/Brand Switch -->
+        <div class="ws-tabpanel" role="tabpanel" id="ws-panel-inquiries" aria-labelledby="ws-tab-inquiries" data-ws-panel="inquiries">
+            <div class="ws-tabpanel-inner">
+                {% if ops_gov %}
+                <section class="ops-section" id="ops-governance-hub">
+                    <div class="ops-header">
+                        <div>
+                            <h2>お問い合わせ受信ボックス ＆ 店舗・ブランド緊急非表示スイッチ</h2>
+                            <p>削除・訂正連絡の確認と、特定店舗・ブランドの即時公開停止（トップ・店舗詳細410・サイトマップ・SNS投稿から一斉除外）を行えます。</p>
+                        </div>
+                        <span class="ws-chip" id="gov-hidden-summary">
+                            現在非表示: <strong>{{ ops_gov.effective_hidden_store_count }}</strong> 店舗（ブランド指定 {{ ops_gov.hidden_brand_count }} 件 ／ 個別指定 {{ ops_gov.hidden_store_count }} 件）
+                        </span>
+                    </div>
+
+                    <div class="gov-grid">
+                        <div class="gov-box">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                                <h3 style="margin:0;">1. お問い合わせ受信ボックス（未対応: <span id="gov-unread-count">{{ ops_gov.unread_total }}</span>件）</h3>
+                                <button type="button" class="ops-btn secondary" id="btn-filter-unresolved" data-ops-action="toggle-unresolved-filter" data-only-unresolved="0">未対応のみ表示</button>
+                            </div>
+                            <p class="gov-sub"><code>/contact</code> から届いた連絡を最新50件表示します。削除・訂正依頼は赤枠で最優先表示されます。</p>
+                            <div id="gov-inquiries-list">
+                                {% if ops_gov.inquiries %}
+                                    {% for inq in ops_gov.inquiries[:30] %}
+                                    <div class="inq-item{% if inq.is_priority and not inq.resolved %} is-prio{% endif %}{% if inq.resolved %} is-resolved{% endif %}" id="inq-row-{{ inq.id }}" data-resolved="{{ '1' if inq.resolved else '0' }}">
+                                        <div class="inq-head">
+                                            <div>
+                                                <span class="inq-cat-badge{% if inq.is_priority and not inq.resolved %} prio{% endif %}">{{ inq.category_label }}</span>
+                                                <strong style="margin-left:6px;">{{ inq.name or '匿名' }}</strong>
+                                                {% if inq.email %}
+                                                <span style="color:var(--sub);margin-left:6px;font-variant-numeric:tabular-nums;" title="マスク済みメールアドレス">{{ inq.email }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div style="display:flex;align-items:center;gap:8px;">
+                                                <span style="color:var(--sub);font-variant-numeric:tabular-nums;">{{ inq.received_at }}</span>
+                                                <button type="button"
+                                                        class="ops-btn secondary"
+                                                        data-ops-action="resolve-inquiry"
+                                                        data-inquiry-id="{{ inq.id }}"
+                                                        data-resolved="{{ 'false' if inq.resolved else 'true' }}">
+                                                    {{ '未対応に戻す' if inq.resolved else '対応済みにする' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="inq-body">{{ inq.message }}</div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="padding:12px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:0.78rem;color:var(--sub);">
+                                        現在届いているお問い合わせはありません。新着があるとここに即時表示されます。
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="gov-box">
+                            <h3>2. 店舗・ブランド緊急非表示スイッチ（即時反映）</h3>
+                            <p class="gov-sub">ON（非表示）に切り替えた瞬間、全画面・<code>sitemap.xml</code>・自動SNS投稿から即時除外されます。</p>
+                            <div style="font-size:0.75rem;font-weight:700;margin-bottom:6px;">ブランド単位で一括切替</div>
+                            <div class="brand-toggle-grid" id="gov-brand-toggles">
+                                {% for b in ops_gov.brands %}
+                                <button type="button"
+                                        class="toggle-chip{% if b.is_hidden %} is-hidden{% endif %}"
+                                        data-ops-action="toggle-brand"
+                                        data-brand-key="{{ b.key }}"
+                                        data-hide="{{ 'false' if b.is_hidden else 'true' }}"
+                                        data-label="{{ b.label }}">
+                                    <span>{{ b.label }}（{{ b.store_count }}店）</span>
+                                    <span>{{ '非表示中 → 再開' if b.is_hidden else '公開中' }}</span>
+                                </button>
+                                {% endfor %}
+                            </div>
+
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0 6px;">
+                                <span style="font-size:0.75rem;font-weight:700;">店舗単位で個別切替（全{{ ops_gov.stores|length }}店舗）</span>
+                                <input type="search" id="gov-store-filter" class="ops-input" style="max-width:250px;padding:6px 10px;" placeholder="店舗名・エリアで絞り込み...">
+                            </div>
+                            <div class="store-toggle-list" id="gov-store-list">
+                                {% for st in ops_gov.stores %}
+                                <div class="store-toggle-row" data-search="{{ (st.seo_name ~ ' ' ~ st.area_label ~ ' ' ~ st.name)|lower }}">
+                                    <div>
+                                        <strong>{{ st.seo_name }}</strong>
+                                        <span style="color:var(--sub);margin-left:6px;font-size:0.72rem;">{{ st.area_label }}</span>
+                                        {% if st.is_effective_hidden and not st.is_direct_hidden %}
+                                        <span style="color:var(--amber);margin-left:6px;font-size:0.7rem;">（ブランド一括非表示中）</span>
+                                        {% endif %}
+                                    </div>
+                                    <button type="button"
+                                            class="ops-btn {% if st.is_direct_hidden %}danger{% else %}secondary{% endif %}"
+                                            data-ops-action="toggle-store"
+                                            data-store-name="{{ st.name }}"
+                                            data-hide="{{ 'false' if st.is_direct_hidden else 'true' }}"
+                                            data-seo-name="{{ st.seo_name }}">
+                                        {{ '個別非表示中（解除）' if st.is_direct_hidden else '非表示にする' }}
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="ops-msg" id="gov-vis-msg"></div>
+                        </div>
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sub-Tab 2: Staff Auth & Webhook -->
+        <div class="ws-tabpanel" role="tabpanel" id="ws-panel-security" aria-labelledby="ws-tab-security" data-ws-panel="security" hidden="until-found">
+            <div class="ws-tabpanel-inner">
+                {% if ops_gov %}
+                <section class="ops-section" id="ops-security-hub">
+                    <div class="ops-header">
+                        <div>
+                            <h2>一般スタッフ認証・退職時強制失効 ＆ 即時通知Webhook</h2>
+                            <p>マスター端末のログイン状態を維持したまま、一般スタッフ端末の一括ログアウト・パスコード更新・Slack/Discord通知連携を管理します。</p>
+                        </div>
+                    </div>
+                    <div class="gov-grid">
+                        <div class="gov-box">
+                            <h3>一般スタッフ用パスコード・退職時セキュリティ</h3>
+                            <p class="gov-sub">ログイン有効期限：7日間。退職・異動時は全一般スタッフ端末を即時強制ログアウト、または新しいパスコードへ変更できます。</p>
+                            <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                                <span class="ws-chip" id="gov-passcode-state">
+                                    現在の設定: <strong>{{ '管理画面で変更済み' if ops_gov.has_custom_staff_passcode else '環境変数（初期設定）' }}</strong>
+                                    {% if ops_gov.last_staff_force_logout_at %}｜最終一括失効: {{ ops_gov.last_staff_force_logout_at }}{% endif %}
+                                </span>
+                                <button type="button" class="ops-btn danger" data-ops-action="force-logout-staff">全スタッフ端末を即時強制ログアウト</button>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                <input type="password" id="gov-new-staff-passcode" class="ops-input" style="flex:1 1 180px;" placeholder="新しい一般スタッフ用パスコード（4〜32文字）" autocomplete="new-password">
+                                <button type="button" class="ops-btn" data-ops-action="save-passcode" data-reset="0">パスコード変更＆強制ログアウト</button>
+                                {% if ops_gov.has_custom_staff_passcode %}
+                                <button type="button" class="ops-btn secondary" data-ops-action="save-passcode" data-reset="1">初期値に戻す</button>
+                                {% endif %}
+                            </div>
+                            <div class="ops-msg" id="gov-auth-msg"></div>
+                        </div>
+
+                        <div class="gov-box">
+                            <h3>障害・削除依頼の即時通知 Webhook</h3>
+                            <p class="gov-sub">Discord または Slack の Incoming Webhook URL（<code>https://...</code>）を登録すると、削除依頼や取得異常を即時プッシュ通知します。</p>
+                            <div style="margin-bottom:8px;">
+                                <span class="ws-chip" id="gov-webhook-state">
+                                    通知先状態: <strong>{{ ('登録済み（' ~ ops_gov.webhook_masked ~ '）') if ops_gov.webhook_configured else '未登録（管理画面受信箱とスプレッドシートのみ）' }}</strong>
+                                </span>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                <input type="url" id="gov-webhook-url" class="ops-input" style="flex:1 1 200px;" placeholder="https://discord.com/api/webhooks/... または Slack URL">
+                                <button type="button" class="ops-btn" data-ops-action="save-webhook" data-clear="0">保存</button>
+                                <button type="button" class="ops-btn secondary" data-ops-action="test-webhook">テスト通知</button>
+                                {% if ops_gov.webhook_from_ui %}
+                                <button type="button" class="ops-btn secondary" data-ops-action="save-webhook" data-clear="1">解除</button>
+                                {% endif %}
+                            </div>
+                            <div class="ops-msg" id="gov-webhook-msg"></div>
+                        </div>
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sub-Tab 3: Data Audit, Sheets Retention & Forecast Accuracy -->
+        <div class="ws-tabpanel" role="tabpanel" id="ws-panel-system" aria-labelledby="ws-tab-system" data-ws-panel="system" hidden="until-found">
+            <div class="ws-tabpanel-inner">
+                {% if data_audit_report %}
+                <div class="ops-section" id="data-audit-panel">
+                    <div class="ops-header">
+                        <div>
+                            <h2>店舗マスタ・料金表・営業時間ドリフト自動監査</h2>
+                            <p>最終点検: {{ data_audit_report.checked_at }} ｜ 営業時間登録 {{ data_audit_report.summary.hours_registered }}/{{ data_audit_report.summary.total_master_stores }}店 ｜ 国内料金表 {{ data_audit_report.summary.price_registered }}/{{ data_audit_report.summary.domestic_stores }}店</p>
+                        </div>
+                        <span class="ws-chip">
+                            <strong>{{ '全店舗 整合性OK' if data_audit_report.status == 'ok' else ('要確認 ' ~ (data_audit_report.summary.issue_count + data_audit_report.summary.warning_count) ~ '件') }}</strong>
+                        </span>
+                    </div>
+                    <div class="ws-chips">
+                        <span class="ws-chip">営業時間外来店ズレ: <strong>{{ data_audit_report.summary.hours_drift_count }}</strong> 件</span>
+                        <span class="ws-chip">公式改定キーワード検知: <strong>{{ data_audit_report.summary.revision_notice_count }}</strong> 件</span>
+                    </div>
+                    {% if data_audit_report.issues or data_audit_report.warnings %}
+                        {% for item in (data_audit_report.issues + data_audit_report.warnings) %}
+                        <div class="audit-alert-row">
+                            {{ item.message }}
+                            {% if item.url %}
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color:var(--link-ink);margin-left:6px;font-weight:700;">公式ページ確認 ↗</a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="ops-section" id="sheets-retention-manager">
+                    <div class="ops-header">
+                        <div>
+                            <h2>Google Sheets 1,000万セル上限ガード＆自動ローテーション</h2>
+                            <p>毎日 06:20 JST に自動実行：生ログ（{{ retention_status.retention_days if retention_status else 90 }}日超）を日次店舗サマリーへ圧縮し、アクセス集計・投票ログ・Job Stateを自動スリム化します。</p>
+                        </div>
+                        <div class="ops-btn-group">
+                            <button type="button" class="ops-btn secondary" id="btn-retention-dry" data-ops-action="sheets-retention" data-dry-run="1">ドライラン試算</button>
+                            <button type="button" class="ops-btn" id="btn-retention-exec" data-ops-action="sheets-retention" data-dry-run="0">今すぐ圧縮・ローテーション実行</button>
+                        </div>
+                    </div>
+                    <div class="cap-meter-box">
+                        <div class="cap-meter-top">
+                            <div>
+                                <strong id="cap-health-label">{{ cap.get('health_label', '自動ローテーション待機中') }}</strong>
+                                <span style="font-size:0.75rem;color:var(--sub);margin-left:8px;" id="cap-last-run">最終確認: {{ retention_status.executed_at if retention_status else '-' }}</span>
+                            </div>
+                            <div style="font-size:0.84rem;font-variant-numeric:tabular-nums;">
+                                グリッド使用量: <strong id="cap-cells-num">{{ "{:,}".format(cap.get('total_grid_cells', 0)) }}</strong> / {{ "{:,}".format(cap.get('cell_limit', 10000000)) }} セル
+                                （<strong id="cap-usage-pct" style="color:var(--gold);">{{ cap.get('usage_pct', 0.0) }}%</strong>）
+                            </div>
+                        </div>
+                        <div class="cap-bar-track">
+                            <div class="cap-bar-fill {{ cap.get('health_level', 'ok') }}" id="cap-bar-fill" style="width: {{ [cap.get('usage_pct', 0.0), 100.0] | min }}%;"></div>
+                        </div>
+                        <div class="ws-chips" id="cap-ws-chips">
+                            {% for ws in cap.get('worksheets', []) %}
+                            <span class="ws-chip"><strong>{{ ws.title }}</strong>: {{ "{:,}".format(ws.rows) }}行 × {{ ws.cols }}列（{{ "{:,}".format(ws.grid_cells) }}セル）</span>
+                            {% else %}
+                            <span class="ws-chip">「ドライラン試算」を押すと現在の全シート行数・セル使用率を即時計測できます</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="ops-msg" id="retention-msg"></div>
+                </div>
+
+                {% if forecast_accuracy %}
+                {% set fcs = forecast_accuracy.summary or {} %}
+                {% set fch = forecast_accuracy.holdout_backtest or {} %}
+                <div class="ops-section" id="forecast-accuracy-audit">
+                    <div class="ops-header">
+                        <div>
+                            <h2>60分後予測AI（{{ forecast_accuracy.model_version }}）精度監査＆答え合わせログ</h2>
+                            <p>10分ごとのロギング時に60分後予測をDB保存し、実測値との誤差（MAE）を集計・店舗別オンライン補正へ自動反映しています。</p>
+                        </div>
+                        <div class="ops-btn-group">
+                            <a href="/stats#forecast-accuracy" target="_blank" rel="noopener noreferrer" class="ops-btn secondary">公開白書ページで確認 ↗</a>
+                            <a href="/api/forecast-accuracy?days=21" target="_blank" rel="noopener noreferrer" class="ops-btn secondary">JSON API ↗</a>
+                        </div>
+                    </div>
+                    <div class="mini-kpi-grid">
+                        <div class="funnel-card">
+                            {% set staff_red_val = fcs.mae_reduction_pct if fcs.mae_reduction_pct is not none else fch.mae_reduction_pct %}
+                            <div class="funnel-label">実測平均ズレ（MAE）</div>
+                            <div class="funnel-num-row"><span class="funnel-big">±{{ fcs.mae_wpct if fcs.mae_wpct is not none else fch.v2_mae_wpct }}</span><span class="funnel-unit">pt</span></div>
+                            <div style="font-size:0.72rem;color:var(--sub);">旧v1比 {% if staff_red_val is not none and staff_red_val >= 0 %}-{{ staff_red_val }}% 誤差削減{% elif staff_red_val is not none %}+{{ (-staff_red_val)|round(1) }}% 誤差変化{% else %}-{% endif %}</div>
+                        </div>
+                        <div class="funnel-card">
+                            <div class="funnel-label">±10pt以内 的中率</div>
+                            <div class="funnel-num-row"><span class="funnel-big">{{ fcs.within_10pt_pct if fcs.within_10pt_pct is not none else fch.v2_within_10pt_pct }}</span><span class="funnel-unit">%</span></div>
+                            <div style="font-size:0.72rem;color:var(--sub);">±5ptピタリ率: {{ fcs.within_5pt_pct if fcs.within_5pt_pct is not none else fch.v2_within_5pt_pct }}%</div>
+                        </div>
+                        <div class="funnel-card">
+                            <div class="funnel-label">答え合わせ完了数</div>
+                            <div class="funnel-num-row"><span class="funnel-big">{{ "{:,}".format(fcs.resolved_count or 0) }}</span><span class="funnel-unit">件</span></div>
+                            <div style="font-size:0.72rem;color:var(--sub);">直近{{ forecast_accuracy.window_days }}日間の検証母数</div>
+                        </div>
+                        <div class="funnel-card">
+                            <div class="funnel-label">実測待ちキュー</div>
+                            <div class="funnel-num-row"><span class="funnel-big">{{ fcs.pending_count or 0 }}</span><span class="funnel-unit">件</span></div>
+                            <div style="font-size:0.72rem;color:var(--sub);">到着時刻に自動突合</div>
+                        </div>
+                    </div>
+
+                    {% if forecast_accuracy.bias_adjustments %}
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">現在稼働中の店舗別オンライン残差バイアス補正（Empirical-Bayes）</div>
+                        <div class="ws-chips">
+                            {% for b in forecast_accuracy.bias_adjustments %}
+                            <span class="ws-chip"><strong>{{ b.display_name }}</strong>: {% if b.online_adj_pt > 0 %}+{{ b.online_adj_pt }}pt{% else %}{{ b.online_adj_pt }}pt{% endif %} 自動補正中</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if forecast_accuracy.recent_resolved %}
+                    <div style="font-size:0.78rem;font-weight:700;margin-bottom:6px;color:var(--sub);">直近の答え合わせ結果（予測 vs 60分後実測）</div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;font-variant-numeric:tabular-nums;">
+                            <thead>
+                                <tr style="border-bottom:1px solid var(--border);color:var(--sub);text-align:left;">
+                                    <th style="padding:7px 8px;">予測→判定</th>
+                                    <th style="padding:7px 8px;">店舗</th>
+                                    <th style="padding:7px 8px;">出発時</th>
+                                    <th style="padding:7px 8px;">60分後予測</th>
+                                    <th style="padding:7px 8px;">60分後実測</th>
+                                    <th style="padding:7px 8px;">ズレ（旧v1参考）</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in forecast_accuracy.recent_resolved[:12] %}
+                                <tr style="border-bottom:1px solid var(--border);">
+                                    <td style="padding:7px 8px;white-space:nowrap;color:var(--sub);">{{ r.predicted_mdhm }}→{{ r.target_hm }}</td>
+                                    <td style="padding:7px 8px;font-weight:700;">{{ r.display_name }}</td>
+                                    <td style="padding:7px 8px;white-space:nowrap;">{{ r.start_women }}:{{ r.start_men }} ({{ r.start_wpct }}%)</td>
+                                    <td style="padding:7px 8px;white-space:nowrap;font-weight:700;">{{ r.pred_wpct }}% ({{ r.pred_women }}:{{ r.pred_men }})</td>
+                                    <td style="padding:7px 8px;white-space:nowrap;">{{ r.actual_wpct }}% ({{ r.actual_women }}:{{ r.actual_men }})</td>
+                                    <td style="padding:7px 8px;white-space:nowrap;">
+                                        <strong>{% if (r.error_wpct_pt or 0) > 0 %}+{{ r.error_wpct_pt }}pt{% else %}{{ r.error_wpct_pt or 0 }}pt{% endif %}</strong>
+                                        <span style="color:var(--sub);margin-left:4px;">{{ r.grade }}{% if r.v1_pred_wpct is not none %}（旧v1予測: {{ r.v1_pred_wpct }}%）{% endif %}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try { navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' }); } catch (e) {}
+    }
+
+    function esc(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function fetchJsonSafe(url, opts, timeoutMs) {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, timeoutMs || 30000) : null;
+        try {
+            var reqOpts = Object.assign({}, opts || {});
+            if (controller) reqOpts.signal = controller.signal;
+            var resp = await fetch(url, reqOpts);
+            var rawText = await resp.text();
+            var data = null;
+            if (rawText) {
+                try { data = JSON.parse(rawText); } catch (err) {
+                    throw new Error('サーバー応答エラー（HTTP ' + resp.status + '）');
+                }
+            }
+            if (!resp.ok) {
+                throw new Error((data && (data.error || data.detail || data.message)) || ('HTTP ' + resp.status + ' エラー'));
+            }
+            return data || {};
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                throw new Error('通信がタイムアウトしました。時間をおいて再度お試しください');
+            }
+            throw err;
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
+
+    function showGovMsg(elId, text, isErr) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.style.display = 'block';
+        el.style.color = isErr ? 'var(--err-ink)' : 'var(--green-ink)';
+        el.textContent = text;
+    }
+
+    async function callGovApi(payload, msgElId) {
+        try {
+            var res = await fetchJsonSafe('/api/ops/governance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+            }, 20000);
+            if (msgElId && res.message) showGovMsg(msgElId, res.message, false);
+            return res;
+        } catch (err) {
+            if (msgElId) showGovMsg(msgElId, (err && err.message) || '通信エラーが発生しました', true);
+            return null;
+        }
+    }
+
+    async function runSheetsRetention(dryRun) {
+        var msgEl = document.getElementById('retention-msg');
+        var btnDry = document.getElementById('btn-retention-dry');
+        var btnExec = document.getElementById('btn-retention-exec');
+        if (!msgEl) return;
+        if (!dryRun && !window.confirm('古い生ログを日次店舗サマリーへ圧縮アーカイブした上で削除し、各シートをスリム化します。よろしいですか？')) {
+            return;
+        }
+        msgEl.style.display = 'block';
+        msgEl.style.color = 'var(--sub)';
+        msgEl.textContent = dryRun ? 'Google Sheets の全シート容量と削減対象行数を計測中...' : '日次サマリー圧縮＆シート整理を実行中...';
+        if (btnDry) btnDry.disabled = true;
+        if (btnExec) btnExec.disabled = true;
+        try {
+            var res = await fetchJsonSafe('/api/sheets/retention', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ dry_run: Boolean(dryRun) }),
+            }, 60000);
+            if (!res.ok) {
+                showGovMsg('retention-msg', res.error || 'シート整理に失敗しました', true);
+                return;
+            }
+            var cap = res.capacity || {};
+            var det = res.details || {};
+            var mainD = det.main_logs || {};
+            var anaD = det.analytics_daily || {};
+            var anaHD = det.analytics_hourly || {};
+            var voteD = det.crowd_votes || {};
+            var jsD = det.job_state || {};
+
+            var hEl = document.getElementById('cap-health-label');
+            var lrEl = document.getElementById('cap-last-run');
+            var numEl = document.getElementById('cap-cells-num');
+            var pctEl = document.getElementById('cap-usage-pct');
+            var barEl = document.getElementById('cap-bar-fill');
+            var chipsEl = document.getElementById('cap-ws-chips');
+            if (hEl && cap.health_label) hEl.textContent = cap.health_label;
+            if (lrEl && res.executed_at) lrEl.textContent = (dryRun ? '試算時刻: ' : '最終実行: ') + res.executed_at;
+            if (numEl && typeof cap.total_grid_cells === 'number') numEl.textContent = cap.total_grid_cells.toLocaleString();
+            if (pctEl && typeof cap.usage_pct === 'number') pctEl.textContent = cap.usage_pct + '%';
+            if (barEl && typeof cap.usage_pct === 'number') {
+                barEl.className = 'cap-bar-fill ' + (cap.health_level || 'ok');
+                barEl.style.width = Math.min(cap.usage_pct, 100) + '%';
+            }
+            if (chipsEl && Array.isArray(cap.worksheets)) {
+                chipsEl.innerHTML = cap.worksheets.map(function (w) {
+                    return '<span class="ws-chip"><strong>' + esc(w.title) + '</strong>: ' +
+                        Number(w.rows || 0).toLocaleString() + '行 × ' + Number(w.cols || 0) + '列（' +
+                        Number(w.grid_cells || 0).toLocaleString() + 'セル）</span>';
+                }).join('');
+            }
+            showGovMsg(
+                'retention-msg',
+                (dryRun ? '【ドライラン試算結果】' : '【圧縮・ローテーション完了】') +
+                ' 合計削減対象: ' + Number(res.total_deleted_rows || 0).toLocaleString() + '行' +
+                '（生ログ圧縮: ' + Number(mainD.deleted_rows || 0).toLocaleString() + '行 → 日次サマリー +' + Number(mainD.summary_rows_added || 0).toLocaleString() + '行 / ' +
+                'Analytics合算削減: ' + Number(anaD.deleted_rows || 0).toLocaleString() + '行 / ' +
+                '時間帯Analytics合算削減: ' + Number(anaHD.deleted_rows || 0).toLocaleString() + '行 / ' +
+                '投票整理: ' + Number(voteD.deleted_rows || 0).toLocaleString() + '行 / ' +
+                'JobState圧縮: ' + Number(jsD.deleted_rows || 0).toLocaleString() + '行）',
+                false
+            );
+        } catch (err) {
+            showGovMsg('retention-msg', (err && err.message) || '通信エラーが発生しました', true);
+        } finally {
+            if (btnDry) btnDry.disabled = false;
+            if (btnExec) btnExec.disabled = false;
+        }
+    }
+
+    var filterInput = document.getElementById('gov-store-filter');
+    if (filterInput) {
+        filterInput.addEventListener('input', function () {
+            var q = String(filterInput.value || '').trim().toLowerCase();
+            var rows = document.querySelectorAll('#gov-store-list .store-toggle-row');
+            rows.forEach(function (row) {
+                var hay = row.getAttribute('data-search') || '';
+                row.style.display = (!q || hay.indexOf(q) !== -1) ? 'flex' : 'none';
+            });
+        });
+    }
+
+    document.addEventListener('click', async function (e) {
+        var btn = e.target.closest('[data-ops-action]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-ops-action');
+
+        if (act === 'toggle-unresolved-filter') {
+            var onlyUnres = btn.getAttribute('data-only-unresolved') !== '1';
+            btn.setAttribute('data-only-unresolved', onlyUnres ? '1' : '0');
+            btn.textContent = onlyUnres ? '全件表示に戻す' : '未対応のみ表示';
+            document.querySelectorAll('#gov-inquiries-list .inq-item').forEach(function (item) {
+                if (onlyUnres && item.getAttribute('data-resolved') === '1') {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = '';
+                }
+            });
+        } else if (act === 'resolve-inquiry') {
+            var inqId = btn.getAttribute('data-inquiry-id');
+            var resFlag = btn.getAttribute('data-resolved') === 'true';
+            var r1 = await callGovApi({ action: 'resolve_inquiry', inquiry_id: inqId, resolved: resFlag }, null);
+            if (r1 && r1.ok) window.location.reload();
+        } else if (act === 'toggle-brand') {
+            var bKey = btn.getAttribute('data-brand-key');
+            var bHide = btn.getAttribute('data-hide') === 'true';
+            var bLabel = btn.getAttribute('data-label') || bKey;
+            var verb = bHide ? '非表示（サイト・sitemap・SNS投稿から除外）' : '公開再開';
+            if (!window.confirm('ブランド「' + bLabel + '」を' + verb + 'にしますか？')) return;
+            var r2 = await callGovApi({ action: 'toggle_brand', brand_key: bKey, hidden: bHide }, 'gov-vis-msg');
+            if (r2 && r2.ok) window.location.reload();
+        } else if (act === 'toggle-store') {
+            var sName = btn.getAttribute('data-store-name');
+            var sHide = btn.getAttribute('data-hide') === 'true';
+            var seoName = btn.getAttribute('data-seo-name') || sName;
+            var sVerb = sHide ? '非表示（サイト・店舗ページ・SNS投稿から除外）' : '公開再開';
+            if (!window.confirm('店舗「' + seoName + '」を' + sVerb + 'にしますか？')) return;
+            var r3 = await callGovApi({ action: 'toggle_store', store_name: sName, hidden: sHide }, 'gov-vis-msg');
+            if (r3 && r3.ok) window.location.reload();
+        } else if (act === 'force-logout-staff') {
+            if (!window.confirm('現在ログイン中のすべての一般スタッフ端末を即時ログアウトさせますか？（あなたのマスターログインは維持されます）')) return;
+            var r4 = await callGovApi({ action: 'force_logout_staff' }, 'gov-auth-msg');
+            if (r4 && r4.ok) setTimeout(function () { window.location.reload(); }, 700);
+        } else if (act === 'save-passcode') {
+            var resetEnv = btn.getAttribute('data-reset') === '1';
+            var pInput = document.getElementById('gov-new-staff-passcode');
+            var pVal = pInput ? (pInput.value || '').trim() : '';
+            if (resetEnv) {
+                if (!window.confirm('一般スタッフ用パスコードを環境変数の初期設定に戻し、全スタッフ端末をログアウトさせますか？')) return;
+            } else {
+                if (pVal.length < 4) {
+                    showGovMsg('gov-auth-msg', '新しいパスコードは4文字以上で入力してください。', true);
+                    return;
+                }
+                if (!window.confirm('一般スタッフ用パスコードを変更し、既存の全スタッフ端末を即時ログアウトさせますか？')) return;
+            }
+            var r5 = await callGovApi({ action: 'update_staff_passcode', passcode: pVal, reset_to_env: resetEnv }, 'gov-auth-msg');
+            if (r5 && r5.ok) {
+                if (pInput) pInput.value = '';
+                setTimeout(function () { window.location.reload(); }, 800);
+            }
+        } else if (act === 'save-webhook') {
+            var clr = btn.getAttribute('data-clear') === '1';
+            var wInput = document.getElementById('gov-webhook-url');
+            var wUrl = clr ? '' : (wInput ? (wInput.value || '').trim() : '');
+            if (!clr && !wUrl) {
+                showGovMsg('gov-webhook-msg', 'https:// で始まる Webhook URL を入力してください。', true);
+                return;
+            }
+            var r6 = await callGovApi({ action: 'set_webhook', url: wUrl }, 'gov-webhook-msg');
+            if (r6 && r6.ok) {
+                if (wInput) wInput.value = '';
+                setTimeout(function () { window.location.reload(); }, 700);
+            }
+        } else if (act === 'test-webhook') {
+            showGovMsg('gov-webhook-msg', 'テスト通知を送信中...', false);
+            await callGovApi({ action: 'test_webhook' }, 'gov-webhook-msg');
+        } else if (act === 'sheets-retention') {
+            var isDry = btn.getAttribute('data-dry-run') === '1';
+            await runSheetsRetention(isDry);
+        }
+    });
+})();
+</script>
+</body>
+</html>

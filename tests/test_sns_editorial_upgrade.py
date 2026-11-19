@@ -309,10 +309,10 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
 
         # Check situation selector buttons
         self.assertIn("editorial.situation_specs", content)
-        self.assertIn("🎯 シチュエーション特化セレクター", content)
+        self.assertIn("シチュエーション特化セレクター", content)
 
         # Check image prompt section
-        self.assertIn("🎨 AIアイキャッチ・画像生成プロンプト帳", content)
+        self.assertIn("AIアイキャッチ・画像生成プロンプト帳", content)
         self.assertIn("img-prompt-card", content)
 
         # Check inline editor and char counter

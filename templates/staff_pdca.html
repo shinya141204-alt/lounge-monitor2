@@ -1057,8 +1057,9 @@
         {% include '_master_nav.html' %}
 
         <div class="channel-bar">
-            <div style="font-size:0.82rem; font-weight:700; color:var(--text);">
-                診断集計期間（現在：直近{{ days }}日間）
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span style="font-size:0.82rem; font-weight:700; color:var(--text);">診断集計期間（現在：直近{{ days }}日間）</span>
+                <a href="/staff/analytics?days={{ days }}" class="mini-btn" style="text-decoration:none;">アクセス・収益詳細 ({{ days }}日) →</a>
             </div>
             <div class="tab-group" aria-label="診断期間切替">
                 <a href="/staff/pdca?days=7" class="{{ 'active' if days == 7 else '' }}">直近7日</a>
@@ -1066,20 +1067,6 @@
                 <a href="/staff/pdca?days=30" class="{{ 'active' if days == 30 else '' }}">直近30日</a>
             </div>
         </div>
-
-        <nav class="master-section-jumpbar" aria-label="PDCAセクション移動">
-            <span class="master-jump-label">セクション移動</span>
-            <a href="#pdca-hero" class="master-jump-chip">総合スコア＆実測KPI</a>
-            <a href="#pdca-flywheel" class="master-jump-chip">4歯車フライホイール</a>
-            <a href="#pdca-growth-actions" class="master-jump-chip">最優先アクションTOP3</a>
-            <a href="#pdca-wins-issues" class="master-jump-chip">勝ち筋・課題診断</a>
-            <a href="#pdca-directives" class="master-jump-chip">自動編成指令</a>
-            <a href="#pdca-monetization" class="master-jump-chip">案件別CTR・機会損失</a>
-            <a href="#pdca-sns" class="master-jump-chip">SNS効率＆Reels企画</a>
-            <a href="#pdca-closed-loop" class="master-jump-chip">3層自動改善ループ</a>
-            <a href="#pdca-articles" class="master-jump-chip">記事別CTR・未露出在庫</a>
-            <a href="#pdca-history" class="master-jump-chip">実行ログ</a>
-        </nav>
 
         <div id="pdca-toast" class="toast-msg"></div>
 
@@ -1184,6 +1171,30 @@
             </div>
         </div>
 
+        <div class="ws-workspace" data-ws-param="tab">
+            <div class="ws-subtab-shell master-section-jumpbar">
+                <div class="ws-tablist" role="tablist" aria-label="PDCA参謀セクション切り替え">
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-actions" data-ws-tab="actions" aria-selected="true">
+                        <span>勝ち筋・最優先TOP3</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-monetization" data-ws-tab="monetization" aria-selected="false">
+                        <span>案件CTR・記事機会損失</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-learning" data-ws-tab="learning" aria-selected="false">
+                        <span>SNS効率・3層学習スタジオ</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-automation" data-ws-tab="automation" aria-selected="false">
+                        <span>4歯車・自動編成・実行ログ</span>
+                    </button>
+                </div>
+                <div class="ws-subtab-tools">
+                    <button type="button" class="ws-expand-all-btn" data-ws-expand-all aria-pressed="false">全タブ展開</button>
+                </div>
+            </div>
+
+            <!-- Sub-Tab 1: Wins, Issues & Top 3 Priority Actions -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-actions" aria-labelledby="ws-tab-actions" data-ws-panel="actions">
+                <div class="ws-tabpanel-inner">
         <!-- Chief Strategist Briefing -->
         <div class="briefing-card">
             <div class="briefing-head">
@@ -1198,110 +1209,6 @@
             </div>
             <div id="briefing-text" class="briefing-body">{{ pdca_briefing.text|default('', true) }}</div>
         </div>
-
-        <!-- 4-Gear Growth Flywheel Autonomous Monitor -->
-        {% set fw_mq = fw.moshimo_queue if fw is mapping and fw.moshimo_queue is defined and fw.moshimo_queue is mapping else {} %}
-        {% set fw_yt = fw.youtube_shorts if fw is mapping and fw.youtube_shorts is defined and fw.youtube_shorts is mapping else {} %}
-        {% set fw_gsc = fw.search_console if fw is mapping and fw.search_console is defined and fw.search_console is mapping else {} %}
-        {% set fw_col = fw.column_pipeline if fw is mapping and fw.column_pipeline is defined and fw.column_pipeline is mapping else {} %}
-        <section class="card" id="pdca-flywheel" style="margin-bottom:18px;" aria-labelledby="pdca-flywheel-heading">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <div>
-                    <h2 id="pdca-flywheel-heading" style="font-size:1rem; margin:0 0 3px;">4歯車グロース・フライホイール稼働＆フルファネル計測モニター</h2>
-                    <div style="font-size:0.78rem; color:var(--sub);">①3DもしもIG自動配信 × ②YouTubeショート維持率 × ③Google検索お宝クエリ × ④SEO予約コラム自動補充の連動状況を一覧監視します。</div>
-                </div>
-                <span class="ultra-badge" style="font-variant-numeric:tabular-nums;">自然検索流入 {{ sns_eff.total_search_visits|default(0, true) }}回 ／ SNS・ショート流入 {{ sns_eff.total_sns_visits|default(0, true) }}回</span>
-            </div>
-
-            <div class="flywheel-grid">
-                <div class="flywheel-gear">
-                    <div>
-                        <div class="flywheel-gear-top">
-                            <span class="flywheel-gear-label">Gear 1｜3D『もしも』IG自動キュー</span>
-                            <span class="chip {{ 'plus' if fw_mq.enabled else '' }}">{{ '稼働中' if fw_mq.enabled else '一時停止' }}</span>
-                        </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">待機 {{ fw_mq.remaining_count|default(0, true) }} / {{ fw_mq.total_episodes|default(10, true) }}本</div>
-                        <div class="flywheel-gear-meta">
-                            投稿済 {{ fw_mq.posted_count|default(0, true) }}本 ・ 21日再配信 {{ 'ON' if fw_mq.evergreen_recycle else 'OFF' }}<br>
-                            {% if fw_mq.next_episode is mapping %}次回: #{{ fw_mq.next_episode.order|default('', true) }}（{{ fw_mq.next_episode.scheduled_date|default('', true) }} 20:00）{% else %}エバーグリーン火・木再配信＆Live速報稼働{% endif %}<br>
-                            IGリール経由流入: <strong>{{ fw_mq.ig_reels_visits|default(0, true) }}回</strong>（CV {{ fw_mq.ig_reels_conversions|default(0, true) }}件）
-                        </div>
-                    </div>
-                    <a href="/staff/sns-editorial?channel=instagram#moshimo-queue-section" class="mini-btn" style="text-align:center; text-decoration:none;">3Dキュー＆Shortsパックを開く →</a>
-                </div>
-
-                <div class="flywheel-gear">
-                    <div>
-                        <div class="flywheel-gear-top">
-                            <span class="flywheel-gear-label">Gear 2｜YouTubeショート（@aiseki_navi）</span>
-                            {% if yt_oauth_info.connected or fw_yt.api_connected %}
-                            <span class="chip plus">API自動同期ON</span>
-                            {% else %}
-                            <span class="chip {{ 'plus' if fw_yt.data_status == 'ok' else '' }}">{{ '実測連携済' if fw_yt.data_status == 'ok' else 'API未連携' }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">
-                            {% if fw_yt.total_views is defined and fw_yt.total_views is not none %}{{ '{:,}'.format(fw_yt.total_views|int) }}回視聴{% else %}流入 {{ fw_yt.site_visits|default(0, true) }}回{% endif %}
-                        </div>
-                        <div class="flywheel-gear-meta">
-                            視聴選択率: {% if fw_yt.avg_stayed_to_watch_pct is defined and fw_yt.avg_stayed_to_watch_pct is not none %}<strong>{{ fw_yt.avg_stayed_to_watch_pct }}%</strong>{% else %}未取込{% endif %}
-                            ・ 平均再生率: {% if fw_yt.avg_pct_viewed is defined and fw_yt.avg_pct_viewed is not none %}<strong>{{ fw_yt.avg_pct_viewed }}%</strong>{% else %}-{% endif %}<br>
-                            サイト流入（<code>?s=short_bio</code>・<code>ref_youtube</code>）: <strong>{{ fw_yt.site_visits|default(0, true) }}回</strong><br>
-                            クッション遷移 {{ fw_yt.site_cushion_clicks|default(0, true) }}回 ／ CV <strong>{{ fw_yt.site_conversions|default(0, true) }}件</strong>
-                        </div>
-                    </div>
-                    <a href="#yt-oauth-setup" class="mini-btn" style="text-align:center; text-decoration:none;">{{ 'YouTube自動同期ステータス ↓' if (yt_oauth_info.connected or fw_yt.api_connected) else 'YouTube API自動同期を連携 ↓' }}</a>
-                </div>
-
-                <div class="flywheel-gear">
-                    <div>
-                        <div class="flywheel-gear-top">
-                            <span class="flywheel-gear-label">Gear 3｜Google Search Console 検索</span>
-                            <span class="chip {{ 'plus' if fw_gsc.data_status == 'ok' else '' }}">{{ '実測連携済' if fw_gsc.data_status == 'ok' else 'CSV/スクショ待' }}</span>
-                        </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">
-                            {% if fw_gsc.total_impressions is defined and fw_gsc.total_impressions is not none %}表示 {{ '{:,}'.format(fw_gsc.total_impressions|int) }}回{% else %}検索流入 {{ fw_gsc.site_visits|default(0, true) }}回{% endif %}
-                        </div>
-                        <div class="flywheel-gear-meta">
-                            GSCクリック: {% if fw_gsc.total_clicks is defined and fw_gsc.total_clicks is not none %}<strong>{{ '{:,}'.format(fw_gsc.total_clicks|int) }}回</strong>（CTR {{ fw_gsc.avg_ctr_pct|default(0, true) }}%）{% else %}未取込{% endif %}<br>
-                            未回収お宝クエリ: <strong>{{ fw_gsc.opportunity_count|default(0, true) }}件</strong><br>
-                            検索Referer実流入: <strong>{{ fw_gsc.site_visits|default(0, true) }}回</strong>（CV <strong>{{ fw_gsc.site_conversions|default(0, true) }}件</strong>）
-                        </div>
-                    </div>
-                    <a href="#pdca-closed-loop" class="mini-btn" style="text-align:center; text-decoration:none;">Search Console CSVを取込 ↓</a>
-                </div>
-
-                <div class="flywheel-gear">
-                    <div>
-                        <div class="flywheel-gear-top">
-                            <span class="flywheel-gear-label">Gear 4｜SEO予約コラム自動パイプライン</span>
-                            <span class="chip {{ 'plus' if fw_col.auto_replenish_columns else '' }}">{{ '自動補充ON' if fw_col.auto_replenish_columns else '手動補充' }}</span>
-                        </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">予約待機 {{ fw_col.upcoming_count|default(d.upcoming_count|default(0, true), true) }}本</div>
-                        <div class="flywheel-gear-meta">
-                            {% if fw_col.next_title %}
-                            次回公開: <strong>{{ fw_col.next_publish_at_ja|default('', true) }}</strong><br>
-                            『{{ (fw_col.next_title|default('', true))[:28] }}』
-                            {% else %}
-                            残1本以下で17:35 / 03:35 PDCAサイクルが新着コラムを自動執筆・予約補充します。
-                            {% endif %}
-                        </div>
-                    </div>
-                    <a href="/staff/column-editorial" class="mini-btn" style="text-align:center; text-decoration:none;">コラム編集部・予約枠を確認 →</a>
-                </div>
-            </div>
-
-            {% if fw_mq.next_moshimo_ideas %}
-            <div class="flywheel-ideas">
-                <strong style="color:var(--text);">次期3D『もしもシリーズ』実測連動ネタ候補（現場ギャップ＆検索クエリから自動抽出）：</strong>
-                <ul style="margin:5px 0 0; padding-inline-start:18px; line-height:1.55;">
-                    {% for idea in fw_mq.next_moshimo_ideas %}
-                    <li>{{ idea }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-        </section>
 
         <!-- Weekly Top 3 Growth Actions -->
         <div class="growth-section" id="pdca-growth-actions">
@@ -1373,66 +1280,19 @@
                 {% endfor %}
             </div>
         </div>
-
-        <!-- Active Closed-Loop Directives -->
-        {% set st_labels = d.style_labels if d.style_labels is defined and d.style_labels is mapping else {} %}
-        <div class="directives-panel" id="pdca-directives">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <h2 style="font-size:1rem; margin:0;">現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
-                <span style="font-size:0.76rem; color:var(--sub);">最終更新：{{ act.updated_at or '未実行（初回自動セット済）' }}</span>
-            </div>
-            <div class="directives-grid">
-                <div class="dir-box">
-                    <h3>① SNS鬼デスク スコア自動補正</h3>
-                    <div class="chip-list" id="dir-sns-boosts">
-                        {% set boosts = act.sns_style_boosts if act is mapping and act.sns_style_boosts is defined and act.sns_style_boosts is mapping else {} %}
-                        {% if boosts %}
-                            {% for st_k, pts in boosts.items() if (pts is not none and pts != 0) %}
-                            {% set _pts_num = pts|default(0, true)|int %}
-                            {% if _pts_num != 0 %}
-                            <span class="chip {{ 'plus' if _pts_num > 0 else 'minus' }}">{{ st_labels.get(st_k, st_k) }}{% if st_labels.get(st_k) and st_labels.get(st_k) != st_k %}（{{ st_k }}）{% endif %}：{{ '%+d'|format(_pts_num) }}点</span>
-                            {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            <span style="font-size:0.77rem; color:var(--sub);">自動補正OFFまたはフラット配分中</span>
-                        {% endif %}
-                    </div>
-                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ <code>/staff/sns-editorial</code> および毎日の自動投稿の鬼デスク採点へリアルタイム反映されます。</div>
-                </div>
-
-                <div class="dir-box">
-                    <h3>② Xコラム枠 優先送客リスト</h3>
-                    <div class="chip-list" id="dir-priority-cols">
-                        {% for p in (act.priority_column_paths or []) %}
-                        {% if p is string and p.startswith('/') and not p.startswith('//') and not p.startswith('/@') and '\\' not in p and '\n' not in p and '\r' not in p and '\t' not in p and '\x00' not in p and '%5c' not in p|lower %}
-                        <a href="{{ p }}" target="_blank" rel="noopener noreferrer" class="chip">{{ p }} ↗</a>
-                        {% endif %}
-                        {% else %}
-                        <span style="font-size:0.77rem; color:var(--sub);">通常ローテーション稼働中</span>
-                        {% endfor %}
-                    </div>
-                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ X 18:00枠（当日未投稿分）のリプ欄で優先紹介されます。</div>
-                </div>
-
-                <div class="dir-box">
-                    <h3>③ コラム編集部への次回特命お題</h3>
-                    {% set _prop_dir = d.proposed_directives if d.proposed_directives is defined and d.proposed_directives is mapping else {} %}
-                    {% set _rec_topic = act.recommended_custom_topic or _prop_dir.recommended_custom_topic or '' %}
-                    <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ _rec_topic }}』</div>
-                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ _rec_topic | urlencode }}">
-                        この特命お題をコラム編集部で開いてワンクリック予約する →
-                    </a>
                 </div>
             </div>
-        </div>
 
+            <!-- Sub-Tab 2: Affiliate Offer Breakdown, Monetization Gaps, Cohort EPC & Article Matrix -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-monetization" aria-labelledby="ws-tab-monetization" data-ws-panel="monetization" hidden="until-found">
+                <div class="ws-tabpanel-inner">
         <!-- Offer Breakdown & Monetization Gaps -->
         <div class="two-col" id="pdca-monetization">
             <!-- Affiliate Offer Category Breakdown -->
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
                     <h2 style="font-size:0.98rem; margin:0;">アフィリエイト案件別クリック内訳＆勝ち筋ランキング</h2>
-                    <a href="/staff/analytics?days={{ days }}" style="font-size:0.75rem; color:var(--gold); text-decoration:none; font-weight:700;">案件URL管理 →</a>
+                    <a href="/staff/analytics?days={{ days }}&amp;tab=affiliate" style="font-size:0.75rem; color:var(--gold); text-decoration:none; font-weight:700;">案件URL管理 →</a>
                 </div>
                 <p class="lead" style="margin-bottom:12px;">7大案件カテゴリ（<code>dating</code> / <code>orbis</code> / <code>hair_removal</code> / <code>spu</code> / <code>women_*</code> / <code>supplement</code> / <code>second_venue</code>）のクリックシェア・直近7日トレンド・勝ち訴求です。</p>
                 {% if offers %}
@@ -1508,6 +1368,118 @@
             </div>
         </div>
 
+        <!-- SNS ?s= & External Referer Cohort Tracking Table -->
+        <div class="card" style="margin-bottom:18px;">
+            <h2 id="cohort-funnel-heading" style="font-size:0.98rem; margin:0 0 6px;">流入経路・切り口別（<code>?s=</code> / 外部Referer）2ステップ遷移＆案件別EPC成績</h2>
+            <p class="lead" style="margin-bottom:10px;">Google検索・YouTubeショート・IGリール・X・Threads・AI検索からの訪問後24時間以内に、クッション導線（<code>/grooming</code>・<code>/for-women</code>等）およびアフィリエイト枠へどれだけ遷移したかを追跡します。</p>
+            {% if d.inflow_cohorts %}
+            <div class="table-wrap" tabindex="0" role="region" aria-labelledby="cohort-funnel-heading" style="margin-bottom:0;">
+                <table class="pdca-table">
+                    <thead>
+                        <tr>
+                            <th>SNS投稿枠・切り口コホート</th>
+                            <th>識別タグ</th>
+                            <th>サイト流入数</th>
+                            <th>2ステップ遷移</th>
+                            <th>アフィリエイトCV</th>
+                            <th>CV率</th>
+                            <th>期待収益 / 1流入EPC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in d.inflow_cohorts %}
+                        <tr>
+                            <td><strong>{{ c.label|default('-', true) }}</strong></td>
+                            <td><code>?s={{ c.tag|default('', true) }}</code></td>
+                            <td>{{ c.visits|default(0, true) }}回</td>
+                            <td>{{ c.cushion_clicks|default(0, true) }}回（{{ c.cushion_rate_pct|default(0, true) }}%）</td>
+                            <td><strong>{{ c.conversions|default(0, true) }}件</strong></td>
+                            <td>{{ c.cvr_pct|default(0, true) }}%</td>
+                            <td><strong>¥{{ c.est_revenue_yen|default(0, true) }}</strong>（EPC ¥{{ c.epc_yen|default(0, true) }}）</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state-box">
+                まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads・リール自動投稿から切り口別の2ステップ遷移とEPCが自動集計されます。
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Article PV x Affiliate CTR Matrix -->
+        {% set perf_articles = d.article_perf if d.article_perf is defined and d.article_perf is iterable and d.article_perf is not string and d.article_perf is not mapping else [] %}
+        {% set all_articles = d.article_perf_all if d.article_perf_all is defined and d.article_perf_all is iterable and d.article_perf_all is not string and d.article_perf_all is not mapping and d.article_perf_all else perf_articles %}
+        <div class="card" id="pdca-articles" style="margin-bottom:18px;">
+            <h2 style="font-size:0.98rem; margin:0 0 6px;">コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
+            <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（高CV牽引）、どの記事が読まれているのに広告クリックされていないか（導線ロス）、未露出の睡眠記事が何本あるかを一覧化します。</p>
+            <div class="table-wrap" style="margin-bottom:0;">
+                <table class="pdca-table">
+                    <thead>
+                        <tr>
+                            <th>コラム記事タイトル</th>
+                            <th>診断ステータス</th>
+                            <th>閲覧数（PV）</th>
+                            <th>広告クリック</th>
+                            <th>記事CTR</th>
+                            <th>SNS送客URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in perf_articles %}
+                        <tr>
+                            <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
+                            <td>{{ a.status_badge|default('', true) }}</td>
+                            <td>{{ a.pv|default(0, true) }}回</td>
+                            <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
+                            <td>{{ a.ctr_pct|default(0, true) }}%</td>
+                            <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if all_articles|length > perf_articles|length %}
+            {% set rest_articles = all_articles[perf_articles|length:] %}
+            <details class="sleeping-details">
+                <summary>全{{ all_articles|length }}本中 残り{{ rest_articles|length }}本のコラム成績・未露出在庫（睡眠記事 {{ d.sleeping_count|default(0, true) }}本）を表示</summary>
+                <div class="table-wrap" style="margin-top:10px; margin-bottom:0;">
+                    <table class="pdca-table">
+                        <thead>
+                            <tr>
+                                <th>コラム記事タイトル</th>
+                                <th>診断ステータス</th>
+                                <th>閲覧数（PV）</th>
+                                <th>広告クリック</th>
+                                <th>記事CTR</th>
+                                <th>SNS送客URL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in rest_articles %}
+                            <tr>
+                                <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
+                                <td>{{ a.status_badge|default('', true) }}</td>
+                                <td>{{ a.pv|default(0, true) }}回</td>
+                                <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
+                                <td>{{ a.ctr_pct|default(0, true) }}%</td>
+                                <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
+        </div>
+                </div>
+            </div>
+
+            <!-- Sub-Tab 3: SNS Efficiency & 3-Layer Closed-Loop Learning Studio -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-learning" aria-labelledby="ws-tab-learning" data-ws-panel="learning" hidden="until-found">
+                <div class="ws-tabpanel-inner">
         <!-- SNS Channel Efficiency & Reels Video Concepts -->
         <div class="card" id="pdca-sns" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
@@ -2066,112 +2038,166 @@
                 </div>
             </div>
         </div>
-
-        <!-- SNS ?s= & External Referer Cohort Tracking Table -->
-        <div class="card" style="margin-bottom:18px;">
-            <h2 id="cohort-funnel-heading" style="font-size:0.98rem; margin:0 0 6px;">流入経路・切り口別（<code>?s=</code> / 外部Referer）2ステップ遷移＆案件別EPC成績</h2>
-            <p class="lead" style="margin-bottom:10px;">Google検索・YouTubeショート・IGリール・X・Threads・AI検索からの訪問後24時間以内に、クッション導線（<code>/grooming</code>・<code>/for-women</code>等）およびアフィリエイト枠へどれだけ遷移したかを追跡します。</p>
-            {% if d.inflow_cohorts %}
-            <div class="table-wrap" tabindex="0" role="region" aria-labelledby="cohort-funnel-heading" style="margin-bottom:0;">
-                <table class="pdca-table">
-                    <thead>
-                        <tr>
-                            <th>SNS投稿枠・切り口コホート</th>
-                            <th>識別タグ</th>
-                            <th>サイト流入数</th>
-                            <th>2ステップ遷移</th>
-                            <th>アフィリエイトCV</th>
-                            <th>CV率</th>
-                            <th>期待収益 / 1流入EPC</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for c in d.inflow_cohorts %}
-                        <tr>
-                            <td><strong>{{ c.label|default('-', true) }}</strong></td>
-                            <td><code>?s={{ c.tag|default('', true) }}</code></td>
-                            <td>{{ c.visits|default(0, true) }}回</td>
-                            <td>{{ c.cushion_clicks|default(0, true) }}回（{{ c.cushion_rate_pct|default(0, true) }}%）</td>
-                            <td><strong>{{ c.conversions|default(0, true) }}件</strong></td>
-                            <td>{{ c.cvr_pct|default(0, true) }}%</td>
-                            <td><strong>¥{{ c.est_revenue_yen|default(0, true) }}</strong>（EPC ¥{{ c.epc_yen|default(0, true) }}）</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state-box">
-                まだ <code>?s=</code> 識別子付きのSNS流入ログが蓄積されていません。本日のX・Threads・リール自動投稿から切り口別の2ステップ遷移とEPCが自動集計されます。
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Article PV x Affiliate CTR Matrix -->
-        {% set perf_articles = d.article_perf if d.article_perf is defined and d.article_perf is iterable and d.article_perf is not string and d.article_perf is not mapping else [] %}
-        {% set all_articles = d.article_perf_all if d.article_perf_all is defined and d.article_perf_all is iterable and d.article_perf_all is not string and d.article_perf_all is not mapping and d.article_perf_all else perf_articles %}
-        <div class="card" id="pdca-articles" style="margin-bottom:18px;">
-            <h2 style="font-size:0.98rem; margin:0 0 6px;">コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
-            <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（高CV牽引）、どの記事が読まれているのに広告クリックされていないか（導線ロス）、未露出の睡眠記事が何本あるかを一覧化します。</p>
-            <div class="table-wrap" style="margin-bottom:0;">
-                <table class="pdca-table">
-                    <thead>
-                        <tr>
-                            <th>コラム記事タイトル</th>
-                            <th>診断ステータス</th>
-                            <th>閲覧数（PV）</th>
-                            <th>広告クリック</th>
-                            <th>記事CTR</th>
-                            <th>SNS送客URL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in perf_articles %}
-                        <tr>
-                            <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
-                            <td>{{ a.status_badge|default('', true) }}</td>
-                            <td>{{ a.pv|default(0, true) }}回</td>
-                            <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
-                            <td>{{ a.ctr_pct|default(0, true) }}%</td>
-                            <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {% if all_articles|length > perf_articles|length %}
-            {% set rest_articles = all_articles[perf_articles|length:] %}
-            <details class="sleeping-details">
-                <summary>全{{ all_articles|length }}本中 残り{{ rest_articles|length }}本のコラム成績・未露出在庫（睡眠記事 {{ d.sleeping_count|default(0, true) }}本）を表示</summary>
-                <div class="table-wrap" style="margin-top:10px; margin-bottom:0;">
-                    <table class="pdca-table">
-                        <thead>
-                            <tr>
-                                <th>コラム記事タイトル</th>
-                                <th>診断ステータス</th>
-                                <th>閲覧数（PV）</th>
-                                <th>広告クリック</th>
-                                <th>記事CTR</th>
-                                <th>SNS送客URL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for a in rest_articles %}
-                            <tr>
-                                <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
-                                <td>{{ a.status_badge|default('', true) }}</td>
-                                <td>{{ a.pv|default(0, true) }}回</td>
-                                <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
-                                <td>{{ a.ctr_pct|default(0, true) }}%</td>
-                                <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
-            </details>
+            </div>
+
+            <!-- Sub-Tab 4: 4-Gear Flywheel, Active Directives & Execution History -->
+            {% set st_labels = d.style_labels if d.style_labels is defined and d.style_labels is mapping else {} %}
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-automation" aria-labelledby="ws-tab-automation" data-ws-panel="automation" hidden="until-found">
+                <div class="ws-tabpanel-inner">
+        <!-- 4-Gear Growth Flywheel Autonomous Monitor -->
+        {% set fw_mq = fw.moshimo_queue if fw is mapping and fw.moshimo_queue is defined and fw.moshimo_queue is mapping else {} %}
+        {% set fw_yt = fw.youtube_shorts if fw is mapping and fw.youtube_shorts is defined and fw.youtube_shorts is mapping else {} %}
+        {% set fw_gsc = fw.search_console if fw is mapping and fw.search_console is defined and fw.search_console is mapping else {} %}
+        {% set fw_col = fw.column_pipeline if fw is mapping and fw.column_pipeline is defined and fw.column_pipeline is mapping else {} %}
+        <section class="card" id="pdca-flywheel" style="margin-bottom:18px;" aria-labelledby="pdca-flywheel-heading">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h2 id="pdca-flywheel-heading" style="font-size:1rem; margin:0 0 3px;">4歯車グロース・フライホイール稼働＆フルファネル計測モニター</h2>
+                    <div style="font-size:0.78rem; color:var(--sub);">①3DもしもIG自動配信 × ②YouTubeショート維持率 × ③Google検索お宝クエリ × ④SEO予約コラム自動補充の連動状況を一覧監視します。</div>
+                </div>
+                <span class="ultra-badge" style="font-variant-numeric:tabular-nums;">自然検索流入 {{ sns_eff.total_search_visits|default(0, true) }}回 ／ SNS・ショート流入 {{ sns_eff.total_sns_visits|default(0, true) }}回</span>
+            </div>
+
+            <div class="flywheel-grid">
+                <div class="flywheel-gear">
+                    <div>
+                        <div class="flywheel-gear-top">
+                            <span class="flywheel-gear-label">Gear 1｜3D『もしも』IG自動キュー</span>
+                            <span class="chip {{ 'plus' if fw_mq.enabled else '' }}">{{ '稼働中' if fw_mq.enabled else '一時停止' }}</span>
+                        </div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">待機 {{ fw_mq.remaining_count|default(0, true) }} / {{ fw_mq.total_episodes|default(10, true) }}本</div>
+                        <div class="flywheel-gear-meta">
+                            投稿済 {{ fw_mq.posted_count|default(0, true) }}本 ・ 21日再配信 {{ 'ON' if fw_mq.evergreen_recycle else 'OFF' }}<br>
+                            {% if fw_mq.next_episode is mapping %}次回: #{{ fw_mq.next_episode.order|default('', true) }}（{{ fw_mq.next_episode.scheduled_date|default('', true) }} 20:00）{% else %}エバーグリーン火・木再配信＆Live速報稼働{% endif %}<br>
+                            IGリール経由流入: <strong>{{ fw_mq.ig_reels_visits|default(0, true) }}回</strong>（CV {{ fw_mq.ig_reels_conversions|default(0, true) }}件）
+                        </div>
+                    </div>
+                    <a href="/staff/sns-editorial?channel=instagram#moshimo-queue-section" class="mini-btn" style="text-align:center; text-decoration:none;">3Dキュー＆Shortsパックを開く →</a>
+                </div>
+
+                <div class="flywheel-gear">
+                    <div>
+                        <div class="flywheel-gear-top">
+                            <span class="flywheel-gear-label">Gear 2｜YouTubeショート（@aiseki_navi）</span>
+                            {% if yt_oauth_info.connected or fw_yt.api_connected %}
+                            <span class="chip plus">API自動同期ON</span>
+                            {% else %}
+                            <span class="chip {{ 'plus' if fw_yt.data_status == 'ok' else '' }}">{{ '実測連携済' if fw_yt.data_status == 'ok' else 'API未連携' }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">
+                            {% if fw_yt.total_views is defined and fw_yt.total_views is not none %}{{ '{:,}'.format(fw_yt.total_views|int) }}回視聴{% else %}流入 {{ fw_yt.site_visits|default(0, true) }}回{% endif %}
+                        </div>
+                        <div class="flywheel-gear-meta">
+                            視聴選択率: {% if fw_yt.avg_stayed_to_watch_pct is defined and fw_yt.avg_stayed_to_watch_pct is not none %}<strong>{{ fw_yt.avg_stayed_to_watch_pct }}%</strong>{% else %}未取込{% endif %}
+                            ・ 平均再生率: {% if fw_yt.avg_pct_viewed is defined and fw_yt.avg_pct_viewed is not none %}<strong>{{ fw_yt.avg_pct_viewed }}%</strong>{% else %}-{% endif %}<br>
+                            サイト流入（<code>?s=short_bio</code>・<code>ref_youtube</code>）: <strong>{{ fw_yt.site_visits|default(0, true) }}回</strong><br>
+                            クッション遷移 {{ fw_yt.site_cushion_clicks|default(0, true) }}回 ／ CV <strong>{{ fw_yt.site_conversions|default(0, true) }}件</strong>
+                        </div>
+                    </div>
+                    <a href="#yt-oauth-setup" class="mini-btn" style="text-align:center; text-decoration:none;">{{ 'YouTube自動同期ステータス ↓' if (yt_oauth_info.connected or fw_yt.api_connected) else 'YouTube API自動同期を連携 ↓' }}</a>
+                </div>
+
+                <div class="flywheel-gear">
+                    <div>
+                        <div class="flywheel-gear-top">
+                            <span class="flywheel-gear-label">Gear 3｜Google Search Console 検索</span>
+                            <span class="chip {{ 'plus' if fw_gsc.data_status == 'ok' else '' }}">{{ '実測連携済' if fw_gsc.data_status == 'ok' else 'CSV/スクショ待' }}</span>
+                        </div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">
+                            {% if fw_gsc.total_impressions is defined and fw_gsc.total_impressions is not none %}表示 {{ '{:,}'.format(fw_gsc.total_impressions|int) }}回{% else %}検索流入 {{ fw_gsc.site_visits|default(0, true) }}回{% endif %}
+                        </div>
+                        <div class="flywheel-gear-meta">
+                            GSCクリック: {% if fw_gsc.total_clicks is defined and fw_gsc.total_clicks is not none %}<strong>{{ '{:,}'.format(fw_gsc.total_clicks|int) }}回</strong>（CTR {{ fw_gsc.avg_ctr_pct|default(0, true) }}%）{% else %}未取込{% endif %}<br>
+                            未回収お宝クエリ: <strong>{{ fw_gsc.opportunity_count|default(0, true) }}件</strong><br>
+                            検索Referer実流入: <strong>{{ fw_gsc.site_visits|default(0, true) }}回</strong>（CV <strong>{{ fw_gsc.site_conversions|default(0, true) }}件</strong>）
+                        </div>
+                    </div>
+                    <a href="#pdca-closed-loop" class="mini-btn" style="text-align:center; text-decoration:none;">Search Console CSVを取込 ↓</a>
+                </div>
+
+                <div class="flywheel-gear">
+                    <div>
+                        <div class="flywheel-gear-top">
+                            <span class="flywheel-gear-label">Gear 4｜SEO予約コラム自動パイプライン</span>
+                            <span class="chip {{ 'plus' if fw_col.auto_replenish_columns else '' }}">{{ '自動補充ON' if fw_col.auto_replenish_columns else '手動補充' }}</span>
+                        </div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">予約待機 {{ fw_col.upcoming_count|default(d.upcoming_count|default(0, true), true) }}本</div>
+                        <div class="flywheel-gear-meta">
+                            {% if fw_col.next_title %}
+                            次回公開: <strong>{{ fw_col.next_publish_at_ja|default('', true) }}</strong><br>
+                            『{{ (fw_col.next_title|default('', true))[:28] }}』
+                            {% else %}
+                            残1本以下で17:35 / 03:35 PDCAサイクルが新着コラムを自動執筆・予約補充します。
+                            {% endif %}
+                        </div>
+                    </div>
+                    <a href="/staff/column-editorial" class="mini-btn" style="text-align:center; text-decoration:none;">コラム編集部・予約枠を確認 →</a>
+                </div>
+            </div>
+
+            {% if fw_mq.next_moshimo_ideas %}
+            <div class="flywheel-ideas">
+                <strong style="color:var(--text);">次期3D『もしもシリーズ』実測連動ネタ候補（現場ギャップ＆検索クエリから自動抽出）：</strong>
+                <ul style="margin:5px 0 0; padding-inline-start:18px; line-height:1.55;">
+                    {% for idea in fw_mq.next_moshimo_ideas %}
+                    <li>{{ idea }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
             {% endif %}
+        </section>
+
+        <!-- Active Closed-Loop Directives -->
+        <div class="directives-panel" id="pdca-directives">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <h2 style="font-size:1rem; margin:0;">現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
+                <span style="font-size:0.76rem; color:var(--sub);">最終更新：{{ act.updated_at or '未実行（初回自動セット済）' }}</span>
+            </div>
+            <div class="directives-grid">
+                <div class="dir-box">
+                    <h3>① SNS鬼デスク スコア自動補正</h3>
+                    <div class="chip-list" id="dir-sns-boosts">
+                        {% set boosts = act.sns_style_boosts if act is mapping and act.sns_style_boosts is defined and act.sns_style_boosts is mapping else {} %}
+                        {% if boosts %}
+                            {% for st_k, pts in boosts.items() if (pts is not none and pts != 0) %}
+                            {% set _pts_num = pts|default(0, true)|int %}
+                            {% if _pts_num != 0 %}
+                            <span class="chip {{ 'plus' if _pts_num > 0 else 'minus' }}">{{ st_labels.get(st_k, st_k) }}{% if st_labels.get(st_k) and st_labels.get(st_k) != st_k %}（{{ st_k }}）{% endif %}：{{ '%+d'|format(_pts_num) }}点</span>
+                            {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span style="font-size:0.77rem; color:var(--sub);">自動補正OFFまたはフラット配分中</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ <code>/staff/sns-editorial</code> および毎日の自動投稿の鬼デスク採点へリアルタイム反映されます。</div>
+                </div>
+
+                <div class="dir-box">
+                    <h3>② Xコラム枠 優先送客リスト</h3>
+                    <div class="chip-list" id="dir-priority-cols">
+                        {% for p in (act.priority_column_paths or []) %}
+                        {% if p is string and p.startswith('/') and not p.startswith('//') and not p.startswith('/@') and '\\' not in p and '\n' not in p and '\r' not in p and '\t' not in p and '\x00' not in p and '%5c' not in p|lower %}
+                        <a href="{{ p }}" target="_blank" rel="noopener noreferrer" class="chip">{{ p }} ↗</a>
+                        {% endif %}
+                        {% else %}
+                        <span style="font-size:0.77rem; color:var(--sub);">通常ローテーション稼働中</span>
+                        {% endfor %}
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--sub); margin-top:8px;">※ X 18:00枠（当日未投稿分）のリプ欄で優先紹介されます。</div>
+                </div>
+
+                <div class="dir-box">
+                    <h3>③ コラム編集部への次回特命お題</h3>
+                    {% set _prop_dir = d.proposed_directives if d.proposed_directives is defined and d.proposed_directives is mapping else {} %}
+                    {% set _rec_topic = act.recommended_custom_topic or _prop_dir.recommended_custom_topic or '' %}
+                    <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ _rec_topic }}』</div>
+                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ _rec_topic | urlencode }}">
+                        この特命お題をコラム編集部で開いてワンクリック予約する →
+                    </a>
+                </div>
+            </div>
         </div>
 
         <!-- Recent Autonomous PDCA History -->
@@ -2214,6 +2240,9 @@
             {% else %}
             <div style="font-size:0.8rem; color:var(--sub);">上の「いま最新データでPDCAサイクルを実行して編成指令を更新」ボタンを押すか、毎日17:35 / 03:35の自動実行で履歴が記録されます。</div>
             {% endif %}
+        </div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -526,6 +526,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             "staff_analytics.html",
             "staff_pdca.html",
             "staff_sns_kit.html",
+            "staff_ops.html",
             "staff_login.html",
         ]
         semantic_fg_tokens = ("--gold", "--green", "--blue", "--rose", "--amber", "--red", "--err-ink", "--purple")
@@ -600,7 +601,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             with self.client.session_transaction() as sess:
                 sess["is_staff"] = True
                 sess["is_master"] = True
-            for sr in ("/?staff=1", "/staff/analytics", "/staff/sns-editorial", "/staff/sns-editorial?channel=note", "/staff/column-editorial", "/staff/pdca", "/staff/sns-kit"):
+            for sr in ("/?staff=1", "/staff/analytics", "/staff/ops", "/staff/sns-editorial", "/staff/sns-editorial?channel=note", "/staff/column-editorial", "/staff/pdca", "/staff/sns-kit"):
                 resp = self.client.get(sr)
                 try:
                     self.assertEqual(resp.status_code, 200, f"Staff route {sr} returned {resp.status_code}")
@@ -1079,6 +1080,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                         "/staff/sns-editorial",
                         "/staff/column-editorial",
                         "/staff/analytics",
+                        "/staff/ops",
                         "/staff/pdca",
                         "/staff/sns-kit",
                     ]

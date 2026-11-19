@@ -629,19 +629,36 @@
         {% set master_active_tab = 'column' %}
         {% include '_master_nav.html' %}
 
-        <nav class="master-section-jumpbar" aria-label="コラム編集部セクション移動">
-            <span class="master-jump-label">セクション移動</span>
-            <a href="#note-export-panel" class="master-jump-chip">note貼付用出力</a>
-            <a href="#column-tone-step" class="master-jump-chip">トーン・テーマ設定</a>
-            <a href="#candidates-container" class="master-jump-chip">執筆候補・予約公開</a>
-            <a href="#column-audit-section" class="master-jump-chip">全{{ editorial.existing_audit.total_columns }}本 品質監査</a>
-        </nav>
+        {% set _col_default_tab = 'note_export' if export_slug else 'proposals' %}
 
         <div class="header-card">
             <h1>コラム・note編集部｜4役合議・長考執筆＆予約公開ボード</h1>
-            <p>ご都合主義の綺麗事やAI特有の教科書感を排除した本音コラム（現場リアル会話 <code>.dialogue-box</code> 3箇所＋実測データ比較表＋FAQ）・note原稿・X新着2連スレッドを一括作成。採用案はワンクリックでサイトへ予約公開または即時公開できます。</p>
+            <p>現場リアル会話（<code>.dialogue-box</code> 3箇所）・実測データ比較表・FAQ付きのWebコラムとnote原稿を一括作成し、ワンクリック予約公開・note出力・品質監査を行えます。</p>
         </div>
 
+        <div class="ws-workspace" data-ws-param="tab">
+            <div class="ws-subtab-shell master-section-jumpbar">
+                <div class="ws-tablist" role="tablist" aria-label="コラム・note編集部セクション切り替え">
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-proposals" data-ws-tab="proposals" aria-selected="{{ 'true' if _col_default_tab == 'proposals' else 'false' }}">
+                        <span>執筆候補・予約公開</span>
+                        <span class="ws-tab-count">{{ editorial.evaluation.candidates | length }}案</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-note-export" data-ws-tab="note_export" aria-selected="{{ 'true' if _col_default_tab == 'note_export' else 'false' }}">
+                        <span>note貼付用出力</span>
+                    </button>
+                    <button type="button" role="tab" class="ws-tab" id="ws-tab-audit" data-ws-tab="audit" aria-selected="false">
+                        <span>全記事 品質監査</span>
+                        <span class="ws-tab-count">{{ editorial.existing_audit.total_columns }}本</span>
+                    </button>
+                </div>
+                <div class="ws-subtab-tools">
+                    <button type="button" class="ws-expand-all-btn" data-ws-expand-all aria-pressed="false">全タブ展開</button>
+                </div>
+            </div>
+
+            <!-- Sub-Tab 2: note.com Ready-to-Paste Exporter -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-note-export" aria-labelledby="ws-tab-note-export" data-ws-panel="note_export"{% if _col_default_tab != 'note_export' %} hidden="until-found"{% endif %}>
+                <div class="ws-tabpanel-inner">
         <!-- Existing & Scheduled Column -> note.com Ready-to-Paste Exporter -->
         <div class="note-export-panel" id="note-export-panel">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
@@ -719,7 +736,12 @@
                 </div>
             </div>
         </div>
+                </div>
+            </div>
 
+            <!-- Sub-Tab 1: Proposals, Tone/Theme Controls & 1-Click Publish -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-proposals" aria-labelledby="ws-tab-proposals" data-ws-panel="proposals"{% if _col_default_tab != 'proposals' %} hidden="until-found"{% endif %}>
+                <div class="ws-tabpanel-inner">
         <!-- Writing Tone & Perspective Selector -->
         <div class="theme-panel" id="column-tone-step" style="border-color:var(--rose-border);">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:9px;">
@@ -827,8 +849,14 @@
             </div>
         </div>
 
-        <!-- 4 Roles Summary Grid -->
-        <div class="roles-grid">
+        <!-- 4 Roles Summary Grid (Collapsible Secondary Detail) -->
+        <details class="ws-secondary-disclosure">
+            <summary>
+                <span>4役合議プロセス詳細（リサーチ・切り口設計・ライター・鬼デスク講評）</span>
+                <span style="font-size:0.75rem; color:var(--sub);">クリックで展開 ▾</span>
+            </summary>
+            <div class="ws-secondary-disclosure-body">
+        <div class="roles-grid" style="margin-bottom:0;">
             <div class="role-card">
                 <span class="role-badge role-1">① リサーチャー（実測ログ・現場ネタ発掘係）</span>
                 <h3>検証済みデータの抽出</h3>
@@ -855,6 +883,8 @@
                 <p id="desk-summary-text">{{ editorial.evaluation.desk_summary }}</p>
             </div>
         </div>
+            </div>
+        </details>
 
         <h2 class="section-h2">
             <span id="cands-heading">コラム・note 提案候補（{{ editorial.evaluation.candidates | length }}案）＆ ワンクリック公開予約</span>
@@ -951,7 +981,12 @@
             </div>
             {% endfor %}
         </div>
+                </div>
+            </div>
 
+            <!-- Sub-Tab 3: Quality & Brand Naming Audit Table -->
+            <div class="ws-tabpanel" role="tabpanel" id="ws-panel-audit" aria-labelledby="ws-tab-audit" data-ws-panel="audit" hidden="until-found">
+                <div class="ws-tabpanel-inner">
         <!-- Audit Table of ALL Existing + Scheduled Columns -->
         <h2 class="section-h2" id="column-audit-section">
             <span>全コラム「鬼デスク品質・人間味＆ブランド呼称」監査一覧（全 {{ editorial.existing_audit.total_columns }} 本）</span>
@@ -1015,6 +1050,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1090,6 +1128,9 @@
         }
 
         function openNoteExportForSlug(slug) {
+            if (window.activateStaffWorkspaceTab) {
+                window.activateStaffWorkspaceTab("note_export", "note-export-panel");
+            }
             var sel = document.getElementById("note-export-select");
             if (sel && slug) {
                 sel.value = slug;

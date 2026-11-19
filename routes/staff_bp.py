@@ -215,12 +215,11 @@ def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> by
 
 @staff_bp.route('/staff/analytics')
 def staff_analytics():
-    """Master-only analytics summary (page views, affiliate clicks, button clicks, affiliate slot manager & Sheets retention)."""
+    """Master-only analytics & affiliate revenue console (with quick PDCA bridge; ops/system moved to /staff/ops)."""
     if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import analytics
     import affiliate_manager
-    import archive_data
     days = max(1, min(90, request.args.get('days', 7, type=int)))
     is_json_req = request.args.get('format') == 'json'
     force_flush = (request.args.get('flush') == '1') and _is_same_origin_get_action_allowed()
@@ -234,18 +233,14 @@ def staff_analytics():
     if is_json_req:
         return jsonify(data)
     aff_status = affiliate_manager.get_affiliate_slots_status(analytics_data=data, allow_blocking=False)
-    retention_status = archive_data.get_retention_status(allow_blocking=False)
-    try:
-        forecast_accuracy = core.local_db.get_forecast_accuracy_report(
-            days=max(7, min(30, days)),
-            limit_recent=25,
-            allow_blocking=True,
-            auto_backfill=False,
-        )
-    except Exception:
-        forecast_accuracy = None
     import ops_governance
     ops_gov = ops_governance.get_governance_dashboard_state()
+    pdca_directives = None
+    try:
+        import pdca_engine
+        pdca_directives = pdca_engine.get_active_directives(allow_blocking=False)
+    except Exception:
+        pdca_directives = None
     return render_template(
         'staff_analytics.html',
         data=data,
@@ -253,9 +248,52 @@ def staff_analytics():
         flushed=force_flush,
         flushed_rows=flushed_rows,
         aff_status=aff_status,
+        ops_gov=ops_gov,
+        pdca_directives=pdca_directives,
+    )
+
+
+@staff_bp.route('/staff/ops')
+def staff_ops():
+    """Master-only Operations, Governance, Security, Sheets Capacity, Store Audit & Forecast Accuracy console."""
+    if not core.is_master_authorized():
+        return redirect(url_for('staff_monitor', switch='1'))
+    import archive_data
+    import data_audit
+    import ops_governance
+    days = max(7, min(90, request.args.get('days', 21, type=int)))
+    is_json_req = request.args.get('format') == 'json'
+    ops_gov = ops_governance.get_governance_dashboard_state()
+    retention_status = archive_data.get_retention_status(allow_blocking=False)
+    try:
+        forecast_accuracy = core.local_db.get_forecast_accuracy_report(
+            days=min(30, days),
+            limit_recent=25,
+            allow_blocking=True,
+            auto_backfill=False,
+        )
+    except Exception:
+        forecast_accuracy = None
+    try:
+        live_s = _get_visible_live_stores()
+        data_audit_report = data_audit.run_data_audit(live_stores=live_s, send_alerts=False)
+    except Exception:
+        data_audit_report = None
+    if is_json_req:
+        return jsonify({
+            'ok': True,
+            'ops_gov': ops_gov,
+            'retention_status': retention_status,
+            'forecast_accuracy': forecast_accuracy,
+            'data_audit': data_audit_report,
+        })
+    return render_template(
+        'staff_ops.html',
+        days=days,
+        ops_gov=ops_gov,
         retention_status=retention_status,
         forecast_accuracy=forecast_accuracy,
-        ops_gov=ops_gov,
+        data_audit_report=data_audit_report,
     )
 
 
@@ -525,6 +563,16 @@ def staff_sns_editorial():
         yt_autopost = youtube_poster.get_youtube_auto_post_status(allow_blocking=False)
     except Exception:
         pass
+    sns_kit_ctx = None
+    sns_kit_captions = None
+    sns_kit_cache_bust = int(time.time()) // 300
+    try:
+        import ig_carousel_generator
+        sns_kit_ctx = ig_ctx if ig_ctx is not None else core._get_sns_kit_context(fast=True)
+        sns_kit_captions = ig_carousel_generator.build_captions(sns_kit_ctx)
+    except Exception:
+        sns_kit_ctx = None
+        sns_kit_captions = None
     return render_template(
         'staff_sns_editorial.html',
         editorial=editorial,
@@ -537,6 +585,9 @@ def staff_sns_editorial():
         moshimo_queue=moshimo_queue,
         gcp_status=gcp_status,
         yt_autopost=yt_autopost,
+        sns_kit_ctx=sns_kit_ctx,
+        sns_kit_captions=sns_kit_captions,
+        sns_kit_cache_bust=sns_kit_cache_bust,
     )
 
 

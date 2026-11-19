@@ -342,14 +342,14 @@
         {% set tp_daytime_10m = tp.is_daytime_10m if (tp.is_daytime_10m is defined) else false %}
         {% set tp_total_stores = tp.total_monitored_stores or 63 %}
         {% set tp_last_hm = tp.last_hm or ((initial_status.timestamp.split(' ')[1][:5]) if (initial_status and initial_status.timestamp and ' ' in initial_status.timestamp) else '--:--') %}
+        {% if is_staff and is_master %}
+        {% set master_active_tab = 'monitor' %}
+        {% include '_master_nav.html' %}
+        {% endif %}
         <header>
-            {% if is_staff %}
+            {% if is_staff and not is_master %}
             <div class="staff-header-top" style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                {% if is_master %}
-                <span class="staff-header-badge master-header-badge">MASTER MONITOR（マスター全権限モード・広告OFF）</span>
-                {% else %}
                 <span class="staff-header-badge">社内業務モニター（現場データ専用・広告OFF）</span>
-                {% endif %}
             </div>
             {% endif %}
             <div class="header-top-row">
@@ -604,7 +604,7 @@
                 <div class="staff-analytics-quickbar">
                     <div class="staff-quickbar-header">
                         {% if is_master %}
-                        <span class="staff-quickbar-badge master-quickbar-badge">MASTER CONTROL ｜ マスター管理パネル</span>
+                        <span class="staff-quickbar-badge master-quickbar-badge">MASTER MONITOR ｜ リアルタイム店舗モニター</span>
                         {% else %}
                         <span class="staff-quickbar-badge">現場データ専用 モニタリングパネル</span>
                         {% endif %}
@@ -612,32 +612,23 @@
                     </div>
 
                     {% if is_master %}
-                    <div class="master-launcher-grid" role="navigation" aria-label="マスター管理メニュー">
-                        <a href="/staff/analytics" class="master-launcher-card">
-                            <span class="mlc-title">アクセス・収益・広告 <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">日別PV・アフィリエイト9枠・予測精度</span>
-                        </a>
-                        <a href="/staff/pdca" class="master-launcher-card">
-                            <span class="mlc-title">PDCA参謀ボード <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">勝ち筋診断・機会損失・自動最適化</span>
-                        </a>
-                        <a href="/staff/sns-editorial" class="master-launcher-card">
-                            <span class="mlc-title">SNS編集部（4役合議） <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">X・Threads・IG・TikTok・note</span>
-                        </a>
-                        <a href="/staff/column-editorial" class="master-launcher-card">
-                            <span class="mlc-title">コラム・note編集部 <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">本音コラム執筆・予約公開・品質監査</span>
-                        </a>
-                        <a href="/staff/column-editorial?export=last-train-cliff#note-export-panel" class="master-launcher-card">
-                            <span class="mlc-title">note貼付用出力 <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">公開済み記事をnote原稿へ即時変換</span>
-                        </a>
-                        <a href="/staff/sns-kit" class="master-launcher-card">
-                            <span class="mlc-title">週末予報画像キット <span class="mlc-arrow">›</span></span>
-                            <span class="mlc-sub">IG・Threads用 5枚組カルーセル生成</span>
-                        </a>
-                    </div>
+                    <div class="ws-workspace" data-ws-param="tab">
+                        <div class="ws-subtab-shell master-section-jumpbar" style="margin-bottom:10px;">
+                            <div class="ws-tablist" role="tablist" aria-label="店舗モニター管理ツール切り替え">
+                                <button type="button" role="tab" class="ws-tab" id="ws-tab-live-tools" data-ws-tab="live_tools" aria-selected="true">
+                                    <span>現場分析ツール</span>
+                                </button>
+                                <button type="button" role="tab" class="ws-tab" id="ws-tab-master-hub" data-ws-tab="master_hub" aria-selected="false">
+                                    <span>クイックハブ・稼働状況</span>
+                                    {% if data_audit_report and data_audit_report.status != 'ok' %}
+                                    <span class="ws-tab-count">要確認 {{ data_audit_report.summary.issue_count + data_audit_report.summary.warning_count }}</span>
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="ws-tabpanel" role="tabpanel" id="ws-panel-live-tools" aria-labelledby="ws-tab-live-tools" data-ws-panel="live_tools">
+                            <div class="ws-tabpanel-inner">
                     {% endif %}
 
                     <div class="staff-quickbar-actions">
@@ -669,6 +660,40 @@
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
                     </div>
+
+                    {% if is_master %}
+                            </div>
+                        </div>
+
+                        <div class="ws-tabpanel" role="tabpanel" id="ws-panel-master-hub" aria-labelledby="ws-tab-master-hub" data-ws-panel="master_hub" hidden="until-found">
+                            <div class="ws-tabpanel-inner">
+                    <div class="master-launcher-grid" role="navigation" aria-label="マスター管理メニュー" style="margin-bottom:12px;">
+                        <a href="/staff/analytics" class="master-launcher-card">
+                            <span class="mlc-title">アクセス・収益 <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">PV・アフィリエイト全10枠・流入分析</span>
+                        </a>
+                        <a href="/staff/pdca" class="master-launcher-card">
+                            <span class="mlc-title">PDCA参謀ボード <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">最優先TOP3・勝ち筋診断・学習ループ</span>
+                        </a>
+                        <a href="/staff/sns-editorial" class="master-launcher-card">
+                            <span class="mlc-title">SNS・動画編集部 <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">4役合議・ショート動画・週末画像キット</span>
+                        </a>
+                        <a href="/staff/column-editorial" class="master-launcher-card">
+                            <span class="mlc-title">コラム・note編集部 <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">本音コラム執筆・予約公開・品質監査</span>
+                        </a>
+                        <a href="/staff/column-editorial?export=last-train-cliff#note-export-panel" class="master-launcher-card">
+                            <span class="mlc-title">note貼付用出力 <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">公開済み記事をnote原稿へ即時変換</span>
+                        </a>
+                        <a href="/staff/ops" class="master-launcher-card">
+                            <span class="mlc-title">運営・設定コンソール <span class="mlc-arrow">›</span></span>
+                            <span class="mlc-sub">お問い合わせ・緊急非表示・認証・保守</span>
+                        </a>
+                    </div>
+                    {% endif %}
 
                     {% if is_master and data_audit_report %}
                     <details class="master-subpanel master-collapsible"{% if data_audit_report.status != 'ok' %} open{% endif %}>
@@ -778,6 +803,11 @@
                             </div>
                         </div>
                     </details>
+                    {% endif %}
+                    {% if is_master %}
+                            </div>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
                 {% endif %}

@@ -301,13 +301,12 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
         self.assertNotIn("OLG", html_stats)
         self.assertEqual(re.findall(r"オリエンタル(?!ラウンジ)", html_stats), [])
 
-        # Verify master /staff/analytics renders #forecast-accuracy-audit
+        # Verify master /staff/ops renders #forecast-accuracy-audit
         with self.client.session_transaction() as sess:
             sess["is_staff"] = True
             sess["is_master"] = True
-        with mock.patch("affiliate_manager.get_affiliate_slots_status", return_value=None), \
-             mock.patch("archive_data.get_retention_status", return_value=None):
-            resp_staff = self.client.get("/staff/analytics")
+        with mock.patch("archive_data.get_retention_status", return_value=None):
+            resp_staff = self.client.get("/staff/ops")
         self.assertEqual(resp_staff.status_code, 200)
         self.assertIn("forecast-accuracy-audit", resp_staff.data.decode("utf-8"))
 
@@ -689,9 +688,9 @@ class TestForecastV2AndAccuracyTracking(unittest.TestCase):
             with self.client.session_transaction() as sess:
                 sess["is_staff"] = True
                 sess["is_master"] = True
-            with mock.patch("affiliate_manager.get_affiliate_slots_status", return_value=None), \
-                 mock.patch("archive_data.get_retention_status", return_value=None):
-                html_staff = self.client.get("/staff/analytics").data.decode("utf-8")
+                sess["auth_gen"] = app_module._compute_session_auth_gen(True)
+            with mock.patch("archive_data.get_retention_status", return_value=None):
+                html_staff = self.client.get("/staff/ops").data.decode("utf-8")
             self.assertNotIn("--18.8%", html_staff)
             self.assertIn("+18.8%", html_staff)
 

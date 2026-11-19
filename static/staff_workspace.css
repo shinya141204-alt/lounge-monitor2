@@ -1,0 +1,604 @@
+/* ==========================================================================
+   staff_workspace.css — 相席ナビ 管理ワークスペース共通UI（Linear / Stripe型 サブタブ＆6ピラードック）
+   Dark (#111113) & Light (#f6f6f7) WCAG AA (>= 5.5:1) 完全準拠
+   ========================================================================== */
+
+@property --ws-fade-start {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --ws-fade-end {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+:root {
+    --mn-bg: #1a1a1e;
+    --mn-surface: #1a1a1e;
+    --mn-surface-2: #232329;
+    --mn-border: rgba(255, 255, 255, 0.09);
+    --mn-border-strong: rgba(255, 255, 255, 0.17);
+    --mn-text: #f4f4f5;
+    --mn-sub: #b4b4be;
+    --mn-active-bg: #f4f4f5;
+    --mn-active-ink: #111113;
+    --mn-badge-bg: #232329;
+    --ws-tab-hover: rgba(255, 255, 255, 0.05);
+    --ws-tab-active-bg: rgba(255, 255, 255, 0.08);
+    --ws-kpi-bg: #18181c;
+}
+
+html.theme-light,
+body.theme-light {
+    --mn-bg: #ffffff;
+    --mn-surface: #ffffff;
+    --mn-surface-2: #f2f2f5;
+    --mn-border: rgba(24, 24, 27, 0.09);
+    --mn-border-strong: rgba(24, 24, 27, 0.17);
+    --mn-text: #18181b;
+    --mn-sub: #52525b;
+    --mn-active-bg: #18181b;
+    --mn-active-ink: #ffffff;
+    --mn-badge-bg: #f2f2f5;
+    --ws-tab-hover: rgba(24, 24, 27, 0.045);
+    --ws-tab-active-bg: rgba(24, 24, 27, 0.07);
+    --ws-kpi-bg: #ffffff;
+}
+
+/* --- Global 6-Pillar Admin Dock --- */
+.master-global-dock {
+    position: sticky;
+    top: 8px;
+    z-index: 95;
+    background: var(--mn-bg);
+    border: 1px solid var(--mn-border-strong);
+    border-radius: 14px;
+    padding: 8px 14px 0;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    text-align: left;
+}
+
+body.theme-light .master-global-dock {
+    box-shadow: 0 4px 16px rgba(24, 24, 27, 0.05);
+}
+
+.master-dock-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--mn-border);
+}
+
+.master-brand-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.master-brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+    color: var(--mn-text);
+    font-weight: 800;
+    font-size: 0.9rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.master-brand-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    background: var(--mn-badge-bg);
+    border: 1px solid var(--mn-border-strong);
+    color: var(--mn-text);
+}
+
+.master-dock-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.master-logout-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.master-util-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--mn-border-strong);
+    background: var(--mn-surface-2);
+    color: var(--mn-text);
+    font-size: 0.74rem;
+    font-weight: 600;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1.3;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.master-util-btn:hover {
+    border-color: var(--mn-sub);
+}
+
+.master-util-btn:focus-visible {
+    outline: none;
+    border-color: var(--mn-text);
+    background: var(--ws-tab-active-bg);
+}
+
+.master-util-btn.primary {
+    background: var(--mn-active-bg);
+    border-color: var(--mn-active-bg);
+    color: var(--mn-active-ink);
+    font-weight: 700;
+}
+
+.master-util-btn.primary:hover {
+    opacity: 0.9;
+}
+
+/* Global 6-Pillar Page Navigation Row (semantic <nav> + aria-current="page") */
+.master-global-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    max-width: 100%;
+    padding-top: 4px;
+}
+
+.master-global-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.master-tab-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 6px 12px 9px;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: var(--mn-sub);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.master-tab-link:hover {
+    background: var(--ws-tab-hover);
+    color: var(--mn-text);
+}
+
+.master-tab-link:focus-visible {
+    outline: 2px solid var(--mn-text);
+    outline-offset: -2px;
+}
+
+.master-tab-link.active,
+.master-tab-link[aria-current="page"] {
+    color: var(--mn-text);
+    background: var(--ws-tab-active-bg);
+}
+
+.master-tab-link.active::after,
+.master-tab-link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 8px;
+    inset-block-end: 0;
+    border-block-end: 2.5px solid var(--mn-text);
+}
+
+.master-ops-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    background: var(--mn-active-bg);
+    color: var(--mn-active-ink);
+}
+
+.master-ops-count-badge.is-priority {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+/* --- Linear / Stripe Style In-Page Sub-Tab Workspace Bar --- */
+.ws-subtab-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--mn-surface);
+    border: 1px solid var(--mn-border-strong);
+    border-radius: 12px;
+    padding: 4px 10px 0;
+    margin-bottom: 16px;
+}
+
+.ws-tablist {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: inline proximity;
+    --ws-fade-size: 2rem;
+    scroll-padding-inline: var(--ws-fade-size);
+    mask:
+        linear-gradient(black, black) no-clip subtract,
+        linear-gradient(to right, black, transparent) 0 0 / var(--ws-fade-start) 100% no-repeat no-clip,
+        linear-gradient(to right, transparent, black) 100% 0 / var(--ws-fade-end) 100% no-repeat no-clip;
+    animation: ws-reveal-fade-start linear both, ws-hide-fade-end linear both;
+    animation-timeline: scroll(self inline);
+    animation-range: 0 var(--ws-fade-size), calc(100% - var(--ws-fade-size)) 100%;
+}
+
+.ws-tablist::-webkit-scrollbar {
+    display: none;
+}
+
+@keyframes ws-reveal-fade-start {
+    to { --ws-fade-start: var(--ws-fade-size); }
+}
+
+@keyframes ws-hide-fade-end {
+    from { --ws-fade-end: var(--ws-fade-size); }
+}
+
+/* Important (modern-web-guidance: tabs):
+   Keep padding, border, font-size, and font-weight identical between selected and unselected tabs
+   so tab widths never shift on selection. */
+.ws-tab[role="tab"] {
+    position: relative;
+    flex: none;
+    scroll-snap-align: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 7px 13px 10px;
+    margin: 0;
+    border: 0;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: var(--mn-sub);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.ws-tab[role="tab"]:hover {
+    color: var(--mn-text);
+    background: var(--ws-tab-hover);
+}
+
+.ws-tab[role="tab"]:focus-visible {
+    outline: 2px solid var(--mn-text);
+    outline-offset: -2px;
+}
+
+.ws-tab[role="tab"][aria-selected="true"] {
+    color: var(--mn-text);
+    background: var(--ws-tab-active-bg);
+}
+
+.ws-tab[role="tab"][aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 8px;
+    inset-block-end: 0;
+    border-block-end: 2.5px solid var(--mn-text);
+}
+
+.ws-tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--mn-surface-2);
+    border: 1px solid var(--mn-border-strong);
+    color: var(--mn-text);
+}
+
+.ws-subtab-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding-bottom: 4px;
+}
+
+.ws-expand-all-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--mn-border-strong);
+    background: var(--mn-surface-2);
+    color: var(--mn-sub);
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.ws-expand-all-btn:hover,
+.ws-expand-all-btn[aria-pressed="true"] {
+    color: var(--mn-text);
+    border-color: var(--mn-text);
+    background: var(--ws-tab-active-bg);
+}
+
+/* Important (modern-web-guidance: tabs & search-hidden-content):
+   NEVER put padding, border, margin, or background on .ws-tabpanel itself because
+   hidden="until-found" only hides contents, not box geometry! */
+.ws-tabpanel {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+}
+
+.ws-tabpanel[hidden]:not([hidden="until-found"]) {
+    display: none;
+}
+
+.ws-tabpanel-inner {
+    padding-top: 2px;
+}
+
+.ws-workspace[data-ws-all-expanded="true"] .ws-tabpanel-inner {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--mn-border);
+}
+
+/* --- Cross-Screen Executive Summary & Quick Bridge Strip --- */
+.ws-bridge-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--ws-kpi-bg);
+    border: 1px solid var(--mn-border-strong);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+}
+
+.ws-bridge-metrics {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: var(--mn-sub);
+    font-variant-numeric: tabular-nums;
+}
+
+.ws-bridge-metric strong {
+    color: var(--mn-text);
+    font-weight: 800;
+    font-size: 0.92rem;
+    margin-left: 4px;
+}
+
+.ws-bridge-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ws-bridge-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 32px;
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--mn-border-strong);
+    background: var(--mn-surface-2);
+    color: var(--mn-text);
+    text-decoration: none;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.ws-bridge-link:hover {
+    border-color: var(--mn-text);
+}
+
+/* Compact collapsible process box for secondary 4-role details */
+.ws-secondary-disclosure {
+    background: var(--mn-surface);
+    border: 1px solid var(--mn-border-strong);
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.ws-secondary-disclosure > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 15px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--mn-text);
+}
+
+.ws-secondary-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ws-secondary-disclosure-body {
+    padding: 12px 15px 15px;
+    border-top: 1px solid var(--mn-border);
+}
+
+/* --- Integrated Weekend 5-Slide Image Kit (SNS Editorial Sub-Tab) --- */
+.wk-kit-card {
+    background: var(--mn-surface);
+    border: 1px solid var(--mn-border-strong);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+}
+
+.wk-kit-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.wk-slides-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 1024px) {
+    .wk-slides-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .wk-slides-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.wk-slide-item {
+    background: var(--mn-surface-2);
+    border: 1px solid var(--mn-border);
+    border-radius: 10px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wk-slide-item img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 7px;
+    border: 1px solid var(--mn-border);
+    display: block;
+}
+
+.wk-captions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 12px;
+}
+
+.wk-caption-box {
+    background: var(--mn-surface-2);
+    border: 1px solid var(--mn-border);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.wk-caption-area {
+    width: 100%;
+    min-height: 125px;
+    margin-top: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--mn-border-strong);
+    background: var(--mn-bg);
+    color: var(--mn-text);
+    font-family: inherit;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+@media (max-width: 640px) {
+    .master-global-dock {
+        position: static;
+        padding: 8px 10px 0;
+        border-radius: 12px;
+    }
+    .master-util-btn {
+        padding: 4px 8px;
+        font-size: 0.72rem;
+    }
+    .master-tab-link {
+        padding: 6px 10px 8px;
+        font-size: 0.76rem;
+    }
+    .ws-subtab-shell {
+        padding: 3px 8px 0;
+    }
+    .ws-expand-all-btn {
+        display: none;
+    }
+    .ws-tab[role="tab"] {
+        padding: 6px 10px 9px;
+        font-size: 0.76rem;
+    }
+}
