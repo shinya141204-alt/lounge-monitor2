@@ -48,9 +48,9 @@
 
 ## 5. フロントエンド・UI/UX・キャッシュバスティング完全同期ルール
 - **脱AIデザイン基準**: 見出し・ボタンへの装飾絵文字乱用、派手なネオングラデーション、3重カード入れ子、未定義 `var(--...)` の使用を禁止。ダーク（`#111113`）とライト（`body.theme-light` `#f6f6f7`）双方で WCAG コントラスト基準（`>= 4.5:1`、主要文字 `>= 5.5:1`）を満たし、人数・比率・料金・統計値には `font-variant-numeric: tabular-nums` を適用すること。`static/calm.css` の `html` 要素には `overflow` を指定しないこと。
-- **キャッシュバスティング完全同期**: `static/calm.css`・`static/portal.css`・`static/style.css`・`static/app.js`・`static/affiliate_config.js`・`static/sw.js` のいずれかを更新した際は、以下を **すべて同時に同期更新** すること（特定バージョン文字列を `SKILL.md` にハードコードせず、必ず現行正本を参照して揃える）：
+- **キャッシュバスティング完全同期**: `static/calm.css`・`static/portal.css`・`static/style.css`・`static/guide.css`・`static/store_detail.css`・`static/app.js`・`static/cta_tracker.js`・`static/affiliate_config.js`・`static/sw.js` のいずれかを更新した際は、以下を **すべて同時に同期更新** すること（特定バージョン文字列を `SKILL.md` にハードコードせず、必ず現行正本を参照して揃える）：
   1. `templates/index.html` および全公開テンプレート（`templates/*.html`）内の該当 `?v=...` クエリ文字列
-  2. `templates/index.html` と `templates/_nav_loader.html` 両方の `/sw.js?v=...`
+  2. `templates/_nav_loader.html` および `templates/store_detail.html` 内の `/sw.js?v=...`
   3. `static/sw.js` 内の `CACHE_NAME`（`aiseki-navi-v...`）および `CORE_ASSETS` 配列内の `?v=...`
   4. `tests/test_ui_audit_regression.py`（および関連テスト）の期待バージョン定数
 

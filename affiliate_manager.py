@@ -28,7 +28,7 @@ _BARE_INTERNAL_FROM_SLUGS = frozenset({
     "concierge", "grooming", "for-women", "guide", "stats", "columns", "areas", "price-comparison",
 })
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 _mem_overrides = None  # dict[slot_id, {"url": str, "memo": str, "updated_at": str}]
 
 # Canonical 10 affiliate slots (5 men's slots + 3 women's slots + 2 unisex slots) aligned with site UI & reader intent
@@ -687,10 +687,10 @@ def validate_destination_url(raw_url: str) -> tuple:
     u = (raw_url or "").strip()
     if not u:
         return True, ""
-    if len(u) > 1000 or any(ord(c) < 32 for c in u):
-        return False, "URLに不正な制御文字が含まれているか長すぎます。"
+    if len(u) > 1000 or (not u.isascii()) or any(ord(c) < 32 for c in u):
+        return False, "URLに非ASCII文字または不正な制御文字が含まれているか長すぎます。"
     parsed = urllib.parse.urlparse(u)
-    if parsed.scheme not in ("https", "http") or not parsed.netloc or "." not in parsed.netloc:
+    if parsed.scheme.lower() not in ("https", "http") or not parsed.netloc or "." not in parsed.netloc:
         return False, "https:// または http:// から始まる有効なASPリンクを入力してください。"
     return True, u
 
@@ -790,24 +790,23 @@ def set_affiliate_slot_override(slot_id: str, target_url: str, memo: str = "") -
 
     with _lock:
         prior_mem = dict(_mem_overrides) if isinstance(_mem_overrides, dict) else {}
-    loaded = _load_overrides(allow_blocking=True)
-    overrides = dict(prior_mem)
-    overrides.update(loaded)
-    if cleaned_url_or_err:
-        overrides[cid] = {
-            "url": cleaned_url_or_err,
-            "memo": cleaned_memo,
-            "updated_at": now_str,
-        }
-    else:
-        if cleaned_memo:
-            overrides[cid] = {"url": "", "memo": cleaned_memo, "updated_at": now_str}
+        loaded = _load_overrides(allow_blocking=True)
+        overrides = dict(prior_mem)
+        overrides.update(loaded)
+        if cleaned_url_or_err:
+            overrides[cid] = {
+                "url": cleaned_url_or_err,
+                "memo": cleaned_memo,
+                "updated_at": now_str,
+            }
         else:
-            overrides.pop(cid, None)
+            if cleaned_memo:
+                overrides[cid] = {"url": "", "memo": cleaned_memo, "updated_at": now_str}
+            else:
+                overrides.pop(cid, None)
 
-    with _lock:
         _mem_overrides = dict(overrides)
-    job_state.set_value(AFFILIATE_OVERRIDES_STATE_KEY, json.dumps(overrides, ensure_ascii=False))
+        job_state.set_value(AFFILIATE_OVERRIDES_STATE_KEY, json.dumps(overrides, ensure_ascii=False))
 
     slot_meta = _SLOT_BY_ID[cid]
     resolved = _resolve_slot_info(slot_meta, overrides)
@@ -880,14 +879,15 @@ def verify_click_confirm_token(
     if "." not in raw_tok or len(raw_tok) > 80:
         return False
     ts_str, sig_str = raw_tok.split(".", 1)
-    if not ts_str.isdigit() or not re.fullmatch(r"[0-9a-f]{32}", sig_str):
+    if not ts_str.isascii() or not ts_str.isdigit() or not re.fullmatch(r"[0-9a-f]{32}", sig_str, re.ASCII):
         return False
     ts = int(ts_str)
     cur = int(time.time()) if now_ts is None else int(now_ts)
     if (cur - ts) < -5 or (cur - ts) > max(60, int(max_age_sec)):
         return False
     expected = issue_click_confirm_token(secret_key, item_id, now_ts=ts)
-    return hmac.compare_digest(raw_tok, expected)
+    import request_guards
+    return request_guards.safe_compare_digest(raw_tok, expected)
 
 
 def render_click_interstitial_html(

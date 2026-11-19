@@ -148,7 +148,7 @@
 
     <link rel="stylesheet" href="/static/style.css?v=20261119_1" fetchpriority="high">
     <link rel="stylesheet" href="/static/calm.css?v=52" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261119_3" as="script">
+    <link rel="preload" href="/static/app.js?v=20261119_5" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -170,10 +170,11 @@
     <script src="/static/affiliate_config.js?v=18" defer></script>
     {% endif %}
     <meta name="color-scheme" content="dark light">
-    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
+    <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');var _pr=localStorage.getItem('olg_pinned_stores');if(_pr&&_pr!=='[]'){var _pa=JSON.parse(_pr);if(Array.isArray(_pa)&&_pa.length>0)document.documentElement.classList.add('ssr-pins-pending');}}catch(e){}</script>
     <link rel="expect" href="#app-shell" blocking="render">
     <style>
         html.theme-light { background-color: #f6f6f7; }
+        html.ssr-pins-pending .cm-pc-left-col { visibility: hidden; }
         .modal-store-page-cta.hidden { display: none; }
         .modal-event-note {
             font-size: 0.72rem;
@@ -445,12 +446,14 @@
                         <span>マスター切替</span>
                     </a>
                     {% endif %}
-                    <a href="/staff/logout" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        <span>ログアウト</span>
-                    </a>
+                    <form method="POST" action="/staff/logout" style="display:inline;margin:0;">
+                        <button type="submit" class="header-btn labeled-btn staff-logout-btn" title="社内モニターをログアウト">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            <span>ログアウト</span>
+                        </button>
+                    </form>
                     {% endif %}
                 </div>
             </div>
@@ -893,22 +896,26 @@
                         <div id="ranking-list" class="ranking-list">
                             {% if initial_status and initial_status.ranking %}
                             {% set ssr_rank_limit = 20 %}
-                            {% set ns_ssr = namespace(rendered=0) %}
+                            {% set ns_ssr = namespace(rendered=0, skipped_head=[]) %}
                             {% for s in initial_status.ranking %}
-                            {% set ssr_skip_preopen = (not is_staff) and (not tp.all_closed_mode) and s.is_preopen_zero %}
+                            {% set ssr_name_str = (s.name or '') ~ ' ' ~ (s.seo_name or '') %}
+                            {% set ssr_name_u = ssr_name_str | upper %}
+                            {% set ssr_is_korea = (s.region == 'Korea') or ('カンナム' in ssr_name_u) or ('ホンデ' in ssr_name_u) or ('ソウル' in ssr_name_u) or ('GANGNAM' in ssr_name_u) or ('HONGDAE' in ssr_name_u) or ('SEOUL' in ssr_name_u) %}
+                            {% set ssr_skip_preopen = (not is_staff) and (not tp.all_closed_mode) and s.is_preopen_zero and (not ssr_is_korea) %}
                             {% if not ssr_skip_preopen and ns_ssr.rendered < ssr_rank_limit %}
                             {% set ns_ssr.rendered = ns_ssr.rendered + 1 %}
                             {% set ssr_w_num = (s.women or 0) %}
                             {% set ssr_m_num = (s.men or 0) %}
                             {% set ssr_tot_num = ssr_w_num + ssr_m_num %}
-                            {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if s.wait_estimate else 0) or 0 %}
+                            {% set ssr_has_we = s.wait_estimate is mapping and (s.wait_estimate.est_wait_men_min is not none or s.wait_estimate.est_men_wait_groups is not none) %}
+                            {% set ssr_wait_m = (s.wait_estimate.est_wait_men_min if ssr_has_we else 0) or 0 %}
                             {% set ssr_human_copy = s.human_line or '現在人数を集計中です' %}
                             {% set is_bento_hero = (not is_staff) and (ns_ssr.rendered == 1) and (s.ssr_rank == 1) and (tp_stale != 'halted') and (not tp.all_closed_mode) and (ssr_tot_num > 0) %}
                             {% set ssr_slug = s.slug or (s.name | store_linkable_slug) %}
                             <div class="ranking-item{% if ns_ssr.rendered == 1 %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">今夜全国ならここ一択</span>
-                                    <span class="bento-verdict-pill {{ s.plan2_signal_cls or ('is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0) else 'is-ok') }}">{{ s.plan2_signal_text or ('営業時間外' if ssr_tot_num == 0 else ('やや混雑（男性待ち約' ~ ssr_wait_m ~ '分）' if ssr_wait_m > 0 else ('いま待ち0組（公式POS実測）' if s.source_kind == 'jis_pos' else '即相席圏（推定待ち0分）'))) }}</span>
+                                    <span class="bento-verdict-pill {{ s.plan2_signal_cls or ('is-ok' if (ssr_tot_num == 0 and s.is_open_now) else ('is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0) else 'is-ok')) }}">{{ s.plan2_signal_text or ('営業中（0 : 0）' if (ssr_tot_num == 0 and s.is_open_now) else ('営業時間外' if ssr_tot_num == 0 else ('やや混雑（男性待ち約' ~ ssr_wait_m ~ '分）' if ssr_wait_m > 0 else ('いま待ち0組（公式POS実測）' if (s.source_kind == 'jis_pos' and s.jis_wait_m_grp is not none and s.jis_wait_m_grp == 0) else ('即相席圏（推定待ち0分）' if ssr_has_we else '入店人数を集計中'))))) }}</span>
                                 </div>
                                 <div class="rank-badge">{% if not is_staff and s.ssr_rank %}{{ '%02d'|format(s.ssr_rank) }}{% elif s.ssr_rank %}{{ s.ssr_rank }}{% else %}-{% endif %}</div>
                                 <div class="store-info">
@@ -1029,6 +1036,8 @@
                                     <span class="plan2-footer-detail"><span>詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
                                 </div>
                             </div>
+                            {% elif loop.index0 < ssr_rank_limit %}
+                            {% set ns_ssr.skipped_head = ns_ssr.skipped_head + [s] %}
                             {% endif %}
                             {% endfor %}
                             {% endif %}
@@ -1212,23 +1221,30 @@
                                 }
                             }
                             var spRow = item.querySelector('.store-spec-row');
-                            if (spRow && d.sp) {
+                            if (spRow && (d.sp || d.sh || d.sa)) {
                                 spRow.classList.remove('hidden');
                                 var spTxt = spRow.querySelector('.spec-text');
                                 if (spTxt) {
                                     var spMain = spTxt.querySelector('.spec-price-main');
                                     var spExt = spTxt.querySelector('.spec-hours-age-extra');
                                     if (spMain && spExt) {
-                                        spMain.textContent = d.sp;
+                                        spMain.textContent = d.sp || '';
                                         spExt.textContent = (d.sh ? ' ｜ 営業 ' + d.sh : '') + (d.sa ? ' ｜ ' + d.sa : '');
                                     } else {
-                                        spTxt.textContent = d.sp + (d.sh ? ' ｜ 営業 ' + d.sh : '') + (d.sa ? ' ｜ ' + d.sa : '');
+                                        spTxt.textContent = (d.sp || '') + (d.sh ? ' ｜ 営業 ' + d.sh : '') + (d.sa ? ' ｜ ' + d.sa : '');
                                     }
                                 }
                                 var mapLnk = spRow.querySelector('.card-map-link');
                                 if (mapLnk && d.mu) {
                                     mapLnk.href = d.mu;
                                     mapLnk.classList.remove('hidden');
+                                }
+                                var priceLnk = spRow.querySelector('.card-price-link');
+                                if (priceLnk) {
+                                    var isKrCard = Boolean(d.kr || (d.n && (d.n.indexOf('カンナム') !== -1 || d.n.indexOf('ホンデ') !== -1 || d.n.indexOf('ソウル') !== -1)));
+                                    priceLnk.href = (!isKrCard && d.sl) ? ('/store/' + encodeURIComponent(d.sl)) : '/price-comparison';
+                                    priceLnk.classList.remove('hidden');
+                                    priceLnk.classList.add('bento-only-link');
                                 }
                             }
                             var mc = item.querySelector('.store-micro-metrics');
@@ -1269,7 +1285,7 @@
                             if (pb) {
                                 pb.classList.add('active');
                                 pb.setAttribute('aria-pressed', 'true');
-                                if (d.t || d.n) pb.setAttribute('aria-label', 'お気に入り（' + (d.t || d.n) + '）');
+                                if (d.ti || d.n) pb.setAttribute('aria-label', 'お気に入り（' + (d.ti || d.n) + '）');
                                 pb.onclick = function (ev) {
                                     ev.stopPropagation();
                                     if (window.togglePin) window.togglePin(d.n);
@@ -1277,7 +1293,7 @@
                             }
                             var ab = item.querySelector('.analysis-btn');
                             if (ab) {
-                                if (d.t || d.n) ab.setAttribute('aria-label', '分析（' + (d.t || d.n) + 'の曜日・時間帯別データ）');
+                                if (d.ti || d.n) ab.setAttribute('aria-label', '分析（' + (d.ti || d.n) + 'の曜日・時間帯別データ）');
                                 ab.onclick = function (ev) {
                                     ev.stopPropagation();
                                     if (window.openModal) window.openModal(d.n);
@@ -1292,7 +1308,7 @@
                                 bHero.classList.toggle('is-small-sample', Boolean(d.ss));
                                 bHero.classList.toggle('is-zero-total', totNum <= 0);
                             }
-                            if (bCap) bCap.textContent = totNum <= 0 ? '営業時間外' : (d.ss ? '少人数のため参考値' : '女性比');
+                            if (bCap) bCap.textContent = totNum <= 0 ? (d.io ? '現在 0名' : '営業時間外') : (d.ss ? '少人数のため参考値' : '女性比');
                             var brNum = item.querySelector('.bento-ratio-num');
                             if (brNum) brNum.textContent = String(totNum > 0 ? (d.wp || 0) : 0);
                             var lc = item.querySelector('.stat.ladies .count');
@@ -1335,58 +1351,177 @@
                             if (mb) mb.style.width = (totNum > 0 ? (d.mp || 0) : 0) + '%';
                             return item;
                         }
+                        {% set ns_head = namespace(items=[]) %}
+                        {% if ns_ssr is defined and ns_ssr.skipped_head %}
+                        {% for s in ns_ssr.skipped_head %}
+                        {% set _name = s.seo_name or s.name or '' %}
+                        {% if _name %}
+                        {% set _w = (s.women or 0) | int %}
+                        {% set _m = (s.men or 0) | int %}
+                        {% set _we = s.wait_estimate if (s.wait_estimate is mapping) else {} %}
+                        {% set _fc = s.forecast_60m if (s.forecast_60m is mapping) else {} %}
+                        {% set _vt = s.votes if (s.votes is mapping) else {} %}
+                        {% set _wd = (s.women_diff or 0) | int %}
+                        {% set _md = (s.men_diff or 0) | int %}
+                        {% set _vs = (_vt.get('smooth') or 0) | int %}
+                        {% set _vw = (_vt.get('waiting') or 0) | int %}
+                        {% set _mt = ('+' ~ _wd ~ '名') if _wd >= 1 else ('即入店' if (_vs > 0 and _vs >= _vw) else '') %}
+                        {% set _mtt = ('直近約15分で女性が+' ~ _wd ~ '名増えています') if _wd >= 1 else ('直近の現場レポートで「待ちなしで入れた」が報告されています' if (_vs > 0 and _vs >= _vw) else '') %}
+                        {% set _rk = ('%02d' | format(s.ssr_rank)) if (not is_staff and s.ssr_rank) else ((s.ssr_rank | string) if s.ssr_rank else '-') %}
+                        {% set _sn = (s.name or '') ~ ' ' ~ (s.seo_name or '') %}
+                        {% set _snu = _sn | upper %}
+                        {% set _kr = 1 if ((s.region == 'Korea') or ('カンナム' in _snu) or ('ホンデ' in _snu) or ('ソウル' in _snu) or ('GANGNAM' in _snu) or ('HONGDAE' in _snu) or ('SEOUL' in _snu)) else 0 %}
+                        {% set _wb = s.wait_pill_men or '' %}
+                        {% set _fb = s.forecast_pill_men or '' %}
+                        {% set _has_uwd = (s.usual_w_diff is defined and s.usual_w_diff is not none) %}
+                        {% set _has_umd = (s.usual_m_diff is defined and s.usual_m_diff is not none) %}
+                        {% set ns_head.items = ns_head.items + [{
+                            'n': _name,
+                            'rk': _rk,
+                            'kr': _kr,
+                            'sl': s.slug or ((s.name or '') | store_linkable_slug) or '',
+                            'bc': s.ssr_brand_cls or '',
+                            'br': s.ssr_brand or '',
+                            'ar': s.ssr_area or '',
+                            'ti': s.ssr_title or _name,
+                            'hl': s.human_line or '',
+                            'hlw': s.human_line_women or '',
+                            'fl': s.freshness_label or '',
+                            'fls': s.freshness_short or '',
+                            'ars': 1 if s.area_redundant_sp else 0,
+                            'sp': s.spec_price_short or '',
+                            'sa': s.spec_age_short or '',
+                            'sh': s.spec_hours_short or '',
+                            'mu': s.map_url or '',
+                            'io': 1 if (s.is_open_now or (_w + _m) > 0) else 0,
+                            'ss': 1 if s.is_small_sample else 0,
+                            'w': _w,
+                            'm': _m,
+                            'wp': (s.ssr_ladies_pct or 0) | int,
+                            'mp': (s.ssr_men_pct or 0) | int,
+                            'psg': s.plan2_signal_text or '',
+                            'psc': s.plan2_signal_cls or 'is-ok',
+                            'psb': (s.plan2_staff_sub_text if is_staff else s.plan2_sub_text) or '',
+                            'pfc': s.plan2_forecast_text or '',
+                            'ndp': 1 if s.plan2_needs_brand_pfx else 0,
+                            'dup': 1 if s.ssr_is_dup else 0,
+                            'dp': (s.ssr_disp or '') if s.ssr_is_dup else '',
+                            'eb': (s.ssr_event_badge or '') if (not is_staff and s.ssr_event_badge) else '',
+                            'et': (s.ssr_event_title or '') if (not is_staff and s.ssr_event_badge) else '',
+                            'mt': _mt,
+                            'mtt': _mtt,
+                            'ct': (s.core_time_short or '') if (s.has_measured_core and s.core_time_short) else '',
+                            'mp_txt': s.midnight_plain or '',
+                            'wb': _wb,
+                            'wt': (_we.get('wait_tone') or 'neutral') if _wb else '',
+                            'wti': (_we.get('pos_summary_short') or '') if _wb else '',
+                            'fb': _fb,
+                            'ft': (_fc.get('badge_tone') or 'neutral') if _fb else '',
+                            'fti': (_fc.get('reason_short') or '') if _fb else '',
+                            'wd': _wd if _wd > 0 else 0,
+                            'md': _md if _md > 0 else 0,
+                            'uwd': ((s.usual_w_diff | float | round) | int) if _has_uwd else none,
+                            'uw': s.usual_women if (_has_uwd and s.usual_women is defined) else none,
+                            'umd': ((s.usual_m_diff | float | round) | int) if _has_umd else none,
+                            'um': s.usual_men if (_has_umd and s.usual_men is defined) else none,
+                            'usl': (s.usual_slot_label or '') if (_has_uwd or _has_umd) else ''
+                        }] %}
+                        {% endif %}
+                        {% endfor %}
+                        {% endif %}
                         try {
                             var pinnedRaw = localStorage.getItem('olg_pinned_stores');
                             if (pinnedRaw) {
                                 var pinned = JSON.parse(pinnedRaw);
                                 if (Array.isArray(pinned) && pinned.length > 0) {
+                                    var deferredHeadPool = {{ (ns_head.items if ns_head is defined else []) | tojson }};
                                     var deferredPool = {{ (deferred_card_pool if deferred_card_pool is defined else []) | tojson }};
+                                    var allDeferred = deferredHeadPool.concat(deferredPool);
                                     var pinSet = Object.create(null);
-                                    for (var i = 0; i < pinned.length; i++) pinSet[pinned[i]] = true;
+                                    for (var i = 0; i < pinned.length; i++) {
+                                        if (pinned[i]) pinSet[pinned[i]] = true;
+                                    }
+                                    var totalPinnedTargets = Object.keys(pinSet).length;
                                     var rList = document.getElementById('ranking-list');
                                     var pList = document.getElementById('pinned-list');
                                     var pCont = document.getElementById('pinned-list-container');
                                     var tpl = document.getElementById('ranking-item-template');
-                                    if (rList && pList && pCont) {
+                                    if (rList && pList && pCont && totalPinnedTargets > 0) {
+                                        var isKrName = function (name) {
+                                            if (!name) return false;
+                                            var u = String(name).toUpperCase();
+                                            return name.indexOf('カンナム') !== -1 || name.indexOf('ホンデ') !== -1 || name.indexOf('ソウル') !== -1 ||
+                                                u.indexOf('GANGNAM') !== -1 || u.indexOf('HONGDAE') !== -1 || u.indexOf('SEOUL') !== -1;
+                                        };
                                         var cards = rList.querySelectorAll('.ranking-item[data-store]');
-                                        var moved = 0;
+                                        var domNonKr = [];
+                                        var domKr = [];
                                         for (var j = 0; j < cards.length; j++) {
                                             var c = cards[j];
                                             var sName = c.getAttribute('data-store');
                                             if (sName && pinSet[sName]) {
-                                                c.classList.remove('rank-1', 'rank-2', 'rank-3', 'bento-hero-card');
-                                                c.classList.add('pinned-item');
-                                                var pb = c.querySelector('.pin-btn');
-                                                if (pb) {
-                                                    pb.classList.add('active');
-                                                    pb.setAttribute('aria-pressed', 'true');
-                                                }
-                                                pList.appendChild(c);
-                                                moved++;
+                                                if (isKrName(sName)) domKr.push(c);
+                                                else domNonKr.push(c);
                                             }
                                         }
+                                        var poolNonKr = [];
+                                        var poolKr = [];
+                                        for (var di = 0; di < allDeferred.length; di++) {
+                                            var dItem = allDeferred[di];
+                                            if (dItem && dItem.n && pinSet[dItem.n]) {
+                                                if (dItem.kr || isKrName(dItem.n)) poolKr.push(dItem);
+                                                else poolNonKr.push(dItem);
+                                            }
+                                        }
+                                        var hydratedNames = Object.create(null);
+                                        var moved = 0;
                                         var hydratedDeferred = 0;
                                         var unhydratedDeferred = 0;
-                                        for (var di = 0; di < deferredPool.length; di++) {
-                                            var dItem = deferredPool[di];
-                                            if (dItem && dItem.n && pinSet[dItem.n]) {
-                                                var built = tpl ? buildDeferredPinnedCard(tpl, dItem) : null;
-                                                if (built) {
-                                                    pList.appendChild(built);
-                                                    hydratedDeferred++;
-                                                } else {
-                                                    unhydratedDeferred++;
-                                                }
+                                        var moveCard = function (c) {
+                                            var sName = c.getAttribute('data-store');
+                                            if (!sName || hydratedNames[sName]) return;
+                                            hydratedNames[sName] = true;
+                                            c.classList.remove('rank-1', 'rank-2', 'rank-3', 'bento-hero-card');
+                                            c.classList.add('pinned-item');
+                                            var pl = c.querySelector('.card-price-link');
+                                            if (pl) pl.classList.add('bento-only-link');
+                                            var pb = c.querySelector('.pin-btn');
+                                            if (pb) {
+                                                pb.classList.add('active');
+                                                pb.setAttribute('aria-pressed', 'true');
                                             }
-                                        }
+                                            pList.appendChild(c);
+                                            moved++;
+                                        };
+                                        var buildFromPool = function (dItem) {
+                                            if (!dItem || !dItem.n || hydratedNames[dItem.n]) return;
+                                            var built = tpl ? buildDeferredPinnedCard(tpl, dItem) : null;
+                                            if (built) {
+                                                hydratedNames[dItem.n] = true;
+                                                pList.appendChild(built);
+                                                hydratedDeferred++;
+                                            } else {
+                                                unhydratedDeferred++;
+                                            }
+                                        };
+                                        for (var a = 0; a < domNonKr.length; a++) moveCard(domNonKr[a]);
+                                        for (var b = 0; b < poolNonKr.length; b++) buildFromPool(poolNonKr[b]);
+                                        for (var k1 = 0; k1 < domKr.length; k1++) moveCard(domKr[k1]);
+                                        for (var k2 = 0; k2 < poolKr.length; k2++) buildFromPool(poolKr[k2]);
                                         if (moved > 0) {
                                             var newFirst = rList.querySelector('.ranking-item[data-store]');
                                             var haltEl = document.getElementById('stale-halt-banner');
                                             var isHalted = haltEl && !haltEl.classList.contains('hidden');
-                                            if (newFirst && !document.body.classList.contains('staff-mode') && !isHalted) {
+                                            var dayEl = document.getElementById('daytime-forecast-banner');
+                                            var isAllClosed = dayEl && !dayEl.classList.contains('hidden');
+                                            if (newFirst && !document.body.classList.contains('staff-mode') && !isHalted && !isAllClosed) {
                                                 var rb = newFirst.querySelector('.rank-badge');
-                                                if (!rb || rb.textContent.trim() !== '-') {
+                                                var wCnt = parseInt((newFirst.querySelector('.stat.ladies .count') || {}).textContent || '0', 10) || 0;
+                                                var mCnt = parseInt((newFirst.querySelector('.stat.men .count') || {}).textContent || '0', 10) || 0;
+                                                if ((!rb || rb.textContent.trim() !== '-') && (wCnt + mCnt) > 0) {
                                                     newFirst.classList.add('bento-hero-card');
+                                                    var nfPl = newFirst.querySelector('.card-price-link');
+                                                    if (nfPl) nfPl.classList.remove('bento-only-link');
                                                 }
                                             }
                                         }
@@ -1395,13 +1530,15 @@
                                             if (pNote) pNote.textContent = String(moved + hydratedDeferred) + '件ピン留め中';
                                             pCont.classList.remove('hidden');
                                         }
-                                        if ((moved + hydratedDeferred > 0) && unhydratedDeferred === 0) {
+                                        if (unhydratedDeferred === 0 && (moved + hydratedDeferred) === totalPinnedTargets) {
                                             window.__SSR_PINNED_HYDRATED = true;
                                         }
                                     }
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) {} finally {
+                            document.documentElement.classList.remove('ssr-pins-pending');
+                        }
                     })();
                 </script>
 
@@ -1722,7 +1859,7 @@
             <div class="footer-links" style="margin-top: 15px;">
                 <span class="footer-copy">相席ナビ 社内業務モニター（広告・PR完全OFFモード稼働中）</span>
                 <span class="footer-divider">|</span>
-                <a href="/staff/logout" class="footer-link-btn staff-footer-logout">社内モード解除（ログアウト）</a>
+                <form method="POST" action="/staff/logout" style="display:inline;margin:0;"><button type="submit" class="footer-link-btn staff-footer-logout">社内モード解除（ログアウト）</button></form>
             </div>
             {% else %}
             <!-- Top Row: Pillar Guide Buttons -->
@@ -2945,12 +3082,14 @@
                             </div>
                         </a>
                         {% endif %}
-                        <a href="/staff/logout" class="menu-grid-item" style="text-decoration: none; color: inherit;">
-                            <div class="menu-grid-text">
-                                <strong>社内モードをログアウト</strong>
-                                <span>一般公開モードへ戻る</span>
-                            </div>
-                        </a>
+                        <form method="POST" action="/staff/logout" style="margin:0;">
+                            <button type="submit" class="menu-grid-item" style="width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit;">
+                                <div class="menu-grid-text">
+                                    <strong>社内モードをログアウト</strong>
+                                    <span>一般公開モードへ戻る</span>
+                                </div>
+                            </button>
+                        </form>
                     </div>
                 </div>
                 {% endif %}
@@ -3051,46 +3190,9 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261119_3" defer></script>
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                var isStaffSess = Boolean(window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession));
-                if (isStaffSess) {
-                    try {
-                        if (navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.controller.postMessage({ type: 'PURGE_HTML_CACHE' });
-                        }
-                    } catch (e) {}
-                    return;
-                }
-                if (window.__swRegistered) return;
-                window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=119', { updateViaCache: 'none' })
-                    .then(function(reg) {
-                        // Throttle SW update checks to once per 10 minutes (shared via sessionStorage across tab navigations)
-                        var maybeUpdate = function() {
-                            try {
-                                var KEY = 'aiseki_sw_update_at';
-                                var last = Number(sessionStorage.getItem(KEY) || 0);
-                                var nowTs = Date.now();
-                                if (last && nowTs - last < 600000) return;
-                                sessionStorage.setItem(KEY, String(nowTs));
-                            } catch (e) {}
-                            if (reg && reg.update) reg.update().catch(function() {});
-                        };
-                        maybeUpdate();
-                        document.addEventListener('visibilitychange', function() {
-                            if (document.visibilityState === 'visible') maybeUpdate();
-                        });
-                    })
-                    .catch(function(error) { console.log('SW registration failed:', error); });
-            });
-        }
-    </script>
+    <script src="/static/app.js?v=20261119_5" defer></script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=5"></script>
+    <script defer src="/static/cta_tracker.js?v=7"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

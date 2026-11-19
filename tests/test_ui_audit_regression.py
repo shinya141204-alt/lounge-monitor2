@@ -107,16 +107,22 @@ class UiAuditRegressionTests(unittest.TestCase):
         """全テンプレートと static/sw.js のアセットバージョンが完全同期し、immutable ヘッダが正しく付与されること"""
         expected_calm = "/static/calm.css?v=52"
         expected_portal = "/static/portal.css?v=20"
-        expected_app_js = "/static/app.js?v=20261119_3"
+        expected_guide_css = "/static/guide.css?v=1"
+        expected_store_detail_css = "/static/store_detail.css?v=1"
+        expected_app_js = "/static/app.js?v=20261119_5"
+        expected_cta_js = "/static/cta_tracker.js?v=7"
         expected_aff_js = "/static/affiliate_config.js?v=18"
         expected_style = "/static/style.css?v=20261119_1"
-        expected_sw_url = "/sw.js?v=119"
-        expected_cache_name = "aiseki-navi-v119"
+        expected_sw_url = "/sw.js?v=121"
+        expected_cache_name = "aiseki-navi-v121"
 
         templates_dir = os.path.join(PROJECT_ROOT, "templates")
         calm_seen = 0
         portal_seen = 0
+        guide_css_seen = 0
+        store_detail_css_seen = 0
         app_js_seen = 0
+        cta_js_seen = 0
         aff_js_seen = 0
         style_seen = 0
         sw_reg_seen = 0
@@ -137,9 +143,21 @@ class UiAuditRegressionTests(unittest.TestCase):
                 self.assertEqual(m, expected_portal, f"Outdated portal.css ref in {fname}: {m}")
                 portal_seen += 1
 
+            for m in re.findall(r"/static/guide\.css(?:\?v=[^\"'\s>]+)?", txt):
+                self.assertEqual(m, expected_guide_css, f"Outdated guide.css ref in {fname}: {m}")
+                guide_css_seen += 1
+
+            for m in re.findall(r"/static/store_detail\.css(?:\?v=[^\"'\s>]+)?", txt):
+                self.assertEqual(m, expected_store_detail_css, f"Outdated store_detail.css ref in {fname}: {m}")
+                store_detail_css_seen += 1
+
             for m in re.findall(r"/static/app\.js(?:\?v=[^\"'\s>]+)?", txt):
                 self.assertEqual(m, expected_app_js, f"Outdated app.js ref in {fname}: {m}")
                 app_js_seen += 1
+
+            for m in re.findall(r"/static/cta_tracker\.js(?:\?v=[^\"'\s>]+)?", txt):
+                self.assertEqual(m, expected_cta_js, f"Outdated cta_tracker.js ref in {fname}: {m}")
+                cta_js_seen += 1
 
             for m in re.findall(r"/static/affiliate_config\.js(?:\?v=[^\"'\s>]+)?", txt):
                 self.assertEqual(m, expected_aff_js, f"Outdated affiliate_config.js ref in {fname}: {m}")
@@ -155,11 +173,14 @@ class UiAuditRegressionTests(unittest.TestCase):
 
         self.assertGreaterEqual(calm_seen, 29)
         self.assertGreaterEqual(portal_seen, 28)
+        self.assertGreaterEqual(guide_css_seen, 37)
+        self.assertEqual(store_detail_css_seen, 1)
         self.assertEqual(app_js_seen, 2)  # preload + defer script in index.html
+        self.assertEqual(cta_js_seen, 2)  # _portal_footer.html + index.html
         self.assertEqual(aff_js_seen, 1)  # defer script in index.html
         self.assertGreaterEqual(style_seen, 2)
         self.assertLessEqual(style_seen, 4, "guide_*.html must remain detached from legacy style.css")
-        self.assertEqual(sw_reg_seen, 3)  # index.html + _nav_loader.html + store_detail.html
+        self.assertEqual(sw_reg_seen, 2)  # _nav_loader.html + store_detail.html
 
         sw_path = os.path.join(PROJECT_ROOT, "static", "sw.js")
         with open(sw_path, "r", encoding="utf-8") as fp:
@@ -169,10 +190,22 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertIn(f"'{expected_style}'", sw_txt)
         self.assertIn(f"'{expected_calm}'", sw_txt)
         self.assertIn(f"'{expected_portal}'", sw_txt)
+        self.assertIn(f"'{expected_guide_css}'", sw_txt)
+        self.assertIn(f"'{expected_store_detail_css}'", sw_txt)
         self.assertIn(f"'{expected_app_js}'", sw_txt)
+        self.assertIn(f"'{expected_cta_js}'", sw_txt)
         self.assertIn(f"'{expected_aff_js}'", sw_txt)
 
-        for asset_url in (expected_calm, expected_portal, expected_app_js, expected_aff_js, expected_style):
+        for asset_url in (
+            expected_calm,
+            expected_portal,
+            expected_guide_css,
+            expected_store_detail_css,
+            expected_app_js,
+            expected_cta_js,
+            expected_aff_js,
+            expected_style,
+        ):
             resp = self.client.get(asset_url)
             try:
                 self.assertEqual(resp.status_code, 200, f"{asset_url} returned {resp.status_code}")
@@ -2257,10 +2290,14 @@ class UiAuditRegressionTests(unittest.TestCase):
         self.assertIn(".context-lead-row .pr-editorial-sublink {\n        min-height: 40px;", calm_txt)
 
         sd_path = os.path.join(PROJECT_ROOT, "templates", "store_detail.html")
+        sd_css_path = os.path.join(PROJECT_ROOT, "static", "store_detail.css")
         with open(sd_path, "r", encoding="utf-8") as fp:
             sd_txt = fp.read()
-        self.assertIn("@media (max-width: 640px)", sd_txt)
-        self.assertIn("#store-smart-cta-card .pr-context-foot { flex-direction: column;", sd_txt)
+        with open(sd_css_path, "r", encoding="utf-8") as fp:
+            sd_css_txt = fp.read()
+        combined_sd = sd_txt + "\n" + sd_css_txt
+        self.assertIn("@media (max-width: 640px)", combined_sd)
+        self.assertIn("#store-smart-cta-card .pr-context-foot { flex-direction: column;", combined_sd)
 
     def test_plan_a_badge_emoji_free_svg_and_flat_dot(self):
         """Plan A: 店舗カードの絵文字（↗️・🟢・🟡・🔴・🔮・⚡等）を完全撤廃し、単色11px SVGと6pxステータスドットに統一"""
@@ -2371,67 +2408,92 @@ class UiAuditRegressionTests(unittest.TestCase):
         import datetime as _dt
         import time as _time
         from urllib.parse import urlsplit
+        import ssr_payload
 
         jst = _dt.timezone(_dt.timedelta(hours=9))
-        now_jst = _dt.datetime.now(jst)
-        now_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
-        now_ep = _time.time()
+        # Pin evaluation clock to a deterministic 60s-cadence night timestamp (21:30 JST)
+        # so the 17:00-17:14 JST daytime 600s grace-period rule never flakes this test.
+        fixed_now_jst = _dt.datetime(2026, 11, 19, 21, 30, 0, tzinfo=jst)
+        fixed_now_str = fixed_now_jst.strftime("%Y-%m-%d %H:%M:%S")
+        fixed_now_ep = fixed_now_jst.timestamp()
 
-        eval_stores = [
-            {
-                "name": "JIS NISHISHINJUKU",
-                "source": "jis",
-                "region": "Kanto",
-                "women": 19,
-                "men": 18,
-                "total": 37,
-                "women_diff": 2,
-                "men_diff": 0,
-                "is_open_now": True,
-                "fetched_at": now_ep - 125.0,
-                "pos_telemetry": {
-                    "telemetry_type": "jis_pos",
-                    "men_waiting_groups": 0,
-                    "women_waiting_groups": 0,
+        class _FixedDateTime(_dt.datetime):
+            @classmethod
+            def now(cls, tz=None):
+                if tz is None:
+                    return fixed_now_jst.replace(tzinfo=None)
+                return fixed_now_jst.astimezone(tz)
+
+        class _FakeDatetimeModule:
+            def __getattr__(self, name):
+                if name == "datetime":
+                    return _FixedDateTime
+                return getattr(_dt, name)
+
+        class _FakeTimeModule:
+            def __getattr__(self, name):
+                if name == "time":
+                    return lambda: fixed_now_ep
+                return getattr(_time, name)
+
+        def _make_eval_stores(base_ep):
+            return [
+                {
+                    "name": "JIS NISHISHINJUKU",
+                    "source": "jis",
+                    "region": "Kanto",
+                    "women": 19,
+                    "men": 18,
+                    "total": 37,
+                    "women_diff": 2,
+                    "men_diff": 0,
+                    "is_open_now": True,
+                    "fetched_at": base_ep - 125.0,
+                    "pos_telemetry": {
+                        "telemetry_type": "jis_pos",
+                        "men_waiting_groups": 0,
+                        "women_waiting_groups": 0,
+                    },
                 },
-            },
-            {
-                "name": "OLG 新宿",
-                "source": "oriental",
-                "region": "Kanto",
-                "women": 7,
-                "men": 0,
-                "total": 7,
-                "women_diff": 0,
-                "men_diff": 0,
-                "is_open_now": True,
-                "fetched_at": now_ep - 245.0,
-            },
-            {
-                "name": "OLG ag渋谷",
-                "source": "ag",
-                "region": "Kanto",
-                "women": 0,
-                "men": 9,
-                "total": 9,
-                "women_diff": 0,
-                "men_diff": 1,
-                "is_open_now": True,
-                "fetched_at": now_ep - 180.0,
-            },
-            {
-                "name": "OLG 梅田茶屋町",
-                "source": "oriental",
-                "region": "Kinki",
-                "women": 0,
-                "men": 0,
-                "total": 0,
-                "women_diff": 0,
-                "men_diff": 0,
-                "is_open_now": False,
-                "fetched_at": now_ep - 120.0,
-            },
-        ]
+                {
+                    "name": "OLG 新宿",
+                    "source": "oriental",
+                    "region": "Kanto",
+                    "women": 7,
+                    "men": 0,
+                    "total": 7,
+                    "women_diff": 0,
+                    "men_diff": 0,
+                    "is_open_now": True,
+                    "fetched_at": base_ep - 245.0,
+                },
+                {
+                    "name": "OLG ag渋谷",
+                    "source": "ag",
+                    "region": "Kanto",
+                    "women": 0,
+                    "men": 9,
+                    "total": 9,
+                    "women_diff": 0,
+                    "men_diff": 1,
+                    "is_open_now": True,
+                    "fetched_at": base_ep - 180.0,
+                },
+                {
+                    "name": "OLG 梅田茶屋町",
+                    "source": "oriental",
+                    "region": "Kinki",
+                    "women": 0,
+                    "men": 0,
+                    "total": 0,
+                    "women_diff": 0,
+                    "men_diff": 0,
+                    "is_open_now": False,
+                    "fetched_at": base_ep - 120.0,
+                },
+            ]
+
+        eval_stores = _make_eval_stores(fixed_now_ep)
 
         def _mock_hours(sname, total_guests=0, **kw):
             is_open = int(total_guests or 0) > 0
@@ -2444,11 +2506,13 @@ class UiAuditRegressionTests(unittest.TestCase):
                 "opening_hours_specification": [],
             }
 
-        with patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
+        with patch.object(ssr_payload, "datetime", _FakeDatetimeModule()), \
+             patch.object(ssr_payload, "time", _FakeTimeModule()), \
+             patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
             with app_module.data_lock:
                 app_module.latest_data.clear()
                 app_module.latest_data.update({
-                    "last_updated": now_str,
+                    "last_updated": fixed_now_str,
                     "is_seed": False,
                     "status": "ok",
                     "full_data": copy.deepcopy(eval_stores),
@@ -2475,7 +2539,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             self.assertIn('class="ranking-item is-inspector-selected bento-hero-card rank-1"', home_html)
 
             # 2. Delayed (>= 5 min) & Halted (>= 10 min) stale-data guards
-            delayed_str = (now_jst - _dt.timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S")
+            delayed_str = (fixed_now_jst - _dt.timedelta(minutes=6)).strftime("%Y-%m-%d %H:%M:%S")
             with app_module.data_lock:
                 app_module.latest_data["last_updated"] = delayed_str
             app_module.clear_fast_http_caches()
@@ -2483,7 +2547,7 @@ class UiAuditRegressionTests(unittest.TestCase):
             self.assertIn("時点のデータ（更新停止中）", delayed_html)
             self.assertNotIn("全国63店の男女人数を1分更新</h1>", delayed_html)
 
-            halted_str = (now_jst - _dt.timedelta(minutes=12)).strftime("%Y-%m-%d %H:%M:%S")
+            halted_str = (fixed_now_jst - _dt.timedelta(minutes=12)).strftime("%Y-%m-%d %H:%M:%S")
             with app_module.data_lock:
                 app_module.latest_data["last_updated"] = halted_str
             app_module.clear_fast_http_caches()
@@ -2497,9 +2561,11 @@ class UiAuditRegressionTests(unittest.TestCase):
             {"name": "OLG 新宿", "source": "oriental", "region": "Kanto", "women": 0, "men": 0, "total": 0, "is_open_now": False},
             {"name": "OLG 渋谷本店", "source": "oriental", "region": "Kanto", "women": 0, "men": 0, "total": 0, "is_open_now": False},
         ]
-        with patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
+        with patch.object(ssr_payload, "datetime", _FakeDatetimeModule()), \
+             patch.object(ssr_payload, "time", _FakeTimeModule()), \
+             patch("store_hours.get_business_hours_status", side_effect=_mock_hours):
             with app_module.data_lock:
-                app_module.latest_data["last_updated"] = now_str
+                app_module.latest_data["last_updated"] = fixed_now_str
                 app_module.latest_data["full_data"] = copy.deepcopy(closed_stores)
             app_module.clear_fast_http_caches()
             daytime_html = self.client.get("/").data.decode("utf-8")
@@ -2507,6 +2573,13 @@ class UiAuditRegressionTests(unittest.TestCase):
             self.assertIn("ピーク人数順", daytime_html)
 
         # 4. /stats#data-provenance & /ogp/top3.png clean share card
+        real_now_str = _dt.datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+        real_now_ep = _time.time()
+        with app_module.data_lock:
+            app_module.latest_data["last_updated"] = real_now_str
+            app_module.latest_data["full_data"] = _make_eval_stores(real_now_ep)
+        app_module.clear_fast_http_caches()
+
         stats_resp = self.client.get("/stats")
         self.assertEqual(stats_resp.status_code, 200)
         stats_html = stats_resp.data.decode("utf-8")
@@ -2527,11 +2600,6 @@ class UiAuditRegressionTests(unittest.TestCase):
             from playwright.sync_api import sync_playwright
         except ImportError:
             return
-
-        with app_module.data_lock:
-            app_module.latest_data["last_updated"] = now_str
-            app_module.latest_data["full_data"] = copy.deepcopy(eval_stores)
-        app_module.clear_fast_http_caches()
 
         base = "http://aiseki.local"
 
@@ -3234,7 +3302,7 @@ class UiAuditRegressionTests(unittest.TestCase):
                         const mLbl = pinCard.querySelector('.stat.men .label')?.innerText.trim();
                         const barH = pinCard.querySelector('.occupancy-bar').getBoundingClientRect().height;
                         const meterBg = getComputedStyle(pinCard.querySelector('.stats-group')).backgroundColor;
-                        const miyazakiTitle = pinCard2.querySelector('.store-name')?.innerText.trim() || '';
+                        const miyazakiTitle = Array.from(pinCard2.querySelectorAll('.store-name > :not(.event-tag-badge)')).map(el => el.textContent).join('').trim() || '';
                         return {
                             cardW: Math.round(cr.width),
                             sameRowTop: Math.abs(cr.top - cr2.top),

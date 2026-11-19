@@ -310,6 +310,8 @@ class UIIntegrityAndWCAGContrastTests(unittest.TestCase):
         template_path = os.path.join(PROJECT_ROOT, "templates")
         with open(os.path.join(template_path, "store_detail.html"), encoding="utf-8") as f:
             self.template_content = f.read()
+        with open(os.path.join(PROJECT_ROOT, "static", "store_detail.css"), encoding="utf-8") as f:
+            self.css_content = f.read()
 
     def test_05_panel_outside_hero_moat_grid_and_polling_resilience(self):
         """Empirically prove #chayamachi-shift-panel is OUTSIDE #hero-moat-grid to withstand JS polling re-renders."""
@@ -372,14 +374,15 @@ class UIIntegrityAndWCAGContrastTests(unittest.TestCase):
 
     def test_07_layout_stability_and_cls_defenses(self):
         """Verify layout stability defenses (tabular-nums, fixed track height, responsive grid)."""
-        self.assertIn("font-variant-numeric: tabular-nums;", self.template_content)
-        self.assertIn(".chayamachi-num", self.template_content)
+        combined = self.template_content + "\n" + self.css_content
+        self.assertIn("font-variant-numeric: tabular-nums;", combined)
+        self.assertIn(".chayamachi-num", combined)
 
-        self.assertIn(".chayamachi-ratio-track", self.template_content)
-        match_track = re.search(r"\.chayamachi-ratio-track\s*\{[^}]*height:\s*6px;", self.template_content)
+        self.assertIn(".chayamachi-ratio-track", combined)
+        match_track = re.search(r"\.chayamachi-ratio-track\s*\{[^}]*height:\s*6px;", combined)
         self.assertIsNotNone(match_track, "Ratio track must have explicit fixed height of 6px")
 
-        self.assertIn("@media (max-width: 620px)", self.template_content)
+        self.assertIn("@media (max-width: 620px)", combined)
 
     def test_08_xss_and_injection_escaping(self):
         """Ensure malicious HTML/JS injected into pos_telemetry or advice is safely escaped."""

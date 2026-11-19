@@ -185,11 +185,11 @@ class VoiceNarrationReelsTests(unittest.TestCase):
         job_state.set_value(voice_narration._LEGACY_ELEVENLABS_MODEL_ID_KEY, "eleven_multilingual_v2")
         self.assertEqual(voice_narration.get_elevenlabs_model_id(), "eleven_v4")
 
-        # Verify raw secret is obfuscated (`obf1:`) on disk, never stored in plaintext
+        # Verify raw secret is obfuscated (`obf2:`) on disk, never stored in plaintext
         with open(job_state._LOCAL_FILE, "r", encoding="utf-8") as f:
             disk_raw = f.read()
         self.assertNotIn(raw_secret, disk_raw)
-        self.assertIn("obf1:", disk_raw)
+        self.assertIn("obf2:", disk_raw)
 
         # Reject path-traversal Voice IDs
         with self.assertRaises(ValueError):

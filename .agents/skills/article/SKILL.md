@@ -67,8 +67,8 @@ description: >-
    * `<meta name="twitter:card" content="summary_large_image">`
 3. **JSON-LD 構造化データ**：`Article`（`SpeakableSpecification`・`author: くわもん`・`datePublished`・`dateModified` 付） + `BreadcrumbList` + `FAQPage`
 4. **ナビゲーション・共通CSS動的同期・ライトモード暗転防止・`<main>`・フッター**：
-   * **【重要：固定バージョン直書き禁止】** `style.css?v=...`、`portal.css?v=...`、`calm.css?v=...`、`manifest.json?v=...` 等のクエリ文字列は、必ず直近の既存コラムまたは `tests/test_ui_audit_regression.py` の期待定数を `grep` して **現行正本と1文字違わず一致** させること。
-   * `<head>` に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script><style>html.theme-light{background-color:#f6f6f7;}</style>`、`<body>` 直後に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>` を入れる。
+   * **【重要：固定バージョン直書き禁止】** `portal.css?v=...`、`guide.css?v=...`、`calm.css?v=...`、`manifest.json?v=...` 等のクエリ文字列は、必ず直近の既存コラムまたは `tests/test_ui_audit_regression.py` の期待定数を `grep` して **現行正本と1文字違わず一致** させること（記事スタイルはインライン `<style>` へ複製せず `<link rel="stylesheet" href="/static/guide.css?v=...">` を使用し、アイキャッチ `<picture>` 内 `<img>` には `fetchpriority="high" decoding="async"` を付与する）。
+   * `<head>` には `<meta name="color-scheme" content="dark light">` を必ず残し（テーマ初期化は `{% include '_head_llmo.html' %}` に集約されているため `<head>` への重複 `<script>`/`<style>` は不要）、`<body>` 直後に `<script>try{if(localStorage.getItem('olg_view_theme')==='light')document.body.classList.add('theme-light');}catch(e){}</script>` を入れる。
    * 上部に `{% set nav_active = 'columns' %}` と `{% include '_portal_nav.html' %}`、主コンテンツを `<main> ... </main>` で囲み、下部に `{% include '_portal_footer.html' %}`。
    * スタッフ非表示ガード `{% if not is_staff and not session.get('is_staff') %}`（予約記事なら `and not is_scheduled_preview` も追加）で AdSense タグを囲む。
 5. **内部リンク ＆ 直 `/link/` 完全禁止（2ステップ構造）**：

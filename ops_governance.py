@@ -13,12 +13,14 @@ import json
 import os
 import secrets
 import socket
+import sys
 import threading
 import time
 import urllib.parse
 
 import job_state
 import store_master
+import turbo_store
 
 BRAND_OPTIONS = [
     {"key": "oriental-lounge", "label": "オリエンタルラウンジ"},
@@ -41,6 +43,7 @@ _gov_write_lock = threading.Lock()
 _unread_memo = {"mono": 0.0, "data": {"unread_total": 0, "unread_priority": 0}}
 _hidden_lock = threading.Lock()
 _hidden_memo = {"mono": 0.0, "key": None, "gen": 0, "hb": frozenset(), "hs": frozenset()}
+_last_known_good = {"hb": frozenset(), "hs": frozenset(), "passcode": None, "epoch": None, "master_epoch": None}
 
 
 def _now_jst() -> datetime.datetime:
@@ -94,14 +97,35 @@ def ops_brand_key_of(store_name: str) -> str:
     return "other"
 
 
-def _parse_json_list(raw_val) -> list:
-    if not raw_val:
+def _parse_json_list_strict(raw_val) -> list | None:
+    if raw_val is None:
+        return None
+    if raw_val == "":
         return []
     try:
         parsed = json.loads(raw_val)
-        return parsed if isinstance(parsed, list) else []
-    except Exception:
-        return []
+        if isinstance(parsed, list):
+            return parsed
+        sys.stderr.write(f"[ops_governance] Expected JSON list, got {type(parsed).__name__}\n")
+        return None
+    except Exception as e:
+        sys.stderr.write(f"[ops_governance] Malformed JSON list: {type(e).__name__}: {e}\n")
+        return None
+
+
+def _parse_json_list(raw_val) -> list:
+    parsed = _parse_json_list_strict(raw_val)
+    return parsed if parsed is not None else []
+
+
+def _storage_is_healthy() -> bool:
+    fn = getattr(job_state, "is_storage_healthy", None)
+    if callable(fn):
+        try:
+            return bool(fn())
+        except Exception:
+            return False
+    return True
 
 
 def _compute_hidden_brands_uncached(env_raw: str) -> frozenset:
@@ -111,12 +135,21 @@ def _compute_hidden_brands_uncached(env_raw: str) -> frozenset:
             t = tok.strip().lower()
             if t in VALID_BRAND_KEYS:
                 out.add(t)
-    stored = _parse_json_list(job_state.get_value("ops:hidden_brands", allow_blocking=False))
+    raw_stored = job_state.get_value("ops:hidden_brands", allow_blocking=False)
+    stored = _parse_json_list_strict(raw_stored)
+    if stored is None:
+        if raw_stored is not None or not _storage_is_healthy():
+            return frozenset(out | set(_last_known_good["hb"]))
+        res = frozenset(out)
+        _last_known_good["hb"] = res
+        return res
     for tok in stored:
         t = str(tok or "").strip().lower()
         if t in VALID_BRAND_KEYS:
             out.add(t)
-    return frozenset(out)
+    res = frozenset(out)
+    _last_known_good["hb"] = res
+    return res
 
 
 def _compute_hidden_stores_uncached(env_raw: str) -> frozenset:
@@ -126,12 +159,21 @@ def _compute_hidden_stores_uncached(env_raw: str) -> frozenset:
             canon = store_master.to_internal_store_name(tok.strip())
             if canon:
                 out.add(canon)
-    stored = _parse_json_list(job_state.get_value("ops:hidden_stores", allow_blocking=False))
+    raw_stored = job_state.get_value("ops:hidden_stores", allow_blocking=False)
+    stored = _parse_json_list_strict(raw_stored)
+    if stored is None:
+        if raw_stored is not None or not _storage_is_healthy():
+            return frozenset(out | set(_last_known_good["hs"]))
+        res = frozenset(out)
+        _last_known_good["hs"] = res
+        return res
     for tok in stored:
         canon = store_master.to_internal_store_name(str(tok or "").strip())
         if canon:
             out.add(canon)
-    return frozenset(out)
+    res = frozenset(out)
+    _last_known_good["hs"] = res
+    return res
 
 
 def _hidden_memo_key() -> tuple:
@@ -248,17 +290,22 @@ def set_brand_hidden(brand_key: str, hidden: bool) -> dict:
     if bkey not in VALID_BRAND_KEYS:
         return {"ok": False, "error": f"不明なブランド識別子です: {bkey}"}
     with _gov_write_lock:
-        cur = set(
-            str(x).strip().lower()
-            for x in _parse_json_list(job_state.get_value("ops:hidden_brands", allow_blocking=True))
-            if str(x).strip().lower() in VALID_BRAND_KEYS
-        )
-        if hidden:
-            cur.add(bkey)
-        else:
-            cur.discard(bkey)
-        job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
-        invalidate_governance_cache()
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
+        try:
+            cur = set(
+                str(x).strip().lower()
+                for x in _parse_json_list(job_state.get_value("ops:hidden_brands", allow_blocking=True))
+                if str(x).strip().lower() in VALID_BRAND_KEYS
+            )
+            if hidden:
+                cur.add(bkey)
+            else:
+                cur.discard(bkey)
+            job_state.set_value("ops:hidden_brands", json.dumps(sorted(cur), ensure_ascii=False))
+            invalidate_governance_cache()
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
     _purge_http_caches()
     return {"ok": True, "brand_key": bkey, "hidden": bool(hidden), "hidden_brands": sorted(get_hidden_brands())}
 
@@ -269,17 +316,25 @@ def set_store_hidden(store_name_or_slug: str, hidden: bool) -> dict:
     if not canon or (master and canon not in master):
         return {"ok": False, "error": "該当する店舗が見つかりません"}
     with _gov_write_lock:
-        cur = set(
-            store_master.to_internal_store_name(str(x).strip())
-            for x in _parse_json_list(job_state.get_value("ops:hidden_stores", allow_blocking=True))
-            if str(x).strip()
-        )
-        if hidden:
-            cur.add(canon)
-        else:
-            cur.discard(canon)
-        job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
-        invalidate_governance_cache()
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
+        try:
+            cur = set()
+            for x in _parse_json_list(job_state.get_value("ops:hidden_stores", allow_blocking=True)):
+                sx = str(x or "").strip()
+                if not sx:
+                    continue
+                canon_x = store_master.to_internal_store_name(sx)
+                if canon_x:
+                    cur.add(canon_x)
+            if hidden:
+                cur.add(canon)
+            else:
+                cur.discard(canon)
+            job_state.set_value("ops:hidden_stores", json.dumps(sorted(cur), ensure_ascii=False))
+            invalidate_governance_cache()
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
     _purge_http_caches()
     return {
         "ok": True,
@@ -294,8 +349,19 @@ def set_store_hidden(store_name_or_slug: str, hidden: bool) -> dict:
 # スタッフ用パスコード変更 ＆ 全スタッフ端末強制ログアウト
 # =====================================================================
 def get_effective_staff_passcode(fallback_env_passcode: str) -> str:
+    if not _storage_is_healthy():
+        cached = _last_known_good.get("passcode")
+        if cached:
+            return cached
+        if os.environ.get("FLY_APP_NAME"):
+            return f"__storage_unavailable_{secrets.token_hex(8)}"
+        return fallback_env_passcode
     override = (job_state.get_value("token:staff_passcode_override", allow_blocking=False) or "").strip()
-    return override if override else fallback_env_passcode
+    if override:
+        _last_known_good["passcode"] = override
+        return override
+    _last_known_good["passcode"] = None
+    return fallback_env_passcode
 
 
 def has_custom_staff_passcode() -> bool:
@@ -303,21 +369,58 @@ def has_custom_staff_passcode() -> bool:
 
 
 def get_staff_session_epoch() -> str:
-    return str(job_state.get_value("ops:staff_session_epoch", allow_blocking=False) or "0").strip()
+    if not _storage_is_healthy():
+        return _last_known_good.get("epoch") or "__unavailable__"
+    val = str(job_state.get_value("ops:staff_session_epoch", allow_blocking=False) or "0").strip()
+    _last_known_good["epoch"] = val
+    return val
+
+
+def get_master_session_epoch(allow_blocking: bool = False) -> str:
+    if not _storage_is_healthy():
+        return _last_known_good.get("master_epoch") or "__unavailable__"
+    val = str(job_state.get_value("ops:master_session_epoch", allow_blocking=allow_blocking) or "0").strip()
+    _last_known_good["master_epoch"] = val
+    return val
+
+
+def rotate_master_session_epoch() -> str:
+    """マスター端末ログアウト時にセッション世代を更新して旧署名Cookieを無効化する。"""
+    with _gov_write_lock:
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
+        try:
+            prev_raw = str(job_state.get_value("ops:master_session_epoch", allow_blocking=True) or "0").strip()
+            try:
+                next_num = int(prev_raw.split("_")[0]) + 1
+            except Exception:
+                next_num = 1
+            new_epoch = f"{next_num}_{secrets.token_hex(3)}"
+            job_state.set_value("ops:master_session_epoch", new_epoch)
+            _last_known_good["master_epoch"] = new_epoch
+            return new_epoch
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
 
 
 def force_logout_all_staff() -> dict:
     """一般スタッフの全ログインセッションを即時失効させる（マスターセッションは維持）。"""
     with _gov_write_lock:
-        prev_raw = str(job_state.get_value("ops:staff_session_epoch", allow_blocking=True) or "0").strip()
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
         try:
-            next_num = int(prev_raw.split("_")[0]) + 1
-        except Exception:
-            next_num = 1
-        new_epoch = f"{next_num}_{secrets.token_hex(3)}"
-        now_s = _now_jst_str()
-        job_state.set_value("ops:staff_session_epoch", new_epoch)
-        job_state.set_value("ops:last_staff_force_logout_at", now_s)
+            prev_raw = str(job_state.get_value("ops:staff_session_epoch", allow_blocking=True) or "0").strip()
+            try:
+                next_num = int(prev_raw.split("_")[0]) + 1
+            except Exception:
+                next_num = 1
+            new_epoch = f"{next_num}_{secrets.token_hex(3)}"
+            now_s = _now_jst_str()
+            job_state.set_value("ops:staff_session_epoch", new_epoch)
+            job_state.set_value("ops:last_staff_force_logout_at", now_s)
+            _last_known_good["epoch"] = new_epoch
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
     return {"ok": True, "epoch": new_epoch, "revoked_at": now_s}
 
 
@@ -421,9 +524,14 @@ def record_inquiry(data: dict, received_at: str, ip_hash: str, category_label: s
         "resolved_at": "",
     }
     with _gov_write_lock:
-        existing = [_scrub_legacy_inquiry(it) for it in list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)]
-        updated = [entry] + existing[: MAX_STORED_INQUIRIES - 1]
-        job_state.set_value("ops:inquiries", json.dumps(updated, ensure_ascii=False))
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
+        try:
+            existing = [_scrub_legacy_inquiry(it) for it in list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)]
+            updated = [entry] + existing[: MAX_STORED_INQUIRIES - 1]
+            job_state.set_value("ops:inquiries", json.dumps(updated, ensure_ascii=False))
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
     _invalidate_unread_memo()
     return entry
 
@@ -433,18 +541,23 @@ def set_inquiry_resolved(inquiry_id: str, resolved: bool = True) -> dict:
     if not target_id:
         return {"ok": False, "error": "お問い合わせIDが指定されていません"}
     with _gov_write_lock:
-        items = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
-        found = False
-        now_s = _now_jst_str()
-        for it in items:
-            if it.get("id") == target_id:
-                it["resolved"] = bool(resolved)
-                it["resolved_at"] = now_s if resolved else ""
-                found = True
-                break
-        if not found:
-            return {"ok": False, "error": "該当するお問い合わせが見つかりません"}
-        job_state.set_value("ops:inquiries", json.dumps(items, ensure_ascii=False))
+        lock_ok = turbo_store.acquire_named_mutex("ops_gov_write", ttl_sec=10)
+        try:
+            items = list_inquiries(limit=MAX_STORED_INQUIRIES, allow_blocking=True)
+            found = False
+            now_s = _now_jst_str()
+            for it in items:
+                if it.get("id") == target_id:
+                    it["resolved"] = bool(resolved)
+                    it["resolved_at"] = now_s if resolved else ""
+                    found = True
+                    break
+            if not found:
+                return {"ok": False, "error": "該当するお問い合わせが見つかりません"}
+            job_state.set_value("ops:inquiries", json.dumps(items, ensure_ascii=False))
+        finally:
+            if lock_ok:
+                turbo_store.release_named_mutex("ops_gov_write")
     _invalidate_unread_memo()
     return {"ok": True, "id": target_id, "resolved": bool(resolved), **get_unread_counts(force=True)}
 

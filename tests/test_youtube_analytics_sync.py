@@ -80,12 +80,12 @@ class TestYouTubeAnalyticsAutoSync(unittest.TestCase):
         status_dump = json.dumps(status)
         self.assertNotIn("GOCSPX-SuperSecretValue123", status_dump)
 
-        # Verify local job_state.json obfuscates the client secret via `obf1:`
+        # Verify local job_state.json obfuscates the client secret via `obf2:`
         js_file = os.path.join(self._tmpdir.name, "job_state.json")
         with open(js_file, "r", encoding="utf-8") as fp:
             disk_raw = fp.read()
         self.assertNotIn("GOCSPX-SuperSecretValue123", disk_raw)
-        self.assertIn("obf1:", disk_raw)
+        self.assertIn("obf2:", disk_raw)
 
     def test_oauth_flow_csrf_state_and_shorts_deduplication(self):
         # 1) Pre-seed manual Studio screenshot entry (`yt_moshimo_ep1_vanished`)

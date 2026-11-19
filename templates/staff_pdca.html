@@ -1037,15 +1037,20 @@
             }
         }
     </script>
-    {% set d = pdca.diagnostics if pdca is defined and pdca.diagnostics is defined else {} %}
-    {% set sb = d.score_breakdown if d.score_breakdown is defined else {} %}
-    {% set act = (pdca.active_directives if pdca is defined else None) or d.proposed_directives or {} %}
-    {% set offers = d.offer_breakdown or (pdca.offer_breakdown if pdca is defined else []) or [] %}
-    {% set gaps = d.monetization_gaps or (pdca.monetization_gaps if pdca is defined else []) or [] %}
-    {% set sns_eff = d.sns_channel_efficiency or (pdca.sns_channel_efficiency if pdca is defined else {}) or {} %}
-    {% set growth_actions = d.weekly_growth_actions or (pdca.weekly_growth_actions if pdca is defined else []) or [] %}
-    {% set loop_fb = d.closed_loop_feedback or (pdca.closed_loop_feedback if pdca is defined else {}) or {} %}
-    {% set fw = d.flywheel_status or (pdca.flywheel_status if pdca is defined else {}) or {} %}
+    {% set pdca_obj = pdca if pdca is defined and pdca is mapping else {} %}
+    {% set d = pdca_obj.diagnostics if pdca_obj.diagnostics is defined and pdca_obj.diagnostics is mapping else {} %}
+    {% set sb = d.score_breakdown if d.score_breakdown is defined and d.score_breakdown is mapping else {} %}
+    {% set pdca_settings = pdca_obj.settings if pdca_obj.settings is defined and pdca_obj.settings is mapping else {} %}
+    {% set pdca_briefing = pdca_obj.briefing if pdca_obj.briefing is defined and pdca_obj.briefing is mapping else {} %}
+    {% set dg = d.demand_gap if d.demand_gap is defined and d.demand_gap is mapping else {} %}
+    {% set top_hub = dg.top_hub if dg.top_hub is defined and dg.top_hub is mapping else {} %}
+    {% set act = (pdca_obj.active_directives if pdca_obj.active_directives is defined and pdca_obj.active_directives is mapping else None) or (d.proposed_directives if d.proposed_directives is defined and d.proposed_directives is mapping else {}) %}
+    {% set offers = d.offer_breakdown or (pdca_obj.offer_breakdown if pdca_obj.offer_breakdown is defined else []) or [] %}
+    {% set gaps = d.monetization_gaps or (pdca_obj.monetization_gaps if pdca_obj.monetization_gaps is defined else []) or [] %}
+    {% set sns_eff = d.sns_channel_efficiency or (pdca_obj.sns_channel_efficiency if pdca_obj.sns_channel_efficiency is defined else {}) or {} %}
+    {% set growth_actions = d.weekly_growth_actions or (pdca_obj.weekly_growth_actions if pdca_obj.weekly_growth_actions is defined else []) or [] %}
+    {% set loop_fb = d.closed_loop_feedback or (pdca_obj.closed_loop_feedback if pdca_obj.closed_loop_feedback is defined else {}) or {} %}
+    {% set fw = d.flywheel_status or (pdca_obj.flywheel_status if pdca_obj.flywheel_status is defined else {}) or {} %}
     {% set yt_oauth_info = yt_oauth if yt_oauth is defined and yt_oauth is mapping else {} %}
     <div class="wrap">
         {% set master_active_tab = 'pdca' %}
@@ -1084,63 +1089,69 @@
                 <h1>自律PDCA作戦参謀・グロース統括ボード</h1>
                 <p class="lead">サイトPV・記事別アフィリエイトCTR・SNS <code>?s=</code> 流入コホート・現場店舗の需要ギャップを横断分析し、SNS編集部とコラム編集部へ自動で次の一手をフィードバックします。</p>
                 <div class="score-box">
-                    <div class="score-big">{{ d.overall_score }}<small> / 100点</small></div>
+                    <div class="score-big">{{ d.overall_score|default(0, true) }}<small> / 100点</small></div>
                     <div style="font-size:0.79rem; color:var(--sub);">
                         <div>
-                            <strong style="color:var(--text);">現在の最注目エリア：</strong>{{ d.demand_gap.top_hub.cluster_label }}
-                            {% if d.demand_gap.top_hub.is_off_hours_benchmark %}
-                            （ピーク帯基準：女性平均 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）
+                            <strong style="color:var(--text);">現在の最注目エリア：</strong>{{ top_hub.cluster_label|default('-', true) }}
+                            {% if top_hub %}
+                            {% if top_hub.is_off_hours_benchmark %}
+                            （ピーク帯基準：女性平均 {{ top_hub.live_women|default(0, true) }}名 / 男女比差 {{ top_hub.gap_pt|default(0, true) }}pt）
                             {% else %}
-                            （稼働女性 {{ d.demand_gap.top_hub.live_women }}名 / 男女比差 {{ d.demand_gap.top_hub.gap_pt }}pt）
+                            （稼働女性 {{ top_hub.live_women|default(0, true) }}名 / 男女比差 {{ top_hub.gap_pt|default(0, true) }}pt）
+                            {% endif %}
                             {% endif %}
                         </div>
                         <div>
-                            <strong style="color:var(--text);">予約待機コラム在庫：</strong>{{ d.upcoming_count }}本 ｜
-                            <strong style="color:var(--text);">未露出コラム：</strong>{{ d.sleeping_count|default(0) }}本 ｜
+                            <strong style="color:var(--text);">予約待機コラム在庫：</strong>{{ d.upcoming_count|default(0, true) }}本 ｜
+                            <strong style="color:var(--text);">未露出コラム：</strong>{{ d.sleeping_count|default(0, true) }}本 ｜
                             <strong style="color:var(--text);">対象期間：</strong>直近{{ days }}日間
                         </div>
                     </div>
                 </div>
-                {% set fn = d.funnel if d.funnel is defined and d.funnel else {} %}
-                {% set rv = d.revenue if d.revenue is defined and d.revenue else {} %}
+                {% set fn = d.funnel if d.funnel is defined and d.funnel is mapping else {} %}
+                {% set rv = d.revenue if d.revenue is defined and d.revenue is mapping else {} %}
                 <div class="kpi-strip" aria-label="直近期間の実測KPIサマリー">
                     <div class="kpi-cell">
                         <div class="kpi-label">直近{{ days }}日 総PV</div>
-                        <div class="kpi-val">{{ '{:,}'.format(fn.pv_total|default(0)|int) }}</div>
-                        <div class="kpi-sub">下層・記事閲覧 {{ '{:,}'.format(fn.article_views|default(0)|int) }}回</div>
+                        <div class="kpi-val">{{ '{:,}'.format(fn.pv_total|default(0, true)|int) }}</div>
+                        <div class="kpi-sub">下層・記事閲覧 {{ '{:,}'.format(fn.article_views|default(0, true)|int) }}回</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kpi-label">広告クリック / 全体CTR</div>
-                        <div class="kpi-val">{{ fn.aff_total|default(0) }}件</div>
-                        <div class="kpi-sub">CTR {{ fn.aff_ctr_pct|default(0) }}%</div>
+                        <div class="kpi-val">{{ fn.aff_total|default(0, true) }}件</div>
+                        <div class="kpi-sub">CTR {{ fn.aff_ctr_pct|default(0, true) }}%</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kpi-label">SNS <code>?s=</code> 流入 / CV</div>
-                        <div class="kpi-val">{{ sns_eff.total_sns_visits|default(0) }}回</div>
-                        <div class="kpi-sub">24h以内CV {{ sns_eff.total_sns_conversions|default(0) }}件</div>
+                        <div class="kpi-val">{{ sns_eff.total_sns_visits|default(0, true) }}回</div>
+                        <div class="kpi-sub">24h以内CV {{ sns_eff.total_sns_conversions|default(0, true) }}件</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kpi-label">月間期待収益ペース</div>
-                        <div class="kpi-val">¥{{ '{:,}'.format(rv.est_monthly_pace_yen|default(0)|int) }}</div>
-                        <div class="kpi-sub">期間累計 約¥{{ '{:,}'.format(rv.est_total_yen|default(0)|int) }}</div>
+                        <div class="kpi-val">¥{{ '{:,}'.format(rv.est_monthly_pace_yen|default(0, true)|int) }}</div>
+                        <div class="kpi-sub">期間累計 約¥{{ '{:,}'.format(rv.est_total_yen|default(0, true)|int) }}</div>
                     </div>
                 </div>
+                {% set sb_te = sb.traffic_engagement|default(0, true)|float %}
+                {% set sb_me = sb.monetization_efficiency|default(0, true)|float %}
+                {% set sb_sd = sb.sns_diversity_inflow|default(0, true)|float %}
+                {% set sb_cp = sb.content_pipeline_health|default(0, true)|float %}
                 <div class="axis-grid">
                     <div class="axis-item">
-                        <div class="axis-top"><span>集客・サイト回遊</span><span>{{ sb.traffic_engagement }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.traffic_engagement / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>集客・サイト回遊</span><span>{{ sb.traffic_engagement|default(0, true) }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_te / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>収益・広告CTR効率</span><span>{{ sb.monetization_efficiency }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.monetization_efficiency / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>収益・広告CTR効率</span><span>{{ sb.monetization_efficiency|default(0, true) }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_me / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.sns_diversity_inflow / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>SNS流入・切り口多様性</span><span>{{ sb.sns_diversity_inflow|default(0, true) }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_sd / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                     <div class="axis-item">
-                        <div class="axis-top"><span>コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health }}/25</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb.content_pipeline_health / 25 * 100)|round|int }}%;"></div></div>
+                        <div class="axis-top"><span>コラム品質・予約在庫</span><span>{{ sb.content_pipeline_health|default(0, true) }}/25</span></div>
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ (sb_cp / 25 * 100)|round|int }}%;"></div></div>
                     </div>
                 </div>
             </div>
@@ -1154,7 +1165,7 @@
                             <div class="toggle-desc">流入実績の高い切り口をSNS鬼デスクで自動加点し、高CTR記事・未露出記事をX 18:00枠へ優先セットします。</div>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" id="toggle-auto-sns" {{ 'checked' if pdca.settings.auto_optimize_sns else '' }} onchange="savePdcaSettings()">
+                            <input type="checkbox" id="toggle-auto-sns" {{ 'checked' if pdca_settings.auto_optimize_sns else '' }} data-pdca-change="save-settings">
                             <span class="slider"></span>
                         </label>
                     </div>
@@ -1164,12 +1175,12 @@
                             <div class="toggle-desc">OFF時は特命お題提案＋ワンクリック承認（推奨）。ONにすると予約待機が残り1本以下の際、鬼デスク85点以上の新規コラムを自動で予約補充します。</div>
                         </div>
                         <label class="switch">
-                            <input type="checkbox" id="toggle-auto-col" {{ 'checked' if pdca.settings.auto_replenish_columns else '' }} onchange="savePdcaSettings()">
+                            <input type="checkbox" id="toggle-auto-col" {{ 'checked' if pdca_settings.auto_replenish_columns else '' }} data-pdca-change="save-settings">
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
-                <button type="button" id="run-pdca-btn" class="run-btn" onclick="runPdcaNow()">いま最新データでPDCAサイクルを実行して編成指令を更新</button>
+                <button type="button" id="run-pdca-btn" class="run-btn" data-pdca-action="run-now">いま最新データでPDCAサイクルを実行して編成指令を更新</button>
             </div>
         </div>
 
@@ -1177,29 +1188,29 @@
         <div class="briefing-card">
             <div class="briefing-head">
                 <span id="briefing-pill" class="ai-pill">
-                    {% if pdca.briefing.is_ai %}
-                    作戦参謀長ブリーフィング（{{ pdca.briefing.model }}）
+                    {% if pdca_briefing.is_ai %}
+                    作戦参謀長ブリーフィング（{{ pdca_briefing.model|default('', true) }}）
                     {% else %}
                     作戦参謀ブリーフィング（実測データ総括｜AI参謀分析は右ボタンで実行）
                     {% endif %}
                 </span>
-                <button type="button" class="mini-btn" onclick="refreshBriefing(true)">AI参謀コメントを再生成</button>
+                <button type="button" class="mini-btn" data-pdca-action="refresh-briefing">AI参謀コメントを再生成</button>
             </div>
-            <div id="briefing-text" class="briefing-body">{{ pdca.briefing.text }}</div>
+            <div id="briefing-text" class="briefing-body">{{ pdca_briefing.text|default('', true) }}</div>
         </div>
 
         <!-- 4-Gear Growth Flywheel Autonomous Monitor -->
-        {% set fw_mq = fw.moshimo_queue if fw is mapping and fw.moshimo_queue is defined else {} %}
-        {% set fw_yt = fw.youtube_shorts if fw is mapping and fw.youtube_shorts is defined else {} %}
-        {% set fw_gsc = fw.search_console if fw is mapping and fw.search_console is defined else {} %}
-        {% set fw_col = fw.column_pipeline if fw is mapping and fw.column_pipeline is defined else {} %}
+        {% set fw_mq = fw.moshimo_queue if fw is mapping and fw.moshimo_queue is defined and fw.moshimo_queue is mapping else {} %}
+        {% set fw_yt = fw.youtube_shorts if fw is mapping and fw.youtube_shorts is defined and fw.youtube_shorts is mapping else {} %}
+        {% set fw_gsc = fw.search_console if fw is mapping and fw.search_console is defined and fw.search_console is mapping else {} %}
+        {% set fw_col = fw.column_pipeline if fw is mapping and fw.column_pipeline is defined and fw.column_pipeline is mapping else {} %}
         <section class="card" id="pdca-flywheel" style="margin-bottom:18px;" aria-labelledby="pdca-flywheel-heading">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <div>
                     <h2 id="pdca-flywheel-heading" style="font-size:1rem; margin:0 0 3px;">4歯車グロース・フライホイール稼働＆フルファネル計測モニター</h2>
                     <div style="font-size:0.78rem; color:var(--sub);">①3DもしもIG自動配信 × ②YouTubeショート維持率 × ③Google検索お宝クエリ × ④SEO予約コラム自動補充の連動状況を一覧監視します。</div>
                 </div>
-                <span class="ultra-badge" style="font-variant-numeric:tabular-nums;">自然検索流入 {{ sns_eff.total_search_visits|default(0) }}回 ／ SNS・ショート流入 {{ sns_eff.total_sns_visits|default(0) }}回</span>
+                <span class="ultra-badge" style="font-variant-numeric:tabular-nums;">自然検索流入 {{ sns_eff.total_search_visits|default(0, true) }}回 ／ SNS・ショート流入 {{ sns_eff.total_sns_visits|default(0, true) }}回</span>
             </div>
 
             <div class="flywheel-grid">
@@ -1209,11 +1220,11 @@
                             <span class="flywheel-gear-label">Gear 1｜3D『もしも』IG自動キュー</span>
                             <span class="chip {{ 'plus' if fw_mq.enabled else '' }}">{{ '稼働中' if fw_mq.enabled else '一時停止' }}</span>
                         </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">待機 {{ fw_mq.remaining_count|default(0) }} / {{ fw_mq.total_episodes|default(10) }}本</div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">待機 {{ fw_mq.remaining_count|default(0, true) }} / {{ fw_mq.total_episodes|default(10, true) }}本</div>
                         <div class="flywheel-gear-meta">
-                            投稿済 {{ fw_mq.posted_count|default(0) }}本 ・ 21日再配信 {{ 'ON' if fw_mq.evergreen_recycle else 'OFF' }}<br>
-                            {% if fw_mq.next_episode %}次回: #{{ fw_mq.next_episode.order }}（{{ fw_mq.next_episode.scheduled_date }} 20:00）{% else %}エバーグリーン火・木再配信＆Live速報稼働{% endif %}<br>
-                            IGリール経由流入: <strong>{{ fw_mq.ig_reels_visits|default(0) }}回</strong>（CV {{ fw_mq.ig_reels_conversions|default(0) }}件）
+                            投稿済 {{ fw_mq.posted_count|default(0, true) }}本 ・ 21日再配信 {{ 'ON' if fw_mq.evergreen_recycle else 'OFF' }}<br>
+                            {% if fw_mq.next_episode is mapping %}次回: #{{ fw_mq.next_episode.order|default('', true) }}（{{ fw_mq.next_episode.scheduled_date|default('', true) }} 20:00）{% else %}エバーグリーン火・木再配信＆Live速報稼働{% endif %}<br>
+                            IGリール経由流入: <strong>{{ fw_mq.ig_reels_visits|default(0, true) }}回</strong>（CV {{ fw_mq.ig_reels_conversions|default(0, true) }}件）
                         </div>
                     </div>
                     <a href="/staff/sns-editorial?channel=instagram#moshimo-queue-section" class="mini-btn" style="text-align:center; text-decoration:none;">3Dキュー＆Shortsパックを開く →</a>
@@ -1230,13 +1241,13 @@
                             {% endif %}
                         </div>
                         <div class="flywheel-gear-num" style="margin-top:6px;">
-                            {% if fw_yt.total_views is not none %}{{ '{:,}'.format(fw_yt.total_views|int) }}回視聴{% else %}流入 {{ fw_yt.site_visits|default(0) }}回{% endif %}
+                            {% if fw_yt.total_views is defined and fw_yt.total_views is not none %}{{ '{:,}'.format(fw_yt.total_views|int) }}回視聴{% else %}流入 {{ fw_yt.site_visits|default(0, true) }}回{% endif %}
                         </div>
                         <div class="flywheel-gear-meta">
-                            視聴選択率: {% if fw_yt.avg_stayed_to_watch_pct is not none %}<strong>{{ fw_yt.avg_stayed_to_watch_pct }}%</strong>{% else %}未取込{% endif %}
-                            ・ 平均再生率: {% if fw_yt.avg_pct_viewed is not none %}<strong>{{ fw_yt.avg_pct_viewed }}%</strong>{% else %}-{% endif %}<br>
-                            サイト流入（<code>?s=short_bio</code>・<code>ref_youtube</code>）: <strong>{{ fw_yt.site_visits|default(0) }}回</strong><br>
-                            クッション遷移 {{ fw_yt.site_cushion_clicks|default(0) }}回 ／ CV <strong>{{ fw_yt.site_conversions|default(0) }}件</strong>
+                            視聴選択率: {% if fw_yt.avg_stayed_to_watch_pct is defined and fw_yt.avg_stayed_to_watch_pct is not none %}<strong>{{ fw_yt.avg_stayed_to_watch_pct }}%</strong>{% else %}未取込{% endif %}
+                            ・ 平均再生率: {% if fw_yt.avg_pct_viewed is defined and fw_yt.avg_pct_viewed is not none %}<strong>{{ fw_yt.avg_pct_viewed }}%</strong>{% else %}-{% endif %}<br>
+                            サイト流入（<code>?s=short_bio</code>・<code>ref_youtube</code>）: <strong>{{ fw_yt.site_visits|default(0, true) }}回</strong><br>
+                            クッション遷移 {{ fw_yt.site_cushion_clicks|default(0, true) }}回 ／ CV <strong>{{ fw_yt.site_conversions|default(0, true) }}件</strong>
                         </div>
                     </div>
                     <a href="#yt-oauth-setup" class="mini-btn" style="text-align:center; text-decoration:none;">{{ 'YouTube自動同期ステータス ↓' if (yt_oauth_info.connected or fw_yt.api_connected) else 'YouTube API自動同期を連携 ↓' }}</a>
@@ -1249,12 +1260,12 @@
                             <span class="chip {{ 'plus' if fw_gsc.data_status == 'ok' else '' }}">{{ '実測連携済' if fw_gsc.data_status == 'ok' else 'CSV/スクショ待' }}</span>
                         </div>
                         <div class="flywheel-gear-num" style="margin-top:6px;">
-                            {% if fw_gsc.total_impressions is not none %}表示 {{ '{:,}'.format(fw_gsc.total_impressions|int) }}回{% else %}検索流入 {{ fw_gsc.site_visits|default(0) }}回{% endif %}
+                            {% if fw_gsc.total_impressions is defined and fw_gsc.total_impressions is not none %}表示 {{ '{:,}'.format(fw_gsc.total_impressions|int) }}回{% else %}検索流入 {{ fw_gsc.site_visits|default(0, true) }}回{% endif %}
                         </div>
                         <div class="flywheel-gear-meta">
-                            GSCクリック: {% if fw_gsc.total_clicks is not none %}<strong>{{ '{:,}'.format(fw_gsc.total_clicks|int) }}回</strong>（CTR {{ fw_gsc.avg_ctr_pct|default(0) }}%）{% else %}未取込{% endif %}<br>
-                            未回収お宝クエリ: <strong>{{ fw_gsc.opportunity_count|default(0) }}件</strong><br>
-                            検索Referer実流入: <strong>{{ fw_gsc.site_visits|default(0) }}回</strong>（CV <strong>{{ fw_gsc.site_conversions|default(0) }}件</strong>）
+                            GSCクリック: {% if fw_gsc.total_clicks is defined and fw_gsc.total_clicks is not none %}<strong>{{ '{:,}'.format(fw_gsc.total_clicks|int) }}回</strong>（CTR {{ fw_gsc.avg_ctr_pct|default(0, true) }}%）{% else %}未取込{% endif %}<br>
+                            未回収お宝クエリ: <strong>{{ fw_gsc.opportunity_count|default(0, true) }}件</strong><br>
+                            検索Referer実流入: <strong>{{ fw_gsc.site_visits|default(0, true) }}回</strong>（CV <strong>{{ fw_gsc.site_conversions|default(0, true) }}件</strong>）
                         </div>
                     </div>
                     <a href="#pdca-closed-loop" class="mini-btn" style="text-align:center; text-decoration:none;">Search Console CSVを取込 ↓</a>
@@ -1266,11 +1277,11 @@
                             <span class="flywheel-gear-label">Gear 4｜SEO予約コラム自動パイプライン</span>
                             <span class="chip {{ 'plus' if fw_col.auto_replenish_columns else '' }}">{{ '自動補充ON' if fw_col.auto_replenish_columns else '手動補充' }}</span>
                         </div>
-                        <div class="flywheel-gear-num" style="margin-top:6px;">予約待機 {{ fw_col.upcoming_count|default(d.upcoming_count|default(0)) }}本</div>
+                        <div class="flywheel-gear-num" style="margin-top:6px;">予約待機 {{ fw_col.upcoming_count|default(d.upcoming_count|default(0, true), true) }}本</div>
                         <div class="flywheel-gear-meta">
                             {% if fw_col.next_title %}
-                            次回公開: <strong>{{ fw_col.next_publish_at_ja }}</strong><br>
-                            『{{ fw_col.next_title[:28] }}』
+                            次回公開: <strong>{{ fw_col.next_publish_at_ja|default('', true) }}</strong><br>
+                            『{{ (fw_col.next_title|default('', true))[:28] }}』
                             {% else %}
                             残1本以下で17:35 / 03:35 PDCAサイクルが新着コラムを自動執筆・予約補充します。
                             {% endif %}
@@ -1304,19 +1315,19 @@
             {% if growth_actions %}
             <div class="growth-grid">
                 {% for ga in growth_actions %}
-                {% set p_num = ga.priority|default(loop.index) %}
+                {% set p_num = ga.priority|default(loop.index, true) %}
                 <div class="growth-card p{{ p_num if p_num in (1, 2, 3) else 1 }}">
                     <div>
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:8px;">
                             <span class="prio-pill">PRIORITY #{{ p_num }}</span>
-                            <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('成長施策') }}</span>
+                            <span style="font-size:0.74rem; font-weight:700; color:var(--sub);">{{ ga.category_badge|default('成長施策', true) }}</span>
                         </div>
-                        <div style="font-size:0.88rem; font-weight:800; color:var(--gold-ink); margin-bottom:7px; line-height:1.45;">{{ ga.title|default('') }}</div>
+                        <div style="font-size:0.88rem; font-weight:800; color:var(--gold-ink); margin-bottom:7px; line-height:1.45;">{{ ga.title|default('', true) }}</div>
                         <div style="font-size:0.76rem; color:var(--sub); margin-bottom:7px;">
-                            <strong style="color:var(--text);">根拠：</strong>{{ ga.why|default('') }}
+                            <strong style="color:var(--text);">根拠：</strong>{{ ga.why|default('', true) }}
                         </div>
                         <div style="font-size:0.75rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:7px;">
-                            <strong style="color:var(--gold);">具体手順：</strong>{{ ga.how_to|default('') }}
+                            <strong style="color:var(--gold);">具体手順：</strong>{{ ga.how_to|default('', true) }}
                         </div>
                         {% if ga.expected_impact %}
                         <div style="font-size:0.73rem; color:var(--green); font-weight:700;">期待インパクト：{{ ga.expected_impact }}</div>
@@ -1324,7 +1335,7 @@
                     </div>
                     {% if ga.cta_url %}
                     <a href="{{ ga.cta_url }}" class="cta-editorial-btn" style="text-align:center; margin-top:4px;">
-                        {{ ga.cta_label|default('施策画面を開く →') }}
+                        {{ ga.cta_label|default('施策画面を開く →', true) }}
                     </a>
                     {% endif %}
                 </div>
@@ -1343,8 +1354,8 @@
                 <h2>いま上手くいっていること（勝ち筋・伸ばす領域）</h2>
                 {% for w in (d.wins or []) %}
                 <div class="diag-item win">
-                    <div class="diag-title">{{ w.title }}</div>
-                    <div class="diag-detail">{{ w.detail }}</div>
+                    <div class="diag-title">{{ w.title|default('', true) }}</div>
+                    <div class="diag-detail">{{ w.detail|default('', true) }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -1353,8 +1364,8 @@
                 <h2>いま上手くいっていないこと（課題＆システムの自動対処）</h2>
                 {% for iss in (d.issues or []) %}
                 <div class="diag-item issue">
-                    <div class="diag-title">{{ iss.title }}</div>
-                    <div class="diag-detail">{{ iss.detail }}</div>
+                    <div class="diag-title">{{ iss.title|default('', true) }}</div>
+                    <div class="diag-detail">{{ iss.detail|default('', true) }}</div>
                     {% if iss.action_taken %}
                     <div class="action-tag">自動対処：{{ iss.action_taken }}</div>
                     {% endif %}
@@ -1364,7 +1375,7 @@
         </div>
 
         <!-- Active Closed-Loop Directives -->
-        {% set st_labels = d.style_labels if d.style_labels is defined and d.style_labels else {} %}
+        {% set st_labels = d.style_labels if d.style_labels is defined and d.style_labels is mapping else {} %}
         <div class="directives-panel" id="pdca-directives">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <h2 style="font-size:1rem; margin:0;">現在アクティブな自動編成指令（Check → Act/Plan 自動配線）</h2>
@@ -1374,10 +1385,13 @@
                 <div class="dir-box">
                     <h3>① SNS鬼デスク スコア自動補正</h3>
                     <div class="chip-list" id="dir-sns-boosts">
-                        {% set boosts = act.sns_style_boosts or {} %}
+                        {% set boosts = act.sns_style_boosts if act is mapping and act.sns_style_boosts is defined and act.sns_style_boosts is mapping else {} %}
                         {% if boosts %}
-                            {% for st_k, pts in boosts.items() if pts != 0 %}
-                            <span class="chip {{ 'plus' if pts > 0 else 'minus' }}">{{ st_labels.get(st_k, st_k) }}{% if st_labels.get(st_k) and st_labels.get(st_k) != st_k %}（{{ st_k }}）{% endif %}：{{ '%+d'|format(pts) }}点</span>
+                            {% for st_k, pts in boosts.items() if (pts is not none and pts != 0) %}
+                            {% set _pts_num = pts|default(0, true)|int %}
+                            {% if _pts_num != 0 %}
+                            <span class="chip {{ 'plus' if _pts_num > 0 else 'minus' }}">{{ st_labels.get(st_k, st_k) }}{% if st_labels.get(st_k) and st_labels.get(st_k) != st_k %}（{{ st_k }}）{% endif %}：{{ '%+d'|format(_pts_num) }}点</span>
+                            {% endif %}
                             {% endfor %}
                         {% else %}
                             <span style="font-size:0.77rem; color:var(--sub);">自動補正OFFまたはフラット配分中</span>
@@ -1390,7 +1404,9 @@
                     <h3>② Xコラム枠 優先送客リスト</h3>
                     <div class="chip-list" id="dir-priority-cols">
                         {% for p in (act.priority_column_paths or []) %}
-                        <a href="{{ p }}" target="_blank" class="chip">{{ p }} ↗</a>
+                        {% if p is string and p.startswith('/') and not p.startswith('//') and not p.startswith('/@') and '\\' not in p and '\n' not in p and '\r' not in p and '\t' not in p and '\x00' not in p and '%5c' not in p|lower %}
+                        <a href="{{ p }}" target="_blank" rel="noopener noreferrer" class="chip">{{ p }} ↗</a>
+                        {% endif %}
                         {% else %}
                         <span style="font-size:0.77rem; color:var(--sub);">通常ローテーション稼働中</span>
                         {% endfor %}
@@ -1400,8 +1416,10 @@
 
                 <div class="dir-box">
                     <h3>③ コラム編集部への次回特命お題</h3>
-                    <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '') }}』</div>
-                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ (act.recommended_custom_topic or (d.proposed_directives.recommended_custom_topic if d.proposed_directives is defined else '')) | urlencode }}">
+                    {% set _prop_dir = d.proposed_directives if d.proposed_directives is defined and d.proposed_directives is mapping else {} %}
+                    {% set _rec_topic = act.recommended_custom_topic or _prop_dir.recommended_custom_topic or '' %}
+                    <div style="font-size:0.82rem; font-weight:700; color:var(--gold-ink);">『{{ _rec_topic }}』</div>
+                    <a class="cta-editorial-btn" href="/staff/column-editorial?theme={{ act.recommended_column_theme or 'area_hopping' }}&topic={{ _rec_topic | urlencode }}">
                         この特命お題をコラム編集部で開いてワンクリック予約する →
                     </a>
                 </div>
@@ -1422,20 +1440,20 @@
                     <div class="offer-row">
                         <div class="offer-top">
                             <div style="font-size:0.84rem; font-weight:800; color:var(--text);">
-                                <span style="color:var(--gold); margin-right:4px;">#{{ ofr.rank|default(loop.index) }}</span>{{ ofr.label|default(ofr.category_key) }}
+                                <span style="color:var(--gold); margin-right:4px;">#{{ ofr.rank|default(loop.index, true) }}</span>{{ ofr.label|default(ofr.category_key|default('-', true), true) }}
                             </div>
                             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                <span style="font-size:0.84rem; font-weight:900; color:var(--gold-ink);">{{ ofr.clicks|default(0) }}件</span>
-                                <span style="font-size:0.74rem; color:var(--sub);">（シェア {{ ofr.share_pct|default(0) }}%）</span>
-                                <span class="trend-pill {{ ofr.trend_7d|default('zero') }}">{{ ofr.trend_7d_label|default('直近7日 0件') }}</span>
+                                <span style="font-size:0.84rem; font-weight:900; color:var(--gold-ink);">{{ ofr.clicks|default(0, true) }}件</span>
+                                <span style="font-size:0.74rem; color:var(--sub);">（シェア {{ ofr.share_pct|default(0, true) }}%）</span>
+                                <span class="trend-pill {{ ofr.trend_7d|default('zero', true) }}">{{ ofr.trend_7d_label|default('直近7日 0件', true) }}</span>
                             </div>
                         </div>
                         <div class="offer-bar-track">
-                            <div class="offer-bar-fill" style="width: {{ ofr.bar_pct|default(0) }}%;"></div>
+                            <div class="offer-bar-fill" style="width: {{ ofr.bar_pct|default(0, true) }}%;"></div>
                         </div>
                         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:0.73rem; color:var(--sub); margin-bottom:4px;">
-                            <span>主発生元：{% if ofr.top_source_path and ofr.top_source_path.startswith('/') %}<a href="{{ ofr.top_source_path }}" target="_blank" style="color:var(--blue); text-decoration:none;">{{ ofr.top_source_path }} ↗</a>{% elif ofr.clicks|default(0) > 0 and ofr.top_source_title %}{{ ofr.top_source_title }}{% else %}これから配置{% endif %}</span>
-                            <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0)|int) }}</span>
+                            <span>主発生元：{% set _tsp = ofr.top_source_path|default('', true) %}{% if _tsp is string and _tsp.startswith('/') and not _tsp.startswith('//') and not _tsp.startswith('/@') and '\\' not in _tsp and '\n' not in _tsp and '\r' not in _tsp and '\t' not in _tsp and '\x00' not in _tsp and '%5c' not in _tsp|lower %}<a href="{{ _tsp }}" target="_blank" rel="noopener noreferrer" style="color:var(--blue); text-decoration:none;">{{ _tsp }} ↗</a>{% elif ofr.clicks|default(0, true) > 0 and ofr.top_source_title %}{{ ofr.top_source_title }}{% else %}これから配置{% endif %}</span>
+                            <span>想定収益寄与：約 ¥{{ '{:,}'.format(ofr.est_revenue_yen|default(0, true)|int) }}</span>
                         </div>
                         {% if ofr.winning_pitch %}
                         <div style="font-size:0.74rem; color:var(--green-ink);">勝ち筋：{{ ofr.winning_pitch }}</div>
@@ -1455,18 +1473,23 @@
                 <p class="lead" style="margin-bottom:12px;">閲覧が多いのに広告遷移や <code>/grooming</code>・<code>/for-women</code> 誘導が少ないページを自動特定し、「どの導線を・どの位置に足すべきか」を処方します。</p>
                 {% if gaps %}
                     {% for g in gaps %}
-                    <div class="gap-card {{ g.severity|default('medium') }}">
+                    <div class="gap-card {{ g.severity|default('medium', true) }}">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:5px;">
                             <div>
-                                <a href="{{ g.path|default('#') }}" target="_blank" style="color:var(--gold-ink); font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(g.path) }} ↗</a>
-                                <div style="font-size:0.72rem; color:var(--sub);"><code>{{ g.path|default('-') }}</code> ｜ 閲覧 <strong>{{ g.pv|default(0) }} PV</strong> ／ 広告 <strong>{{ g.aff_clicks|default(0) }}件</strong>（CVR {{ g.cvr_pct|default(0) }}% → 目標 {{ g.target_cvr_pct|default(2.5) }}%）</div>
+                                {% set _gp = g.path|default('', true) %}
+                                {% if _gp is string and _gp.startswith('/') and not _gp.startswith('//') and not _gp.startswith('/@') and '\\' not in _gp and '\n' not in _gp and '\r' not in _gp and '\t' not in _gp and '\x00' not in _gp and '%5c' not in _gp|lower %}
+                                <a href="{{ _gp }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); font-size:0.84rem; font-weight:800; text-decoration:none;">{{ g.title|default(_gp, true) }} ↗</a>
+                                {% else %}
+                                <span style="color:var(--gold-ink); font-size:0.84rem; font-weight:800;">{{ g.title|default(_gp or '-', true) }}</span>
+                                {% endif %}
+                                <div style="font-size:0.72rem; color:var(--sub);"><code>{{ g.path|default('-', true) }}</code> ｜ 閲覧 <strong>{{ g.pv|default(0, true) }} PV</strong> ／ 広告 <strong>{{ g.aff_clicks|default(0, true) }}件</strong>（CVR {{ g.cvr_pct|default(0, true) }}% → 目標 {{ g.target_cvr_pct|default(2.5, true) }}%）</div>
                             </div>
-                            <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('導線チェック') }}</span>
+                            <span class="chip {{ 'minus' if g.severity in ('critical', 'high') else '' }}">{{ g.severity_badge|default('導線チェック', true) }}</span>
                         </div>
                         <div class="gap-rx-box">
-                            <div style="font-weight:800; color:var(--gold-ink); margin-bottom:4px;">追加すべき導線：{{ g.recommended_funnel|default('') }}</div>
-                            <div style="color:var(--sub); margin-bottom:5px;"><strong style="color:var(--text);">推奨設置箇所：</strong>{{ g.placement_position|default('') }}</div>
-                            <div style="color:var(--text); margin-bottom:6px;">{{ g.action_proposal|default('') }}</div>
+                            <div style="font-weight:800; color:var(--gold-ink); margin-bottom:4px;">追加すべき導線：{{ g.recommended_funnel|default('', true) }}</div>
+                            <div style="color:var(--sub); margin-bottom:5px;"><strong style="color:var(--text);">推奨設置箇所：</strong>{{ g.placement_position|default('', true) }}</div>
+                            <div style="color:var(--text); margin-bottom:6px;">{{ g.action_proposal|default('', true) }}</div>
                             {% if g.recommended_links %}
                             <div class="chip-list">
                                 {% for rl in g.recommended_links %}
@@ -1495,32 +1518,33 @@
                 </div>
             </div>
             <p class="lead" style="margin-bottom:12px;">
-                {{ sns_eff.summary_insight|default('X / Threads / Instagram / Reels の ?s= 流入・CV効率を横断比較し、今一番伸びる投稿時間帯とショート動画企画を提示します。') }}
+                {{ sns_eff.summary_insight|default('X / Threads / Instagram / Reels の ?s= 流入・CV効率を横断比較し、今一番伸びる投稿時間帯とショート動画企画を提示します。', true) }}
             </p>
 
             <div class="two-col" style="margin-bottom:0;">
                 <!-- Channel Efficiency Ranking -->
                 <div>
                     <div style="font-size:0.84rem; font-weight:800; color:var(--gold); margin-bottom:8px;">チャネル別サイト誘導効率ランキング（強化時間帯＆勝ち切り口）</div>
-                    {% set sns_channels = sns_eff.channels if sns_eff is mapping and sns_eff.channels is defined else [] %}
+                    {% set sns_channels = sns_eff.channels if sns_eff is mapping and sns_eff.channels is defined and sns_eff.channels is iterable and sns_eff.channels is not string and sns_eff.channels is not mapping else [] %}
                     {% if sns_channels %}
                         {% for ch in sns_channels %}
                         <div class="offer-row">
                             <div class="offer-top">
                                 <div style="font-size:0.84rem; font-weight:800;">
-                                    <span style="color:var(--gold); margin-right:4px;">#{{ ch.rank|default(loop.index) }}</span>{{ ch.label|default(ch.channel_key) }}
+                                    <span style="color:var(--gold); margin-right:4px;">#{{ ch.rank|default(loop.index, true) }}</span>{{ ch.label|default(ch.channel_key|default('-', true), true) }}
                                 </div>
                                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                    <span class="chip {{ 'plus' if loop.index == 1 and ch.visits|default(0) > 0 else '' }}" style="font-size:0.7rem;">{{ ch.status_badge|default('計測中') }}</span>
-                                    <span style="font-size:0.8rem; font-weight:800; color:var(--gold-ink);">流入 {{ ch.visits|default(0) }} ／ CV {{ ch.conversions|default(0) }}件</span>
-                                    <span style="font-size:0.73rem; color:var(--sub);">（CVR {{ ch.cvr_pct|default(0) }}%）</span>
+                                    {% set _ch_visits = ch.visits|default(0, true)|int %}
+                                    <span class="chip {{ 'plus' if loop.index == 1 and _ch_visits > 0 else '' }}" style="font-size:0.7rem;">{{ ch.status_badge|default('計測中', true) }}</span>
+                                    <span style="font-size:0.8rem; font-weight:800; color:var(--gold-ink);">流入 {{ ch.visits|default(0, true) }} ／ CV {{ ch.conversions|default(0, true) }}件</span>
+                                    <span style="font-size:0.73rem; color:var(--sub);">（CVR {{ ch.cvr_pct|default(0, true) }}%）</span>
                                 </div>
                             </div>
                             <div class="offer-bar-track">
-                                <div class="offer-bar-fill sns-fill" style="width: {{ ch.bar_pct|default(0) }}%;"></div>
+                                <div class="offer-bar-fill sns-fill" style="width: {{ ch.bar_pct|default(0, true) }}%;"></div>
                             </div>
                             <div style="font-size:0.74rem; color:var(--text); margin-bottom:3px;">
-                                <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-') }} ｜ <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-') }}
+                                <strong>強化時間帯：</strong>{{ ch.best_time_slot|default('-', true) }} ｜ <strong>勝ち切り口：</strong>{{ ch.best_style_label|default('-', true) }}
                             </div>
                             {% if ch.tactic %}
                             <div style="font-size:0.73rem; color:var(--sub);">{{ ch.tactic }}</div>
@@ -1537,23 +1561,23 @@
                 <!-- Reels Recommended Short Video Ideas -->
                 <div>
                     <div style="font-size:0.84rem; font-weight:800; color:var(--text); margin-bottom:8px;">ショート動画（Reels / Shorts）今週の推奨ネタ3選</div>
-                    {% set reels_list = sns_eff.reels_recommendations if sns_eff is mapping and sns_eff.reels_recommendations is defined else [] %}
+                    {% set reels_list = sns_eff.reels_recommendations if sns_eff is mapping and sns_eff.reels_recommendations is defined and sns_eff.reels_recommendations is iterable and sns_eff.reels_recommendations is not string and sns_eff.reels_recommendations is not mapping else [] %}
                     {% if reels_list %}
                         {% for rl in reels_list %}
                         <div class="reels-box">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:5px;">
-                                <span class="ai-pill" style="padding:2px 9px; font-size:0.7rem;">ネタ案 #{{ rl.idea_no|default(loop.index) }}</span>
+                                <span class="ai-pill" style="padding:2px 9px; font-size:0.7rem;">ネタ案 #{{ rl.idea_no|default(loop.index, true) }}</span>
                                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                    <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">推奨投稿：{{ rl.best_post_time|default('金曜 21:30') }}</span>
+                                    <span style="font-size:0.72rem; color:var(--gold); font-weight:700;">推奨投稿：{{ rl.best_post_time|default('金曜 21:30', true) }}</span>
                                     <button type="button" class="copy-mini-btn"
-                                        data-copy-text="【{{ rl.title|default('') }}】&#10;冒頭0-3秒: {{ rl.hook_0_3s|default('') }}&#10;構成: {{ rl.body_outline|default('') }}&#10;誘導導線: {{ rl.cta_route|default('?s=reel_gap') }}"
-                                        onclick="copyFromDataAttr(this)">構成をコピー</button>
+                                        data-copy-text="【{{ rl.title|default('', true) }}】&#10;冒頭0-3秒: {{ rl.hook_0_3s|default('', true) }}&#10;構成: {{ rl.body_outline|default('', true) }}&#10;誘導導線: {{ rl.cta_route|default('?s=reel_gap', true) }}"
+                                        data-pdca-action="copy-attr">構成をコピー</button>
                                 </div>
                             </div>
-                            <div style="font-size:0.83rem; font-weight:800; color:var(--gold-ink); margin-bottom:5px;">{{ rl.title|default('') }}</div>
-                            <div style="font-size:0.75rem; color:var(--green-ink); margin-bottom:4px;"><strong>冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('') }}</div>
-                            <div style="font-size:0.74rem; color:var(--sub); margin-bottom:5px;">{{ rl.body_outline|default('') }}</div>
-                            <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap') }}</code></div>
+                            <div style="font-size:0.83rem; font-weight:800; color:var(--gold-ink); margin-bottom:5px;">{{ rl.title|default('', true) }}</div>
+                            <div style="font-size:0.75rem; color:var(--green-ink); margin-bottom:4px;"><strong>冒頭0〜3秒フック：</strong>{{ rl.hook_0_3s|default('', true) }}</div>
+                            <div style="font-size:0.74rem; color:var(--sub); margin-bottom:5px;">{{ rl.body_outline|default('', true) }}</div>
+                            <div style="font-size:0.72rem; color:var(--blue); font-weight:700;">誘導導線：<code>{{ rl.cta_route|default('?s=reel_gap', true) }}</code></div>
                         </div>
                         {% endfor %}
                     {% else %}
@@ -1566,12 +1590,12 @@
         </div>
 
         <!-- 3-Layer Closed-Loop SNS Insights, Carbon Vision, CSV Direct Ingestion & Reel Bandit Studio -->
-        {% set reel_diag = loop_fb.reel_diagnostics if loop_fb is mapping and loop_fb.reel_diagnostics is defined else {} %}
-        {% set yt_diag = loop_fb.youtube_shorts_diagnostics if loop_fb is mapping and loop_fb.youtube_shorts_diagnostics is defined else {} %}
-        {% set gsc_diag = loop_fb.gsc_diagnostics if loop_fb is mapping and loop_fb.gsc_diagnostics is defined else {} %}
-        {% set hook_stats = loop_fb.hook_archetype_stats if loop_fb is mapping and loop_fb.hook_archetype_stats is defined else [] %}
-        {% set note_fb = loop_fb.note_ctr_feedback if loop_fb is mapping and loop_fb.note_ctr_feedback is defined else {} %}
-        {% set sample_cnts = loop_fb.sample_counts if loop_fb is mapping and loop_fb.sample_counts is defined else {} %}
+        {% set reel_diag = loop_fb.reel_diagnostics if loop_fb is mapping and loop_fb.reel_diagnostics is defined and loop_fb.reel_diagnostics is mapping else {} %}
+        {% set yt_diag = loop_fb.youtube_shorts_diagnostics if loop_fb is mapping and loop_fb.youtube_shorts_diagnostics is defined and loop_fb.youtube_shorts_diagnostics is mapping else {} %}
+        {% set gsc_diag = loop_fb.gsc_diagnostics if loop_fb is mapping and loop_fb.gsc_diagnostics is defined and loop_fb.gsc_diagnostics is mapping else {} %}
+        {% set hook_stats = loop_fb.hook_archetype_stats if loop_fb is mapping and loop_fb.hook_archetype_stats is defined and loop_fb.hook_archetype_stats is iterable and loop_fb.hook_archetype_stats is not string and loop_fb.hook_archetype_stats is not mapping else [] %}
+        {% set note_fb = loop_fb.note_ctr_feedback if loop_fb is mapping and loop_fb.note_ctr_feedback is defined and loop_fb.note_ctr_feedback is mapping else {} %}
+        {% set sample_cnts = loop_fb.sample_counts if loop_fb is mapping and loop_fb.sample_counts is defined and loop_fb.sample_counts is mapping else {} %}
         <div class="card" id="pdca-closed-loop" style="margin-bottom:18px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
                 <h2 id="closed-loop-heading" style="font-size:1rem; margin:0;">3層クローズドループ学習スタジオ（Meta API自動回収・Search Console / YouTube CSV取込・スクショ読取）</h2>
@@ -1591,23 +1615,23 @@
             <div class="kpi-strip" style="margin-bottom:12px;">
                 <div class="kpi-cell">
                     <div class="kpi-label">蓄積テキスト投稿（Threads/X）</div>
-                    <div class="kpi-val">{{ sample_cnts.text_posts_with_views|default(0) }}本</div>
+                    <div class="kpi-val">{{ sample_cnts.text_posts_with_views|default(0, true) }}本</div>
                     <div class="kpi-sub">1行目フック学習母数</div>
                 </div>
                 <div class="kpi-cell">
                     <div class="kpi-label">IGリール実測平均再生</div>
-                    <div class="kpi-val">{% if reel_diag.avg_watch_sec is not none and reel_diag.avg_watch_sec is defined %}{{ reel_diag.avg_watch_sec }}秒{% else %}未計測{% endif %}</div>
-                    <div class="kpi-sub">計測リール {{ reel_diag.sample_count|default(0) }}本（3Dは22秒基準）</div>
+                    <div class="kpi-val">{% if reel_diag.avg_watch_sec is defined and reel_diag.avg_watch_sec is not none %}{{ reel_diag.avg_watch_sec }}秒{% else %}未計測{% endif %}</div>
+                    <div class="kpi-sub">計測リール {{ reel_diag.sample_count|default(0, true) }}本（3Dは22秒基準）</div>
                 </div>
                 <div class="kpi-cell">
                     <div class="kpi-label">YouTubeショート視聴選択率</div>
-                    <div class="kpi-val">{% if yt_diag.avg_stayed_to_watch_pct is not none and yt_diag.avg_stayed_to_watch_pct is defined %}{{ yt_diag.avg_stayed_to_watch_pct }}%{% else %}未取込{% endif %}</div>
-                    <div class="kpi-sub">計測ショート {{ yt_diag.sample_count|default(0) }}本{% if yt_diag.avg_pct_viewed is not none %} / 再生率 {{ yt_diag.avg_pct_viewed }}%{% endif %}</div>
+                    <div class="kpi-val">{% if yt_diag.avg_stayed_to_watch_pct is defined and yt_diag.avg_stayed_to_watch_pct is not none %}{{ yt_diag.avg_stayed_to_watch_pct }}%{% else %}未取込{% endif %}</div>
+                    <div class="kpi-sub">計測ショート {{ yt_diag.sample_count|default(0, true) }}本{% if yt_diag.avg_pct_viewed is defined and yt_diag.avg_pct_viewed is not none %} / 再生率 {{ yt_diag.avg_pct_viewed }}%{% endif %}</div>
                 </div>
                 <div class="kpi-cell">
                     <div class="kpi-label">Search Console 実測クエリ</div>
-                    <div class="kpi-val">{{ sample_cnts.gsc_queries|default(0) }}件</div>
-                    <div class="kpi-sub">{% if gsc_diag.total_impressions is not none %}総表示 {{ '{:,}'.format(gsc_diag.total_impressions|int) }}回{% else %}CSVまたはスクショで反映{% endif %}</div>
+                    <div class="kpi-val">{{ sample_cnts.gsc_queries|default(0, true) }}件</div>
+                    <div class="kpi-sub">{% if gsc_diag.total_impressions is defined and gsc_diag.total_impressions is not none %}総表示 {{ '{:,}'.format(gsc_diag.total_impressions|int) }}回{% else %}CSVまたはスクショで反映{% endif %}</div>
                 </div>
             </div>
 
@@ -1873,16 +1897,17 @@
                             </thead>
                             <tbody>
                                 {% for hs in hook_stats %}
+                                {% set _hs_boost = hs.score_boost|default(0, true)|int %}
                                 <tr>
-                                    <td><strong>{{ hs.label }}</strong></td>
-                                    <td>{{ hs.sample_count }}本</td>
-                                    <td>{{ hs.avg_views }}回</td>
-                                    <td>{{ hs.lift_ratio }}倍</td>
+                                    <td><strong>{{ hs.label|default('-', true) }}</strong></td>
+                                    <td>{{ hs.sample_count|default(0, true) }}本</td>
+                                    <td>{{ hs.avg_views|default(0, true) }}回</td>
+                                    <td>{{ hs.lift_ratio|default(0, true) }}倍</td>
                                     <td>
-                                        {% if hs.score_boost > 0 %}
-                                        <span class="chip plus">+{{ hs.score_boost }}点</span>
-                                        {% elif hs.score_boost < 0 %}
-                                        <span class="chip minus">{{ hs.score_boost }}点</span>
+                                        {% if _hs_boost > 0 %}
+                                        <span class="chip plus">+{{ _hs_boost }}点</span>
+                                        {% elif _hs_boost < 0 %}
+                                        <span class="chip minus">{{ _hs_boost }}点</span>
                                         {% else %}
                                         <span>±0点</span>
                                         {% endif %}
@@ -1903,8 +1928,8 @@
                     <ul class="loop-list">
                         {% for nt in note_fb.top_titles %}
                         <li>
-                            <span>{{ nt.title }}</span>
-                            <strong>{{ nt.views }}ビュー{% if nt.likes is not none %} / スキ {{ nt.likes }}{% endif %}</strong>
+                            <span>{{ nt.title|default('', true) }}</span>
+                            <strong>{{ nt.views|default(0, true) }}ビュー{% if nt.likes is defined and nt.likes is not none %} / スキ {{ nt.likes }}{% endif %}</strong>
                         </li>
                         {% endfor %}
                     </ul>
@@ -1927,15 +1952,16 @@
                             </thead>
                             <tbody>
                                 {% for rb in reel_diag.bandit_table %}
+                                {% set _rb_boost = rb.bandit_boost|default(0, true)|int %}
                                 <tr>
-                                    <td><strong>{{ rb.label }}</strong></td>
-                                    <td>{{ rb.sample_count }}本</td>
-                                    <td>{% if rb.avg_watch_sec is not none %}{{ rb.avg_watch_sec }}秒{% else %}-{% endif %}</td>
-                                    <td>{% if rb.avg_skip_rate_pct is not none %}{{ rb.avg_skip_rate_pct }}%{% else %}-{% endif %}</td>
+                                    <td><strong>{{ rb.label|default('-', true) }}</strong></td>
+                                    <td>{{ rb.sample_count|default(0, true) }}本</td>
+                                    <td>{% if rb.avg_watch_sec is defined and rb.avg_watch_sec is not none %}{{ rb.avg_watch_sec }}秒{% else %}-{% endif %}</td>
+                                    <td>{% if rb.avg_skip_rate_pct is defined and rb.avg_skip_rate_pct is not none %}{{ rb.avg_skip_rate_pct }}%{% else %}-{% endif %}</td>
                                     <td>
-                                        <strong>{{ rb.ucb_score }}</strong>
-                                        {% if rb.bandit_boost > 0 %}
-                                        <span class="chip plus">+{{ rb.bandit_boost }}</span>
+                                        <strong>{{ rb.ucb_score|default(0, true) }}</strong>
+                                        {% if _rb_boost > 0 %}
+                                        <span class="chip plus">+{{ _rb_boost }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -1969,11 +1995,11 @@
                             <tbody>
                                 {% for ys in yt_diag.top_shorts %}
                                 <tr>
-                                    <td><strong>{{ ys.title[:38] }}</strong></td>
-                                    <td>{% if ys.views is not none %}{{ '{:,}'.format(ys.views|int) }}回{% else %}-{% endif %}</td>
-                                    <td>{% if ys.stayed_to_watch_pct is not none %}{{ ys.stayed_to_watch_pct }}%{% else %}-{% endif %}</td>
-                                    <td>{% if ys.avg_pct_viewed is not none %}{{ ys.avg_pct_viewed }}%{% elif ys.avg_watch_sec is not none %}{{ ys.avg_watch_sec }}秒{% else %}-{% endif %}</td>
-                                    <td><strong>{{ ys.quality_score }}</strong></td>
+                                    <td><strong>{{ (ys.title|default('', true))[:38] }}</strong></td>
+                                    <td>{% if ys.views is defined and ys.views is not none %}{{ '{:,}'.format(ys.views|int) }}回{% else %}-{% endif %}</td>
+                                    <td>{% if ys.stayed_to_watch_pct is defined and ys.stayed_to_watch_pct is not none %}{{ ys.stayed_to_watch_pct }}%{% else %}-{% endif %}</td>
+                                    <td>{% if ys.avg_pct_viewed is defined and ys.avg_pct_viewed is not none %}{{ ys.avg_pct_viewed }}%{% elif ys.avg_watch_sec is defined and ys.avg_watch_sec is not none %}{{ ys.avg_watch_sec }}秒{% else %}-{% endif %}</td>
+                                    <td><strong>{{ ys.quality_score|default('-', true) }}</strong></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -1990,11 +2016,11 @@
                     <h3 id="gsc-query-table-heading" class="loop-subhead">Loop 2C：Search Console 実測上位＆お宝クエリ（高表示・低CTR）</h3>
                     {% if gsc_diag.finalized_through_date %}
                     <div style="font-size:0.74rem; color:var(--sub); margin-bottom:8px; font-variant-numeric:tabular-nums;">
-                        API自動同期済（確定期間: {{ gsc_diag.window_start_date }}〜{{ gsc_diag.finalized_through_date }}｜直近48h未確定ラグ除外）
-                        {% if gsc_diag.w1_clicks is not none and gsc_diag.w2_clicks is not none %}
-                        ／ 週次クリック: 先々週 {{ gsc_diag.w1_clicks }}回（表示{{ gsc_diag.w1_impressions }}）→ 先週 {{ gsc_diag.w2_clicks }}回（表示{{ gsc_diag.w2_impressions }}）
-                        {% if gsc_diag.continuing_pages_count is not none and gsc_diag.new_pages_count is not none %}
-                        ［継続{{ gsc_diag.continuing_pages_count }}頁: {{ gsc_diag.continuing_w1_clicks }}→{{ gsc_diag.continuing_w2_clicks }}回 ／ 新規インデックス{{ gsc_diag.new_pages_count }}頁: +{{ gsc_diag.new_w2_clicks }}回］
+                        API自動同期済（確定期間: {{ gsc_diag.window_start_date|default('', true) }}〜{{ gsc_diag.finalized_through_date }}｜直近48h未確定ラグ除外）
+                        {% if gsc_diag.w1_clicks is defined and gsc_diag.w1_clicks is not none and gsc_diag.w2_clicks is defined and gsc_diag.w2_clicks is not none %}
+                        ／ 週次クリック: 先々週 {{ gsc_diag.w1_clicks }}回（表示{{ gsc_diag.w1_impressions|default(0, true) }}）→ 先週 {{ gsc_diag.w2_clicks }}回（表示{{ gsc_diag.w2_impressions|default(0, true) }}）
+                        {% if gsc_diag.continuing_pages_count is defined and gsc_diag.continuing_pages_count is not none and gsc_diag.new_pages_count is defined and gsc_diag.new_pages_count is not none %}
+                        ［継続{{ gsc_diag.continuing_pages_count }}頁: {{ gsc_diag.continuing_w1_clicks|default(0, true) }}→{{ gsc_diag.continuing_w2_clicks|default(0, true) }}回 ／ 新規インデックス{{ gsc_diag.new_pages_count }}頁: +{{ gsc_diag.new_w2_clicks|default(0, true) }}回］
                         {% endif %}
                         {% endif %}
                     </div>
@@ -2013,16 +2039,17 @@
                             </thead>
                             <tbody>
                                 {% for gq in gsc_diag.top_queries[:8] %}
-                                {% set is_opp = (gq.impressions|default(0) >= 20 and (gq.ctr_pct is none or gq.ctr_pct <= 4.0)) %}
+                                {% set _gq_imp = gq.impressions|default(0, true)|int %}
+                                {% set is_opp = (_gq_imp >= 20 and (gq.ctr_pct is not defined or gq.ctr_pct is none or gq.ctr_pct <= 4.0)) %}
                                 <tr>
                                     <td>
-                                        <strong>{{ gq.query }}</strong>
+                                        <strong>{{ gq.query|default('', true) }}</strong>
                                         {% if is_opp %}<span class="chip plus">お宝枠</span>{% endif %}
                                     </td>
-                                    <td>{{ '{:,}'.format(gq.impressions|default(0)|int) }}回</td>
-                                    <td>{{ gq.clicks|default(0) }}回</td>
-                                    <td>{% if gq.ctr_pct is not none %}{{ gq.ctr_pct }}%{% else %}-{% endif %}</td>
-                                    <td>{% if gq.position is not none %}{{ gq.position }}位{% else %}-{% endif %}</td>
+                                    <td>{{ '{:,}'.format(_gq_imp) }}回</td>
+                                    <td>{{ gq.clicks|default(0, true) }}回</td>
+                                    <td>{% if gq.ctr_pct is defined and gq.ctr_pct is not none %}{{ gq.ctr_pct }}%{% else %}-{% endif %}</td>
+                                    <td>{% if gq.position is defined and gq.position is not none %}{{ gq.position }}位{% else %}-{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -2061,13 +2088,13 @@
                     <tbody>
                         {% for c in d.inflow_cohorts %}
                         <tr>
-                            <td><strong>{{ c.label }}</strong></td>
-                            <td><code>?s={{ c.tag }}</code></td>
-                            <td>{{ c.visits }}回</td>
-                            <td>{{ c.cushion_clicks|default(0) }}回（{{ c.cushion_rate_pct|default(0) }}%）</td>
-                            <td><strong>{{ c.conversions }}件</strong></td>
-                            <td>{{ c.cvr_pct }}%</td>
-                            <td><strong>¥{{ c.est_revenue_yen|default(0) }}</strong>（EPC ¥{{ c.epc_yen|default(0) }}）</td>
+                            <td><strong>{{ c.label|default('-', true) }}</strong></td>
+                            <td><code>?s={{ c.tag|default('', true) }}</code></td>
+                            <td>{{ c.visits|default(0, true) }}回</td>
+                            <td>{{ c.cushion_clicks|default(0, true) }}回（{{ c.cushion_rate_pct|default(0, true) }}%）</td>
+                            <td><strong>{{ c.conversions|default(0, true) }}件</strong></td>
+                            <td>{{ c.cvr_pct|default(0, true) }}%</td>
+                            <td><strong>¥{{ c.est_revenue_yen|default(0, true) }}</strong>（EPC ¥{{ c.epc_yen|default(0, true) }}）</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -2081,7 +2108,8 @@
         </div>
 
         <!-- Article PV x Affiliate CTR Matrix -->
-        {% set all_articles = d.article_perf_all if d.article_perf_all is defined and d.article_perf_all else (d.article_perf or []) %}
+        {% set perf_articles = d.article_perf if d.article_perf is defined and d.article_perf is iterable and d.article_perf is not string and d.article_perf is not mapping else [] %}
+        {% set all_articles = d.article_perf_all if d.article_perf_all is defined and d.article_perf_all is iterable and d.article_perf_all is not string and d.article_perf_all is not mapping and d.article_perf_all else perf_articles %}
         <div class="card" id="pdca-articles" style="margin-bottom:18px;">
             <h2 style="font-size:0.98rem; margin:0 0 6px;">コラム記事別 PV × アフィリエイトクリック × CTR 成績表</h2>
             <p class="lead" style="margin-bottom:10px;">どの記事が収益を生んでいるか（高CV牽引）、どの記事が読まれているのに広告クリックされていないか（導線ロス）、未露出の睡眠記事が何本あるかを一覧化します。</p>
@@ -2098,24 +2126,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for a in (d.article_perf or []) %}
+                        {% for a in perf_articles %}
                         <tr>
-                            <td><a href="{{ a.path }}" target="_blank" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
-                            <td>{{ a.status_badge }}</td>
-                            <td>{{ a.pv }}回</td>
-                            <td><strong>{{ a.aff_clicks }}件</strong></td>
-                            <td>{{ a.ctr_pct }}%</td>
-                            <td><button type="button" class="copy-mini-btn" data-copy-url="{{ a.path }}?s=x18_tip" onclick="copyPromoUrlAttr(this)">URLコピー</button></td>
+                            <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
+                            <td>{{ a.status_badge|default('', true) }}</td>
+                            <td>{{ a.pv|default(0, true) }}回</td>
+                            <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
+                            <td>{{ a.ctr_pct|default(0, true) }}%</td>
+                            <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            {% if all_articles|length > (d.article_perf or [])|length %}
-            {% set rest_articles = all_articles[(d.article_perf or [])|length:] %}
+            {% if all_articles|length > perf_articles|length %}
+            {% set rest_articles = all_articles[perf_articles|length:] %}
             <details class="sleeping-details">
-                <summary>全{{ all_articles|length }}本中 残り{{ rest_articles|length }}本のコラム成績・未露出在庫（睡眠記事 {{ d.sleeping_count|default(0) }}本）を表示</summary>
+                <summary>全{{ all_articles|length }}本中 残り{{ rest_articles|length }}本のコラム成績・未露出在庫（睡眠記事 {{ d.sleeping_count|default(0, true) }}本）を表示</summary>
                 <div class="table-wrap" style="margin-top:10px; margin-bottom:0;">
                     <table class="pdca-table">
                         <thead>
@@ -2131,12 +2159,12 @@
                         <tbody>
                             {% for a in rest_articles %}
                             <tr>
-                                <td><a href="{{ a.path }}" target="_blank" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title }} ↗</a><br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path }}</span></td>
-                                <td>{{ a.status_badge }}</td>
-                                <td>{{ a.pv }}回</td>
-                                <td><strong>{{ a.aff_clicks }}件</strong></td>
-                                <td>{{ a.ctr_pct }}%</td>
-                                <td><button type="button" class="copy-mini-btn" data-copy-url="{{ a.path }}?s=x18_tip" onclick="copyPromoUrlAttr(this)">URLコピー</button></td>
+                                <td>{% set _ap = a.path|default('', true) %}{% set _ap_safe = (_ap is string and _ap.startswith('/') and not _ap.startswith('//') and not _ap.startswith('/@') and '\\' not in _ap and '\n' not in _ap and '\r' not in _ap and '\t' not in _ap and '\x00' not in _ap and '%5c' not in _ap|lower) %}{% if _ap_safe %}<a href="{{ _ap }}" target="_blank" rel="noopener noreferrer" style="color:var(--gold-ink); text-decoration:none; font-weight:700;">{{ a.title|default('', true) }} ↗</a>{% else %}<span style="color:var(--gold-ink); font-weight:700;">{{ a.title|default('', true) }}</span>{% endif %}<br><span style="font-size:0.72rem; color:var(--sub);">{{ a.path|default('', true) }}</span></td>
+                                <td>{{ a.status_badge|default('', true) }}</td>
+                                <td>{{ a.pv|default(0, true) }}回</td>
+                                <td><strong>{{ a.aff_clicks|default(0, true) }}件</strong></td>
+                                <td>{{ a.ctr_pct|default(0, true) }}%</td>
+                                <td>{% if _ap_safe %}<button type="button" class="copy-mini-btn" data-copy-url="{{ _ap }}{{ '&' if '?' in _ap else '?' }}s=x18_tip" data-pdca-action="copy-promo-url">URLコピー</button>{% else %}<span style="font-size:0.72rem; color:var(--sub);">-</span>{% endif %}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -2149,7 +2177,7 @@
         <!-- Recent Autonomous PDCA History -->
         <div class="card" id="pdca-history">
             <h2 style="font-size:0.96rem; margin:0 0 10px;">直近の自律PDCAサイクル実行ログ</h2>
-            {% if pdca.history %}
+            {% if pdca_obj.history %}
             <div class="table-wrap" style="margin-bottom:0;">
                 <table class="pdca-table">
                     <thead>
@@ -2162,18 +2190,18 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for h in pdca.history %}
+                        {% for h in pdca_obj.history %}
                         <tr>
-                            <td>{{ h.timestamp }}</td>
-                            <td><strong>{{ h.overall_score }}点</strong></td>
-                            <td>{{ h.focus_hub }}</td>
+                            <td>{{ h.timestamp|default('', true) }}</td>
+                            <td><strong>{{ h.overall_score|default(0, true) }}点</strong></td>
+                            <td>{{ h.focus_hub|default('-', true) }}</td>
                             <td>
                                 {% if h.boosted_styles %}
                                     {% for st_k in h.boosted_styles %}{% set st_base = st_k.split('(', 1)[0] %}{% set st_delta = '(' ~ st_k.split('(', 1)[1] if '(' in st_k else '' %}{{ st_labels.get(st_base, st_base) }}{{ st_delta }}{% if not loop.last %}, {% endif %}{% endfor %}
                                 {% else %}-{% endif %}
                             </td>
                             <td>
-                                {{ h.recommended_topic }}
+                                {{ h.recommended_topic|default('', true) }}
                                 {% if h.auto_scheduled_slug %}
                                 <span class="chip plus">自動予約補充済: /guide/{{ h.auto_scheduled_slug }}</span>
                                 {% endif %}
@@ -2195,8 +2223,20 @@
         }
 
         const CURRENT_DAYS = {{ days }};
-        const PENDING_ASYNC_AI = {{ 'true' if pdca.briefing.pending_async else 'false' }};
+        const PENDING_ASYNC_AI = {{ 'true' if pdca_briefing.pending_async else 'false' }};
         const STYLE_LABELS = {{ st_labels | tojson }};
+
+        function isSafePdcaInternalPath(p) {
+            if (typeof p !== 'string') return false;
+            if (!p.startsWith('/') || p.startsWith('//') || p.startsWith('/@') || p.includes('\\')) return false;
+            if (/[\x00-\x1f\x7f]/.test(p) || /%5c/i.test(p)) return false;
+            try {
+                const u = new URL(p, window.location.origin);
+                return u.origin === window.location.origin && u.pathname.startsWith('/');
+            } catch (e) {
+                return false;
+            }
+        }
 
         function syncDirectiveChips(act) {
             const boostEl = document.getElementById('dir-sns-boosts');
@@ -2228,10 +2268,11 @@
                 const paths = (act && Array.isArray(act.priority_column_paths)) ? act.priority_column_paths : [];
                 if (paths.length > 0) {
                     paths.forEach((p) => {
-                        if (typeof p !== 'string' || !p.startsWith('/')) return;
+                        if (!isSafePdcaInternalPath(p)) return;
                         const a = document.createElement('a');
                         a.href = p;
                         a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
                         a.className = 'chip';
                         a.textContent = `${p} ↗`;
                         colEl.appendChild(a);
@@ -2306,8 +2347,8 @@
         }
 
         function copyPromoUrlAttr(btn) {
-            const rel = btn && btn.getAttribute('data-copy-url');
-            if (!rel) return;
+            const rel = (btn && btn.getAttribute('data-copy-url')) || '';
+            if (!rel || rel.charAt(0) !== '/' || rel.indexOf('//') === 0 || rel.indexOf('/@') === 0 || rel.indexOf('\\') !== -1) return;
             const fullUrl = window.location.origin + rel;
             copyTextSafe(fullUrl, `SNS送客用URLをコピーしました: ${fullUrl}`);
         }
@@ -2376,7 +2417,7 @@
             }
         }
 
-        const PRIMARY_AI_LABEL = {{ ('Claude Opus' if (pdca.gemini_status and pdca.gemini_status.primary_provider == 'claude') else '上位AI') | tojson }};
+        const PRIMARY_AI_LABEL = {{ ('Claude Opus' if (pdca_obj.gemini_status is defined and pdca_obj.gemini_status is mapping and pdca_obj.gemini_status.primary_provider == 'claude') else '上位AI') | tojson }};
         async function refreshBriefing(forceRefresh) {
             const pill = document.getElementById('briefing-pill');
             if (pill && forceRefresh) {
@@ -2897,6 +2938,31 @@
                 });
             }
         });
+
+        if (!window.__pdcaActionsBound) {
+            window.__pdcaActionsBound = true;
+            document.addEventListener('click', (ev) => {
+                const btn = ev.target && ev.target.closest ? ev.target.closest('[data-pdca-action]') : null;
+                if (!btn) return;
+                const act = btn.getAttribute('data-pdca-action');
+                if (act === 'run-now') {
+                    runPdcaNow();
+                } else if (act === 'refresh-briefing') {
+                    refreshBriefing(true);
+                } else if (act === 'copy-attr') {
+                    copyFromDataAttr(btn);
+                } else if (act === 'copy-promo-url') {
+                    copyPromoUrlAttr(btn);
+                }
+            });
+            document.addEventListener('change', (ev) => {
+                const el = ev.target && ev.target.closest ? ev.target.closest('[data-pdca-change]') : null;
+                if (!el) return;
+                if (el.getAttribute('data-pdca-change') === 'save-settings') {
+                    savePdcaSettings();
+                }
+            });
+        }
 
         const INITIAL_PDCA_FORCE_AI = {{ 'true' if request.args.get('refresh_ai') == '1' else 'false' }};
         if (INITIAL_PDCA_FORCE_AI) {

@@ -1449,12 +1449,6 @@
             const MIN_WOMEN_TOP = {{ data.min_women_top }};
             const JP_HOLIDAYS = new Set({{ data.jp_holidays | tojson }});
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations()
-                    .then(regs => regs.forEach(r => r.update()))
-                    .catch(() => {});
-            }
-
             function fmtIsoDateUTC(dt) {
                 const y = dt.getUTCFullYear();
                 const m = String(dt.getUTCMonth() + 1).padStart(2, '0');

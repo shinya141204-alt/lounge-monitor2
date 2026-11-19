@@ -295,8 +295,9 @@ class TestFableOpusAuditOptimizations(unittest.TestCase):
         """Batch 3 H1: job_state uses SECRET_KEY, decodes legacy obfuscated tokens, and rejects broken obf1 strings."""
         with mock.patch.dict(os.environ, {"SECRET_KEY": "unit-test-secret-key-xyz"}, clear=False):
             enc = job_state._obfuscate_secret("my-access-token-123")
-            self.assertTrue(enc.startswith("obf1:"))
+            self.assertTrue(enc.startswith("obf2:"))
             self.assertEqual(job_state._deobfuscate_secret(enc), "my-access-token-123")
+            self.assertEqual(job_state._deobfuscate_secret("obf2:corrupted_invalid_hex"), "")
             self.assertEqual(job_state._deobfuscate_secret("obf1:corrupted_invalid_hex"), "")
 
     def test_media_qa_ogp_failopen_x_weight_and_eyecatch_traversal_guard(self):

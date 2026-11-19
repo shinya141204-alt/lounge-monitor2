@@ -161,12 +161,40 @@
             '相席CLOVERS 広島': 'clovers-hiroshima',
             '相席ラウンジALFA 広島': 'alfa-hiroshima'
         };
+        const _PUBLIC_TO_INTERNAL_FALLBACK = (() => {
+            const slugToInternal = Object.create(null);
+            for (const [intKey, sl] of Object.entries(STORE_SLUG_FALLBACK)) {
+                if (sl && !slugToInternal[sl]) slugToInternal[sl] = intKey;
+            }
+            const pubToInternal = Object.create(null);
+            for (const [pubName, sl] of Object.entries(PUBLIC_NAME_SLUG_FALLBACK)) {
+                if (pubName && sl && slugToInternal[sl]) {
+                    pubToInternal[pubName] = slugToInternal[sl];
+                }
+            }
+            pubToInternal['オリエンタルラウンジ ソウル 江南(カンナム)'] = 'OLG ソウル カンナム';
+            pubToInternal['オリエンタルラウンジ ソウル 弘大(ホンデ)'] = 'OLG ソウル ホンデ';
+            return pubToInternal;
+        })();
         function _toInternalMasterKey(name) {
             const s = String(name || '').trim();
             if (!s) return '';
+            if (_PUBLIC_TO_INTERNAL_FALLBACK[s]) return _PUBLIC_TO_INTERNAL_FALLBACK[s];
+            if (window.STORE_MASTER) {
+                if (window.STORE_MASTER[s]) return s;
+                for (const k of Object.keys(window.STORE_MASTER)) {
+                    const info = window.STORE_MASTER[k];
+                    if (info && (info.seo_name === s || info.display_name === s)) return k;
+                }
+            }
             if (s.indexOf('オリエンタルラウンジ ') === 0) return 'OLG ' + s.slice('オリエンタルラウンジ '.length);
             if (s.indexOf('ag（アグ）') === 0) return 'OLG ag' + s.slice('ag（アグ）'.length);
             if (s.indexOf('ASOBIBAR（アソビバー）') === 0) return 'ASOBIBAR ' + s.slice('ASOBIBAR（アソビバー）'.length);
+            if (s.indexOf('JIS（ジス）') === 0) return 'JIS ' + s.slice('JIS（ジス）'.length);
+            if (s.indexOf('相席ラウンジXIX ') === 0) return 'XIX ' + s.slice('相席ラウンジXIX '.length);
+            if (s.indexOf('ヤタコイ ') === 0) return 'YATAKOI ' + s.slice('ヤタコイ '.length);
+            if (s.indexOf('相席CLOVERS ') === 0) return 'CLOVERS ' + s.slice('相席CLOVERS '.length);
+            if (s.indexOf('相席ラウンジALFA ') === 0) return 'ALFA ' + s.slice('相席ラウンジALFA '.length);
             return s;
         }
         function getStoreMasterInfo(storeName) {
@@ -511,9 +539,15 @@
         ];
 
         function _storeMatchesArea(storeName, areaKeyword) {
-            const cleanStore = String(storeName || '').toUpperCase().replace(/\s+/g, '');
-            const cleanKw = String(areaKeyword || '').toUpperCase().replace(/\s+/g, '');
+            const intStore = _toInternalMasterKey(storeName);
+            const intKw = _toInternalMasterKey(areaKeyword);
+            const cleanStore = String(intStore || storeName || '').toUpperCase().replace(/\s+/g, '');
+            const cleanKw = String(intKw || areaKeyword || '').toUpperCase().replace(/\s+/g, '');
             if (!cleanStore || !cleanKw) return false;
+
+            if (intStore && intKw && intStore.toUpperCase() === intKw.toUpperCase()) {
+                return true;
+            }
 
             // 0. Canonical full store name exact match (e.g. 'OLG 新宿', 'OLG ag渋谷', 'OLG 名古屋 栄')
             if (cleanKw.startsWith('OLG') || cleanKw.startsWith('JIS') || cleanKw.startsWith('ALFA') || cleanKw.startsWith('CLOVERS') || cleanKw.startsWith('XIX') || cleanKw.startsWith('YATAKOI')) {
@@ -521,7 +555,7 @@
             }
 
             // 1. Direct exact matching for JIS shops
-            const cleanJis = String(storeName).toUpperCase().trim();
+            const cleanJis = String(intStore || storeName).toUpperCase().trim();
             if (JIS_STORE_TO_AREAS[cleanJis]) {
                 const ak = String(areaKeyword).toLowerCase().trim();
                 return JIS_STORE_TO_AREAS[cleanJis].includes(ak);
@@ -612,7 +646,8 @@
                             if (hasDiff) {
                                 updateUI(window.lastData);
                             } else {
-                                _lastRenderedSignature = _computeUiSignature(window.lastData);
+                                const staleState = getDataStaleState(window.lastData);
+                                _lastRenderedSignature = _computeUiSignature(window.lastData) + `#stale:${staleState}`;
                             }
                         }
                     }
@@ -632,15 +667,21 @@
             if (_storeEventsCache[key] && _storeEventsCache[key].all) {
                 return _storeEventsCache[key].all;
             }
+            const intName = _toInternalMasterKey(key);
             const clean = key.toUpperCase();
-            const isJis = clean.includes('JIS');
-            const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('AG');
+            const cleanInt = intName.toUpperCase();
+            const isJis = clean.includes('JIS') || cleanInt.includes('JIS');
+            const isOlg = clean.includes('OLG') || clean.includes('ORIENTAL') || clean.includes('オリエンタル') || cleanInt.includes('OLG') || cleanInt.includes('AG');
 
             const all = window.allEvents.filter(ev => {
                 // Filter out ubiquitous default perks & administrative notices
                 const t = ev.title || '';
-                if (t.includes('フード食べ放題') || t.includes('女性限定フード') || t.includes('イベントを一挙ご紹介') || t.includes('募集停止') || t.includes('メンテナンス')) return false;
-                if (ev.store_name && ev.store_name.toUpperCase().trim() === clean) return true;
+                if (t.includes('フード食べ放題') || t.includes('女性限定フード') || t.includes('イベントを一挙ご紹介') ||
+                    t.includes('各店イベント') || t.includes('今月のイベント') || t.includes('募集停止') ||
+                    t.includes('メンテナンス') || t.includes('システム障害') || t.includes('規約改定') ||
+                    t.includes('プライバシーポリシー') || t.includes('臨時休業') || t.includes('営業時間変更のお知らせ')) return false;
+                const evStoreUp = ev.store_name ? String(ev.store_name).toUpperCase().trim() : '';
+                if (evStoreUp && (evStoreUp === clean || evStoreUp === cleanInt || _toInternalMasterKey(ev.store_name).toUpperCase().trim() === cleanInt)) return true;
 
                 if (isJis && ev.brand === 'JIS') {
                     if (!ev.target_stores || ev.target_stores.length === 0) {
@@ -648,7 +689,7 @@
                     }
                     return ev.target_stores.some(area => _storeMatchesArea(storeName, area));
                 }
-                if (isOlg && ev.brand === 'OLG') {
+                if (isOlg && (ev.brand === 'OLG' || ev.brand === 'オリエンタルラウンジ' || ev.brand === 'ORIENTAL_LOUNGE')) {
                     let targets = ev.target_stores || [];
                     if (targets.length === 0 && t.includes('17店舗')) {
                         targets = OLG_17_STORES_JS;
@@ -660,7 +701,12 @@
                 }
                 return false;
             });
-            const specific = all.filter(e => (e.store_name && e.store_name.toUpperCase().trim() === clean) || (e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店') || (e.title && e.title.includes('17店舗')));
+            const specific = all.filter(e => {
+                const es = e.store_name ? String(e.store_name).toUpperCase().trim() : '';
+                return (es && (es === clean || es === cleanInt || _toInternalMasterKey(e.store_name).toUpperCase().trim() === cleanInt)) ||
+                    (e.target_stores && e.target_stores.length > 0 && e.target_label !== '全店共通' && e.target_label !== 'JIS全店') ||
+                    (e.title && e.title.includes('17店舗'));
+            });
             _storeEventsCache[key] = { all, specific };
             return all;
         }
@@ -1431,9 +1477,18 @@
             } catch (e) {}
         })();
 
+        function _isKoreaStore(store) {
+            if (!store) return false;
+            if (store.region === 'Korea') return true;
+            const raw = `${store.name || ''} ${store.seo_name || ''}`;
+            const up = raw.toUpperCase();
+            return raw.includes('カンナム') || raw.includes('ホンデ') || raw.includes('ソウル') ||
+                up.includes('GANGNAM') || up.includes('HONGDAE') || up.includes('SEOUL');
+        }
+
         function _isAllDomesticClosedJs(data) {
             if (data && Array.isArray(data.ranking) && data.ranking.length > 0) {
-                const domStores = data.ranking.filter(s => s && s.region !== 'Korea' && !String(s.name || '').includes('カンナム') && !String(s.name || '').includes('ホンデ'));
+                const domStores = data.ranking.filter(s => s && !_isKoreaStore(s));
                 if (domStores.length > 0) {
                     return domStores.every(s => !s.is_open_now && (Math.max(0, Number(s.women || 0)) + Math.max(0, Number(s.men || 0))) === 0);
                 }
@@ -1514,7 +1569,7 @@
             }
             const h1El = document.getElementById('main-hero-h1');
             if (h1El && !IS_STAFF) {
-                h1El.textContent = (staleState === 'live' && !daytime10m)
+                h1El.textContent = (staleState === 'live' && !data.is_seed && !daytime10m)
                     ? `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を1分更新`
                     : `相席ラウンジ、いま入れる店は？全国${totalStores}店の男女人数を横断チェック`;
             }
@@ -1544,8 +1599,8 @@
             const preopenCountEl = document.getElementById('preopen-count-num');
             if (!rankingListEl || !data || !Array.isArray(data.ranking)) return 0;
 
-            const domStores = data.ranking.filter(s => s && s.region !== 'Korea' && !String(s.name || '').includes('カンナム') && !String(s.name || '').includes('ホンデ'));
-            const allClosed = !IS_STAFF && domStores.length > 0 && domStores.every(s => _isPreopenZeroStore(s));
+            const domStores = data.ranking.filter(s => s && !_isKoreaStore(s));
+            const allClosed = !IS_STAFF && !data.is_seed && domStores.length > 0 && domStores.every(s => _isPreopenZeroStore(s));
 
             const present = new Set();
             document.querySelectorAll('#ranking-list .ranking-item[data-store], #pinned-list .ranking-item[data-store], #preopen-ranking-list .ranking-item[data-store]').forEach(el => {
@@ -1555,7 +1610,7 @@
             const missingPreopen = [];
             data.ranking.forEach((s, idx) => {
                 if (!s || !s.name || present.has(s.name) || pinnedStores.includes(s.name)) return;
-                if (!IS_STAFF && !allClosed && _isPreopenZeroStore(s)) {
+                if (!IS_STAFF && !allClosed && _isPreopenZeroStore(s) && !_isKoreaStore(s)) {
                     missingPreopen.push({ store: s, idx });
                 } else {
                     missingOpen.push({ store: s, idx });
@@ -1629,8 +1684,9 @@
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0 && !window.INITIAL_STATUS_DATA.is_seed) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
-                    syncStaleHeaderAndBanner(window.INITIAL_STATUS_DATA);
+                    const initStaleState = syncStaleHeaderAndBanner(window.INITIAL_STATUS_DATA);
                     const rankingListEl = document.getElementById('ranking-list');
+                    const pinnedListEl = document.getElementById('pinned-list');
                     const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
                     const canHydrateSsrZeroDom = (
@@ -1641,10 +1697,10 @@
                         currentSort === 'women' &&
                         currentSearch === '' &&
                         rankingListEl &&
-                        rankingListEl.children.length > 0
+                        (rankingListEl.children.length > 0 || (pinnedAlreadyHydrated && pinnedListEl && pinnedListEl.children.length > 0))
                     );
                     if (canHydrateSsrZeroDom) {
-                        _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA);
+                        _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA) + `#stale:${initStaleState}`;
                         _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
                         _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
                         syncPrAlternativesSection(window.INITIAL_STATUS_DATA.ranking);
@@ -1686,11 +1742,28 @@
                 if (window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking) && window.INITIAL_STATUS_DATA.ranking.length > 0) {
                     window.lastData = window.INITIAL_STATUS_DATA;
                     isInitialLoad = false;
+                    const initStaleState = syncStaleHeaderAndBanner(window.INITIAL_STATUS_DATA);
                     const rankingListEl = document.getElementById('ranking-list');
+                    const pinnedListEl = document.getElementById('pinned-list');
+                    const staffEventsMismatch = IS_STAFF && shouldShowEvents();
                     const pinnedAlreadyHydrated = (pinnedStores.length === 0) || Boolean(window.__SSR_PINNED_HYDRATED);
-                    if (!rankingListEl || rankingListEl.children.length === 0 || !pinnedAlreadyHydrated) {
+                    const canHydrateSsrSeedDom = (
+                        !staffEventsMismatch &&
+                        pinnedAlreadyHydrated &&
+                        currentAudience === 'men' &&
+                        currentFilter === 'All' &&
+                        currentSort === 'women' &&
+                        currentSearch === '' &&
+                        rankingListEl &&
+                        (rankingListEl.children.length > 0 || (pinnedAlreadyHydrated && pinnedListEl && pinnedListEl.children.length > 0))
+                    );
+                    if (!canHydrateSsrSeedDom) {
                         updateUI(window.INITIAL_STATUS_DATA);
                     } else {
+                        _lastRenderedSignature = _computeUiSignature(window.INITIAL_STATUS_DATA) + `#stale:${initStaleState}`;
+                        _lastAnimatedTimestamp = window.INITIAL_STATUS_DATA.timestamp || '';
+                        _syncPrevStoreCounts(window.INITIAL_STATUS_DATA.ranking);
+                        syncPrAlternativesSection(window.INITIAL_STATUS_DATA.ranking);
                         appendDeferredSsrStores(window.INITIAL_STATUS_DATA);
                         Promise.resolve().then(() => {
                             if (typeof syncPcInspector === 'function') {
@@ -1868,6 +1941,20 @@
                 }
 
                 isInitialLoad = false;
+                if (!_eventsFetched && Array.isArray(data.ranking) && window.INITIAL_STATUS_DATA && Array.isArray(window.INITIAL_STATUS_DATA.ranking)) {
+                    const ssrBadgeByName = Object.create(null);
+                    window.INITIAL_STATUS_DATA.ranking.forEach(s => {
+                        if (s && s.name && s.ssr_event_badge) {
+                            ssrBadgeByName[s.name] = { b: s.ssr_event_badge, t: s.ssr_event_title || '' };
+                        }
+                    });
+                    data.ranking.forEach(s => {
+                        if (s && s.name && !s.ssr_event_badge && ssrBadgeByName[s.name]) {
+                            s.ssr_event_badge = ssrBadgeByName[s.name].b;
+                            s.ssr_event_title = ssrBadgeByName[s.name].t;
+                        }
+                    });
+                }
                 window.lastData = data;
                 _resetRetryState();
                 scheduleStatusCacheWrite(data);
@@ -2359,7 +2446,7 @@
                 pinBtn.setAttribute('aria-pressed', isPinnedNow ? 'true' : 'false');
             }
 
-            const isKoreaStore = store.region === 'Korea' || (store.name && (store.name.includes('カンナム') || store.name.includes('ホンデ')));
+            const isKoreaStore = _isKoreaStore(store);
             const isPreopenCard = !IS_STAFF && index < 0 && !isPinned;
             const displayRank = (isKoreaStore || isPreopenCard) ? '-' : (globalIndex !== null ? globalIndex + 1 : index + 1);
             const staleHalted = !IS_STAFF && getDataStaleState(window.lastData) === 'halted';
@@ -2794,16 +2881,24 @@
                 refs.bentoKickerLabel.textContent = getLocalizedBentoKicker(isWomenBentoView);
             }
             if (refs.bentoVerdictPill) {
-                const waitMenMin = Number((store.wait_estimate && store.wait_estimate.est_wait_men_min) || 0);
+                const hasWaitEst = Boolean(store.wait_estimate && (store.wait_estimate.est_wait_men_min != null || store.wait_estimate.est_men_wait_groups != null));
+                const waitMenMin = hasWaitEst ? Math.max(0, Number(store.wait_estimate.est_wait_men_min || 0)) : 0;
                 const isJisPos = (store.source_kind === 'jis_pos') || Boolean(store.has_jis_pos) || String(store.source || '').toLowerCase() === 'jis';
-                const jisWaitGrp = Number(store.jis_wait_m_grp || (store.wait_estimate && store.wait_estimate.est_men_wait_groups) || 0);
-                let vLabel = '即相席圏（推定待ち0分）';
+                const isJisPosMeasured = isJisPos && (store.jis_wait_m_grp != null);
+                const jisWaitGrp = isJisPosMeasured ? Math.max(0, Number(store.jis_wait_m_grp)) : 0;
+                let vLabel = '入店人数を集計中';
                 let vOk = true;
                 let vClosed = false;
                 if (totalCount === 0) {
-                    vLabel = '営業時間外';
-                    vOk = false;
-                    vClosed = true;
+                    if (store.is_open_now) {
+                        vLabel = '営業中（0 : 0）';
+                        vOk = true;
+                        vClosed = false;
+                    } else {
+                        vLabel = '営業時間外';
+                        vOk = false;
+                        vClosed = true;
+                    }
                 } else if (isWomenBentoView) {
                     if (menCount >= 4 && menCount >= ladiesCount) {
                         vLabel = '女性待ち0・即案内圏';
@@ -2818,18 +2913,21 @@
                         vLabel = '女性多め・待ち注意';
                         vOk = false;
                     }
-                } else if (isJisPos) {
+                } else if (isJisPosMeasured) {
                     vLabel = jisWaitGrp === 0 ? 'いま待ち0組（公式POS実測）' : `男性待ち${jisWaitGrp}組（公式POS実測）`;
                     vOk = jisWaitGrp === 0;
-                } else if (waitMenMin > 0) {
+                } else if (hasWaitEst && waitMenMin > 0) {
                     vLabel = `やや混雑（男性待ち約${waitMenMin}分）`;
                     vOk = false;
                 } else if (ladiesCount === 0 && menCount > 0) {
                     vLabel = '男性先行中（女性来店待ち）';
                     vOk = false;
-                } else {
+                } else if (hasWaitEst) {
                     vLabel = '即相席圏（推定待ち0分）';
                     vOk = true;
+                } else {
+                    vLabel = ladiesCount >= menCount ? '女性優位・案内目安算出中' : '入店人数を集計中';
+                    vOk = ladiesCount >= menCount;
                 }
                 refs.bentoVerdictPill.textContent = vLabel;
                 refs.bentoVerdictPill.classList.toggle('is-ok', vOk);
@@ -2840,8 +2938,21 @@
             if (refs.plan2ForecastEl) {
                 const fc = store.forecast_60m || null;
                 if (totalCount === 0) {
-                    const openHm = store.open_time_short || ((hrsShort.match(/(\d{1,2}:\d{2})/) || [])[1]) || '';
-                    refs.plan2ForecastEl.textContent = openHm ? `本日 ${openHm} オープン予定` : '営業時間外（開店後に自動更新）';
+                    if (store.is_open_now) {
+                        refs.plan2ForecastEl.textContent = '現在営業中（入店あり次第・毎分自動更新）';
+                    } else {
+                        const openHm = store.open_time_short || ((hrsShort.match(/(\d{1,2}:\d{2})/) || [])[1]) || '';
+                        let showOpenSoon = false;
+                        if (openHm && openHm.includes(':')) {
+                            const [oh, om] = openHm.split(':').map(n => parseInt(n, 10));
+                            const nowD = new Date();
+                            const jstMin = ((nowD.getUTCHours() + 9) % 24) * 60 + nowD.getUTCMinutes();
+                            if (Number.isFinite(oh) && Number.isFinite(om) && jstMin < (oh * 60 + om)) {
+                                showOpenSoon = true;
+                            }
+                        }
+                        refs.plan2ForecastEl.textContent = showOpenSoon ? `本日 ${openHm} オープン予定` : '営業時間外（開店後に自動更新）';
+                    }
                 } else if (fc && fc.pred_60m_wpct !== null && fc.pred_60m_wpct !== undefined && Number.isFinite(Number(fc.pred_60m_wpct))) {
                     const wp = Math.round(Number(fc.pred_60m_wpct));
                     const dPt = Number(fc.pred_delta_pt || 0);
@@ -2941,7 +3052,7 @@
                 }
             }
             const nextSig = _computeUiSignature(data) + `#stale:${staleState}`;
-            if (nextSig === _lastRenderedSignature && rankingList.children.length > 0) {
+            if (nextSig === _lastRenderedSignature && (rankingList.children.length > 0 || (pinnedList && pinnedList.children.length > 0))) {
                 return;
             }
             _lastRenderedSignature = nextSig;
@@ -3066,7 +3177,7 @@
                 });
             }
 
-            const _isKorea = (s) => (s.region === 'Korea' || (s.name && (s.name.includes('カンナム') || s.name.includes('ホンデ')))) ? 1 : 0;
+            const _isKorea = (s) => _isKoreaStore(s) ? 1 : 0;
 
             if (currentSort === 'nearby' && userLocation) {
                 filteredStores.sort((a, b) => {
@@ -3203,8 +3314,9 @@
                         openCands.push(it);
                     }
                 });
-                const activeNonKorea = openCands.filter(it => !_isKorea(it.store));
-                if (activeNonKorea.length === 0 && preCands.length > 0) {
+                const allDomStores = stores.filter(s => s && !_isKorea(s));
+                const isGlobalAllClosed = !data.is_seed && allDomStores.length > 0 && allDomStores.every(s => _isPreopenZeroStore(s));
+                if (isGlobalAllClosed) {
                     allClosedMode = true;
                     mainRankingItems = otherItems.slice().sort((a, b) => {
                         const korDiff = _isKorea(a.store) - _isKorea(b.store);
@@ -3679,16 +3791,19 @@
                 const dLabel = dPt > 0 ? `+${dPt}pt` : `${dPt}pt`;
                 const cleanFcWomen = stripBadgeEmojiPrefix(fc.badge_women || '1時間後もスムーズ案内圏');
                 const cleanFcMen = stripBadgeEmojiPrefix(fc.badge_men || '');
+                const flipRiskTxt = (fc.flip_risk_pct != null && Number.isFinite(Number(fc.flip_risk_pct)))
+                    ? `<strong>${Number(fc.flip_risk_pct)}%</strong>`
+                    : '<strong>集計中</strong>';
                 const subHeadline = isWomenView
                     ? escapeHtml(cleanFcWomen)
-                    : `男余り逆転リスク <strong>${Number(fc.flip_risk_pct || 0)}%</strong>${cleanFcMen ? ' ｜ ' + escapeHtml(cleanFcMen) : ''}`;
+                    : `男余り逆転リスク ${flipRiskTxt}${cleanFcMen ? ' ｜ ' + escapeHtml(cleanFcMen) : ''}`;
                 const acc = fc.accuracy || null;
                 let accHtml = '';
-                if (acc && Number(acc.resolved_count || 0) >= 3) {
+                if (acc && Number(acc.resolved_count || 0) >= 3 && acc.mae_wpct != null && acc.within_10pt_pct != null && Number.isFinite(Number(acc.mae_wpct)) && Number.isFinite(Number(acc.within_10pt_pct))) {
                     const lat = acc.latest || null;
                     let latTxt = '';
-                    if (lat && lat.pred_wpct !== undefined && lat.actual_wpct !== undefined) {
-                        const ep = Number(lat.error_pt || 0);
+                    if (lat && lat.pred_wpct != null && lat.actual_wpct != null && Number.isFinite(Number(lat.pred_wpct)) && Number.isFinite(Number(lat.actual_wpct))) {
+                        const ep = (lat.error_pt != null && Number.isFinite(Number(lat.error_pt))) ? Number(lat.error_pt) : 0;
                         const epStr = ep > 0 ? `+${ep}pt` : (ep < 0 ? `${ep}pt` : '±0pt');
                         latTxt = `<br>直近答え合わせ（${escapeHtml(lat.predicted_hm || '')}発）：予測<strong>${Number(lat.pred_wpct)}%</strong> → 60分後実測<strong>${Number(lat.actual_wpct)}%</strong>（ズレ ${escapeHtml(epStr)}）`;
                     }
@@ -4618,15 +4733,21 @@
             const mPct = tot > 0 ? (100 - wPct) : 0;
             const isWomenView = !IS_STAFF && currentAudience === 'women';
             const isLight = document.body.classList.contains('theme-light');
-            const waitM = Number((target.wait_estimate && target.wait_estimate.est_wait_men_min) || 0);
+            const hasWaitEstInsp = Boolean(target.wait_estimate && (target.wait_estimate.est_wait_men_min != null || target.wait_estimate.est_men_wait_groups != null));
+            const waitM = hasWaitEstInsp ? Math.max(0, Number(target.wait_estimate.est_wait_men_min || 0)) : 0;
 
-            const isJisPosInsp = (target.source_kind === 'jis_pos') || Boolean(target.has_jis_pos) || String(target.source || '').toLowerCase() === 'jis';
-            const jisWaitGrpInsp = Number(target.jis_wait_m_grp || (target.wait_estimate && target.wait_estimate.est_men_wait_groups) || 0);
-            let statusLabel = '即相席圏（推定待ち0分）';
+            const isJisPosInsp = ((target.source_kind === 'jis_pos') || Boolean(target.has_jis_pos) || String(target.source || '').toLowerCase() === 'jis') && (target.jis_wait_m_grp != null);
+            const jisWaitGrpInsp = isJisPosInsp ? Math.max(0, Number(target.jis_wait_m_grp)) : 0;
+            let statusLabel = '入店人数を集計中';
             let statusCls = 'is-ok';
             if (tot === 0) {
-                statusLabel = '営業時間外';
-                statusCls = 'is-wait is-closed';
+                if (target.is_open_now) {
+                    statusLabel = '営業中（0 : 0）';
+                    statusCls = 'is-ok';
+                } else {
+                    statusLabel = '営業時間外';
+                    statusCls = 'is-wait is-closed';
+                }
             } else if (isWomenView) {
                 if (m >= 4 && m >= w) {
                     statusLabel = '女性待ち0・即案内圏';
@@ -4641,15 +4762,18 @@
             } else if (isJisPosInsp) {
                 statusLabel = jisWaitGrpInsp === 0 ? 'いま待ち0組（公式POS実測）' : `男性待ち${jisWaitGrpInsp}組（公式POS実測）`;
                 statusCls = jisWaitGrpInsp === 0 ? 'is-ok' : 'is-wait';
-            } else if (waitM > 0) {
+            } else if (hasWaitEstInsp && waitM > 0) {
                 statusLabel = `やや混雑（男性待ち約${waitM}分）`;
                 statusCls = 'is-wait';
             } else if (w === 0 && m > 0) {
                 statusLabel = '男性先行中（女性来店待ち）';
                 statusCls = 'is-wait';
-            } else {
+            } else if (hasWaitEstInsp) {
                 statusLabel = '即相席圏（推定待ち0分）';
                 statusCls = 'is-ok';
+            } else {
+                statusLabel = w >= m ? '女性優位・案内目安算出中' : '入店人数を集計中';
+                statusCls = w >= m ? 'is-ok' : 'is-wait';
             }
 
             const inspHrs = target.spec_hours_short || target.today_hours_label || '';
@@ -5483,8 +5607,15 @@
 
         async function submitCrowdVote(voteType, optionalWaitMinutes) {
             if (!currentModalStoreName) return;
-            lastModalVoteType = voteType;
             const feedbackEl = document.getElementById('modal-vote-feedback');
+            if (IS_STAFF) {
+                if (feedbackEl) {
+                    feedbackEl.classList.remove('hidden');
+                    feedbackEl.textContent = 'スタッフモード中は計測汚染防止のため現場投票は記録されません';
+                }
+                return;
+            }
+            lastModalVoteType = voteType;
             const reqPayload = {
                 store_name: currentModalStoreName,
                 vote_type: voteType,
@@ -6965,59 +7096,3 @@
                 document.body.style.overflow = '';
             }
         });
-
-        // ==========================================
-        // Instant Navigation Preload & Tap Feedback
-        // ==========================================
-        (function initFastPortalNavigation() {
-            if (IS_STAFF || IS_STAFF_SESSION) return;
-            if (window.__portalNavFastInit) return;
-            window.__portalNavFastInit = true;
-            const prefetched = Object.create(null);
-
-            function isLiveHtmlHref(href) {
-                return href === '/' || href === '/asobibar' || href.indexOf('/for-women') === 0 || href.indexOf('/price-comparison') === 0 || href.indexOf('/areas') === 0 || href.indexOf('/area/') === 0 || href.indexOf('/store/') === 0;
-            }
-
-            function prefetchPage(href) {
-                if (!href || prefetched[href] || href.indexOf('/') !== 0 || href.indexOf('/api/') === 0 || href.indexOf('/staff') === 0 || isLiveHtmlHref(href)) return;
-                prefetched[href] = true;
-                try {
-                    const link = document.createElement('link');
-                    link.rel = 'prefetch';
-                    link.href = href;
-                    link.as = 'document';
-                    document.head.appendChild(link);
-                } catch (e) {}
-            }
-
-            // Preload as soon as finger touches a nav pill (~80-120ms before click fires)
-            document.addEventListener('pointerdown', (e) => {
-                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .portal-nav-item, .menu-grid-item[href], .column-highlight-banner[href]') : null;
-                if (a) prefetchPage(a.getAttribute('href'));
-            }, { passive: true });
-
-            // Show instant loading spinner on the tapped tab so navigation feels zero-latency
-            document.addEventListener('click', (e) => {
-                if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                const a = e.target && e.target.closest ? e.target.closest('.portal-nav-link, .portal-nav-item, .menu-grid-item[href]') : null;
-                if (!a) return;
-                const href = a.getAttribute('href');
-                if (!href || href.indexOf('#') === 0 || a.target === '_blank') return;
-                if (href === window.location.pathname + window.location.search) return;
-                a.classList.add('nav-loading');
-            });
-
-            // .nav-loading cleanup on bfcache restore is handled by the unified pageshow listener above.
-
-            // Warm up lightweight static editorial navigation tabs during idle time (skip /stats & live SSR pages)
-            const warmTabs = () => {
-                if (document.visibilityState === 'hidden') return;
-                ['/guide/brand-comparison', '/columns', '/grooming'].forEach(prefetchPage);
-            };
-            if ('requestIdleCallback' in window) {
-                window.requestIdleCallback(warmTabs, { timeout: 2200 });
-            } else {
-                setTimeout(warmTabs, 1400);
-            }
-        })();

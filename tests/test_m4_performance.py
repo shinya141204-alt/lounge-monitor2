@@ -186,8 +186,8 @@ class M4PerformanceOptimizationTests(unittest.TestCase):
         with open(fly_path, 'r', encoding='utf-8') as f:
             content = f.read()
         self.assertIn('[[statics]]', content)
-        self.assertIn('guest_path = "/app/static"', content)
-        self.assertIn('url_prefix = "/static"', content)
+        self.assertIn('guest_path = "/app/static/reels"', content)
+        self.assertIn('url_prefix = "/static/reels"', content)
 
 
 if __name__ == '__main__':

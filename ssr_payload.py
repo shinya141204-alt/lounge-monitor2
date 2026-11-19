@@ -8,6 +8,7 @@ import re
 import threading
 import time
 import urllib.parse
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 JST = datetime.timezone(datetime.timedelta(hours=9))
@@ -380,7 +381,8 @@ def build_dynamic_human_line(item: dict, is_women_view: bool = False, all_closed
 
     wpct = int(round((w / float(tot)) * 100.0))
     we = item.get('wait_estimate') if isinstance(item.get('wait_estimate'), dict) else {}
-    wait_m_min = max(0, int(we.get('est_wait_men_min') or 0))
+    has_wait_est = bool(we) and (we.get('est_wait_men_min') is not None or we.get('est_men_wait_groups') is not None)
+    wait_m_min = max(0, int(we.get('est_wait_men_min') or 0)) if has_wait_est else 0
     jis_m_grp = item.get('jis_wait_m_grp')
     jis_w_grp = item.get('jis_wait_w_grp')
     is_jis_pos = bool(item.get('source_kind') == 'jis_pos' and jis_m_grp is not None)
@@ -423,16 +425,22 @@ def build_dynamic_human_line(item: dict, is_women_view: bool = False, all_closed
     if tot < 10:
         if is_jis_pos:
             wait_txt = f'男性待ち{wait_m_grp}組（実測）'
-        elif wait_m_min > 0:
+        elif has_wait_est and wait_m_min > 0:
             wait_txt = f'男性待ち目安{wait_m_min}分（推定）'
-        else:
+        elif has_wait_est:
             wait_txt = '男性待ち0組目安（推定）'
+        else:
+            wait_txt = '混雑・待ち状況を集計中'
         return f'女性{w}・男性{m}｜{wait_txt}｜少人数のため比率は参考値'
 
     wait_seg = (
         f'男性待ち{wait_m_grp}組（実測）'
         if is_jis_pos
-        else (f'男性待ち目安{wait_m_min}分（推定）' if wait_m_min > 0 else '男性待ち0組目安（推定）')
+        else (
+            f'男性待ち目安{wait_m_min}分（推定）'
+            if (has_wait_est and wait_m_min > 0)
+            else ('男性待ち0組目安（推定）' if has_wait_est else '混雑・待ち状況を集計中')
+        )
     )
     if wait_m_min > 0 or wait_m_grp > 0:
         w_note = '（女性もやや混雑）' if women_has_wait else '（女性はスムーズ案内）'
@@ -554,27 +562,38 @@ def attach_card_ux_metadata(
     item['human_line_women'] = build_dynamic_human_line(item, is_women_view=True, all_closed_mode=all_closed_mode)
 
     # Plan 2 (TableCheck / VACAN Signal Card) concise SSR fields
-    est_wait_m = max(0, int(we.get('est_wait_men_min') or 0))
-    jis_wait_grp = max(0, int(item.get('jis_wait_m_grp') or we.get('est_men_wait_groups') or 0))
+    has_wait_est = bool(we) and (we.get('est_wait_men_min') is not None or we.get('est_men_wait_groups') is not None)
+    est_wait_m = max(0, int(we.get('est_wait_men_min') or 0)) if has_wait_est else 0
+    raw_jis_m = item.get('jis_wait_m_grp')
+    is_jis_pos_measured = (source_kind == 'jis_pos') and (raw_jis_m is not None)
+    jis_wait_grp = max(0, int(raw_jis_m)) if is_jis_pos_measured else 0
+    is_open_now = bool(item.get('is_open_now'))
     if tot == 0:
-        p2_sig_txt = '営業時間外'
-        p2_sig_cls = 'is-wait is-closed'
-    elif source_kind == 'jis_pos':
+        if is_open_now:
+            p2_sig_txt = '営業中（0 : 0）'
+            p2_sig_cls = 'is-ok'
+        else:
+            p2_sig_txt = '営業時間外'
+            p2_sig_cls = 'is-wait is-closed'
+    elif is_jis_pos_measured:
         if jis_wait_grp == 0:
             p2_sig_txt = 'いま待ち0組（公式POS実測）'
             p2_sig_cls = 'is-ok'
         else:
             p2_sig_txt = f'男性待ち{jis_wait_grp}組（公式POS実測）'
             p2_sig_cls = 'is-wait'
-    elif est_wait_m > 0:
+    elif has_wait_est and est_wait_m > 0:
         p2_sig_txt = f'やや混雑（男性待ち約{est_wait_m}分）'
         p2_sig_cls = 'is-wait'
     elif w == 0 and m > 0:
         p2_sig_txt = '男性先行中（女性来店待ち）'
         p2_sig_cls = 'is-wait'
-    else:
+    elif has_wait_est:
         p2_sig_txt = '即相席圏（推定待ち0分）'
         p2_sig_cls = 'is-ok'
+    else:
+        p2_sig_txt = '女性優位・案内目安算出中' if w >= m else '入店人数を集計中'
+        p2_sig_cls = 'is-ok' if w >= m else 'is-wait'
     item['plan2_signal_text'] = p2_sig_txt
     item['plan2_signal_cls'] = p2_sig_cls
 
@@ -603,7 +622,21 @@ def attach_card_ux_metadata(
     item['plan2_staff_sub_text'] = ' ・ '.join(staff_sub_parts)
 
     if tot == 0:
-        p2_fc_txt = f"本日 {item['open_time_short']} オープン予定" if item['open_time_short'] else '営業時間外（開店後に自動更新）'
+        if is_open_now:
+            p2_fc_txt = '現在営業中（入店あり次第・毎分自動更新）'
+        else:
+            open_short = item['open_time_short']
+            show_open_soon = False
+            if open_short and ':' in open_short:
+                try:
+                    oh, om = [int(p) for p in open_short.split(':', 1)]
+                    cur_jst = datetime.datetime.now(JST)
+                    # Only show "本日 HH:MM オープン予定" before today's opening time (daytime/early AM)
+                    if cur_jst.hour < oh or (cur_jst.hour == oh and cur_jst.minute < om):
+                        show_open_soon = True
+                except (TypeError, ValueError):
+                    show_open_soon = False
+            p2_fc_txt = f"本日 {open_short} オープン予定" if show_open_soon else '営業時間外（開店後に自動更新）'
     elif fc and fc.get('pred_60m_wpct') is not None:
         wp_val = int(fc['pred_60m_wpct'])
         d_pt = int(fc.get('pred_delta_pt') or 0)
@@ -632,6 +665,7 @@ def finalize_enriched_ranking(
     benchmarks: dict = None,
     local_db_mod=None,
     is_testing: bool = False,
+    is_seed: bool = False,
 ) -> list:
     """Return a freshly sorted shallow-copied list with UX metadata attached (never mutating shared dicts in-place)."""
     if not isinstance(enriched, list) or not enriched:
@@ -671,7 +705,7 @@ def finalize_enriched_ranking(
         except Exception:
             fc_verified = False
 
-    all_closed = bool(len(dom_items) > 0 and open_dom_cnt == 0 and not is_halted)
+    all_closed = bool(len(dom_items) > 0 and open_dom_cnt == 0 and not is_seed)
 
     for st in items:
         if not isinstance(st, dict):
@@ -875,7 +909,7 @@ def build_top_provenance_meta(initial_status: dict, local_db_mod=None, is_testin
     all_closed_mode = bool(
         len(dom_stores) > 0
         and len(open_dom) == 0
-        and stale_state not in ('halted', 'seed')
+        and stale_state != 'seed'
     )
 
     master_tot, master_dom = _get_master_store_counts()
@@ -1033,3 +1067,240 @@ def build_deferred_card_pool(status, is_staff=False, start_idx=20):
             entry['usl'] = s.get('usual_slot_label') or ''
         out.append(entry)
     return out
+
+
+BRAND_CLS_MAP = {
+    'OLG': 'brand-olg',
+    'オリエンタルラウンジ': 'brand-olg',
+    'ag': 'brand-ag',
+    'JIS': 'brand-jis',
+    'ASOBIBAR': 'brand-asobibar',
+    'XIX': 'brand-xix',
+    'ALFA': 'brand-alfa',
+    'ヤタコイ': 'brand-yatakoi',
+    'YATAKOI': 'brand-yatakoi',
+    'CLOVERS': 'brand-clovers',
+}
+
+
+def _default_brand_ja(val) -> str:
+    if val is None:
+        return ''
+    s = str(val).strip()
+    su = s.upper()
+    if su in ('OLG', 'ORIENTAL') or s in ('オリエンタル', 'オリラジ'):
+        return 'オリエンタルラウンジ'
+    if su == 'YATAKOI':
+        return 'ヤタコイ'
+    if su == 'AG':
+        return 'ag'
+    if su in ('JIS', 'ASOBIBAR', 'XIX', 'ALFA', 'CLOVERS'):
+        return su
+    return s
+
+
+def attach_store_benchmarks(item: dict, sname: str, w: int, m: int, benchmarks: dict) -> None:
+    """Attach usual same-weekday/hour comparison and core-time / post-last-train retention fields."""
+    bm = benchmarks.get(sname) if benchmarks else None
+    is_korea = (item.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
+    usual_w = bm.get('usual_women') if bm else None
+    usual_m = bm.get('usual_men') if bm else None
+    slot_label = (bm.get('usual_slot_label') if bm else None) or '普段同時間帯'
+    has_core = bool(bm and bm.get('has_measured_core'))
+    has_mid = bool(bm and bm.get('has_measured_midnight'))
+    core_short = bm.get('core_time_short') if has_core else None
+    core_wpct = bm.get('core_time_wpct') if has_core else None
+    mid_pct = bm.get('midnight_retention_pct') if has_mid else None
+    mid_label = bm.get('midnight_label_short') if (has_mid and mid_pct is not None) else None
+
+    tot = w + m
+    if tot > 0 and usual_w is not None:
+        w_diff_usual = int(round(w - usual_w))
+    else:
+        w_diff_usual = None
+    if tot > 0 and usual_m is not None:
+        m_diff_usual = int(round(m - usual_m))
+    else:
+        m_diff_usual = None
+
+    item['usual_women'] = usual_w
+    item['usual_men'] = usual_m
+    item['usual_w_diff'] = w_diff_usual
+    item['usual_m_diff'] = m_diff_usual
+    item['usual_slot_label'] = slot_label
+    item['core_time_short'] = None if is_korea else core_short
+    item['core_time_wpct'] = None if is_korea else core_wpct
+    item['midnight_retention_pct'] = None if is_korea else mid_pct
+    item['midnight_label_short'] = None if is_korea else mid_label
+    item['has_measured_core'] = False if (is_korea or not bm) else bool(bm.get('has_measured_core'))
+    item['has_measured_midnight'] = False if (is_korea or not bm) else bool(bm.get('has_measured_midnight'))
+
+
+def enrich_for_ssr(
+    stores,
+    *,
+    is_seed: bool = False,
+    last_updated: str = None,
+    benchmarks: dict = None,
+    preloaded_evs: list = None,
+    ev_mod=None,
+    local_db_mod=None,
+    is_testing: bool = False,
+    brand_ja_fn=None,
+):
+    """Attach display fields for instant server-side HTML card rendering."""
+    import store_master
+    import store_hours
+    master = store_master.load()
+    if benchmarks is None:
+        benchmarks = {}
+    if brand_ja_fn is None:
+        brand_ja_fn = _default_brand_ja
+
+    disp_counts = defaultdict(int)
+    temp = []
+    for s in stores:
+        sname = (s.get('name') or '').strip()
+        info = master.get(sname, {})
+        if info:
+            brand = brand_ja_fn(info.get('brand') or '')
+            disp = info.get('display_name') or sname
+        else:
+            if re.match(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)', sname, flags=re.IGNORECASE):
+                brand = 'ag'
+                disp = re.sub(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)\s*', '', sname, flags=re.IGNORECASE).strip() or 'ag'
+            elif re.match(r'^(?:OLG|ORIENTAL)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() in ('OLG', 'ORIENTAL'):
+                brand = 'オリエンタルラウンジ'
+                disp = re.sub(r'^(?:OLG|ORIENTAL)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'オリエンタルラウンジ'
+            elif re.match(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() == 'YATAKOI':
+                brand = 'ヤタコイ'
+                disp = re.sub(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'ヤタコイ'
+            else:
+                raw_prefix = re.split(r'\s+', sname)[0] if sname else ''
+                brand = brand_ja_fn(str(s.get('source') or raw_prefix))
+                disp = re.sub(r'^(?:JIS|ASOBIBAR|XIX|ALFA|CLOVERS)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or sname
+        area = info.get('area_label') or ''
+        disp_counts[disp] += 1
+        temp.append((s, brand, disp, area))
+
+    enriched = []
+    dom_rank = 0
+    for s, brand, disp, area in temp:
+        w = int(s.get('women') or 0)
+        m = int(s.get('men') or 0)
+        tot = w + m
+        l_pct = round((w / tot) * 100) if tot > 0 else 0
+        m_pct = (100 - l_pct) if tot > 0 else 0
+        item = dict(s)
+        sname = s.get('name', '')
+        h_info = store_hours.get_business_hours_status(sname, total_guests=tot)
+        is_korea = (s.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
+        if not is_korea:
+            dom_rank += 1
+            item['ssr_rank'] = dom_rank
+        else:
+            item['ssr_rank'] = None
+        is_dup = disp_counts[disp] > 1
+        item['ssr_brand'] = brand
+        item['ssr_brand_cls'] = BRAND_CLS_MAP.get(brand, 'brand-other')
+        item['ssr_is_dup'] = is_dup
+        item['ssr_disp'] = disp
+        item['ssr_title'] = f"{brand} {disp}" if is_dup else disp
+        item['ssr_area'] = area
+        item['ssr_ladies_pct'] = l_pct
+        item['ssr_men_pct'] = m_pct
+        item['is_open_now'] = h_info['is_open_now']
+        item['today_hours_label'] = h_info['today_hours_label']
+        attach_store_benchmarks(item, sname, w, m, benchmarks)
+        ev_badge = ''
+        ev_title = ''
+        if ev_mod is not None and sname:
+            try:
+                matched_evs = ev_mod.get_events_for_store(
+                    sname,
+                    store_only=True,
+                    allow_blocking=False,
+                    preloaded_events=preloaded_evs,
+                )
+                if matched_evs:
+                    has_disc = any(e.get('tag') == '割引・特典' for e in matched_evs)
+                    ev_badge = '公式特典' if has_disc else '公式フェア'
+                    ev_title = matched_evs[0].get('title') or ''
+            except Exception:
+                pass
+        item['ssr_event_badge'] = ev_badge
+        item['ssr_event_title'] = ev_title
+        enriched.append(item)
+    try:
+        import moat_intelligence
+        moat_intelligence.enrich_stores_with_moat_signals(enriched, allow_weather_blocking=False)
+    except Exception:
+        pass
+    finalize_enriched_ranking(
+        enriched,
+        last_updated=last_updated,
+        benchmarks=benchmarks,
+        local_db_mod=local_db_mod,
+        is_testing=bool(is_testing),
+        is_seed=bool(is_seed),
+    )
+    for item in enriched:
+        raw_n = item.get('name', '')
+        s_seo = store_master.seo_name(raw_n)
+        item['seo_name'] = s_seo
+        item['name'] = s_seo
+        if 'slug' not in item or not item['slug']:
+            item['slug'] = store_master.slug_of(raw_n)
+    return enriched
+
+
+def enrich_stores_for_status(
+    stores,
+    *,
+    last_updated: str = None,
+    benchmarks: dict = None,
+    local_db_mod=None,
+    is_testing: bool = False,
+    is_seed: bool = False,
+) -> list:
+    """Enrich raw store snapshots for `/api/status` JSON responses."""
+    import store_hours
+    import store_master
+    if benchmarks is None:
+        benchmarks = {}
+    enriched_ranking = []
+    for s in stores:
+        item = dict(s)
+        sname = item.get('name', '')
+        w = int(item.get('women') or 0)
+        m = int(item.get('men') or 0)
+        if 'is_open_now' not in item or item.get('is_open_now') is None:
+            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
+            item['is_open_now'] = h_info['is_open_now']
+            item['today_hours_label'] = h_info['today_hours_label']
+        elif 'today_hours_label' not in item:
+            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
+            item['today_hours_label'] = h_info['today_hours_label']
+        attach_store_benchmarks(item, sname, w, m, benchmarks)
+        enriched_ranking.append(item)
+    try:
+        import moat_intelligence
+        moat_intelligence.enrich_stores_with_moat_signals(enriched_ranking, allow_weather_blocking=False)
+    except Exception:
+        pass
+    finalize_enriched_ranking(
+        enriched_ranking,
+        last_updated=last_updated,
+        benchmarks=benchmarks,
+        local_db_mod=local_db_mod,
+        is_testing=bool(is_testing),
+        is_seed=bool(is_seed),
+    )
+    for item in enriched_ranking:
+        raw_n = item.get('name', '')
+        s_seo = store_master.seo_name(raw_n)
+        item['seo_name'] = s_seo
+        item['name'] = s_seo
+        if 'slug' not in item or not item['slug']:
+            item['slug'] = store_master.slug_of(raw_n)
+    return enriched_ranking

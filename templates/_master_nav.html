@@ -231,7 +231,7 @@
             {% elif master_active_tab == 'pdca' %}
             <a class="master-util-btn" href="/staff/pdca?days={{ days }}&format=json">JSON出力</a>
             {% elif master_active_tab == 'column' %}
-            <a class="master-util-btn" href="/columns" target="_blank" rel="noopener">公開コラム一覧 ↗</a>
+            <a class="master-util-btn" href="/columns" target="_blank" rel="noopener noreferrer">公開コラム一覧 ↗</a>
             {% elif master_active_tab == 'sns' and channel == 'instagram' %}
             <a class="master-util-btn" href="/staff/sns-kit">週末画像キット ↗</a>
             {% endif %}
@@ -241,7 +241,7 @@
                 <span style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;border-radius:999px;font-size:0.66rem;font-weight:800;background:{% if (ops_unread_priority or 0) > 0 %}#dc2626{% else %}var(--mn-active-bg){% endif %};color:{% if (ops_unread_priority or 0) > 0 %}#ffffff{% else %}var(--mn-active-ink){% endif %};">{{ ops_unread_total }}</span>
                 {% endif %}
             </a>
-            <a class="master-util-btn" href="/" target="_blank" rel="noopener">公開サイト ↗</a>
+            <a class="master-util-btn" href="/" target="_blank" rel="noopener noreferrer">公開サイト ↗</a>
             <button type="button" class="master-util-btn" onclick="toggleStaffTheme()" id="staff-theme-toggle-btn">ライト / ダーク</button>
         </div>
     </div>

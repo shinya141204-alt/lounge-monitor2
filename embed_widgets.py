@@ -438,18 +438,25 @@ def _load_store_slot_aggregates(days: int) -> dict:
             agg['total_snapshots'] += int(n)
             agg['rollup_buckets' if source == 'rollup' else 'raw_buckets'] += 1
 
+    today_jst = datetime.datetime.now(_JST).date()
+    expected_store_floor = max(2, min(20, len(master) // 3))
+    chunk_failed = False
     for d0, d1 in local_db._contiguous_date_ranges(query_dates, max_span_days=7):
         has_roll = bool(rollups_ok and roll_min_d and roll_max_d and d1 >= roll_min_d and d0 <= roll_max_d)
         has_raw = bool(raw_min_d and raw_max_d and d1 >= raw_min_d and d0 <= raw_max_d)
         if not has_roll and not has_raw:
             continue
         seen_buckets = set()
+        rolled_dates = set()
+        rolled_hours_by_date = {}
+        rolled_stores_by_date = {}
         rollup_buckets = {}
         if has_roll:
             try:
                 rows = local_db._fetch_all_rows(sql_rollup, (d0, d1))
             except Exception as err:
                 _log.warning('heatmap: rollup chunk %s..%s failed: %s', d0, d1, err)
+                chunk_failed = True
                 rows = []
             for r in rows:
                 try:
@@ -462,6 +469,9 @@ def _load_store_slot_aggregates(days: int) -> dict:
                     continue
                 key = (d_jst, hr, canon)
                 seen_buckets.add(key)
+                rolled_dates.add(d_jst)
+                rolled_hours_by_date.setdefault(d_jst, set()).add(hr)
+                rolled_stores_by_date.setdefault(d_jst, set()).add(canon)
                 try:
                     sc = float(r[4] or 0)
                     aw = float(r[5] or 0.0)
@@ -480,40 +490,79 @@ def _load_store_slot_aggregates(days: int) -> dict:
         del rollup_buckets
 
         if has_raw:
-            raw_buckets = {}
-            try:
-                for chunk in local_db._iter_ts_window_in_7d_chunks(sql_raw, f'{d0} 00:00:00', f'{d1} 23:59:59'):
-                    for r in chunk:
-                        try:
-                            d_jst = str(r[0] or '')[:10]
-                            hr = int(str(r[1] or '').strip())
-                        except (TypeError, ValueError):
-                            continue
-                        if hr not in _HOUR_SET or not d_jst:
-                            continue
-                        canon = _canon(r[2])
-                        if not canon:
-                            continue
-                        key = (d_jst, hr, canon)
-                        if key in seen_buckets:
-                            continue
-                        try:
-                            sn = float(r[3] or 0)
-                            aw = float(r[4] or 0.0)
-                            am = float(r[5] or 0.0)
-                            wps = float(r[6] or 0.0)
-                            wpn = float(r[7] or 0)
-                        except (TypeError, ValueError):
-                            continue
-                        if sn <= 0:
-                            continue
-                        _merge_bucket(raw_buckets, key, sn, aw, am, wps, wpn)
-            except Exception as err:
-                _log.warning('heatmap: monitor_logs chunk %s..%s failed: %s', d0, d1, err)
-            _fold(raw_buckets, 'raw')
-            del raw_buckets
+            d0_date = datetime.date.fromisoformat(d0)
+            d1_date = datetime.date.fromisoformat(d1)
+            max_chunk_rolled_stores = max((len(v) for v in rolled_stores_by_date.values()), default=0)
+            raw_needed_dates = []
+            cur_d = d0_date
+            while cur_d <= d1_date:
+                ds = cur_d.isoformat()
+                if raw_min_d <= ds <= raw_max_d:
+                    need_raw = (
+                        (ds not in rolled_dates)
+                        or (roll_max_d and ds >= roll_max_d)
+                        or ((today_jst - cur_d).days <= 3)
+                        or (len(rolled_hours_by_date.get(ds, ())) < 3)
+                    )
+                    if not need_raw and len(rolled_stores_by_date.get(ds, ())) < expected_store_floor:
+                        if max_chunk_rolled_stores >= expected_store_floor:
+                            need_raw = True
+                        else:
+                            try:
+                                raw_st_rows = local_db._fetch_all_rows(
+                                    "SELECT DISTINCT store_name FROM monitor_logs WHERE timestamp >= ? AND timestamp <= ?",
+                                    (f'{ds} 00:00:00', f'{ds} 23:59:59'),
+                                )
+                                rolled_st = rolled_stores_by_date.get(ds, ())
+                                for sr in raw_st_rows:
+                                    sc_canon = _canon(sr[0] if sr else '')
+                                    if sc_canon and sc_canon not in rolled_st:
+                                        need_raw = True
+                                        break
+                            except Exception:
+                                pass
+                    if need_raw:
+                        raw_needed_dates.append(ds)
+                cur_d += datetime.timedelta(days=1)
+            if raw_needed_dates:
+                raw_buckets = {}
+                try:
+                    for r0, r1 in local_db._contiguous_date_ranges(raw_needed_dates, max_span_days=7):
+                        for chunk in local_db._iter_ts_window_in_7d_chunks(sql_raw, f'{r0} 00:00:00', f'{r1} 23:59:59'):
+                            for r in chunk:
+                                try:
+                                    d_jst = str(r[0] or '')[:10]
+                                    hr = int(str(r[1] or '').strip())
+                                except (TypeError, ValueError):
+                                    continue
+                                if hr not in _HOUR_SET or not d_jst:
+                                    continue
+                                canon = _canon(r[2])
+                                if not canon:
+                                    continue
+                                key = (d_jst, hr, canon)
+                                if key in seen_buckets:
+                                    continue
+                                try:
+                                    sn = float(r[3] or 0)
+                                    aw = float(r[4] or 0.0)
+                                    am = float(r[5] or 0.0)
+                                    wps = float(r[6] or 0.0)
+                                    wpn = float(r[7] or 0)
+                                except (TypeError, ValueError):
+                                    continue
+                                if sn <= 0:
+                                    continue
+                                _merge_bucket(raw_buckets, key, sn, aw, am, wps, wpn)
+                except Exception as err:
+                    _log.warning('heatmap: monitor_logs chunk %s..%s failed: %s', d0, d1, err)
+                    chunk_failed = True
+                _fold(raw_buckets, 'raw')
+                del raw_buckets
         del seen_buckets
 
+    if chunk_failed:
+        agg['partial_error'] = True
     agg['generated_at_jst'] = datetime.datetime.now(_JST).strftime('%Y-%m-%d %H:%M:%S')
     return agg
 
@@ -553,7 +602,7 @@ def _get_aggregates(days: int) -> dict:
             if fresh2 is not None:
                 return fresh2
             data = _load_store_slot_aggregates(days)
-            if data.get('total_buckets', 0) > 0:
+            if data.get('total_buckets', 0) > 0 and not data.get('partial_error'):
                 with _CACHE_LOCK:
                     if len(_CACHE) >= _CACHE_MAX_ENTRIES and cache_key not in _CACHE:
                         _CACHE.clear()
@@ -563,13 +612,32 @@ def _get_aggregates(days: int) -> dict:
         finally:
             _COMPUTE_LOCK.release()
 
-    with _COMPUTE_LOCK:
+    if not _COMPUTE_LOCK.acquire(timeout=8.0):
+        fresh_to, stale_to = _inspect()
+        if fresh_to is not None:
+            return fresh_to
+        if stale_to is not None:
+            return stale_to
+        w_from, w_to = _window_dates(days)
+        return {
+            'days': days,
+            'window_from': w_from.isoformat(),
+            'window_to': w_to.isoformat(),
+            'stores': {},
+            'total_buckets': 0,
+            'total_snapshots': 0,
+            'rollup_buckets': 0,
+            'raw_buckets': 0,
+            'generated_at_jst': None,
+            'partial_error': True,
+        }
+    try:
         fresh2, stale2 = _inspect()
         if fresh2 is not None:
             return fresh2
         data = _load_store_slot_aggregates(days)
-        # 空データ（DB一時障害・蓄積前）は絶対にキャッシュしない
-        if data.get('total_buckets', 0) > 0:
+        # 空データ・チャンク部分失敗（DB一時障害）は絶対にキャッシュしない
+        if data.get('total_buckets', 0) > 0 and not data.get('partial_error'):
             with _CACHE_LOCK:
                 if len(_CACHE) >= _CACHE_MAX_ENTRIES and cache_key not in _CACHE:
                     _CACHE.clear()
@@ -577,7 +645,9 @@ def _get_aggregates(days: int) -> dict:
             return data
         if stale2 is not None:
             return stale2
-    return data
+        return data
+    finally:
+        _COMPUTE_LOCK.release()
 
 
 def peek_cached_total_buckets(days: int = DEFAULT_DAYS):

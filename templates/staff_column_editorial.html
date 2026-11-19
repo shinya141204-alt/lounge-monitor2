@@ -683,7 +683,7 @@
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <img id="note-export-eyecatch-img" src="" alt="アイキャッチプレビュー" style="width:160px; max-width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:10px; border:1px solid var(--border-strong);">
+                        <img id="note-export-eyecatch-img" src="" alt="アイキャッチプレビュー" width="1280" height="720" style="width:160px; max-width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; border-radius:10px; border:1px solid var(--border-strong);">
                         <div id="note-export-eyecatch-url" style="font-size:0.74rem; color:var(--sub); word-break:break-all; flex:1; min-width:180px;"></div>
                     </div>
                 </div>
@@ -982,7 +982,7 @@
                             <div style="font-size:0.72rem; color:var(--sub);">{{ row.publish_at_ja }}</div>
                         </td>
                         <td>
-                            <a href="{{ row.path }}" target="_blank" rel="noopener" style="color:var(--link-ink); text-decoration:none; font-weight:700;">{{ row.title }} ↗</a>
+                            <a href="{{ row.path }}" target="_blank" rel="noopener noreferrer" style="color:var(--link-ink); text-decoration:none; font-weight:700;">{{ row.title }} ↗</a>
                             <div style="font-size:0.71rem; color:var(--sub);"><code>{{ row.path }}</code></div>
                         </td>
                         <td>
@@ -1436,7 +1436,7 @@
                     var statusWord = res.published_now ? "即時公開しました。" : (escHtml(res.publish_at_ja) + " で予約公開に登録しました。");
                     msgEl.innerHTML = '<div style="padding:10px 12px; border-radius:var(--r-chip, 10px); background:var(--green-soft); border:1px solid var(--green); color:var(--green-ink);">' +
                         '<strong>' + statusWord + '</strong> ' +
-                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener" style="color:var(--text); font-weight:800; margin-left:8px;">記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
+                        '<a href="' + escHtml(res.path) + '" target="_blank" rel="noopener noreferrer" style="color:var(--text); font-weight:800; margin-left:8px;">記事ページを確認する（' + escHtml(res.path) + '）↗</a>' +
                     '</div>';
                 } else {
                     msgEl.innerHTML = '<span style="color:var(--err-ink);">' + escHtml((res && res.error) || "保存に失敗しました") + '</span>';

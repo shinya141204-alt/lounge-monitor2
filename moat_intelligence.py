@@ -1583,7 +1583,8 @@ def _store_shift_bounds_minutes(store_name: str, now_jst: datetime.datetime) -> 
         else:
             open_h, close_h = spec["mt"]
         return int(open_h * 60), int(close_h * 60), int(cur_m)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"[moat_intelligence] _store_shift_bounds_minutes failed for {store_name}: {type(e).__name__}: {e}")
         return 18 * 60, 29 * 60, int(cur_m)
 
 
@@ -1751,6 +1752,7 @@ _V2_STORE_PHASE_PRIORS = {
 }
 
 _STORE_INTERNAL_KEY_MEMO = {}
+_STORE_KEY_MEMO_LOCK = threading.Lock()
 
 
 def _resolve_internal_store_key(store_name: str) -> str:
@@ -1829,9 +1831,13 @@ def _resolve_internal_store_key(store_name: str) -> str:
                     branch = s.replace("JIS（ジス）", "").replace("ジス", "").replace("JIS", "").replace("jis", "").strip()
                     resolved = f"JIS {branch}" if branch else "JIS"
 
-    if len(_STORE_INTERNAL_KEY_MEMO) > 512:
-        _STORE_INTERNAL_KEY_MEMO.clear()
-    _STORE_INTERNAL_KEY_MEMO[s] = resolved
+    with _STORE_KEY_MEMO_LOCK:
+        cached2 = _STORE_INTERNAL_KEY_MEMO.get(s)
+        if cached2 is not None:
+            return cached2
+        if len(_STORE_INTERNAL_KEY_MEMO) > 512:
+            _STORE_INTERNAL_KEY_MEMO.clear()
+        _STORE_INTERNAL_KEY_MEMO[s] = resolved
     return resolved
 
 
@@ -1874,6 +1880,7 @@ def _interp_store_phase_prior(store_name: str, now_jst: datetime.datetime) -> fl
 
 
 _STANDING_BAR_MEMO = {}
+_STANDING_BAR_MEMO_LOCK = threading.Lock()
 
 
 def _is_standing_bar_store(store_name: str) -> bool:
@@ -1893,9 +1900,13 @@ def _is_standing_bar_store(store_name: str) -> bool:
                 is_st = True
         except Exception:
             pass
-    if len(_STANDING_BAR_MEMO) > 256:
-        _STANDING_BAR_MEMO.clear()
-    _STANDING_BAR_MEMO[canon] = is_st
+    with _STANDING_BAR_MEMO_LOCK:
+        cached2 = _STANDING_BAR_MEMO.get(canon)
+        if cached2 is not None:
+            return cached2
+        if len(_STANDING_BAR_MEMO) > 256:
+            _STANDING_BAR_MEMO.clear()
+        _STANDING_BAR_MEMO[canon] = is_st
     return is_st
 
 

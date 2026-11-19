@@ -376,13 +376,20 @@ class TestFableDeepBackendAudit20261108(unittest.TestCase):
                 self.assertEqual(r_bad_days.status_code, 200)
                 self.assertEqual(mock_run.call_args.kwargs.get("days"), 14)
 
+                r_empty_body = self.client.post(
+                    "/api/pdca/run",
+                    data=b"",
+                    headers=same_origin_headers,
+                )
+                self.assertEqual(r_empty_body.status_code, 200)
+
                 r_empty_list_json = self.client.post(
                     "/api/pdca/run",
                     data="[]",
                     content_type="application/json",
                     headers=same_origin_headers,
                 )
-                self.assertEqual(r_empty_list_json.status_code, 200)
+                self.assertEqual(r_empty_list_json.status_code, 400)
 
                 r_nonempty_list_json = self.client.post(
                     "/api/pdca/run",

@@ -3694,6 +3694,60 @@ def render_reel_mp4_bytes(
         return mp4_bytes
 
 
+def get_cached_reel_mp4_bytes(reel_type: str = "live_top5", stores: list = None):
+    """FFmpeg を起動せず、メモリ・ディスク・共有blob上の既存 Reel MP4 バイト列のみ返す（読み取り専用）。"""
+    rt = normalize_reel_type(reel_type)
+    now_ts = time.time()
+    if stores is not None:
+        try:
+            bg_info = list_available_backgrounds(reel_type=rt)
+            voice_sig = voice_narration.get_reel_cache_voice_signature(allow_blocking=False)
+            cache_key = _compute_reel_cache_key(stores, rt, bg_info, voice_sig=voice_sig)
+        except Exception:
+            cache_key = None
+        if cache_key:
+            with _MEM_CACHE_LOCK:
+                mem_entry = _MEM_MP4_CACHE.get(cache_key)
+                if mem_entry and (now_ts - mem_entry.get("ts", 0)) < REEL_CACHE_TTL_SEC:
+                    b = mem_entry.get("bytes")
+                    if b and len(b) > 1024:
+                        _MEM_MP4_CACHE.move_to_end(cache_key)
+                        return b
+            disk_exact_path = os.path.join(REEL_TMP_CACHE_DIR, f"reel_{cache_key}.mp4")
+            if os.path.isfile(disk_exact_path):
+                try:
+                    if (now_ts - os.path.getmtime(disk_exact_path)) < REEL_CACHE_TTL_SEC and os.path.getsize(disk_exact_path) > 1024:
+                        with open(disk_exact_path, "rb") as f:
+                            mp4_data = f.read()
+                        if len(mp4_data) > 1024:
+                            with _MEM_CACHE_LOCK:
+                                _MEM_MP4_CACHE[cache_key] = {"ts": now_ts, "bytes": mp4_data, "reel_type": rt}
+                                while len(_MEM_MP4_CACHE) > _MEM_MP4_MAX:
+                                    _MEM_MP4_CACHE.popitem(last=False)
+                            return mp4_data
+                except Exception:
+                    pass
+            try:
+                shared_exact = turbo_store.get_media_blob(f"reel_mp4:{rt}:{cache_key}")
+                if shared_exact and shared_exact[0] and len(shared_exact[0]) > 1024:
+                    mp4_data = shared_exact[0]
+                    with _MEM_CACHE_LOCK:
+                        _MEM_MP4_CACHE[cache_key] = {"ts": now_ts, "bytes": mp4_data, "reel_type": rt}
+                        while len(_MEM_MP4_CACHE) > _MEM_MP4_MAX:
+                            _MEM_MP4_CACHE.popitem(last=False)
+                    return mp4_data
+            except Exception:
+                pass
+        return None
+    with _MEM_CACHE_LOCK:
+        for _k, entry in reversed(list(_MEM_MP4_CACHE.items())):
+            if entry.get("reel_type") == rt and (now_ts - entry.get("ts", 0)) < REEL_CACHE_TTL_SEC:
+                b = entry.get("bytes")
+                if b and len(b) > 1024:
+                    return b
+    return None
+
+
 def get_reel_studio_info(
     stores: list,
     reel_type: str = "live_top5",

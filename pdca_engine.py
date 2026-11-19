@@ -1482,7 +1482,11 @@ def analyze_site_performance(live_stores: list = None, days: int = 14, allow_blo
             for k in [k for k, v in _site_perf_cache.items() if now_m - v[0] >= _SITE_PERF_TTL_SEC]:
                 _site_perf_cache.pop(k, None)
             if len(_site_perf_cache) >= 32:
-                _site_perf_cache.clear()
+                # 古いエントリから間引き、ホットなキャッシュを全消ししない
+                _evict_n = max(1, len(_site_perf_cache) - 24)
+                _oldest = sorted(_site_perf_cache.items(), key=lambda kv: kv[1][0])[:_evict_n]
+                for _ek, _ in _oldest:
+                    _site_perf_cache.pop(_ek, None)
             _site_perf_cache[key] = (now_m, copy.deepcopy(result))
     return result
 

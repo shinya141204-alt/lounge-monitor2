@@ -483,18 +483,30 @@ class TestHtmlRenderingStress(unittest.TestCase):
     def test_render_all_10_real_jis_stores_via_client(self):
         """Flask test_client 経由で JIS全10店舗の /store/<slug> をリクエストし、
         HTTP 200 OK かつ JIS POS実測パネルが描画されることを実証"""
+        import copy
         jis_stores = self._get_reliable_jis_stores()
         self.assertEqual(len(jis_stores), 10, f"Expected 10 JIS stores, got {len(jis_stores)}")
 
-        with mock.patch("monitor.get_jis_data", return_value=jis_stores):
-            for s in jis_stores:
-                sname = s["name"]
-                slug = store_master.slug_of(sname)
-                resp = self.client.get(f"/store/{slug}")
-                self.assertEqual(resp.status_code, 200, f"Failed GET /store/{slug} for {sname}")
-                body = resp.data.decode("utf-8")
-                self.assertIn("jis-pos-panel", body, f"jis-pos-panel missing for {sname}")
-                self.assertIn("JIS公式POS実測アナリティクス", body)
+        with app_module.data_lock:
+            saved_latest = copy.deepcopy(app_module.latest_data)
+            app_module.latest_data["full_data"] = jis_stores
+        app_module.clear_fast_http_caches()
+        try:
+            with mock.patch("monitor.get_jis_data", return_value=jis_stores):
+                for s in jis_stores:
+                    sname = s["name"]
+                    slug = store_master.slug_of(sname)
+                    resp = self.client.get(f"/store/{slug}")
+                    self.assertEqual(resp.status_code, 200, f"Failed GET /store/{slug} for {sname}")
+                    body = resp.data.decode("utf-8")
+                    resp.close()
+                    self.assertIn("jis-pos-panel", body, f"jis-pos-panel missing for {sname}")
+                    self.assertIn("JIS公式POS実測アナリティクス", body)
+        finally:
+            with app_module.data_lock:
+                app_module.latest_data.clear()
+                app_module.latest_data.update(saved_latest)
+            app_module.clear_fast_http_caches()
 
     def test_render_all_10_real_jis_stores_direct(self):
         """実際に monitor.get_jis_data() で取得した本番生データ全10店舗（または安定フォールバック）を直接 render_template し、

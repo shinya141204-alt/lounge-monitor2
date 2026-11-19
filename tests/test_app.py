@@ -1779,7 +1779,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v119'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v121'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -1989,7 +1989,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         with self.client.session_transaction() as s:
             s['is_staff'] = True
             s['is_master'] = True
-        r_save = self.client.post('/api/sns-editorial/gemini-key', json={'action': 'save', 'api_key': 'AIzaSyDummyKey1234567890'})
+        r_save = self.client.post('/api/sns-editorial/gemini-key', json={'action': 'save', 'api_key': 'AIzaSyDummyKey1234567890'}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_save.status_code, 200)
         st = r_save.get_json()['gemini_status']
         self.assertTrue(st['configured'])
@@ -2119,7 +2119,10 @@ class FullAuditRegressionTests(unittest.TestCase):
 
                 # And async JSON endpoint `/api/sns-editorial` resolves the Gemini ad-lib draft + thinking_memo cleanly
                 with patch('sns_editorial.requests.post', return_value=mock_resp_ok) as mock_async_post:
-                    api_resp = self.client.get('/api/sns-editorial?channel=x&slot=22:00')
+                    api_resp = self.client.get(
+                        '/api/sns-editorial?channel=x&slot=22:00&refresh_ai=1',
+                        headers={'Sec-Fetch-Site': 'same-origin', 'Referer': 'http://localhost/staff/sns-editorial'},
+                    )
                 self.assertEqual(api_resp.status_code, 200)
                 api_json = api_resp.get_json()
                 self.assertEqual(api_json['winner']['style'], 'ai_live_adlib')
@@ -2363,7 +2366,7 @@ class ColumnEditorialRoomTests(unittest.TestCase):
             'publish_at': '2026-12-10T19:00',
             'slug': 'umeda-midnight-test',
             'eyecatch_key': 'last-train',
-        })
+        }, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_pub.status_code, 200)
         pub_json = r_pub.get_json()
         self.assertTrue(pub_json['ok'])
@@ -2419,7 +2422,7 @@ class ColumnEditorialRoomTests(unittest.TestCase):
         with self.client.session_transaction() as sess:
             sess['is_staff'] = True
             sess['is_master'] = True
-        r_del = self.client.post('/api/column-editorial/delete', json={'slug': 'umeda-midnight-test'})
+        r_del = self.client.post('/api/column-editorial/delete', json={'slug': 'umeda-midnight-test'}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_del.status_code, 200)
         self.assertTrue(r_del.get_json()['ok'])
         with self.client.session_transaction() as sess:
@@ -2518,7 +2521,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertIn('24h以内CV 1件', board_html)
 
             with mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
-                r_run = self.client.post('/api/pdca/run', json={'days': 14})
+                r_run = self.client.post('/api/pdca/run', json={'days': 14}, headers={'Origin': 'http://localhost'})
             self.assertEqual(r_run.status_code, 200)
             run_json = r_run.get_json()
             self.assertTrue(run_json['ok'])
@@ -2566,7 +2569,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             r_set = self.client.post('/api/pdca/settings', json={
                 'auto_optimize_sns': True,
                 'auto_replenish_columns': True,
-            })
+            }, headers={'Origin': 'http://localhost'})
             self.assertEqual(r_set.status_code, 200)
             self.assertTrue(r_set.get_json()['settings']['auto_replenish_columns'])
 
@@ -2983,11 +2986,11 @@ class SpicyAndFemaleRealToneTests(unittest.TestCase):
             sess['is_master'] = True
 
         # Invalid mode must return 400
-        r_bad = client.post('/api/editorial/tone-mode', json={'tone_mode': 'unknown_mode'})
+        r_bad = client.post('/api/editorial/tone-mode', json={'tone_mode': 'unknown_mode'}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_bad.status_code, 400)
 
         # Save 'spicy' as default and verify both editorial UIs reflect it
-        r_ok = client.post('/api/editorial/tone-mode', json={'tone_mode': 'spicy'})
+        r_ok = client.post('/api/editorial/tone-mode', json={'tone_mode': 'spicy'}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_ok.status_code, 200)
         data = r_ok.get_json()
         self.assertTrue(data['ok'])
@@ -3216,14 +3219,14 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
         r_bad = self.client.post('/api/affiliate/config', json={
             'slot_id': 'dating_instant',
             'url': 'javascript:alert(1)',
-        })
+        }, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_bad.status_code, 400)
 
         r_ok = self.client.post('/api/affiliate/config', json={
             'slot_id': 'dating_instant',
             'url': 'https://example.com/tapple-instant',
             'memo': 'タップル A8',
-        })
+        }, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_ok.status_code, 200)
         body = r_ok.get_json()
         self.assertTrue(body['ok'])
@@ -3407,7 +3410,7 @@ class AffiliateAndSheetsRetentionTests(unittest.TestCase):
                 with self.client.session_transaction() as sess:
                     sess['is_staff'] = True
                     sess['is_master'] = True
-                api_resp = self.client.post('/api/sheets/retention', json={'dry_run': True})
+                api_resp = self.client.post('/api/sheets/retention', json={'dry_run': True}, headers={'Origin': 'http://localhost'})
                 self.assertEqual(api_resp.status_code, 200)
                 self.assertTrue(api_resp.get_json()['ok'])
         finally:
@@ -3532,19 +3535,16 @@ class WomenFeaturesACDETests(unittest.TestCase):
         self.assertTrue({'women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'night_care_supplement', 'second_venue_reservation'}.issubset(slot_ids))
 
         # Public redirect check for all 3 women canonical slots + alias + night supplement + second venue (Ikyu)
+        slot_resps = {}
         for sid in ('women_dating_bachelor', 'women_beauty_clinic', 'women_cosme_salon', 'women_dating', 'night_care_supplement', 'women_night_supplement', 'hangover_supplement', 'second_venue_reservation', 'women_second_venue', 'ikyu_restaurant'):
             resp = self.client.get(f'/link/{sid}', headers={'User-Agent': 'Mozilla/5.0 Test'})
             self.assertEqual(resp.status_code, 302, sid)
-        cosme_resp = self.client.get('/link/women_cosme_salon', headers={'User-Agent': 'Mozilla/5.0 Test'})
-        self.assertIn('a8mat=4BERA3+6J68QA+5GZ4+5YZ75', cosme_resp.headers.get('Location', ''))
-        supp_resp = self.client.get('/link/night_care_supplement', headers={'User-Agent': 'Mozilla/5.0 Test'})
-        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', supp_resp.headers.get('Location', ''))
-        wsupp_resp = self.client.get('/link/women_night_supplement', headers={'User-Agent': 'Mozilla/5.0 Test'})
-        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', wsupp_resp.headers.get('Location', ''))
-        ikyu_resp = self.client.get('/link/second_venue_reservation', headers={'User-Agent': 'Mozilla/5.0 Test'})
-        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', ikyu_resp.headers.get('Location', ''))
-        wikyu_resp = self.client.get('/link/women_second_venue', headers={'User-Agent': 'Mozilla/5.0 Test'})
-        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', wikyu_resp.headers.get('Location', ''))
+            slot_resps[sid] = resp
+        self.assertIn('a8mat=4BERA3+6J68QA+5GZ4+5YZ75', slot_resps['women_cosme_salon'].headers.get('Location', ''))
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', slot_resps['night_care_supplement'].headers.get('Location', ''))
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BELTJ+7RTR3M+3H28+5ZU29', slot_resps['women_night_supplement'].headers.get('Location', ''))
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', slot_resps['second_venue_reservation'].headers.get('Location', ''))
+        self.assertEqual('https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P', slot_resps['women_second_venue'].headers.get('Location', ''))
 
         # Verify /grooming renders night_care_supplement & second_venue_reservation & tracking pixels for public visitors and hides for staff
         app_module.clear_fast_http_caches()
@@ -3586,17 +3586,17 @@ class WomenFeaturesACDETests(unittest.TestCase):
             'slot_id': 'women_beauty_clinic',
             'url': 'https://example.com/ladies-clinic-a8',
             'memo': '女性美容皮膚科 A8',
-        })
+        }, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_upd.status_code, 200)
         self.assertTrue(r_upd.get_json()['ok'])
 
         with self.client.session_transaction() as sess:
             sess.clear()
-        r_redir = self.client.get('/link/women_beauty_clinic', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        r_redir = self.client.get('/link/women_beauty_clinic', headers={'User-Agent': 'Mozilla/5.0 OverrideTest'})
         self.assertEqual(r_redir.status_code, 302)
         self.assertEqual(r_redir.headers['Location'], 'https://example.com/ladies-clinic-a8')
         # Alias women_clinic follows the same canonical slot
-        r_alias = self.client.get('/link/women_clinic', headers={'User-Agent': 'Mozilla/5.0 Test'})
+        r_alias = self.client.get('/link/women_clinic', headers={'User-Agent': 'Mozilla/5.0 OverrideTest'})
         self.assertEqual(r_alias.headers['Location'], 'https://example.com/ladies-clinic-a8')
 
     def test_plan_e_ladies_threads_and_instagram_alerts(self):
@@ -3664,7 +3664,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
             sess['is_master'] = True
         with mock.patch('threads_poster.execute_scheduled_ladies_threads_post', return_value={'status': 'success', 'id': 'ok1'}):
             self.assertEqual(self.client.get('/api/trigger-ladies-sns?channel=threads&force=1').status_code, 405)
-            ep_resp = self.client.post('/api/trigger-ladies-sns?channel=threads&force=1')
+            ep_resp = self.client.post('/api/trigger-ladies-sns?channel=threads&force=1', headers={'Origin': 'http://localhost'})
             self.assertEqual(ep_resp.status_code, 200)
             self.assertEqual(ep_resp.get_json()['status'], 'success')
 
@@ -3820,6 +3820,7 @@ class WomenFeaturesACDETests(unittest.TestCase):
                     'access_token': 'TH_SHORT_LIVED_TOKEN_ABCDEFGHIJ12345',
                     'app_secret': 'test_threads_app_secret',
                 },
+                headers={'Origin': 'http://localhost'},
             )
         self.assertEqual(tok_resp.status_code, 200)
         tok_json = tok_resp.get_json()
@@ -4325,10 +4326,10 @@ class TurboArchitectureTests(unittest.TestCase):
             sess['is_staff'] = True
             sess['is_master'] = True
 
-        r_bad = self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'unknown_type'})
+        r_bad = self.client.post('/api/sns-jobs/enqueue', json={'job_type': 'unknown_type'}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_bad.status_code, 400)
 
-        r_enq = self.client.post('/api/trigger-x-post?slot=22:00&force=1&async=1&worker_only=1')
+        r_enq = self.client.post('/api/trigger-x-post?slot=22:00&force=1&async=1&worker_only=1', headers={'Origin': 'http://localhost'})
         self.assertEqual(r_enq.status_code, 202)
         enq_json = r_enq.get_json()
         self.assertTrue(enq_json['queued'])
@@ -4488,7 +4489,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         self.assertTrue(info_json['ok'])
         self.assertGreaterEqual(len(info_json['veo3_prompts']), 5)
 
-        r_set = self.client.post('/api/staff/sns-reel/settings', json={'auto_schedule_enabled': False})
+        r_set = self.client.post('/api/staff/sns-reel/settings', json={'auto_schedule_enabled': False}, headers={'Origin': 'http://localhost'})
         self.assertEqual(r_set.status_code, 200)
         self.assertFalse(r_set.get_json()['auto_schedule_enabled'])
 
@@ -4507,7 +4508,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
                 'reel_type': 'live_top5',
                 'caption': 'テストキャプション #オリエンタルラウンジ',
                 'share_to_feed': True,
-            })
+            }, headers={'Origin': 'http://localhost'})
             self.assertEqual(r_pub.status_code, 200)
             self.assertTrue(r_pub.get_json()['ok'])
 
@@ -4748,8 +4749,8 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('calm.css?v=52', home_html)
-        self.assertIn('app.js?v=20261119_3', home_html)
-        self.assertIn('/sw.js?v=119', home_html)
+        self.assertIn('app.js?v=20261119_5', home_html)
+        self.assertIn('/sw.js?v=121', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [
@@ -4829,7 +4830,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         # Unconfigured TikTok token safely returns phase1_manual guidance
         orig_env_tok = os.environ.pop('TIKTOK_ACCESS_TOKEN', None)
         try:
-            r_inbox = self.client.post('/api/staff/tiktok/publish-inbox', json={'reel_type': 'tiktok_gap_shock'})
+            r_inbox = self.client.post('/api/staff/tiktok/publish-inbox', json={'reel_type': 'tiktok_gap_shock'}, headers={'Origin': 'http://localhost'})
             self.assertEqual(r_inbox.status_code, 200)
             inbox_json = r_inbox.get_json()
             self.assertEqual(inbox_json.get('status'), 'phase1_manual')
@@ -4837,6 +4838,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
             r_tok_verify = self.client.post(
                 '/api/sns-editorial/platform-token',
                 json={'channel': 'tiktok', 'action': 'verify'},
+                headers={'Origin': 'http://localhost'},
             )
             self.assertEqual(r_tok_verify.status_code, 200)
             tok_v_json = r_tok_verify.get_json()
@@ -4854,6 +4856,7 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
                 r_inbox_ok = self.client.post(
                     '/api/staff/tiktok/publish-inbox',
                     json={'reel_type': 'tiktok_gap_shock', 'caption': 'テスト #相席ナビ #オリエンタルラウンジ'},
+                    headers={'Origin': 'http://localhost'},
                 )
                 self.assertEqual(r_inbox_ok.status_code, 200)
                 inbox_ok_json = r_inbox_ok.get_json()

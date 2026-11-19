@@ -22,13 +22,20 @@ import collections
 import contextlib
 import datetime
 import hashlib
+import ipaddress
 import json
 import logging
 import os
 import secrets
+import ssl
 import sys
 import threading
 import time
+
+try:
+    import certifi as _certifi_lib
+except ImportError:
+    _certifi_lib = None
 
 try:
     import redis as _redis_lib
@@ -63,6 +70,7 @@ _redis_failed_at = 0.0
 
 _pg_lock = threading.Lock()
 _pg_conn_pool = None
+_pg_pool_sem = None
 _pg_url_cached = None
 _pg_schema_ready = False
 _pg_failed_at = 0.0
@@ -87,7 +95,28 @@ _mem_state_kv_ts = {}
 _mem_analytics = collections.defaultdict(int)  # (date_jst, event, label) -> count
 _mem_analytics_hourly = collections.defaultdict(int)  # (date_jst, hour_jst, bucket) -> count
 _mem_rate_limits = collections.defaultdict(list)  # (namespace, key) -> [epoch_ts, ...]
-_mem_dist_locks = {}  # lock_name -> expire_epoch
+_mem_dist_locks = {}  # lock_name -> (expire_epoch, owner_token)
+_held_mutex_tokens = {}  # (safe_name, thread_ident) -> owner_token
+
+
+def normalize_ip_for_rate_limit(raw_subject: str) -> str:
+    """Normalize IPv6 addresses to /64 prefix for rate limiting (handles `ip` or `ip|ua` keys)."""
+    sub = str(raw_subject or "")
+    if "|" in sub:
+        ip_part, rest = sub.split("|", 1)
+        return f"{normalize_ip_for_rate_limit(ip_part)}|{rest}"
+    s = sub.strip()
+    if ":" not in s:
+        return s
+    try:
+        addr = ipaddress.ip_address(s.split("%", 1)[0])
+        if isinstance(addr, ipaddress.IPv6Address):
+            if addr.ipv4_mapped is not None:
+                return str(addr.ipv4_mapped)
+            return str(ipaddress.ip_network(f"{addr}/64", strict=False))
+    except ValueError:
+        pass
+    return s
 
 
 def _now_jst_str() -> str:
@@ -105,8 +134,10 @@ def enable_memory_bus_for_tests(enabled: bool = True):
 
 
 def reset_for_tests():
-    """Clear all in-memory bus state and L1 caches between unit tests."""
+    """Clear all in-memory bus state, client caches, pools, and L1 caches between unit tests."""
     global _mem_live_snapshot, _mem_bus_enabled
+    global _redis_client, _redis_url_cached, _redis_failed_at
+    global _pg_conn_pool, _pg_pool_sem, _pg_url_cached, _pg_schema_ready, _pg_failed_at
     with _mem_lock:
         _mem_bus_enabled = False
         _mem_live_snapshot = None
@@ -121,19 +152,46 @@ def reset_for_tests():
         _mem_analytics_hourly.clear()
         _mem_rate_limits.clear()
         _mem_dist_locks.clear()
+        _held_mutex_tokens.clear()
     with _l1_snap_lock:
         _l1_snap_cache["mono"] = 0.0
         _l1_snap_cache["data"] = None
+    with _redis_lock:
+        old_rc = _redis_client
+        _redis_client = None
+        _redis_url_cached = None
+        _redis_failed_at = 0.0
+    if old_rc is not None:
+        try:
+            old_rc.close()
+        except Exception:
+            pass
+    with _pg_lock:
+        old_pool = _pg_conn_pool
+        _pg_conn_pool = None
+        _pg_pool_sem = None
+        _pg_url_cached = None
+        _pg_schema_ready = False
+        _pg_failed_at = 0.0
+    if old_pool is not None:
+        try:
+            old_pool.closeall()
+        except Exception:
+            pass
 
 
 # =====================================================================
 # Connection Management: Upstash Redis (`REDIS_URL`) & PostgreSQL (`DATABASE_URL`)
 # =====================================================================
 def _live_backends_blocked() -> bool:
-    """Block live Redis/PostgreSQL network I/O during unittest/pytest unless explicitly opted in."""
+    """Block live Redis/PostgreSQL network I/O during unittest/pytest unless in production or explicitly opted in."""
+    if os.environ.get("DISABLE_TURBO_STORE", "") == "1":
+        return True
     if os.environ.get("ALLOW_LIVE_DB_IN_TESTS", "") == "1":
         return False
-    return ("unittest" in sys.modules) or ("pytest" in sys.modules)
+    if os.environ.get("FLY_APP_NAME") or os.environ.get("DYNO") or os.environ.get("TURBO_FORCE_LIVE_BACKENDS", "") == "1":
+        return False
+    return bool(os.environ.get("PYTEST_CURRENT_TEST")) or ("unittest" in sys.modules) or ("pytest" in sys.modules)
 
 
 def get_redis_url() -> str:
@@ -159,6 +217,17 @@ def _mark_redis_failed(err) -> None:
     logger.warning(f"[turbo_store] Redis marked unavailable for 15s ({err}); falling back safely.")
 
 
+def _mark_redis_failed_if_transport(err) -> None:
+    transport_types = [OSError, TimeoutError, ConnectionError]
+    if _redis_lib is not None:
+        for attr in ("ConnectionError", "TimeoutError", "BusyLoadingError"):
+            t = getattr(_redis_lib, attr, None)
+            if isinstance(t, type):
+                transport_types.append(t)
+    if isinstance(err, tuple(transport_types)):
+        _mark_redis_failed(err)
+
+
 def get_redis_client():
     """Return a thread-safe Redis client when `REDIS_URL` is configured and reachable, else `None`."""
     global _redis_client, _redis_url_cached, _redis_failed_at
@@ -173,13 +242,19 @@ def get_redis_client():
             return _redis_client
         try:
             kwargs = {
-                "socket_connect_timeout": 3.0,
-                "socket_timeout": 5.0,
+                "socket_connect_timeout": 2.0,
+                "socket_timeout": 1.5,
                 "health_check_interval": 30,
                 "decode_responses": False,
             }
             if url.startswith("rediss://"):
-                kwargs["ssl_cert_reqs"] = None
+                if os.environ.get("REDIS_TLS_INSECURE", "") == "1":
+                    kwargs["ssl_cert_reqs"] = None
+                    logger.warning("[turbo_store] REDIS_TLS_INSECURE=1: TLS certificate verification is DISABLED for rediss://")
+                else:
+                    kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+                    if _certifi_lib is not None:
+                        kwargs["ssl_ca_certs"] = _certifi_lib.where()
             client = _redis_lib.Redis.from_url(url, **kwargs)
             client.ping()
             _redis_client = client
@@ -209,10 +284,11 @@ def is_postgres_active() -> bool:
 
 
 def _mark_pg_failed(err) -> None:
-    global _pg_conn_pool, _pg_failed_at, _pg_schema_ready
+    global _pg_conn_pool, _pg_pool_sem, _pg_failed_at, _pg_schema_ready
     with _pg_lock:
         old_pool = _pg_conn_pool
         _pg_conn_pool = None
+        _pg_pool_sem = None
         _pg_schema_ready = False
         _pg_failed_at = time.monotonic()
     if old_pool is not None:
@@ -224,7 +300,7 @@ def _mark_pg_failed(err) -> None:
 
 
 def _get_pg_pool():
-    global _pg_conn_pool, _pg_url_cached, _pg_failed_at, _pg_schema_ready
+    global _pg_conn_pool, _pg_pool_sem, _pg_url_cached, _pg_failed_at, _pg_schema_ready
     url = get_database_url()
     if not url or not url.startswith("postgresql://") or _psycopg2 is None or _pg_pool is None:
         return None
@@ -238,6 +314,7 @@ def _get_pg_pool():
         if _pg_conn_pool is not None:
             old_pool_to_close = _pg_conn_pool
             _pg_conn_pool = None
+            _pg_pool_sem = None
             _pg_schema_ready = False
         _pg_url_cached = url
         # Provisional backoff prevents concurrent threads from piling onto psycopg2.connect
@@ -248,13 +325,36 @@ def _get_pg_pool():
         except Exception:
             pass
     try:
-        max_conns = max(4, min(20, int(os.environ.get("PG_POOL_MAX", "10"))))
-        pool_obj = _pg_pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=max_conns,
-            dsn=url,
-            connect_timeout=3,
-        )
+        role = (os.environ.get("APP_ROLE") or "all").strip().lower()
+        raw_max = os.environ.get("PG_POOL_MAX")
+        if raw_max is not None and str(raw_max).strip() != "":
+            try:
+                parsed_max = int(str(raw_max).strip())
+            except (TypeError, ValueError):
+                parsed_max = 4 if role == "worker" else 10
+        else:
+            parsed_max = 4 if role == "worker" else 10
+        max_conns = max(4, min(20, parsed_max))
+        min_conns = 2 if (role == "web" and max_conns >= 2) else 1
+        stmt_ms = 45000 if role == "worker" else 15000
+        lock_ms = 10000 if role == "worker" else 5000
+        idle_ms = 60000 if role == "worker" else 30000
+        pool_kwargs = {
+            "minconn": min_conns,
+            "maxconn": max_conns,
+            "dsn": url,
+            "connect_timeout": 3,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        }
+        if "options=" not in url:
+            pool_kwargs["options"] = (
+                f"-c statement_timeout={stmt_ms} -c lock_timeout={lock_ms} "
+                f"-c idle_in_transaction_session_timeout={idle_ms}"
+            )
+        pool_obj = _pg_pool.ThreadedConnectionPool(**pool_kwargs)
     except Exception as err:
         logger.warning(f"[turbo_store] PostgreSQL pool unavailable ({err}).")
         return None
@@ -267,6 +367,7 @@ def _get_pg_pool():
             pool_obj = _pg_conn_pool
         else:
             _pg_conn_pool = pool_obj
+            _pg_pool_sem = threading.BoundedSemaphore(max_conns)
             _pg_url_cached = url
             _pg_failed_at = 0.0
     if redundant_pool is not None:
@@ -279,50 +380,84 @@ def _get_pg_pool():
     return pool_obj
 
 
+_TRANSIENT_SQL_PGCODES = frozenset({"57014", "40P01", "40001", "55P03"})
+_CONN_FATAL_PGCODES = frozenset({"57P01", "57P02", "57P03"})
+
+
+def _classify_pg_error(conn, err) -> tuple:
+    """Return (conn_broken: bool, trip_circuit_breaker: bool)."""
+    is_closed = getattr(conn, "closed", 0) != 0
+    if _psycopg2 is None:
+        return (is_closed, False)
+    pgcode = str(getattr(err, "pgcode", "") or "").strip()
+    if isinstance(err, _psycopg2.InterfaceError):
+        trip = bool(pgcode in _CONN_FATAL_PGCODES or pgcode.startswith("08") or not pgcode)
+        return (True, trip)
+    if isinstance(err, _psycopg2.OperationalError):
+        if pgcode in _TRANSIENT_SQL_PGCODES:
+            return (is_closed, False)
+        if pgcode in _CONN_FATAL_PGCODES or pgcode.startswith("08"):
+            return (True, True)
+        # Other OperationalError (e.g. generic transient error while socket still open): drop only if socket closed
+        return (is_closed, False)
+    return (is_closed, False)
+
+
 @contextlib.contextmanager
 def pg_connection():
     """Yield a healthy PostgreSQL connection from the pool, auto-closing broken sockets."""
     pool_obj = _get_pg_pool()
     if pool_obj is None:
         raise RuntimeError("PostgreSQL pool is not configured")
+    with _pg_lock:
+        sem = _pg_pool_sem if (_pg_conn_pool is pool_obj) else None
+    if sem is not None:
+        if not sem.acquire(timeout=3.0):
+            raise RuntimeError("PostgreSQL pool exhausted (timeout)")
     try:
-        conn = pool_obj.getconn()
-        if getattr(conn, "closed", 0):
-            pool_obj.putconn(conn, close=True)
-            conn = pool_obj.getconn()
-    except Exception as err:
-        if _pg_pool is not None and isinstance(err, _pg_pool.PoolError):
-            raise RuntimeError(f"PostgreSQL pool exhausted: {err}")
-        _mark_pg_failed(err)
-        raise RuntimeError(f"PostgreSQL unavailable: {err}")
-    broken = False
-    try:
-        yield conn
-    except Exception as err:
-        broken = bool(getattr(conn, "closed", 0)) or isinstance(
-            err, (_psycopg2.OperationalError, _psycopg2.InterfaceError)
-        )
-        if broken:
-            _mark_pg_failed(err)
-        else:
-            try:
-                conn.rollback()
-            except Exception:
-                broken = True
-                _mark_pg_failed(err)
-        raise
-    finally:
         try:
-            # BUG-09: Prevent 'idle in transaction' when returning connection to pool
-            if not broken and not getattr(conn, "closed", 0):
-                if getattr(conn, "status", 0) != 0:
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        broken = True
-            pool_obj.putconn(conn, close=broken)
-        except Exception:
-            pass
+            conn = pool_obj.getconn()
+            if getattr(conn, "closed", 0):
+                pool_obj.putconn(conn, close=True)
+                conn = pool_obj.getconn()
+        except Exception as err:
+            if _pg_pool is not None and isinstance(err, _pg_pool.PoolError):
+                raise RuntimeError(f"PostgreSQL pool exhausted: {err}")
+            _mark_pg_failed(err)
+            raise RuntimeError(f"PostgreSQL unavailable: {err}")
+        broken = False
+        try:
+            yield conn
+        except Exception as err:
+            conn_broken, trip_cb = _classify_pg_error(conn, err)
+            broken = bool(getattr(conn, "closed", 0)) or conn_broken
+            if trip_cb:
+                _mark_pg_failed(err)
+            if not broken:
+                try:
+                    conn.rollback()
+                except Exception:
+                    broken = True
+                    _mark_pg_failed(err)
+            raise
+        finally:
+            try:
+                # BUG-09: Prevent 'idle in transaction' when returning connection to pool
+                if not broken and not getattr(conn, "closed", 0):
+                    if getattr(conn, "status", 0) != 0:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            broken = True
+                pool_obj.putconn(conn, close=broken)
+            except Exception:
+                pass
+    finally:
+        if sem is not None:
+            try:
+                sem.release()
+            except ValueError:
+                pass
 
 
 def init_postgres_aux_schema() -> bool:
@@ -582,14 +717,16 @@ def publish_live_snapshot(
     is_seed: bool = False,
     source_health: dict = None,
     ttl_sec: int = 3600,
+    preserved_epoch: float = None,
 ) -> bool:
     """Publish the latest 53-store headcounts & scraper health so all `web` workers read in <0.5ms."""
+    pub_epoch = float(preserved_epoch) if preserved_epoch is not None else time.time()
     payload = {
         "full_data": list(full_data or []),
         "last_updated": last_updated or _now_jst_str(),
         "is_seed": bool(is_seed),
         "source_health": source_health or {},
-        "published_at_epoch": time.time(),
+        "published_at_epoch": pub_epoch,
     }
     with _l1_snap_lock:
         _l1_snap_cache["mono"] = time.monotonic()
@@ -609,6 +746,7 @@ def publish_live_snapshot(
         r.setex(LIVE_SNAPSHOT_KEY, max(60, int(ttl_sec)), raw)
         return True
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.warning(f"[turbo_store] publish_live_snapshot failed: {err}")
         return False
 
@@ -644,6 +782,7 @@ def get_live_snapshot(bypass_l1: bool = False) -> dict:
                 _l1_snap_cache["data"] = snap
             return snap
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.warning(f"[turbo_store] get_live_snapshot failed: {err}")
     return None
 
@@ -652,23 +791,65 @@ def update_live_snapshot_store_votes(store_name: str, votes_dict: dict) -> bool:
     """Update a single store's crowd votes inside the shared snapshot immediately after a user vote."""
     if not store_name or not isinstance(votes_dict, dict):
         return False
-    snap = get_live_snapshot(bypass_l1=True)
-    if not snap or not isinstance(snap.get("full_data"), list):
+    if _mem_bus_enabled:
+        with _mem_lock:
+            global _mem_live_snapshot
+            if not _mem_live_snapshot or not isinstance(_mem_live_snapshot.get("full_data"), list):
+                return False
+            changed = False
+            for s in _mem_live_snapshot["full_data"]:
+                if s.get("name") == store_name:
+                    s["votes"] = dict(votes_dict)
+                    changed = True
+                    break
+            if not changed:
+                return False
+            snap_copy = json.loads(json.dumps(_mem_live_snapshot, ensure_ascii=False))
+        with _l1_snap_lock:
+            _l1_snap_cache["mono"] = time.monotonic()
+            _l1_snap_cache["data"] = snap_copy
+        return True
+
+    r = get_redis_client()
+    if r is None:
         return False
-    changed = False
-    for s in snap["full_data"]:
-        if s.get("name") == store_name:
-            s["votes"] = dict(votes_dict)
-            changed = True
-            break
-    if not changed:
-        return False
-    return publish_live_snapshot(
-        full_data=snap["full_data"],
-        last_updated=snap.get("last_updated"),
-        is_seed=bool(snap.get("is_seed")),
-        source_health=snap.get("source_health"),
-    )
+    watch_err_cls = getattr(_redis_lib, "WatchError", None) if _redis_lib is not None else None
+    for _ in range(3):
+        try:
+            with r.pipeline() as pipe:
+                pipe.watch(LIVE_SNAPSHOT_KEY)
+                raw = pipe.get(LIVE_SNAPSHOT_KEY)
+                if not raw:
+                    pipe.unwatch()
+                    return False
+                snap = json.loads(raw.decode("utf-8"))
+                if not isinstance(snap, dict) or not isinstance(snap.get("full_data"), list):
+                    pipe.unwatch()
+                    return False
+                changed = False
+                for s in snap["full_data"]:
+                    if s.get("name") == store_name:
+                        s["votes"] = dict(votes_dict)
+                        changed = True
+                        break
+                if not changed:
+                    pipe.unwatch()
+                    return False
+                encoded = json.dumps(snap, ensure_ascii=False).encode("utf-8")
+                pipe.multi()
+                pipe.setex(LIVE_SNAPSHOT_KEY, 3600, encoded)
+                pipe.execute()
+                with _l1_snap_lock:
+                    _l1_snap_cache["mono"] = time.monotonic()
+                    _l1_snap_cache["data"] = snap
+                return True
+        except Exception as err:
+            if watch_err_cls is not None and isinstance(err, watch_err_cls):
+                continue
+            _mark_redis_failed_if_transport(err)
+            logger.warning(f"[turbo_store] update_live_snapshot_store_votes failed: {err}")
+            return False
+    return False
 
 
 # =====================================================================
@@ -700,6 +881,7 @@ def set_ai_cache(namespace: str, raw_key, value_dict: dict, ttl_sec: int = 2400)
         r.setex(rkey, ttl, json.dumps(value_dict, ensure_ascii=False).encode("utf-8"))
         return True
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.debug(f"[turbo_store] set_ai_cache skipped: {err}")
         return False
 
@@ -733,6 +915,7 @@ def get_ai_cache(namespace: str, raw_key) -> dict:
         parsed = json.loads(raw.decode("utf-8"))
         return parsed if isinstance(parsed, dict) else None
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.debug(f"[turbo_store] get_ai_cache skipped: {err}")
         return None
 
@@ -762,6 +945,7 @@ def clear_ai_cache(namespace: str = None) -> int:
         if batch:
             removed += int(r.delete(*batch) or 0)
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.debug(f"[turbo_store] clear_ai_cache skipped: {err}")
     return removed
 
@@ -805,6 +989,7 @@ def set_media_blob(media_key: str, raw_bytes: bytes, mime_type: str = "image/png
         r.setex(rkey, ttl, manifest)
         return True
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.warning(f"[turbo_store] set_media_blob failed ({media_key}, {len(b_data)}B): {err}")
         return False
 
@@ -858,6 +1043,7 @@ def get_media_blob(media_key: str) -> tuple:
         mime_b, body = raw.split(b"\n", 1)
         return (body, mime_b.decode("ascii", errors="replace"))
     except Exception as err:
+        _mark_redis_failed_if_transport(err)
         logger.debug(f"[turbo_store] get_media_blob skipped: {err}")
         return None
 
@@ -906,9 +1092,14 @@ def enqueue_sns_job(job_type: str, params: dict = None, requested_by: str = "mas
             pipe.execute()
             return dict(job)
         except Exception as err:
-            logger.warning(f"[turbo_store] Redis enqueue_sns_job fallback to local memory: {err}")
+            _mark_redis_failed_if_transport(err)
+            logger.warning(f"[turbo_store] Redis enqueue_sns_job failed: {err}")
 
-    # Fallback to process-local memory queue when Redis is not configured
+    if os.environ.get("FLY_APP_NAME"):
+        logger.error(f"[turbo_store] Refusing process-local SNS job fallback in production (Redis unavailable): {job_type}")
+        return False
+
+    # Fallback to process-local memory queue only in non-production / single-process dev
     with _mem_sns_cond:
         _mem_sns_jobs[job_id] = dict(job)
         while len(_mem_sns_jobs) > 100:
@@ -928,8 +1119,8 @@ def get_sns_job(job_id: str) -> dict:
                 raw = r.get(_sns_job_redis_key(job_id))
                 if raw:
                     return json.loads(raw.decode("utf-8"))
-            except Exception:
-                pass
+            except Exception as err:
+                _mark_redis_failed_if_transport(err)
     with _mem_lock:
         hit = _mem_sns_jobs.get(job_id)
         return json.loads(json.dumps(hit, ensure_ascii=False)) if hit else None
@@ -949,8 +1140,8 @@ def list_recent_sns_jobs(limit: int = 12) -> list:
                     if j:
                         out.append(j)
                 return out
-            except Exception:
-                pass
+            except Exception as err:
+                _mark_redis_failed_if_transport(err)
     with _mem_lock:
         vals = list(_mem_sns_jobs.values())[-lim:]
         vals.reverse()
@@ -968,21 +1159,25 @@ def _save_sns_job_record(job: dict):
                 r.setex(_sns_job_redis_key(job_id), 86400, json.dumps(job, ensure_ascii=False).encode("utf-8"))
                 return
             except Exception as err:
+                _mark_redis_failed_if_transport(err)
                 logger.warning(f"[turbo_store] _save_sns_job_record fallback: {err}")
     with _mem_lock:
         _mem_sns_jobs[job_id] = json.loads(json.dumps(job, ensure_ascii=False))
 
 
-def claim_next_sns_job(timeout_sec: float = 2.0) -> dict:
+def claim_next_sns_job(timeout_sec: float = 1.0) -> dict:
     """Pop the next queued SNS job and mark it `running` (`worker.py` consumer loop)."""
     if not _mem_bus_enabled:
         r = get_redis_client()
         if r is not None:
             try:
-                popped = r.blpop(SNS_QUEUE_KEY, timeout=max(1, int(round(timeout_sec))))
-                if not popped:
+                if float(timeout_sec or 0) < 0.8:
+                    raw_id = r.lpop(SNS_QUEUE_KEY)
+                else:
+                    popped = r.blpop(SNS_QUEUE_KEY, timeout=1)
+                    raw_id = popped[1] if popped else None
+                if not raw_id:
                     return None
-                _, raw_id = popped
                 job_id = raw_id.decode("utf-8") if isinstance(raw_id, bytes) else str(raw_id)
                 job = get_sns_job(job_id)
                 if not job:
@@ -992,6 +1187,7 @@ def claim_next_sns_job(timeout_sec: float = 2.0) -> dict:
                 _save_sns_job_record(job)
                 return job
             except Exception as err:
+                _mark_redis_failed_if_transport(err)
                 logger.warning(f"[turbo_store] claim_next_sns_job error: {err}")
                 return None
 
@@ -1062,6 +1258,7 @@ def state_mark_done(key: str, done_at_jst: str = None) -> bool:
             r.sadd(STATE_KEYS_SET, key.encode("utf-8"))
             wrote = True
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.debug(f"[turbo_store] state_mark_done redis skipped: {err}")
 
     return wrote
@@ -1112,6 +1309,7 @@ def state_set_kv(prefix: str, obfuscated_or_plain_val: str, ts_14: str, updated_
             pipe.execute()
             wrote = True
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.debug(f"[turbo_store] state_set_kv redis skipped: {err}")
 
     return wrote
@@ -1181,6 +1379,7 @@ def state_load_snapshot() -> dict:
                     if t_s:
                         kv_ts_out[p_s] = t_s
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.debug(f"[turbo_store] state_load_snapshot redis skipped: {err}")
 
     return {"keys": keys_out, "kv": kv_out, "kv_ts": kv_ts_out}
@@ -1203,7 +1402,7 @@ def analytics_add_batch(items: list) -> bool:
 
     if is_postgres_active() and init_postgres_aux_schema():
         try:
-            rows = [(str(d), str(e), str(l), int(c)) for (d, e, l), c in items if int(c) > 0]
+            rows = sorted((str(d), str(e), str(l), int(c)) for (d, e, l), c in items if int(c) > 0)
             if rows:
                 execute_pg_values_batch(
                     """
@@ -1321,6 +1520,7 @@ def analytics_hourly_add_batch(items: list) -> bool:
                 if 0 <= hi <= 23 and ci > 0 and d and b:
                     rows.append((str(d), hi, str(b), ci))
             if rows:
+                rows.sort()
                 execute_pg_values_batch(
                     """
                     INSERT INTO analytics_hourly (date_jst, hour_jst, bucket, count)
@@ -1435,21 +1635,24 @@ def prune_old_analytics_hourly(keep_days: int = 90) -> int:
 # =====================================================================
 def _rl_redis_key(namespace: str, subject: str) -> str:
     safe_ns = (namespace or "default").strip()[:32]
-    safe_sub = hashlib.sha256((subject or "anon").encode("utf-8")).hexdigest()[:24]
+    norm_sub = normalize_ip_for_rate_limit(subject or "anon")
+    safe_sub = hashlib.sha256(norm_sub.encode("utf-8")).hexdigest()[:24]
     return f"{KEY_PREFIX}:rl:{safe_ns}:{safe_sub}"
 
 
 def get_rate_limit_count(namespace: str, subject: str, window_sec: int, now: float = None) -> int:
     """Return current hit count across all workers (Redis when available, else test/local memory)."""
+    norm_sub = normalize_ip_for_rate_limit(subject)
     rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
     if rc is not None:
         try:
-            raw = rc.get(_rl_redis_key(namespace, subject))
+            raw = rc.get(_rl_redis_key(namespace, norm_sub))
             return int(raw) if raw is not None else 0
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.warning(f"[turbo_store] get_rate_limit_count redis error: {err}")
     now_t = now if now is not None else time.time()
-    mk = (namespace, subject)
+    mk = (namespace, norm_sub)
     with _mem_lock:
         recent = [t for t in _mem_rate_limits.get(mk, []) if now_t - t < window_sec]
         if recent:
@@ -1461,9 +1664,10 @@ def get_rate_limit_count(namespace: str, subject: str, window_sec: int, now: flo
 
 def record_rate_limit_hit(namespace: str, subject: str, window_sec: int, now: float = None) -> int:
     """Atomically record 1 hit with TTL `window_sec` across all workers and return updated count."""
+    norm_sub = normalize_ip_for_rate_limit(subject)
     rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
     if rc is not None:
-        rkey = _rl_redis_key(namespace, subject)
+        rkey = _rl_redis_key(namespace, norm_sub)
         try:
             pipe = rc.pipeline()
             pipe.incr(rkey)
@@ -1473,9 +1677,10 @@ def record_rate_limit_hit(namespace: str, subject: str, window_sec: int, now: fl
                 rc.expire(rkey, max(1, int(window_sec)))
             return int(cnt)
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.warning(f"[turbo_store] record_rate_limit_hit redis error: {err}")
     now_t = now if now is not None else time.time()
-    mk = (namespace, subject)
+    mk = (namespace, norm_sub)
     with _mem_lock:
         if len(_mem_rate_limits) > 2048:
             stale = [k for k, ts_l in _mem_rate_limits.items() if not ts_l or (now_t - ts_l[-1] >= window_sec)]
@@ -1493,30 +1698,32 @@ def record_rate_limit_hit(namespace: str, subject: str, window_sec: int, now: fl
 
 def clear_rate_limit(namespace: str, subject: str = None) -> None:
     """Clear rate-limit counter for a specific subject (or entire namespace when `subject is None`)."""
+    norm_sub = normalize_ip_for_rate_limit(subject) if subject is not None else None
     rc = None if _mem_bus_enabled else get_redis_client()
-    if rc is not None and subject is not None:
+    if rc is not None and norm_sub is not None:
         try:
-            rc.delete(_rl_redis_key(namespace, subject))
-        except Exception:
-            pass
+            rc.delete(_rl_redis_key(namespace, norm_sub))
+        except Exception as err:
+            _mark_redis_failed_if_transport(err)
     with _mem_lock:
-        if subject is None:
+        if norm_sub is None:
             for k in [k for k in _mem_rate_limits.keys() if k[0] == namespace]:
                 _mem_rate_limits.pop(k, None)
         else:
-            _mem_rate_limits.pop((namespace, subject), None)
+            _mem_rate_limits.pop((namespace, norm_sub), None)
 
 
 def check_sliding_rate_limit(namespace: str, subject: str, limit: int, window_sec: int, now: float = None) -> bool:
     """Return True and record hit when under `limit`, or False without extending lock when >= `limit`."""
+    norm_sub = normalize_ip_for_rate_limit(subject)
     rc = None if (_mem_bus_enabled or now is not None) else get_redis_client()
     if rc is not None:
-        new_cnt = record_rate_limit_hit(namespace, subject, window_sec, now=None)
+        new_cnt = record_rate_limit_hit(namespace, norm_sub, window_sec, now=None)
         return new_cnt <= limit
-    cur = get_rate_limit_count(namespace, subject, window_sec, now=now)
+    cur = get_rate_limit_count(namespace, norm_sub, window_sec, now=now)
     if cur >= limit:
         return False
-    new_cnt = record_rate_limit_hit(namespace, subject, window_sec, now=now)
+    new_cnt = record_rate_limit_hit(namespace, norm_sub, window_sec, now=now)
     return new_cnt <= limit
 
 
@@ -1535,6 +1742,7 @@ def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55, fail_open: bool 
             acquired = rc.set(lkey, secrets.token_hex(8).encode("utf-8"), nx=True, ex=max(1, int(ttl_sec)))
             return bool(acquired)
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.warning(f"[turbo_store] acquire_distributed_lock redis error ({safe_name}): {err}")
             return bool(fail_open)
     if _mem_bus_enabled:
@@ -1545,30 +1753,37 @@ def acquire_distributed_lock(lock_name: str, ttl_sec: int = 55, fail_open: bool 
                 return False
             _mem_dist_locks[safe_name] = now_t + max(1, int(ttl_sec))
             return True
-    return True
+    if not fail_open:
+        logger.warning(f"[turbo_store] acquire_distributed_lock skipped (Redis unavailable, fail_open=False): {safe_name}")
+    return bool(fail_open)
 
 
 def acquire_named_mutex(lock_name: str, ttl_sec: int = 180) -> bool:
-    """Acquire an explicit releasable mutex across Redis, PostgreSQL (`job_state_kv`), and local threads."""
+    """Acquire an explicit releasable owner-tokenized mutex across Redis, PostgreSQL (`job_state_kv`), and local threads."""
     safe_name = (lock_name or "mutex").strip()[:72]
     ttl = max(1, int(ttl_sec))
     now_t = time.time()
     exp_t = now_t + ttl
+    owner_tok = f"{os.getpid()}:{threading.get_ident()}:{secrets.token_hex(8)}"
+    holder_key = (safe_name, threading.get_ident())
 
     rc = None if _mem_bus_enabled else get_redis_client()
     if rc is not None:
         lkey = f"{KEY_PREFIX}:mutex:{safe_name}"
         try:
-            acquired = bool(rc.set(lkey, b"1", nx=True, ex=ttl))
+            acquired = bool(rc.set(lkey, owner_tok.encode("utf-8"), nx=True, ex=ttl))
             if acquired:
                 with _mem_lock:
-                    _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+                    _mem_dist_locks[f"mutex:{safe_name}"] = (exp_t, owner_tok)
+                    _held_mutex_tokens[holder_key] = owner_tok
             return acquired
         except Exception as err:
+            _mark_redis_failed_if_transport(err)
             logger.warning(f"[turbo_store] acquire_named_mutex redis error ({safe_name}): {err}")
 
     if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
         pg_key = f"dlock:{safe_name}"
+        pg_val = f"{exp_t:.3f}|{owner_tok}"
         try:
             with pg_connection() as conn:
                 with conn.cursor() as cur:
@@ -1580,25 +1795,34 @@ def acquire_named_mutex(lock_name: str, ttl_sec: int = 180) -> bool:
                             SET val = EXCLUDED.val,
                                 ts_jst = EXCLUDED.ts_jst,
                                 updated_at_jst = EXCLUDED.updated_at_jst
-                        WHERE (CASE WHEN job_state_kv.val ~ '^[0-9]+(\\.[0-9]+)?$' THEN job_state_kv.val::DOUBLE PRECISION ELSE 0 END) <= %s
+                        WHERE (
+                            CASE
+                                WHEN split_part(job_state_kv.val, '|', 1) ~ '^[0-9]+(\\.[0-9]+)?$'
+                                THEN split_part(job_state_kv.val, '|', 1)::DOUBLE PRECISION
+                                ELSE 0
+                            END
+                        ) <= %s
                         RETURNING prefix;
                         """,
-                        (pg_key, f"{exp_t:.3f}", _now_jst_str(), _now_jst_str(), now_t),
+                        (pg_key, pg_val, _now_jst_str(), _now_jst_str(), now_t),
                     )
                     got = cur.fetchone() is not None
                 conn.commit()
             if got:
                 with _mem_lock:
-                    _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+                    _mem_dist_locks[f"mutex:{safe_name}"] = (exp_t, owner_tok)
+                    _held_mutex_tokens[holder_key] = owner_tok
             return got
         except Exception as err:
             logger.warning(f"[turbo_store] acquire_named_mutex pg error ({safe_name}): {err}")
 
     with _mem_lock:
-        cur_exp = _mem_dist_locks.get(f"mutex:{safe_name}", 0.0)
+        ent = _mem_dist_locks.get(f"mutex:{safe_name}")
+        cur_exp = ent[0] if isinstance(ent, tuple) else float(ent or 0.0)
         if cur_exp > now_t:
             return False
-        _mem_dist_locks[f"mutex:{safe_name}"] = exp_t
+        _mem_dist_locks[f"mutex:{safe_name}"] = (exp_t, owner_tok)
+        _held_mutex_tokens[holder_key] = owner_tok
         return True
 
 
@@ -1607,15 +1831,17 @@ def is_named_mutex_held(lock_name: str) -> bool:
     safe_name = (lock_name or "mutex").strip()[:72]
     now_t = time.time()
     with _mem_lock:
-        if _mem_dist_locks.get(f"mutex:{safe_name}", 0.0) > now_t:
+        ent = _mem_dist_locks.get(f"mutex:{safe_name}")
+        cur_exp = ent[0] if isinstance(ent, tuple) else float(ent or 0.0)
+        if cur_exp > now_t:
             return True
 
     rc = None if _mem_bus_enabled else get_redis_client()
     if rc is not None:
         try:
             return bool(rc.exists(f"{KEY_PREFIX}:mutex:{safe_name}"))
-        except Exception:
-            pass
+        except Exception as err:
+            _mark_redis_failed_if_transport(err)
 
     if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
         pg_key = f"dlock:{safe_name}"
@@ -1629,31 +1855,52 @@ def is_named_mutex_held(lock_name: str) -> bool:
                 except Exception:
                     pass
                 if row and row[0]:
-                    return float(row[0]) > now_t
+                    exp_part = str(row[0]).split("|", 1)[0]
+                    return float(exp_part) > now_t
         except Exception:
             pass
     return False
 
 
-def release_named_mutex(lock_name: str) -> None:
-    """Release mutex acquired via `acquire_named_mutex`."""
+_LUA_DEL_IF_EQ = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+"""
+
+
+def release_named_mutex(lock_name: str, token: str = None) -> bool:
+    """Release mutex ONLY if owned by the caller's token (prevents cross-thread/worker lock stealing)."""
     safe_name = (lock_name or "mutex").strip()[:72]
+    holder_key = (safe_name, threading.get_ident())
     with _mem_lock:
-        _mem_dist_locks.pop(f"mutex:{safe_name}", None)
+        owner_tok = token or _held_mutex_tokens.pop(holder_key, None)
+        if not owner_tok:
+            return False
+        ent = _mem_dist_locks.get(f"mutex:{safe_name}")
+        if isinstance(ent, tuple) and ent[1] == owner_tok:
+            _mem_dist_locks.pop(f"mutex:{safe_name}", None)
 
     rc = None if _mem_bus_enabled else get_redis_client()
     if rc is not None:
+        lkey = f"{KEY_PREFIX}:mutex:{safe_name}"
         try:
-            rc.delete(f"{KEY_PREFIX}:mutex:{safe_name}")
-        except Exception:
-            pass
+            rc.eval(_LUA_DEL_IF_EQ, 1, lkey, owner_tok.encode("utf-8"))
+        except Exception as err:
+            _mark_redis_failed_if_transport(err)
 
     if not _mem_bus_enabled and is_postgres_active() and init_postgres_aux_schema():
         try:
             with pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("DELETE FROM job_state_kv WHERE prefix = %s;", (f"dlock:{safe_name}",))
+                    cur.execute(
+                        "DELETE FROM job_state_kv WHERE prefix = %s AND split_part(val, '|', 2) = %s;",
+                        (f"dlock:{safe_name}", owner_tok),
+                    )
                 conn.commit()
         except Exception:
             pass
+    return True
 

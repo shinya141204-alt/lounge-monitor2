@@ -10,3 +10,4 @@ lxml>=5.0.0,<6.0.0
 redis>=5.0.0,<6.0.0
 psycopg2-binary>=2.9.9,<3.0.0
 cryptography>=42.0.0,<45.0.0
+certifi>=2024.0.0

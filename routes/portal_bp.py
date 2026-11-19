@@ -1,6 +1,9 @@
 """Public portal pages, store/brand/area directories, concierge APIs, legal pages, and editorial guides Blueprint."""
 
 import csv
+import datetime as _dt_portal
+import gzip
+import hashlib
 import io
 import logging
 import math
@@ -11,6 +14,7 @@ import urllib.parse
 
 from flask import Blueprint, Response, abort, jsonify, make_response, redirect, render_template, request, session, url_for
 
+import request_guards
 from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 from routes._bridge import core
 
@@ -34,7 +38,13 @@ STORE_PAGE_COMPARE_LIMIT = 4
 
 _MONTHLY_CSV_CACHE = {}
 _MONTHLY_CSV_LOCK = threading.Lock()
+_MONTHLY_CSV_ROWS_LOCKS = {}
+_MONTHLY_CSV_LAST_GOOD = {}
 _MONTHLY_CSV_TTL = 900.0
+
+_STATS_PAGE_LOCKS = {'monthly': threading.Lock(), 'year_end': threading.Lock()}
+_STATS_NEG_MEMO = {}  # key -> (mono_ts, payload)
+_STATS_NEG_TTL_SEC = 10.0
 
 # Public-request forecast backfill debounce (15 min) so cold /stats or /api/forecast-accuracy
 # traffic cannot continuously re-spawn heavy history scans on the 512MB Fly Postgres VM.
@@ -91,6 +101,9 @@ def _is_hidden_with(store_name: str, hb: set, hs: set) -> bool:
 def clear_monthly_csv_cache():
     with _MONTHLY_CSV_LOCK:
         _MONTHLY_CSV_CACHE.clear()
+        _MONTHLY_CSV_LAST_GOOD.clear()
+    with _STATS_PAGE_LOCKS['monthly']:
+        _STATS_NEG_MEMO.clear()
 
 
 def _nearest_stores_with_km(sname, candidates, limit):
@@ -239,8 +252,8 @@ def _render_brand_page(brand_slug):
                 s_live = live_map.get(sname, {})
                 info = master.get(sname, {})
                 reg = info.get('region') or s_live.get('region') or core.detect_region(sname)
-                w_cnt = int(s_live.get('women', 0))
-                m_cnt = int(s_live.get('men', 0))
+                w_cnt = int(s_live.get('women', 0) or 0)
+                m_cnt = int(s_live.get('men', 0) or 0)
                 h_info = store_hours.get_business_hours_status(sname, total_guests=(w_cnt + m_cnt))
                 matched.append({
                     'name': sname,
@@ -346,10 +359,11 @@ def store_detail_page(store_slug):
             pass
         info = store_master.get(sname) or {}
         live_map = {s.get('name'): s for s in raw_stores}
-        s_live = live_map.get(sname, {})
+        live_data_missing = sname not in live_map
+        s_live = live_map.get(sname) or {}
 
-        women = int(s_live.get('women', 0))
-        men = int(s_live.get('men', 0))
+        women = int(s_live.get('women', 0) or 0)
+        men = int(s_live.get('men', 0) or 0)
         tot = women + men
         wpct = round((women / tot) * 100) if tot > 0 else 50
         hours_info = store_hours.get_business_hours_status(sname, total_guests=tot)
@@ -389,7 +403,12 @@ def store_detail_page(store_slug):
                 'ヤタコイ': 'https://yatakoi.com/',
             }.get(raw_brand, 'https://oriental-lounge.com/')
 
-        if tot == 0:
+        if live_data_missing:
+            if hours_info['is_open_now']:
+                crowd_comment = f"ライブデータ取得待機中（本日 {hours_info['today_hours_label']}）"
+            else:
+                crowd_comment = f"営業時間外（本日 {hours_info['today_hours_label']}）"
+        elif tot == 0:
             if hours_info['is_open_now']:
                 crowd_comment = f"営業中｜現在 0 : 0（本日 {hours_info['today_hours_label']}）"
             else:
@@ -454,6 +473,7 @@ def store_detail_page(store_slug):
             'men_diff': int(s_live.get('men_diff', 0) or 0),
             'total': tot,
             'wpct': wpct if tot > 0 else 0,
+            'live_data_missing': live_data_missing,
             'crowd_comment': crowd_comment,
             'map_url': map_url,
             'is_open_now': hours_info['is_open_now'],
@@ -465,6 +485,7 @@ def store_detail_page(store_slug):
             'lng': info.get('lng'),
             'map_anchor': map_anchor,
             'pos_telemetry': s_live.get('pos_telemetry'),
+            'price_range': '女性 無料 / 男性 時間制' if ('ソウル' in sname) else '女性 無料 / 男性 店舗別料金',
         }
         try:
             core._attach_store_benchmarks(store_obj, sname, women, men, core.local_db.get_all_stores_live_benchmarks(allow_blocking=False))
@@ -478,20 +499,37 @@ def store_detail_page(store_slug):
         except Exception:
             pass
 
+        hb, hs = _gov_hidden_sets()
         nearby_comparison = None
         try:
             import price_comparison
             nearby_comparison = price_comparison.get_nearby_comparison_for_store(sname, live_stores=raw_stores)
+            if isinstance(nearby_comparison, dict) and isinstance(nearby_comparison.get('stores'), list) and (hb or hs):
+                nearby_comparison = dict(nearby_comparison)
+                nearby_comparison['stores'] = [
+                    st for st in nearby_comparison['stores']
+                    if not _is_hidden_with((st or {}).get('name') or (st or {}).get('store_name') or '', hb, hs)
+                ]
             nearby_comparison = core._trim_nearby_comparison(sname, nearby_comparison, core.STORE_PAGE_COMPARE_LIMIT)
+            self_prof = (nearby_comparison or {}).get('self_profile') if isinstance(nearby_comparison, dict) else None
+            if not isinstance(self_prof, dict):
+                self_prof = price_comparison.get_store_price_profile(sname, live_store=s_live)
+            if 'ソウル' not in sname and isinstance(self_prof, dict):
+                est_lbl = str(self_prof.get('est_60m_weekday_label') or '')
+                m_yen = re.search(r'([0-9,]+円)', est_lbl)
+                if m_yen:
+                    flat_sfx = '（定額）' if self_prof.get('is_flat_rate') else ''
+                    store_obj['price_range'] = f"男性 {m_yen.group(1)}〜{flat_sfx} / 女性 無料"
         except Exception:
             pass
 
         store_insight = None
         try:
             import store_insights
+            all_master = store_master.load() or {}
             area_peer_names = [
-                n for n, meta in store_master.load().items()
-                if area_slug and (meta or {}).get('area_slug') == area_slug
+                n for n, meta in all_master.items()
+                if area_slug and (meta or {}).get('area_slug') == area_slug and not _is_hidden_with(n, hb, hs)
             ]
             store_insight = store_insights.build_store_insight(
                 sname,
@@ -500,7 +538,9 @@ def store_detail_page(store_slug):
                 area_store_names=area_peer_names,
                 seo_name_fn=store_master.seo_name,
                 nearest=core._nearest_stores_with_km(
-                    sname, [n for n in store_master.load().keys() if 'ソウル' not in n], 3
+                    sname,
+                    [n for n in all_master.keys() if 'ソウル' not in n and not _is_hidden_with(n, hb, hs)],
+                    3,
                 ),
             )
         except Exception as e:
@@ -686,7 +726,7 @@ def store_detail_page(store_slug):
     og_cache_bucket = f"{now_cache_jst.strftime('%Y%m%d_%H')}{(now_cache_jst.minute // 15) * 15:02d}"
     store_mon_sig = (
         affiliate_manager.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
-        affiliate_manager.is_slot_monetized('women_dating', allow_blocking=False),
+        affiliate_manager.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
         affiliate_manager.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
     )
     return core._get_cached_html_or_render(('store', store_slug, store_mon_sig, og_cache_bucket), _render)
@@ -722,56 +762,107 @@ def columns_index():
 @portal_bp.route('/api/forecast-accuracy')
 def api_forecast_accuracy():
     """Public JSON report of 60-minute AI crowd forecast vs. actual outcome verification."""
+    import ops_governance
+    import store_master
     raw_days = max(1, min(120, request.args.get('days', 90, type=int) or 90))
     days = min((7, 14, 21, 30, 60, 90, 120), key=lambda d: abs(d - raw_days))
     store_q = (request.args.get('store') or '').strip() or None
     if store_q is not None and (len(store_q) > 80 or any(ord(c) < 32 or ord(c) == 127 for c in store_q)):
         return jsonify({'ok': False, 'error': 'Invalid store parameter'}), 400
-    limit_q = max(5, min(100, request.args.get('limit', 30, type=int) or 30))
-    try:
-        import store_master
-        rep = core.local_db.get_forecast_accuracy_report(
-            days=days,
-            store_name=store_q,
-            limit_recent=limit_q,
-            allow_blocking=True,
-            auto_backfill=False,
-        )
-        if store_q is None:
-            _maybe_trigger_public_backfill(rep)
+    raw_lim = max(5, min(100, request.args.get('limit', 30, type=int) or 30))
+    limit_q = min((10, 30, 100), key=lambda x: abs(x - raw_lim))
 
-        def _clean_forecast_rep(d):
-            if not isinstance(d, dict):
-                return d
-            out = dict(d)
-            if 'store_filter' in out and out['store_filter']:
-                out['store_filter'] = store_master.seo_name(out['store_filter'])
-            for list_key in ('by_store', 'recent_resolved', 'pending_forecasts', 'bias_adjustments'):
-                if list_key in out and isinstance(out[list_key], list):
-                    new_l = []
-                    for it in out[list_key]:
-                        if isinstance(it, dict):
-                            it_copy = dict(it)
-                            if 'store_name' in it_copy:
-                                it_copy['store_name'] = store_master.seo_name(it_copy['store_name'])
-                            new_l.append(it_copy)
-                        else:
-                            new_l.append(it)
-                    out[list_key] = new_l
-            if 'summary' in out and isinstance(out['summary'], dict):
-                s_copy = dict(out['summary'])
-                for sk in ('top_underperforming', 'top_overperforming', 'best_store', 'worst_store'):
-                    if sk in s_copy and s_copy[sk]:
-                        s_copy[sk] = store_master.seo_name(str(s_copy[sk]))
-                out['summary'] = s_copy
-            return out
+    internal_store = None
+    if store_q is not None:
+        internal_store = store_master.to_internal_store_name(store_q)
+        master = store_master.load() or {}
+        if not internal_store or internal_store not in master or ops_governance.is_store_hidden(internal_store):
+            return jsonify({
+                'ok': True,
+                'window_days': days,
+                'store_filter': None,
+                'summary': {
+                    'resolved_count': 0,
+                    'pending_count': 0,
+                    'total_logged': 0,
+                    'wpct_mae': None,
+                    'wpct_rmse': None,
+                    'wpct_within_5pt_pct': None,
+                    'wpct_within_10pt_pct': None,
+                    'baseline_mae': None,
+                    'direction_accuracy_pct': None,
+                },
+                'by_store': [],
+                'recent_resolved': [],
+                'pending_forecasts': [],
+                'bias_adjustments': [],
+            })
 
-        clean_rep = _clean_forecast_rep(rep)
-        return jsonify({'ok': True, **clean_rep})
-    except Exception as err:
-        # Never echo raw DB/driver exception text (schema, DSN fragments) to public clients.
-        logging.getLogger(__name__).exception('api_forecast_accuracy failed: %s', err)
-        return jsonify({'ok': False, 'error': 'Forecast accuracy report temporarily unavailable'}), 500
+    if not core.app.testing and not core.is_admin_authorized():
+        if not core.turbo_store.check_sliding_rate_limit('fc_acc_ip', core.get_client_ip(), limit=60, window_sec=60):
+            resp_rl = jsonify({'ok': False, 'error': 'Too many requests'})
+            resp_rl.status_code = 429
+            resp_rl.headers['Retry-After'] = '60'
+            resp_rl.headers['Cache-Control'] = 'no-store'
+            return resp_rl
+
+    gov_sig = (tuple(sorted(ops_governance.get_hidden_brands())), tuple(sorted(ops_governance.get_hidden_stores())))
+    fc_epoch = getattr(core.local_db, '_forecast_cache_epoch', 0)
+    cache_key = (
+        'forecast_accuracy',
+        core.local_db._active_db_key(),
+        fc_epoch,
+        days,
+        internal_store or '',
+        limit_q,
+        gov_sig,
+    )
+
+    def _clean_forecast_rep(d):
+        if not isinstance(d, dict):
+            return d
+        out = dict(d)
+        if 'store_filter' in out and out['store_filter']:
+            out['store_filter'] = store_master.seo_name(out['store_filter'])
+        for list_key in ('by_store', 'recent_resolved', 'pending_forecasts', 'bias_adjustments'):
+            if list_key in out and isinstance(out[list_key], list):
+                new_l = []
+                for it in out[list_key]:
+                    if isinstance(it, dict):
+                        it_copy = dict(it)
+                        if 'store_name' in it_copy:
+                            it_copy['store_name'] = store_master.seo_name(it_copy['store_name'])
+                        new_l.append(it_copy)
+                    else:
+                        new_l.append(it)
+                out[list_key] = new_l
+        if 'summary' in out and isinstance(out['summary'], dict):
+            s_copy = dict(out['summary'])
+            for sk in ('top_underperforming', 'top_overperforming', 'best_store', 'worst_store'):
+                if sk in s_copy and s_copy[sk]:
+                    s_copy[sk] = store_master.seo_name(str(s_copy[sk]))
+            out['summary'] = s_copy
+        return out
+
+    def _build_forecast_payload():
+        try:
+            rep = core.local_db.get_forecast_accuracy_report(
+                days=days,
+                store_name=internal_store,
+                limit_recent=limit_q,
+                allow_blocking=True,
+                auto_backfill=False,
+            )
+            if store_q is None:
+                _maybe_trigger_public_backfill(rep)
+            clean_rep = _clean_forecast_rep(rep)
+            return {'ok': True, **clean_rep}, 200
+        except Exception as err:
+            # Never echo raw DB/driver exception text (schema, DSN fragments) to public clients.
+            logging.getLogger(__name__).exception('api_forecast_accuracy failed: %s', err)
+            return {'ok': False, 'error': 'Forecast accuracy report temporarily unavailable'}, 500
+
+    return core._cached_json_response(cache_key, _build_forecast_payload, ttl_sec=300.0)
 
 
 @portal_bp.route('/stats')
@@ -820,7 +911,7 @@ def stats_whitepaper():
                 )
             )
         except Exception:
-            fc_acc_30 = fc_acc
+            fc_acc_30 = None
         hb, hs = _gov_hidden_sets()
         report_data = None
         try:
@@ -923,72 +1014,158 @@ def stats_whitepaper():
     return core._get_cached_html_or_render(stats_cache_sig, _render)
 
 
+_MONTHLY_CSV_FIELDNAMES = (
+    'store_slug',
+    'store_name',
+    'brand_name',
+    'area_label',
+    'window_days',
+    'sample_count',
+    'avg_women',
+    'peak_women',
+    'avg_men',
+    'peak_men',
+    'avg_female_ratio_pct',
+    'store_url',
+)
+
+
 @portal_bp.route('/stats/monthly.csv')
 def stats_monthly_csv():
     """CC BY 4.0 open primary statistical CSV per domestic store for researchers, journalists & AI grounding."""
     import ops_governance
     raw_days = request.args.get('days', 30, type=int) or 30
     days = min((7, 30, 90), key=lambda d: abs(d - raw_days))
-    hidden_sig = tuple(sorted(ops_governance.get_hidden_stores()))
-    cache_key = (days, hidden_sig, core.local_db._active_db_key())
+    db_key = core.local_db._active_db_key()
+    try:
+        hb_set = set(ops_governance.get_hidden_brands() or ())
+        hs_set = set(ops_governance.get_hidden_stores() or ())
+    except Exception as err:
+        logging.getLogger(__name__).warning('stats_monthly_csv governance lookup failed: %s', err)
+        resp_err = Response('Monthly stats CSV temporarily unavailable\n', status=503, mimetype='text/plain')
+        resp_err.headers['Retry-After'] = '30'
+        resp_err.headers['Cache-Control'] = 'no-store'
+        return resp_err
+    hidden_sig = (tuple(sorted(hb_set)), tuple(sorted(hs_set)))
+    rows_key = ('rows', days, db_key)
+    bundle_key = ('bundle', days, hidden_sig, db_key)
     now_m = time.monotonic()
 
     with _MONTHLY_CSV_LOCK:
-        hit = _MONTHLY_CSV_CACHE.get(cache_key)
-        if hit and (now_m - hit[0]) < _MONTHLY_CSV_TTL:
-            csv_body = hit[1]
+        rows_lock = _MONTHLY_CSV_ROWS_LOCKS.setdefault(days, threading.Lock())
+        b_hit = _MONTHLY_CSV_CACHE.get(bundle_key)
+        if b_hit and (now_m - b_hit[0]) < _MONTHLY_CSV_TTL:
+            bundle = b_hit[1]
         else:
-            csv_body = None
+            bundle = None
 
-    if csv_body is None:
-        try:
-            rows = core.local_db.get_monthly_store_stats_rows(days=days)
-        except Exception:
-            rows = []
+    if bundle is None:
+        with rows_lock:
+            now_in = time.monotonic()
+            with _MONTHLY_CSV_LOCK:
+                b_hit2 = _MONTHLY_CSV_CACHE.get(bundle_key)
+                if b_hit2 and (now_in - b_hit2[0]) < _MONTHLY_CSV_TTL:
+                    bundle = b_hit2[1]
+            if bundle is None:
+                with _MONTHLY_CSV_LOCK:
+                    r_hit = _MONTHLY_CSV_CACHE.get(rows_key)
+                    rows = r_hit[1] if (r_hit and (now_in - r_hit[0]) < _MONTHLY_CSV_TTL) else None
+                fetch_failed = False
+                if rows is None:
+                    try:
+                        rows = core.local_db.get_monthly_store_stats_rows(days=days, raise_on_error=True)
+                    except Exception as err:
+                        logging.getLogger(__name__).warning('stats_monthly_csv query failed (%dd): %s', days, err)
+                        rows = None
+                        fetch_failed = True
+                if rows is None:
+                    with _MONTHLY_CSV_LOCK:
+                        last_good = _MONTHLY_CSV_LAST_GOOD.get(bundle_key)
+                    if last_good is not None:
+                        bundle = last_good
+                    else:
+                        if not fetch_failed:
+                            logging.getLogger(__name__).warning('stats_monthly_csv returned None without last_good (%dd)', days)
+                        resp_err = Response('Monthly stats CSV temporarily unavailable\n', status=503, mimetype='text/plain')
+                        resp_err.headers['Retry-After'] = '30'
+                        resp_err.headers['Cache-Control'] = 'no-store'
+                        return resp_err
 
-        hidden_slugs = set()
-        try:
-            import store_master
-            for hs in hidden_sig:
-                sl = store_master.slug_of(hs)
-                if sl:
-                    hidden_slugs.add(sl)
-        except Exception:
-            pass
+                if bundle is None:
+                    hidden_slugs = set()
+                    try:
+                        import store_master
+                        master_map = store_master.load() or {}
+                        for st_name in master_map.keys():
+                            if _is_hidden_with(st_name, hb_set, hs_set):
+                                sl = store_master.slug_of(st_name)
+                                if sl:
+                                    hidden_slugs.add(sl)
+                        for hs_name in hs_set:
+                            sl = store_master.slug_of(hs_name)
+                            if sl:
+                                hidden_slugs.add(sl)
+                    except Exception as err:
+                        logging.getLogger(__name__).warning('stats_monthly_csv hidden slug resolution failed: %s', err)
+                        resp_err = Response('Monthly stats CSV temporarily unavailable\n', status=503, mimetype='text/plain')
+                        resp_err.headers['Retry-After'] = '30'
+                        resp_err.headers['Cache-Control'] = 'no-store'
+                        return resp_err
+                    buf = io.StringIO()
+                    writer = csv.DictWriter(buf, fieldnames=_MONTHLY_CSV_FIELDNAMES, extrasaction='ignore', lineterminator='\n')
+                    writer.writeheader()
+                    row_cnt = 0
+                    for r in rows:
+                        r_slug = r.get('store_slug')
+                        r_name = r.get('store_name') or ''
+                        if (r_slug and r_slug in hidden_slugs) or (r_name and _is_hidden_with(r_name, hb_set, hs_set)):
+                            continue
+                        writer.writerow(r)
+                        row_cnt += 1
+                    raw_bytes = buf.getvalue().encode('utf-8')
+                    gz_bytes = gzip.compress(raw_bytes, compresslevel=6, mtime=0) if len(raw_bytes) > 256 else None
+                    etag = f'W/"{hashlib.sha256(raw_bytes).hexdigest()[:16]}"'
+                    bundle = (raw_bytes, gz_bytes, etag, row_cnt > 0)
+                    done_m = time.monotonic()
+                    ttl_offset = 0.0 if row_cnt > 0 else (_MONTHLY_CSV_TTL - 5.0)
+                    with _MONTHLY_CSV_LOCK:
+                        if len(_MONTHLY_CSV_CACHE) >= 24:
+                            _MONTHLY_CSV_CACHE.clear()
+                        _MONTHLY_CSV_CACHE[rows_key] = (done_m - ttl_offset, rows)
+                        _MONTHLY_CSV_CACHE[bundle_key] = (done_m - ttl_offset, bundle)
+                        if row_cnt > 0:
+                            if len(_MONTHLY_CSV_LAST_GOOD) >= 12:
+                                _MONTHLY_CSV_LAST_GOOD.clear()
+                            _MONTHLY_CSV_LAST_GOOD[bundle_key] = bundle
 
-        fieldnames = [
-            'store_slug',
-            'store_name',
-            'brand_name',
-            'area_label',
-            'window_days',
-            'sample_count',
-            'avg_women',
-            'peak_women',
-            'avg_men',
-            'peak_men',
-            'avg_female_ratio_pct',
-            'store_url',
-        ]
-        buf = io.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction='ignore', lineterminator='\n')
-        writer.writeheader()
-        for r in rows:
-            if r.get('store_slug') and r.get('store_slug') in hidden_slugs:
-                continue
-            writer.writerow(r)
-        csv_body = buf.getvalue()
-        ttl_offset = 0.0 if rows else (_MONTHLY_CSV_TTL - 5.0)
-        with _MONTHLY_CSV_LOCK:
-            if len(_MONTHLY_CSV_CACHE) >= 12:
-                _MONTHLY_CSV_CACHE.clear()
-            _MONTHLY_CSV_CACHE[cache_key] = (now_m - ttl_offset, csv_body)
+    raw_bytes, gz_bytes, etag, has_data_rows = bundle
+    is_priv = bool(session.get('is_staff') or session.get('is_master') or request.cookies.get('an_src'))
+    cc_hdr = 'private, no-cache, max-age=0' if is_priv else ('public, max-age=900' if has_data_rows else 'no-cache, max-age=0')
 
-    has_data_rows = csv_body.count('\n') >= 2
-    resp = Response(csv_body, mimetype='text/csv; charset=utf-8')
-    resp.headers['Cache-Control'] = 'public, max-age=900' if has_data_rows else 'no-cache, max-age=0'
+    inm = (request.headers.get('If-None-Match') or '').strip()
+    if inm and (inm == etag or inm == '*'):
+        resp304 = Response(b'', status=304, mimetype='text/csv')
+        resp304.headers['ETag'] = etag
+        resp304.headers['Cache-Control'] = cc_hdr
+        resp304.vary.add('Accept-Encoding')
+        resp304.headers['Access-Control-Allow-Origin'] = '*'
+        resp304.headers['Access-Control-Expose-Headers'] = 'ETag, Last-Modified, Link'
+        resp304.headers['X-Content-Type-Options'] = 'nosniff'
+        resp304.headers['Link'] = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+        return resp304
+
+    wants_gzip = (gz_bytes is not None) and ('gzip' in request.headers.get('Accept-Encoding', '').lower())
+    body = gz_bytes if wants_gzip else raw_bytes
+    resp = Response(body, mimetype='text/csv')
+    if wants_gzip:
+        resp.headers['Content-Encoding'] = 'gzip'
+        resp.headers['Content-Length'] = len(gz_bytes)
+    resp.headers['ETag'] = etag
+    resp.headers['Cache-Control'] = cc_hdr
+    resp.vary.add('Accept-Encoding')
     resp.headers['Content-Disposition'] = 'inline; filename="aiseki_navi_monthly_store_stats.csv"'
     resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Expose-Headers'] = 'ETag, Last-Modified, Link'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['Link'] = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
     return resp
@@ -1002,31 +1179,78 @@ def stats_weekend_index_page():
     clamped = max(7, min(90, int(raw_input)))
     raw_days = min((7, 14, 28, 90), key=lambda d: abs(d - clamped))
     cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
-    di_report = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
-    with core.data_lock:
-        last_updated = core.latest_data.get('last_updated') or '--:--'
-    return render_template(
-        'stats_weekend_index.html',
-        di_report=di_report,
-        last_updated=last_updated,
-        is_staff=bool(session.get('is_staff')),
+    state = {'ok': False}
+
+    def _render():
+        di_report = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
+        measured_cnt = int(((di_report or {}).get('summary') or {}).get('measured_walkin_areas') or 0)
+        state['ok'] = measured_cnt > 0
+        with core.data_lock:
+            last_updated = core.latest_data.get('last_updated') or '--:--'
+        return render_template(
+            'stats_weekend_index.html',
+            di_report=di_report,
+            last_updated=last_updated,
+            is_staff=bool(session.get('is_staff')),
+        )
+
+    is_staff = bool(session.get('is_staff'))
+    return core._get_cached_html_or_render(
+        ('stats_weekend_index', raw_days, is_staff),
+        _render,
+        ttl_sec=900.0,
+        cache_if=lambda: bool(state['ok']),
     )
 
 
 @portal_bp.route('/stats/monthly/<yyyy_mm>')
 def stats_monthly_snapshot_page(yyyy_mm: str):
     """Frozen monthly statistical archive page for AI search grounding & academic/media citation."""
-    import cross_site_bridge
-    snap = cross_site_bridge.build_monthly_frozen_snapshot(yyyy_mm)
-    if snap is None:
+    ym = (yyyy_mm or '').strip()
+    if not re.fullmatch(r'202[5-9]-(?:0[1-9]|1[0-2])', ym):
         abort(404)
-    with core.data_lock:
-        last_updated = core.latest_data.get('last_updated') or '--:--'
-    return render_template(
-        'stats_monthly_snapshot.html',
-        snap=snap,
-        last_updated=last_updated,
-        is_staff=bool(session.get('is_staff')),
+    jst = _dt_portal.timezone(_dt_portal.timedelta(hours=9))
+    now_jst = _dt_portal.datetime.now(jst)
+    cur_ym = now_jst.strftime('%Y-%m')
+    prev_ym = (now_jst.replace(day=1) - _dt_portal.timedelta(days=1)).strftime('%Y-%m')
+    if ym > cur_ym:
+        abort(404)
+    import cross_site_bridge
+    state = {'ok': False}
+
+    def _render():
+        neg_k = ('monthly', ym)
+        now_m = time.monotonic()
+        with _STATS_PAGE_LOCKS['monthly']:
+            neg_hit = _STATS_NEG_MEMO.get(neg_k)
+            if neg_hit and (now_m - neg_hit[0] < _STATS_NEG_TTL_SEC):
+                snap = neg_hit[1]
+            else:
+                snap = cross_site_bridge.build_monthly_frozen_snapshot(ym)
+                if snap is not None and not (snap.get('status') == 'measured' or (snap.get('summary') or {}).get('measured_stores')):
+                    _STATS_NEG_MEMO[neg_k] = (time.monotonic(), snap)
+                elif snap is not None:
+                    _STATS_NEG_MEMO.pop(neg_k, None)
+        if snap is None:
+            abort(404)
+        state['ok'] = bool(snap.get('status') == 'measured' or (snap.get('summary') or {}).get('measured_stores'))
+        with core.data_lock:
+            last_updated = core.latest_data.get('last_updated') or '--:--'
+        return render_template(
+            'stats_monthly_snapshot.html',
+            snap=snap,
+            last_updated=last_updated,
+            is_staff=bool(session.get('is_staff')),
+        )
+
+    is_staff = bool(session.get('is_staff'))
+    is_finalized = (ym < cur_ym) and not (ym == prev_ym and now_jst.day == 1 and now_jst.hour < 5)
+    ttl = 86400.0 if is_finalized else 900.0
+    return core._get_cached_html_or_render(
+        ('stats_monthly_snapshot', ym, is_staff),
+        _render,
+        ttl_sec=ttl,
+        cache_if=lambda: bool(state['ok']),
     )
 
 
@@ -1034,19 +1258,31 @@ def stats_monthly_snapshot_page(yyyy_mm: str):
 def stats_year_end_2026():
     """2026 Year-End (Bounenkai, Bonus Window, Christmas & Dome Post-Show) primary statistical whitepaper."""
     core.trigger_background_fetch_if_needed()
+    state = {'ok': False}
 
     def _render():
-        import ops_governance
-        try:
-            wp_data = core.local_db.get_year_end_whitepaper_data()
-        except Exception:
-            wp_data = {}
+        neg_k = ('year_end', core.local_db._active_db_key())
+        now_m = time.monotonic()
+        with _STATS_PAGE_LOCKS['year_end']:
+            neg_hit = _STATS_NEG_MEMO.get(neg_k)
+            if neg_hit and (now_m - neg_hit[0] < _STATS_NEG_TTL_SEC):
+                wp_data = neg_hit[1]
+            else:
+                try:
+                    wp_data = core.local_db.get_year_end_whitepaper_data() or {}
+                except Exception:
+                    wp_data = {}
+                if not (wp_data.get('has_data') or wp_data.get('total_rows') or wp_data.get('top_peak_stores')):
+                    _STATS_NEG_MEMO[neg_k] = (time.monotonic(), wp_data)
+                else:
+                    _STATS_NEG_MEMO.pop(neg_k, None)
         if isinstance(wp_data.get('top_peak_stores'), list):
             wp_data = dict(wp_data)
             wp_data['top_peak_stores'] = [
                 s for s in wp_data['top_peak_stores']
                 if s.get('store_slug')
             ]
+        state['ok'] = bool(wp_data.get('has_data') or wp_data.get('total_rows') or wp_data.get('top_peak_stores'))
         try:
             fc_acc = core.local_db.get_forecast_accuracy_report(
                 days=90,
@@ -1067,7 +1303,12 @@ def stats_year_end_2026():
         )
 
     is_staff = bool(session.get('is_staff'))
-    return core._get_cached_html_or_render(('stats_year_end_2026', is_staff), _render)
+    return core._get_cached_html_or_render(
+        ('stats_year_end_2026', is_staff),
+        _render,
+        ttl_sec=900.0,
+        cache_if=lambda: bool(state['ok']),
+    )
 
 
 _CC_BY_LINK_HEADER = '<https://creativecommons.org/licenses/by/4.0/>; rel="license"'
@@ -1085,7 +1326,7 @@ def _heatmap_query_params():
 
 
 def _is_embed_rate_limited() -> bool:
-    if core._is_staff_test_request():
+    if core.is_admin_authorized():
         return False
     try:
         return not core.turbo_store.check_sliding_rate_limit('embed_heatmap_ip', core.get_client_ip(), limit=120, window_sec=60)
@@ -1105,7 +1346,7 @@ def embed_heatmap():
     """CC BY 4.0 曜日×時間帯別 実測男女比ヒートマップ（外部 iframe 埋め込み＆単体公開ページ）。"""
     if _is_embed_rate_limited():
         resp = make_response('Too Many Requests', 429)
-        resp.headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'; frame-ancestors *"
+        resp.headers['Content-Security-Policy'] = request_guards.build_csp_header(request.path, is_embed=True)
         resp.headers['Cache-Control'] = 'no-store'
         resp.headers['Retry-After'] = '60'
         return resp
@@ -1118,7 +1359,7 @@ def embed_heatmap():
     resp = make_response(render_template('embed_heatmap.html', heatmap=payload, metric=metric, theme=theme))
     # Set before app.after_request `setdefault` so third-party sites may frame this page (CSP L2
     # frame-ancestors supersedes the default X-Frame-Options: SAMEORIGIN in all modern browsers).
-    resp.headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'; frame-ancestors *"
+    resp.headers['Content-Security-Policy'] = request_guards.build_csp_header(request.path, is_embed=True)
     _apply_embed_cache_control(resp, payload['meta']['total_buckets'] > 0)
     resp.headers['Link'] = _CC_BY_LINK_HEADER
     return resp
@@ -1410,18 +1651,22 @@ def privacy_page():
 @portal_bp.route('/about')
 def about_page():
     """Operator information, data collection method, update frequency and editorial policy."""
+    about_state = {'ok': False}
+
     def _render_about():
         import store_master
         master_map = store_master.load() or {}
         total_st = len(master_map)
         dom_st = sum(1 for m in master_map.values() if (m or {}).get('region') != 'Korea')
         kr_st = max(0, total_st - dom_st)
-        total_rows = 0
+        total_rows = None
         try:
             db_stats = core.local_db.get_db_stats() or {}
-            total_rows = int(db_stats.get('count') or db_stats.get('total_rows') or 0)
+            if 'error' not in db_stats:
+                total_rows = int(db_stats.get('count') or db_stats.get('total_rows') or 0)
+                about_state['ok'] = True
         except Exception:
-            total_rows = 0
+            total_rows = None
         return render_template(
             'about.html',
             total_stores=total_st,
@@ -1429,7 +1674,11 @@ def about_page():
             overseas_stores=kr_st,
             historical_rows=total_rows,
         )
-    return core._get_cached_html_or_render('about', _render_about)
+    return core._get_cached_html_or_render(
+        'about',
+        _render_about,
+        cache_if=lambda: bool(about_state['ok']),
+    )
 
 
 def _render_contact_page(form_values=None, errors=None, sent=False, status=200):

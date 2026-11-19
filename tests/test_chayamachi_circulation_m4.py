@@ -286,11 +286,18 @@ class TestChayamachiDetailUIRendering(unittest.TestCase):
             "templates",
             "store_detail.html",
         )
+        css_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "static",
+            "store_detail.css",
+        )
         with open(tmpl_path, "r", encoding="utf-8") as f:
             html = f.read()
+        with open(css_path, "r", encoding="utf-8") as f:
+            sd_css = f.read()
 
         self.assertIn("id=\"chayamachi-shift-panel\"", html)
-        self.assertIn(".chayamachi-shift-panel", html)
+        self.assertIn(".chayamachi-shift-panel", html + "\n" + sd_css)
         self.assertIn("梅田茶屋町ビル 2フロア回遊シフト", html)
         self.assertIn("3F ヤタコイ", html)
         self.assertIn("2F ASOBIBAR", html)

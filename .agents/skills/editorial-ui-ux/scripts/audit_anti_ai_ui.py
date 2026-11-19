@@ -207,7 +207,10 @@ def check_cache_version_sync() -> list:
         "calm.css": r"/static/calm\.css(?:\?v=[^\"'\s>)]+)?",
         "portal.css": r"/static/portal\.css(?:\?v=[^\"'\s>)]+)?",
         "style.css": r"/static/style\.css(?:\?v=[^\"'\s>)]+)?",
+        "guide.css": r"/static/guide\.css(?:\?v=[^\"'\s>)]+)?",
+        "store_detail.css": r"/static/store_detail\.css(?:\?v=[^\"'\s>)]+)?",
         "app.js": r"/static/app\.js(?:\?v=[^\"'\s>)]+)?",
+        "cta_tracker.js": r"/static/cta_tracker\.js(?:\?v=[^\"'\s>)]+)?",
         "affiliate_config.js": r"/static/affiliate_config\.js(?:\?v=[^\"'\s>)]+)?",
     }
 
@@ -219,7 +222,12 @@ def check_cache_version_sync() -> list:
         else:
             canonical[name] = m.group(0)
 
-    sw_url_m = re.search(r"/sw\.js\?v=[^\"'\s>)]+", idx_txt)
+    nav_txt = ""
+    if os.path.exists(nav_path):
+        with open(nav_path, "r", encoding="utf-8") as fp:
+            nav_txt = fp.read()
+
+    sw_url_m = re.search(r"/sw\.js\?v=[^\"'\s>)]+", nav_txt or idx_txt)
     if sw_url_m:
         canonical["sw.js"] = sw_url_m.group(0)
         sw_ver = canonical["sw.js"].split("?v=", 1)[-1]
@@ -227,15 +235,7 @@ def check_cache_version_sync() -> list:
         if f"CACHE_NAME = '{expected_cache}'" not in sw_txt and f'CACHE_NAME = "{expected_cache}"' not in sw_txt:
             issues.append(f"static/sw.js の CACHE_NAME が {expected_cache} と不一致です")
 
-    cta_url_m = re.search(r"/static/cta_tracker\.js\?v=[^\"'\s>)]+", idx_txt)
-    if cta_url_m:
-        canonical_cta = cta_url_m.group(0)
-    else:
-        canonical_cta = ""
-
-    if os.path.exists(nav_path) and "sw.js" in canonical:
-        with open(nav_path, "r", encoding="utf-8") as fp:
-            nav_txt = fp.read()
+    if nav_txt and "sw.js" in canonical:
         for m in re.findall(r"/sw\.js(?:\?v=[^\"'\s>)]+)?", nav_txt):
             if m != canonical["sw.js"]:
                 issues.append(f"templates/_nav_loader.html の sw.js 参照 ({m}) が正本 ({canonical['sw.js']}) と不一致です")
@@ -254,10 +254,6 @@ def check_cache_version_sync() -> list:
             for ref in re.findall(r"/sw\.js(?:\?v=[^\"'\s>)]+)?", txt):
                 if ref != canonical["sw.js"]:
                     issues.append(f"templates/{fname}: {ref} != 正本 {canonical['sw.js']}")
-        if canonical_cta:
-            for ref in re.findall(r"/static/cta_tracker\.js(?:\?v=[^\"'\s>)]+)?", txt):
-                if ref != canonical_cta:
-                    issues.append(f"templates/{fname}: {ref} != 正本 {canonical_cta}")
 
     if os.path.exists(test_path):
         with open(test_path, "r", encoding="utf-8") as fp:

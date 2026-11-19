@@ -11,7 +11,7 @@
     try {
         if (window.IS_STAFF) return;
         if (window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession)) return;
-        if (window.location && window.location.search && window.location.search.indexOf('staff_test=1') !== -1) return;
+        if (window.location && window.location.search && /(?:^|[?&])staff_test=(?:1|true)(?:&|$)/i.test(window.location.search)) return;
     } catch (e) {}
 
     var seenKeys = new Set();
@@ -207,14 +207,21 @@
                     var mu = mutations[i];
                     if (mu.type === 'attributes') {
                         var t = mu.target;
-                        if (t && t.tagName === 'A') { scheduleScan(); return; }
+                        if (t && t.tagName === 'A') {
+                            var hrefAttr = t.getAttribute('href') || '';
+                            if (hrefAttr.indexOf('/link/') !== -1 || observedHrefByEl.has(t)) {
+                                scheduleScan();
+                                return;
+                            }
+                        }
                         continue;
                     }
                     var added = mu.addedNodes;
                     for (var j = 0; j < added.length; j++) {
                         var n = added[j];
                         if (n.nodeType !== 1) continue;
-                        if (n.tagName === 'A' || (n.querySelector && n.querySelector('a[href]'))) {
+                        if ((n.tagName === 'A' && (n.getAttribute('href') || '').indexOf('/link/') !== -1) ||
+                            (n.querySelector && n.querySelector('a[href*="/link/"]'))) {
                             scheduleScan();
                             return;
                         }

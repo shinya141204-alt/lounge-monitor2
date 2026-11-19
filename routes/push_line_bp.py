@@ -63,7 +63,10 @@ def api_push_subscribe():
     if not turbo_store.check_sliding_rate_limit("push_sub_ip", client_ip, limit=15, window_sec=600):
         return jsonify({"ok": False, "status": "rate_limited", "error": "Too many subscription requests"}), 429
 
-    payload = request.get_json(silent=True) or {}
+    raw_payload = request.get_json(silent=True)
+    if raw_payload is not None and not isinstance(raw_payload, dict):
+        return jsonify({"ok": False, "status": "error", "error": "Invalid JSON payload"}), 400
+    payload = raw_payload or {}
     raw_store = str(payload.get("store_name") or "").strip()
     raw_slug = str(payload.get("store_slug") or "").strip()
     if not raw_store and raw_slug:
@@ -97,12 +100,15 @@ def api_push_subscribe():
     if not ok_keys:
         return jsonify({"ok": False, "status": "error", "error": f"Invalid encryption keys ({key_reason})"}), 400
 
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(client_ip)
     sec_bytes = str(core.app.secret_key).encode("utf-8")
-    ip_hash = hmac.new(sec_bytes, f"push_ip:{client_ip}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+    ip_hash = hmac.new(sec_bytes, f"push_ip:{norm_ip}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
 
+    raw_st = payload.get("staff_test")
+    payload_staff_test = (raw_st is True) or (str(raw_st or "").strip().lower() in ("1", "true"))
     is_measurement_exempt = (
-        request.args.get("staff_test") == "1"
-        or bool(payload.get("staff_test"))
+        core._is_staff_test_request(include_referrer=True)
+        or payload_staff_test
         or bool(session.get("is_staff"))
         or bool(session.get("is_master"))
         or core._is_bot_request()
@@ -138,7 +144,10 @@ def api_push_unsubscribe():
     if not turbo_store.check_sliding_rate_limit("push_unsub_ip", client_ip, limit=25, window_sec=600):
         return jsonify({"ok": False, "status": "rate_limited", "error": "Too many requests"}), 429
 
-    payload = request.get_json(silent=True) or {}
+    raw_payload = request.get_json(silent=True)
+    if raw_payload is not None and not isinstance(raw_payload, dict):
+        return jsonify({"ok": False, "status": "error", "error": "Invalid JSON payload"}), 400
+    payload = raw_payload or {}
     endpoint = str(payload.get("endpoint") or "").strip()
     raw_store = str(payload.get("store_name") or "").strip()
     raw_slug = str(payload.get("store_slug") or "").strip()

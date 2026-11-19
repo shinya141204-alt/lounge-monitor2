@@ -11,6 +11,13 @@
 
     var AFF_PFX = '/li' + 'nk/';
     var IS_STAFF_VIEW = {{ 'true' if ((is_staff is defined and is_staff) or (session is defined and session.get('is_staff'))) else 'false' }};
+    function hasStaffTestQuery() {
+        try {
+            return /(?:^|[?&])staff_test=(?:1|true)(?:&|$)/i.test(window.location.search || '');
+        } catch (e) {
+            return false;
+        }
+    }
     var prefetchedAt = Object.create(null);
     var progAnim = null;
     var spinAnim = null;
@@ -53,7 +60,7 @@
     }
 
     function canBackgroundPrefetch() {
-        if (IS_STAFF_VIEW) return false;
+        if (IS_STAFF_VIEW || hasStaffTestQuery()) return false;
         if (window.location.pathname.indexOf('/staff') === 0) return false;
         if (window.APP_CONFIG && (window.APP_CONFIG.isStaff || window.APP_CONFIG.isStaffSession)) return false;
         try {
@@ -68,7 +75,7 @@
     }
 
     function prefetchUrl(rawHref) {
-        if (IS_STAFF_VIEW) return;
+        if (IS_STAFF_VIEW || hasStaffTestQuery()) return;
         if (!rawHref || rawHref.charAt(0) !== '/' || rawHref.indexOf('//') === 0) return;
         var qIdx = rawHref.indexOf('#');
         var cleanHref = qIdx >= 0 ? rawHref.slice(0, qIdx) : rawHref;
@@ -378,13 +385,35 @@
     }
 
     document.addEventListener('pointerdown', onWarmInteraction, { passive: true });
-    document.addEventListener('touchstart', onWarmInteraction, { passive: true });
     document.addEventListener('mouseover', onHoverWarm, { passive: true });
     document.addEventListener('mouseout', onHoverOut, { passive: true });
 
+    function propagateStaffTestToAnchor(a) {
+        if (!a || !hasStaffTestQuery()) return null;
+        var rawHref = a.getAttribute('href');
+        if (!rawHref || rawHref.charAt(0) === '#' || rawHref.indexOf('javascript:') === 0 || rawHref.indexOf('mailto:') === 0 || rawHref.indexOf('tel:') === 0) return null;
+        try {
+            var destUrl = new URL(a.href, window.location.origin);
+            if (destUrl.origin !== window.location.origin) return null;
+            if (destUrl.pathname.indexOf('/staff') !== 0 && destUrl.pathname.indexOf('/api/') !== 0) {
+                if (!destUrl.searchParams.has('staff_test')) {
+                    destUrl.searchParams.set('staff_test', '1');
+                    a.href = destUrl.href;
+                }
+            }
+            return destUrl;
+        } catch (err) {
+            return null;
+        }
+    }
+
     document.addEventListener('click', function(e) {
+        var clickedA = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (clickedA) {
+            propagateStaffTestToAnchor(clickedA);
+        }
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        var a = clickedA;
         if (!a) return;
         if (a.hasAttribute('download')) return;
         var tgt = a.getAttribute('target');
@@ -419,7 +448,12 @@
         navInFlight = true;
 
         unlockModalsAndBodyScroll();
-        var targetHref = destUrl.pathname + destUrl.search + destUrl.hash;
+        if (hasStaffTestQuery() && destUrl.pathname.indexOf('/staff') !== 0 && destUrl.pathname.indexOf('/api/') !== 0) {
+            if (!destUrl.searchParams.has('staff_test')) {
+                destUrl.searchParams.set('staff_test', '1');
+            }
+        }
+        var targetHref = destUrl.href;
         prefetchUrl(destUrl.pathname + destUrl.search);
         showNavLoading(a, resolveLoadingLabel(destUrl));
 
@@ -466,7 +500,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=119', { updateViaCache: 'none' }).then(function(reg) {
+                navigator.serviceWorker.register('/sw.js?v=121', { updateViaCache: 'none' }).then(function(reg) {
                     // Throttle explicit SW update checks to once per 10 minutes per tab session
                     try {
                         var KEY = 'aiseki_sw_update_at';

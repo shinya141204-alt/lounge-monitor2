@@ -1561,7 +1561,7 @@
                     <div class="bar-item-top">
                         <div>
                             {% if r.href %}
-                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener">{{ r.title }} ↗</a>
+                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener noreferrer">{{ r.title }} ↗</a>
                             {% else %}
                             <span class="bar-item-title">{{ r.title }}</span>
                             {% endif %}
@@ -1597,7 +1597,7 @@
                     <div class="bar-item-top">
                         <div>
                             {% if r.href %}
-                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener">{{ loop.index }}位：{{ r.title }} ↗</a>
+                            <a class="bar-item-title" href="{{ r.href }}" target="_blank" rel="noopener noreferrer">{{ loop.index }}位：{{ r.title }} ↗</a>
                             {% else %}
                             <span class="bar-item-title">{{ loop.index }}位：{{ r.title }}</span>
                             {% endif %}
@@ -1897,8 +1897,8 @@
                 <p>10分ごとのロギング時に60分後予測をDBへ自動保存し、60分経過後に実測値と自動突合してズレ（誤差pt）を集計＆店舗別オンライン自己補正へフィードバックしています。</p>
             </div>
             <div class="ops-btn-group">
-                <a href="/stats#forecast-accuracy" target="_blank" rel="noopener" class="ops-btn secondary" style="text-decoration:none;">公開白書ページで確認 ↗</a>
-                <a href="/api/forecast-accuracy?days=21" target="_blank" rel="noopener" class="ops-btn secondary" style="text-decoration:none;">JSON API ↗</a>
+                <a href="/stats#forecast-accuracy" target="_blank" rel="noopener noreferrer" class="ops-btn secondary" style="text-decoration:none;">公開白書ページで確認 ↗</a>
+                <a href="/api/forecast-accuracy?days=21" target="_blank" rel="noopener noreferrer" class="ops-btn secondary" style="text-decoration:none;">JSON API ↗</a>
             </div>
         </div>
 

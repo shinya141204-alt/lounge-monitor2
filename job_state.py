@@ -15,8 +15,13 @@ import json
 import base64
 import secrets
 import hashlib
+import hmac
+import logging
 import datetime
 import threading
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 import sheets_store
 import turbo_store
@@ -25,6 +30,7 @@ SHEET_TITLE = 'Job State'
 HEADER = ['key', 'done_at_jst']
 MAX_HISTORY_KEYS = 3000
 _OBF_PREFIX = 'obf1:'
+_OBF2_PREFIX = 'obf2:'
 _KV_ENTRY_RE = re.compile(r'^([^=]+)=(\d{14})\|(.*)$', re.S)
 
 _DEFAULT_LOCAL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
@@ -63,16 +69,39 @@ def _now_str():
 _LEGACY_OBF_SECRET = 'aiseki-navi-job-state-v1'
 
 
-def _candidate_secrets() -> list:
-    """Key priority: JOB_STATE_SECRET → SECRET_KEY → FLASK_SECRET_KEY → legacy literal (deduplicated)."""
+def _candidate_secrets(include_legacy: bool = True) -> list:
+    """Key priority: JOB_STATE_SECRET → SECRET_KEY → FLASK_SECRET_KEY → JOB_STATE_SECRET_PREVIOUS → legacy literal."""
     out = []
-    for name in ('JOB_STATE_SECRET', 'SECRET_KEY', 'FLASK_SECRET_KEY'):
+    names = ('JOB_STATE_SECRET', 'SECRET_KEY', 'FLASK_SECRET_KEY', 'JOB_STATE_SECRET_PREVIOUS') if include_legacy else ('JOB_STATE_SECRET', 'SECRET_KEY', 'FLASK_SECRET_KEY')
+    for name in names:
         v = os.environ.get(name)
         if v and v not in out:
             out.append(v)
-    if _LEGACY_OBF_SECRET not in out:
+    if include_legacy and _LEGACY_OBF_SECRET not in out:
+        out.append(_LEGACY_OBF_SECRET)
+    elif not out:
+        if os.environ.get('FLY_APP_NAME'):
+            logging.warning("[job_state] JOB_STATE_SECRET/SECRET_KEY unset in production; using fallback key.")
         out.append(_LEGACY_OBF_SECRET)
     return out
+
+
+_KEY_DERIVE_CACHE = {}
+
+
+def _derive_aes_key(secret_str: str) -> bytes:
+    cached = _KEY_DERIVE_CACHE.get(secret_str)
+    if cached is not None:
+        return cached
+    key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b"aiseki-job-state-v2",
+        info=b"aes-gcm-key",
+    ).derive(secret_str.encode('utf-8'))
+    if len(_KEY_DERIVE_CACHE) < 16:
+        _KEY_DERIVE_CACHE[secret_str] = key
+    return key
 
 
 def _derive_stream(nonce: bytes, length: int, secret_str: str = None) -> bytes:
@@ -86,24 +115,47 @@ def _derive_stream(nonce: bytes, length: int, secret_str: str = None) -> bytes:
     return bytes(out[:length])
 
 
-def _obfuscate_secret(plain: str) -> str:
+def _obfuscate_secret(plain: str, key_name: str = '') -> str:
     if not plain:
         return ''
     raw = plain.encode('utf-8')
-    nonce = secrets.token_bytes(8)
-    mask = _derive_stream(nonce, len(raw))
-    xored = bytes(a ^ b for a, b in zip(raw, mask))
-    encoded = base64.urlsafe_b64encode(nonce + xored).decode('ascii')
-    return f"{_OBF_PREFIX}{encoded}"
+    secret_str = _candidate_secrets(include_legacy=False)[0]
+    key_32 = _derive_aes_key(secret_str)
+    nonce = secrets.token_bytes(12)
+    aad = f"job_state:v2:{key_name or ''}".encode('utf-8')
+    ct = AESGCM(key_32).encrypt(nonce, raw, aad)
+    encoded = base64.urlsafe_b64encode(nonce + ct).decode('ascii')
+    return f"{_OBF2_PREFIX}{encoded}"
 
 
 def _looks_like_plain_secret(s: str) -> bool:
-    """obf1 has no MAC; a wrong key yields random bytes. API tokens are printable text, so require that."""
-    return bool(s) and s.isprintable()
+    """obf1 has no MAC; require printable characters plus common multiline/tab token whitespace."""
+    return bool(s) and all(ch in '\n\r\t' or ch.isprintable() for ch in s)
 
 
-def _deobfuscate_secret(stored: str) -> str:
-    if not stored or not stored.startswith(_OBF_PREFIX):
+def _deobfuscate_secret_strict(stored: str, key_name: str = ''):
+    """Decrypt obf2:/obf1: values. Returns decoded string, or None on authentication/decryption failure."""
+    if stored is None:
+        return None
+    if stored == '':
+        return ''
+    if stored.startswith(_OBF2_PREFIX):
+        try:
+            blob = base64.urlsafe_b64decode(stored[len(_OBF2_PREFIX):].encode('ascii'))
+        except Exception:
+            blob = b''
+        if len(blob) >= 28:
+            nonce, ct = blob[:12], blob[12:]
+            aad = f"job_state:v2:{key_name or ''}".encode('utf-8')
+            for secret_str in _candidate_secrets(include_legacy=True):
+                try:
+                    plain_b = AESGCM(_derive_aes_key(secret_str)).decrypt(nonce, ct, aad)
+                    return plain_b.decode('utf-8')
+                except Exception:
+                    continue
+        logging.warning("[job_state] Failed to authenticate/decrypt obf2 token (key=%s).", key_name or '-')
+        return None
+    if not stored.startswith(_OBF_PREFIX):
         return stored
     try:
         blob = base64.urlsafe_b64decode(stored[len(_OBF_PREFIX):].encode('ascii'))
@@ -111,8 +163,7 @@ def _deobfuscate_secret(stored: str) -> str:
         blob = b''
     if len(blob) >= 9:
         nonce, xored = blob[:8], blob[8:]
-        # Try current priority keys first, then the legacy literal (tokens saved before the key change)
-        for secret_str in _candidate_secrets():
+        for secret_str in _candidate_secrets(include_legacy=True):
             try:
                 mask = _derive_stream(nonce, len(xored), secret_str)
                 plain = bytes(a ^ b for a, b in zip(xored, mask)).decode('utf-8')
@@ -120,10 +171,14 @@ def _deobfuscate_secret(stored: str) -> str:
                 continue
             if _looks_like_plain_secret(plain):
                 return plain
-    # Never hand the raw "obf1:..." blob to API clients as if it were a token
-    import logging
-    logging.warning("[job_state] Failed to decode obfuscated token with any known key; treating as empty.")
-    return ''
+    logging.warning("[job_state] Failed to decode legacy obf1 token with any known key.")
+    return None
+
+
+def _deobfuscate_secret(stored: str, key_name: str = '') -> str:
+    """Backward-compatible 1-arg wrapper returning '' on failure (never leaks raw ciphertext)."""
+    res = _deobfuscate_secret_strict(stored, key_name=key_name)
+    return '' if res is None else res
 
 
 def _ingest_entry(entry: str):
@@ -136,8 +191,13 @@ def _ingest_entry(entry: str):
         pfx, ts, raw_val = m.group(1), m.group(2), m.group(3)
         prev_ts = _kv_ts.get(pfx, '')
         if ts >= prev_ts:
+            if pfx.startswith('token:'):
+                val = _deobfuscate_secret_strict(raw_val, key_name=pfx)
+                if val is None:
+                    return
+            else:
+                val = raw_val
             _kv_ts[pfx] = ts
-            val = _deobfuscate_secret(raw_val) if pfx.startswith('token:') else raw_val
             _kv[pfx] = val
             _data_version += 1
         return
@@ -202,7 +262,13 @@ def _ensure_local_loaded_locked():
                             )
                             eff_ts = explicit_ts or mtime_ts
                             if not eff_ts or eff_ts >= _kv_ts.get(ks, ''):
-                                _kv[ks] = _deobfuscate_secret(vs) if ks.startswith('token:') else vs
+                                if ks.startswith('token:'):
+                                    dec_v = _deobfuscate_secret_strict(vs, key_name=ks)
+                                    if dec_v is None:
+                                        continue
+                                else:
+                                    dec_v = vs
+                                _kv[ks] = dec_v
                                 _data_version += 1
                                 if eff_ts:
                                     _kv_ts[ks] = eff_ts
@@ -231,8 +297,16 @@ def _merge_turbo_snapshot_if_needed(force: bool = False):
         kv_ts_map = snap.get('kv_ts') or {}
         for pfx, raw_v in (snap.get('kv') or {}).items():
             ts_s = str(kv_ts_map.get(pfx) or '')
-            if not ts_s or ts_s >= _kv_ts.get(pfx, ''):
-                new_v = _deobfuscate_secret(raw_v) if str(pfx).startswith('token:') else raw_v
+            prev_ts = _kv_ts.get(pfx, '')
+            if not ts_s and prev_ts:
+                continue
+            if not ts_s or ts_s >= prev_ts:
+                if str(pfx).startswith('token:'):
+                    new_v = _deobfuscate_secret_strict(raw_v, key_name=str(pfx))
+                    if new_v is None:
+                        continue
+                else:
+                    new_v = raw_v
                 if _kv.get(pfx) != new_v:
                     _data_version += 1
                 _kv[pfx] = new_v
@@ -252,11 +326,14 @@ def _seed_turbo_from_memory():
         kv_snap = dict(_kv or {})
         kv_ts_snap = dict(_kv_ts or {})
     now_s = _now_str()
+    ts_14_fallback = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H%M%S')
     for k in keys_snap[-500:]:
         turbo_store.state_mark_done(k, now_s)
     for pfx, plain_v in kv_snap.items():
-        stored_v = _obfuscate_secret(plain_v) if str(pfx).startswith('token:') else str(plain_v)
-        turbo_store.state_set_kv(str(pfx), stored_v, kv_ts_snap.get(pfx, ''), now_s)
+        pfx_s = str(pfx)
+        stored_v = _obfuscate_secret(plain_v, key_name=pfx_s) if pfx_s.startswith('token:') else str(plain_v)
+        ts_val = kv_ts_snap.get(pfx_s) or ts_14_fallback
+        turbo_store.state_set_kv(pfx_s, stored_v, ts_val, now_s)
 
 
 def _sync_sheets_worker(expected_epoch=None):
@@ -337,7 +414,7 @@ def _save_local():
         for k, v in (_kv or {}).items():
             ks = str(k)
             vs = "" if v is None else str(v)
-            local_kv[ks] = _obfuscate_secret(vs) if ks.startswith('token:') else vs
+            local_kv[ks] = _obfuscate_secret(vs, key_name=ks) if ks.startswith('token:') else vs
         payload = {
             'keys': trimmed,
             'kv': local_kv,
@@ -402,7 +479,10 @@ def get_value(prefix, allow_blocking: bool = True, default=None):
     raw = matched[-1][len(full_prefix):]
     if "|" in raw:
         raw = raw.split("|", 1)[1]
-    return _deobfuscate_secret(raw) if str(prefix).startswith('token:') else raw
+    if str(prefix).startswith('token:'):
+        dec = _deobfuscate_secret_strict(raw, key_name=str(prefix))
+        return default if dec is None else dec
+    return raw
 
 
 def set_value(prefix, val):
@@ -418,7 +498,7 @@ def set_value(prefix, val):
         _kv_ts[str(prefix)] = ts
         _data_version += 1
         _save_local()
-    sheet_val = _obfuscate_secret(val_str) if str(prefix).startswith('token:') else val_str
+    sheet_val = _obfuscate_secret(val_str, key_name=str(prefix)) if str(prefix).startswith('token:') else val_str
     turbo_store.state_set_kv(str(prefix), sheet_val, ts, now_s)
     entry = f"{prefix}={ts}|{sheet_val}"
     if len(entry) > _SHEETS_CELL_SAFE_LIMIT:

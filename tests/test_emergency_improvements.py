@@ -228,7 +228,7 @@ class TestEmergencyImprovements(unittest.TestCase):
                         if t == ['LocalBusiness', 'BarOrPub'] or t in ('LocalBusiness', 'BarOrPub'):
                             found_local_biz = True
                             self.assertIn('オリエンタルラウンジ', item.get('name', ''))
-                            self.assertEqual(item.get('priceRange'), '男性 2,640円〜 / 女性 無料')
+                            self.assertEqual(item.get('priceRange'), '男性 3,300円〜 / 女性 無料')
                             self.assertIn('address', item)
                             self.assertIn('openingHoursSpecification', item)
                             self.assertIsInstance(item['openingHoursSpecification'], list)
@@ -250,20 +250,20 @@ class TestEmergencyImprovements(unittest.TestCase):
     # 8. キャッシュバスティング同期テスト
     # ------------------------------------------------------------------
     def test_cache_busting_sync_app_js_v2_and_sw_v86(self):
-        """app.js?v=20261119_3 と sw.js?v=116, CACHE_NAME aiseki-navi-v119 が同期していること"""
+        """app.js?v=20261119_5 と sw.js?v=121, CACHE_NAME aiseki-navi-v121 が同期していること"""
         home_resp = self.client.get('/')
         self.assertEqual(home_resp.status_code, 200)
         home_html = home_resp.data.decode('utf-8')
         home_resp.close()
-        self.assertIn('/static/app.js?v=20261119_3', home_html)
-        self.assertIn('/sw.js?v=119', home_html)
+        self.assertIn('/static/app.js?v=20261119_5', home_html)
+        self.assertIn('/sw.js?v=121', home_html)
 
         sw_resp = self.client.get('/sw.js')
         self.assertEqual(sw_resp.status_code, 200)
         sw_txt = sw_resp.data.decode('utf-8')
         sw_resp.close()
-        self.assertIn("CACHE_NAME = 'aiseki-navi-v119'", sw_txt)
-        self.assertIn("'/static/app.js?v=20261119_3'", sw_txt)
+        self.assertIn("CACHE_NAME = 'aiseki-navi-v121'", sw_txt)
+        self.assertIn("'/static/app.js?v=20261119_5'", sw_txt)
 
     def test_store_hours_opening_hours_specification(self):
         """store_hours.get_store_opening_hours_specification の生成仕様テスト"""

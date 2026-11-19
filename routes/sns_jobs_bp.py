@@ -9,6 +9,7 @@ import time
 from flask import Blueprint, Response, abort, jsonify, request, send_from_directory, session
 from werkzeug.exceptions import HTTPException
 
+import request_guards
 from routes._bridge import core
 
 sns_jobs_bp = Blueprint('sns_jobs_bp', __name__)
@@ -135,30 +136,33 @@ def dynamic_weekly_ogp_image():
         import ogp_generator
         import weekly_report
         report = weekly_report.generate_weekly_report()
-        valid_rep = report if isinstance(report, dict) and 'error' not in report else {}
+        has_valid_rep = isinstance(report, dict) and 'error' not in report and bool(report.get('stores'))
+        valid_rep = report if has_valid_rep else {}
         ogp_key = (
             'weekly',
             valid_rep.get('generated_at'),
-            len(valid_rep.get('overall_ranking') or []),
+            len(valid_rep.get('stores') or []),
             core.local_db.DB_PATH,
         )
         now_mono = time.monotonic()
         ogp_cache = core._ogp_bytes_cache
-        with core._ogp_bytes_cache_lock:
-            hit = ogp_cache.get(ogp_key)
-            if hit is not None and (now_mono - hit[0] < 600.0):
-                ogp_cache.move_to_end(ogp_key)
-                resp = Response(hit[1], mimetype='image/png')
-                resp.headers['Cache-Control'] = 'public, max-age=1800'
-                return resp
+        if has_valid_rep:
+            with core._ogp_bytes_cache_lock:
+                hit = ogp_cache.get(ogp_key)
+                if hit is not None and (now_mono - hit[0] < 600.0):
+                    ogp_cache.move_to_end(ogp_key)
+                    resp = Response(hit[1], mimetype='image/png')
+                    resp.headers['Cache-Control'] = 'public, max-age=1800'
+                    return resp
         png_bytes = ogp_generator.generate_weekly_ogp_png(valid_rep)
-        with core._ogp_bytes_cache_lock:
-            ogp_cache[ogp_key] = (now_mono, png_bytes)
-            ogp_cache.move_to_end(ogp_key)
-            while len(ogp_cache) > core._OGP_BYTES_CACHE_MAX:
-                ogp_cache.popitem(last=False)
+        if has_valid_rep:
+            with core._ogp_bytes_cache_lock:
+                ogp_cache[ogp_key] = (now_mono, png_bytes)
+                ogp_cache.move_to_end(ogp_key)
+                while len(ogp_cache) > core._OGP_BYTES_CACHE_MAX:
+                    ogp_cache.popitem(last=False)
         resp = Response(png_bytes, mimetype='image/png')
-        resp.headers['Cache-Control'] = 'public, max-age=1800'
+        resp.headers['Cache-Control'] = 'public, max-age=1800' if has_valid_rep else 'no-store'
         return resp
     except Exception as e:
         logging.error(f"Weekly OGP generation failed, falling back to static image: {e}")
@@ -222,22 +226,23 @@ def public_reel_mp4(reel_type):
                 force_refresh = False
         if not mp4_bytes and slot_token and not force_refresh:
             mp4_bytes = reel_generator.get_pinned_reel_mp4_slot(rt, slot_token)
+        if not mp4_bytes and not force_refresh:
+            mp4_bytes = reel_generator.get_cached_reel_mp4_bytes(rt, stores=live_s)
         if not mp4_bytes:
             # CPU DoS guard: anonymous callers may only enter the (potentially FFmpeg-bound) render path
-            # 12×/10min per IP. Range continuations of an already-started playback are exempt so normal
-            # <video> seeking is never broken; testing mode is exempt for Range/pin regression suites.
+            # 12×/10min per IP. Cached MP4 hits (pinned slot / RAM / disk / blob) return above before
+            # this gate; uncached Range/If-Range requests cannot bypass FFmpeg throttling.
             if (
                 not core.app.testing
-                and not is_cont_range
                 and not session.get('is_staff')
-                and not session.get('is_master')
+                and not core.is_master_authorized()
                 and not core._secret_header_ok()
             ):
                 if not core.turbo_store.check_sliding_rate_limit(
                     'media_render_ip', core.get_client_ip(), limit=12, window_sec=600
                 ):
                     resp_rl = jsonify({'ok': False, 'error': 'Media rendering temporarily throttled'})
-                    resp_rl.status_code = 503
+                    resp_rl.status_code = 429
                     resp_rl.headers['Retry-After'] = '60'
                     resp_rl.headers['Cache-Control'] = 'no-store'
                     return resp_rl
@@ -272,7 +277,7 @@ def public_reel_mp4(reel_type):
         raise
     except RuntimeError as re_err:
         logging.warning(f"Reel MP4 unavailable ({rt}): {re_err}")
-        return jsonify({'ok': False, 'error': str(re_err)}), 503
+        return jsonify({'ok': False, 'error': 'reel_unavailable'}), 503
     except Exception as e:
         logging.error(f"Public Reel MP4 generation failed ({rt}): {e}")
         abort(503)
@@ -691,6 +696,14 @@ _inline_sns_consumer_started_at = 0.0
 _inline_sns_consumer_thread = None
 
 
+def _sanitize_sns_text(raw: str) -> str:
+    txt = str(raw or '')
+    txt = re.sub(r'(?i)(access_token|refresh_token|client_secret|token|key|secret|password|authorization)=([^&\s]+)', r'\1=[REDACTED]', txt)
+    txt = re.sub(r'(?i)("(?:access_token|refresh_token|client_secret|api_key|secret|password|authorization)"\s*:\s*")([^"]+)(")', r'\1[REDACTED]\3', txt)
+    txt = re.sub(r'(?i)\bBearer\s+[A-Za-z0-9._\-+/=]{8,}', 'Bearer [REDACTED]', txt)
+    return txt[:240]
+
+
 def drain_sns_job_queue_once(timeout_sec: float = 0.05) -> dict:
     """Claim and execute a single queued SNS job, updating its final record in `turbo_store`."""
     claimed = core.turbo_store.claim_next_sns_job(timeout_sec=timeout_sec)
@@ -702,14 +715,37 @@ def drain_sns_job_queue_once(timeout_sec: float = 0.05) -> dict:
     try:
         res = core.execute_sns_job_payload(jtype, jparams)
         err_msg = ''
+        safe_res = res if isinstance(res, dict) else {'result': res}
         if isinstance(res, dict):
             st = str(res.get('status') or '').lower()
             if st in ('error', 'failed') or res.get('ok') is False:
-                err_msg = str(res.get('error') or res.get('reason') or res.get('detail') or 'delivery_error')
-        return core.turbo_store.complete_sns_job(jid, result=res if isinstance(res, dict) else {'result': res}, error=err_msg)
+                raw_err = str(res.get('error') or res.get('reason') or res.get('detail') or 'delivery_error')
+                err_msg = _sanitize_sns_text(raw_err)
+                safe_res = {'status': res.get('status') or 'error', 'ok': False, 'error': err_msg}
+        return core.turbo_store.complete_sns_job(jid, result=safe_res, error=err_msg)
     except Exception as exc:
-        logging.error(f"Async SNS job {jid} ({jtype}) failed: {exc}")
-        return core.turbo_store.complete_sns_job(jid, result={'status': 'error', 'error': str(exc)}, error=str(exc))
+        logging.exception(f"Async SNS job {jid} ({jtype}) failed: {_sanitize_sns_text(str(exc))}")
+        err_code = f"{type(exc).__name__}"
+        try:
+            return core.turbo_store.complete_sns_job(jid, result={'status': 'error', 'error': err_code}, error=err_code)
+        except Exception as comp_exc:
+            logging.error(f"Async SNS job {jid} completion failed: {comp_exc}")
+            return None
+
+
+def _has_pending_sns_jobs() -> bool:
+    try:
+        ts = core.turbo_store
+        if getattr(ts, '_mem_bus_enabled', False):
+            with ts._mem_lock:
+                return bool(ts._mem_sns_queue)
+        rc = ts.get_redis_client()
+        if rc is not None:
+            return int(rc.llen(ts.SNS_QUEUE_KEY) or 0) > 0
+        with ts._mem_lock:
+            return bool(ts._mem_sns_queue)
+    except Exception:
+        return False
 
 
 def _ensure_inline_sns_consumer_started():
@@ -728,32 +764,52 @@ def _ensure_inline_sns_consumer_started():
         _inline_sns_consumer_started_at = now_mono
 
         def _runner(my_started_at: float):
-            global _inline_sns_consumer_running
+            global _inline_sns_consumer_running, _inline_sns_consumer_started_at
             try:
-                for _ in range(32):
-                    done = core.drain_sns_job_queue_once(timeout_sec=0.05)
-                    if done is None:
-                        break
-            finally:
+                while True:
+                    for _ in range(32):
+                        with _inline_sns_consumer_lock:
+                            if _inline_sns_consumer_thread is threading.current_thread():
+                                _inline_sns_consumer_started_at = time.monotonic()
+                        done = core.drain_sns_job_queue_once(timeout_sec=0.05)
+                        if done is None:
+                            break
+                    with _inline_sns_consumer_lock:
+                        if _inline_sns_consumer_thread is not threading.current_thread():
+                            return
+                        if _has_pending_sns_jobs():
+                            _inline_sns_consumer_started_at = time.monotonic()
+                            continue
+                        _inline_sns_consumer_running = False
+                        return
+            except Exception as err:
+                logging.error(f"[sns_jobs_bp] Inline SNS consumer exited on error: {err}")
                 with _inline_sns_consumer_lock:
-                    if _inline_sns_consumer_started_at == my_started_at:
+                    if _inline_sns_consumer_thread is threading.current_thread():
                         _inline_sns_consumer_running = False
 
         t = threading.Thread(target=_runner, args=(now_mono,), daemon=True)
         _inline_sns_consumer_thread = t
-    t.start()
+        t.start()
 
 
-def _enqueue_sns_job_and_maybe_dispatch(job_type: str, params: dict = None, worker_only: bool = False) -> dict:
+def _enqueue_sns_job_and_maybe_dispatch(job_type: str, params: dict = None, worker_only: bool = False):
     job = core.turbo_store.enqueue_sns_job(job_type, params=params or {}, requested_by='master')
+    if not job:
+        return None
     dedicated_redis_worker = core.is_web_only_role() and (core.turbo_store.get_redis_client() is not None)
     if not worker_only and not dedicated_redis_worker:
         core._ensure_inline_sns_consumer_started()
     return job
 
 
+_ALLOWED_MOSHIMO_ACTIONS = frozenset({
+    'publish', 'publish_instagram', 'toggle', 'backfill_youtube_comments', 'publish_youtube',
+})
+
+
 def _require_master_post_csrf():
-    """Enforce Master auth + POST method + Same-Origin CSRF guard on all side-effecting SNS trigger routes."""
+    """Enforce Master auth + POST method + Strict Same-Origin CSRF guard on all side-effecting SNS trigger routes."""
     if not core.is_master_authorized():
         return jsonify({'error': 'Unauthorized'}), 401
     if request.method != 'POST':
@@ -770,6 +826,7 @@ def _require_master_post_csrf():
         request.headers.get('Origin'),
         request.headers.get('Referer'),
         request.host,
+        strict=True,
     ):
         return jsonify({'error': 'Origin mismatch'}), 403
     return None
@@ -784,6 +841,8 @@ def _maybe_enqueue_async_sns_trigger(job_type: str, params: dict = None):
         return None
     worker_only = request.args.get('worker_only') == '1'
     job = core._enqueue_sns_job_and_maybe_dispatch(job_type, params=params, worker_only=worker_only)
+    if not job:
+        return jsonify({'ok': False, 'error': 'Async job queue unavailable (Redis required)'}), 503
     return jsonify({
         'ok': True,
         'queued': True,
@@ -796,17 +855,21 @@ def _maybe_enqueue_async_sns_trigger(job_type: str, params: dict = None):
 
 @sns_jobs_bp.route('/api/sns-jobs/enqueue', methods=['POST'])
 def api_sns_jobs_enqueue():
-    """Master-only endpoint to enqueue an SNS post or prewarm bundle onto the background worker in <1ms."""
+    """Master-only endpoint to enqueue an SNS posting task or prewarm bundle onto the background worker in <1ms."""
     guard_err = _require_master_post_csrf()
     if guard_err is not None:
         return guard_err
-    payload = request.get_json(silent=True, force=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     job_type = str(payload.get('job_type') or '').strip().lower()
     if job_type not in core.SUPPORTED_SNS_JOB_TYPES:
         return jsonify({'ok': False, 'error': f'Unsupported job_type: {job_type}'}), 400
     params = payload.get('params') if isinstance(payload.get('params'), dict) else {}
     worker_only = bool(payload.get('worker_only')) or (request.args.get('worker_only') == '1')
     job = core._enqueue_sns_job_and_maybe_dispatch(job_type, params=params, worker_only=worker_only)
+    if not job:
+        return jsonify({'ok': False, 'error': 'Async job queue unavailable (Redis required)'}), 503
     return jsonify({
         'ok': True,
         'queued': True,
@@ -1069,8 +1132,12 @@ def api_moshimo_reel_queue():
         return guard_err
 
     import moshimo_reel_queue
-    payload = request.get_json(silent=True, force=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     action = str(payload.get('action') or request.args.get('action') or '').strip().lower()
+    if action not in _ALLOWED_MOSHIMO_ACTIONS:
+        return jsonify({'ok': False, 'error': f'Unsupported action: {action}'}), 400
     if action == 'toggle':
         if 'enabled' in payload or 'enabled' in request.args:
             raw_en = payload.get('enabled', request.args.get('enabled', '1'))
@@ -1108,7 +1175,7 @@ def api_moshimo_reel_queue():
         title = str(payload.get('title') or '').strip()
         desc = str(payload.get('description') or '').strip()
         priv = str(payload.get('privacy_status') or '').strip() or None
-        force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '1'))) == '1')
+        force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '0'))) == '1')
         queued_resp = _maybe_enqueue_async_sns_trigger(
             'yt_moshimo_short',
             {'ep_id': ep_id, 'slot': slot, 'title': title, 'description': desc, 'privacy_status': priv, 'force': force},
@@ -1128,7 +1195,7 @@ def api_moshimo_reel_queue():
 
     ep_id = str(payload.get('ep_id') or request.args.get('ep_id') or '').strip() or None
     slot = str(payload.get('slot') or request.args.get('slot') or '20:00').strip()
-    force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '1'))) == '1')
+    force = bool(payload.get('force')) if isinstance(payload.get('force'), bool) else (str(payload.get('force', request.args.get('force', '0'))) == '1')
     queued_resp = _maybe_enqueue_async_sns_trigger('ig_moshimo_reel', {'ep_id': ep_id, 'slot': slot, 'force': force})
     if queued_resp is not None:
         return queued_resp

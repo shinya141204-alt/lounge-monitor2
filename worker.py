@@ -11,6 +11,7 @@ import logging
 import os
 import signal
 import threading
+import time
 
 # Force worker role and prevent `app.py` from auto-starting its legacy embedded scheduler on import
 os.environ.setdefault("APP_ROLE", "worker")
@@ -85,7 +86,8 @@ def _threads_conv_job(slot_lbl="21:15"):
             return
         import threads_poster
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         threads_poster.execute_scheduled_conversational_threads_post(cur_stores, slot_label=slot_lbl)
     except Exception as err:
         logger.error(f"[worker] Scheduled conversational Threads post ({slot_lbl}) failed: {err}")
@@ -100,7 +102,8 @@ def _x_scheduled_job(slot_lbl="20:00"):
         if not sns_editorial.should_fire_scheduled_slot_now("x", slot_lbl):
             return
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("x", slot_lbl, stores=cur_stores)
         if skip_pace:
             logger.info(f"[worker] Skipping X {slot_lbl} for human pacing: {pace_reason}")
@@ -159,8 +162,9 @@ def _threads_daily_job():
             return
         import threads_poster
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         if cur_stores and not is_seed:
             skip_pace, pace_reason = sns_editorial.should_skip_slot_for_human_pacing("threads", "22:00", stores=cur_stores)
             if skip_pace:
@@ -182,8 +186,9 @@ def _threads_ladies_job():
             return
         import threads_poster
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         if cur_stores and not is_seed:
             threads_poster.execute_scheduled_ladies_threads_post(cur_stores, slot_label="19:30")
     except Exception as err:
@@ -200,8 +205,9 @@ def _ig_reel_scheduled_job(slot_lbl="20:00"):
         if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
             return
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
 
         try:
             import instagram_poster
@@ -244,8 +250,9 @@ def _tiktok_inbox_scheduled_job(slot_lbl="20:35"):
         if not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
             return
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         if cur_stores and not is_seed:
             tiktok_poster.execute_scheduled_tiktok_inbox_post(cur_stores, slot_label=slot_lbl, force=False)
     except Exception as err:
@@ -268,6 +275,8 @@ def _crawl_events_job():
 
 
 def _scheduled_articles_release_job():
+    if not turbo_store.acquire_distributed_lock("cron:scheduled_articles_release", ttl_sec=120):
+        return
     try:
         scheduled_articles.check_and_announce_newly_published()
     except Exception as err:
@@ -281,8 +290,9 @@ def _bonus_alert_check_job():
         import bonus_alert
         import ops_governance
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         if cur_stores and not is_seed:
             bonus_alert.check_and_post_bonus_alert(cur_stores)
     except Exception as err:
@@ -296,9 +306,10 @@ def _web_push_watch_job():
         import ops_governance
         import push_watch
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
             is_seed = bool(app_module.latest_data.get("is_seed"))
             last_upd = app_module.latest_data.get("last_updated")
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         if cur_stores and not is_seed:
             res = push_watch.dispatch_matching_watch_pushes(cur_stores, last_updated=last_upd)
             if res.get("sent"):
@@ -325,7 +336,8 @@ def _pdca_autonomous_job():
         import ops_governance
         import pdca_engine
         with app_module.data_lock:
-            cur_stores = ops_governance.filter_visible_stores(list(app_module.latest_data.get("full_data") or []))
+            raw_stores = list(app_module.latest_data.get("full_data") or [])
+        cur_stores = ops_governance.filter_visible_stores(raw_stores)
         pdca_engine.run_pdca_cycle(
             live_stores=cur_stores,
             days=14,
@@ -339,6 +351,8 @@ def _pdca_autonomous_job():
 
 
 def _sheets_retention_job():
+    if not turbo_store.acquire_distributed_lock("cron:sheets_retention", ttl_sec=300):
+        return
     try:
         import archive_data
         archive_data.run_scheduled_retention_job()
@@ -347,6 +361,8 @@ def _sheets_retention_job():
 
 
 def _daily_token_and_db_maintenance_job():
+    if not turbo_store.acquire_distributed_lock("cron:daily_maint", ttl_sec=300):
+        return
     try:
         import instagram_poster
         import threads_poster
@@ -365,7 +381,12 @@ def _daily_token_and_db_maintenance_job():
     except Exception as err:
         logger.warning(f"[worker] Daily arena calendar refresh warning: {err}")
     try:
-        local_db.rollup_store_hourly_stats(days_back=4)
+        try:
+            rollup_res = local_db.rollup_store_hourly_stats(days_back=4)
+        except Exception as rollup_err:
+            rollup_res = {"ok": False, "error": str(rollup_err)}
+        if not (isinstance(rollup_res, dict) and rollup_res.get("ok")):
+            logger.warning(f"[worker] Daily DB rollup returned non-ok (proceeding with prune_old_logs for 14d anonymization): {rollup_res}")
         local_db.prune_old_logs(monitor_days=90, vote_days=14)
         turbo_store.prune_old_analytics_hourly(keep_days=90)
     except Exception as err:
@@ -457,6 +478,7 @@ def build_worker_scheduler() -> BackgroundScheduler:
     scheduler.add_job(id="pdca_cycle", func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
     scheduler.add_job(id="sheets_retention", func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
     scheduler.add_job(id="daily_token_db_maint", func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
+    scheduler.add_job(id="rescue_orphan_sns_jobs", func=_rescue_orphaned_sns_jobs, trigger="interval", minutes=5)
 
     return scheduler
 
@@ -471,6 +493,7 @@ def _rescue_orphaned_sns_jobs(max_age_minutes: int = SNS_ORPHAN_RUNNING_MINUTES)
     so the operator re-triggers from the dashboard after checking the platform.
     """
     import datetime as _dt
+    import request_guards
     jst = _dt.timezone(_dt.timedelta(hours=9))
     now_naive = _dt.datetime.now(jst).replace(tzinfo=None)
     rescued = 0
@@ -482,10 +505,9 @@ def _rescue_orphaned_sns_jobs(max_age_minutes: int = SNS_ORPHAN_RUNNING_MINUTES)
     for job in jobs:
         if not isinstance(job, dict) or job.get("status") != "running":
             continue
-        started = str(job.get("started_at") or job.get("created_at") or "")[:19]
-        try:
-            started_dt = _dt.datetime.strptime(started, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
+        started_raw = str(job.get("started_at") or job.get("created_at") or "").strip()
+        started_dt = request_guards.parse_jst_ts(started_raw)
+        if started_dt is None:
             continue
         if (now_naive - started_dt).total_seconds() < max_age_minutes * 60:
             continue
@@ -508,12 +530,15 @@ def _sns_queue_consumer_loop(stop_event: threading.Event):
     logger.info("[worker] Async SNS job queue consumer started.")
     while not stop_event.is_set():
         try:
-            finished_job = app_module.drain_sns_job_queue_once(timeout_sec=2.0)
+            t0 = time.monotonic()
+            finished_job = app_module.drain_sns_job_queue_once(timeout_sec=1.0)
             if finished_job:
                 logger.info(
                     f"[worker] Completed async SNS job {finished_job.get('job_id')} "
                     f"({finished_job.get('job_type')}) -> {finished_job.get('status')}"
                 )
+            elif (time.monotonic() - t0) < 0.2:
+                stop_event.wait(0.5)
         except Exception as err:
             logger.error(f"[worker] Queue consumer loop error: {err}")
             stop_event.wait(2.0)
@@ -522,53 +547,69 @@ def _sns_queue_consumer_loop(stop_event: threading.Event):
 
 def _worker_staggered_warmup(stop_event: threading.Event):
     """Warm DB history, encrypted tokens, weather, events, and initial AI/IG media bundle after boot."""
+    has_disk_events = False
     try:
         import events as _ev_boot
         has_disk_events = os.path.exists(_ev_boot.CACHE_FILE)
         if has_disk_events:
             _ev_boot.fetch_all_events(force_refresh=False, allow_blocking=False)
+    except Exception as ev_err:
+        logger.warning(f"[worker] Initial events warmup warning: {ev_err}")
 
-        if stop_event.wait(3.0):
-            return
+    if stop_event.wait(3.0):
+        return
+    try:
         local_db.sync_from_google_sheets(days=10, on_recent_synced=app_module.refresh_momentum_from_db)
-        try:
-            local_db.get_all_stores_live_benchmarks(allow_blocking=True)
-            local_db.backfill_forecast_accuracy_from_history(days=21, min_existing=80, max_rows=4500)
-            local_db._refresh_forecast_caches_from_db(days=21)
-        except Exception as fc_warm_err:
-            logger.warning(f"[worker] Forecast accuracy warmup warning: {fc_warm_err}")
+    except Exception as sync_err:
+        logger.warning(f"[worker] Google Sheets warmup sync warning: {sync_err}")
+    try:
+        local_db.get_all_stores_live_benchmarks(allow_blocking=True)
+        local_db.backfill_forecast_accuracy_from_history(days=21, min_existing=80, max_rows=4500)
+        local_db._refresh_forecast_caches_from_db(days=21)
+    except Exception as fc_warm_err:
+        logger.warning(f"[worker] Forecast accuracy warmup warning: {fc_warm_err}")
 
-        if stop_event.wait(2.0):
-            return
+    if stop_event.wait(2.0):
+        return
+    try:
         local_db.restore_votes_from_sheets(hours=24)
-        try:
-            import affiliate_manager as _afm
-            import analytics as _an
-            import archive_data as _ard
-            import arena_calendar as _ac
-            import job_state as _js
-            import sns_editorial as _se
-            _js.all_keys()
-            _afm._load_overrides(allow_blocking=True)
-            _ard.get_retention_status(allow_blocking=True)
-            _an._refresh_sheet_rows_async()
-            _se.fetch_live_weather_context(allow_blocking=True)
-            _ac.get_arena_schedule_events(allow_blocking=True)
-            local_db.rollup_store_hourly_stats(days_back=3)
-        except Exception as warm_err:
-            logger.warning(f"[worker] State/token warmup warning: {warm_err}")
+    except Exception as vote_err:
+        logger.warning(f"[worker] Restore votes warmup warning: {vote_err}")
+    try:
+        import affiliate_manager as _afm
+        import analytics as _an
+        import archive_data as _ard
+        import arena_calendar as _ac
+        import job_state as _js
+        import sns_editorial as _se
+        _js.all_keys()
+        _afm._load_overrides(allow_blocking=True)
+        _ard.get_retention_status(allow_blocking=True)
+        _an._refresh_sheet_rows_async()
+        _se.fetch_live_weather_context(allow_blocking=True)
+        _ac.get_arena_schedule_events(allow_blocking=True)
+        local_db.rollup_store_hourly_stats(days_back=3)
+    except Exception as warm_err:
+        logger.warning(f"[worker] State/token warmup warning: {warm_err}")
 
-        # Note: Do NOT precompute AI editorial / column drafts on worker boot to prevent unnecessary Claude Opus token burn.
-        if stop_event.wait(15.0 if has_disk_events else 8.0):
-            return
+    # Note: Do NOT precompute AI editorial / column drafts on worker boot to prevent unnecessary Claude Opus token burn.
+    if stop_event.wait(15.0 if has_disk_events else 8.0):
+        return
+    try:
         _crawl_events_job()
+    except Exception as crawl_err:
+        logger.warning(f"[worker] Warmup events crawl warning: {crawl_err}")
+    try:
+        import ops_governance
         import pdca_engine as _pdca_boot
         if not _pdca_boot.get_active_directives(allow_blocking=True):
-            with app_module.data_lock:
-                boot_stores = list(app_module.latest_data.get("full_data") or [])
-            _pdca_boot.run_pdca_cycle(live_stores=boot_stores, days=14, apply_actions=True, use_ai=False, record_log=True)
+            if turbo_store.acquire_distributed_lock("cron:pdca_cycle", ttl_sec=180):
+                with app_module.data_lock:
+                    raw_boot = list(app_module.latest_data.get("full_data") or [])
+                boot_stores = ops_governance.filter_visible_stores(raw_boot)
+                _pdca_boot.run_pdca_cycle(live_stores=boot_stores, days=14, apply_actions=True, use_ai=False, record_log=True)
     except Exception as err:
-        logger.error(f"[worker] Staggered warmup error: {err}")
+        logger.error(f"[worker] Staggered warmup PDCA error: {err}")
 
 
 def run_worker():
@@ -617,7 +658,12 @@ def run_worker():
         while not stop_event.is_set():
             stop_event.wait(5.0)
     finally:
-        logger.info("[worker] Shutting down scheduler and flushing analytics...")
+        logger.info("[worker] Shutting down consumer, scheduler and flushing analytics...")
+        stop_event.set()
+        try:
+            consumer_thread.join(timeout=18.0)
+        except Exception:
+            pass
         try:
             scheduler.shutdown(wait=False)
         except Exception:

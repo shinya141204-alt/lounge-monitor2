@@ -1,15 +1,43 @@
 """SEO, crawler directives, and LLM/RAG feed endpoints (`robots.txt`, `sitemap.xml`, `llms.txt`, `ads.txt`)."""
 
 import datetime
+import gzip
+import hashlib
 import json
 import os
+import threading
+import time
+from typing import NamedTuple
 
 from flask import Blueprint, Response, jsonify, request
 
+import request_guards
 from portal_guides import AREA_GUIDES, BRAND_GUIDES, get_stores_for_area
 from routes._bridge import core
 
 seo_feeds_bp = Blueprint('seo_feeds_bp', __name__)
+
+
+class _EncodedDoc(NamedTuple):
+    raw: bytes
+    gz: bytes | None
+    etag: str
+
+
+class _DocBundle(NamedTuple):
+    key: tuple
+    short: str
+    full: str
+    facts: dict
+    is_volatile_empty: bool
+    short_doc: _EncodedDoc
+    full_doc: _EncodedDoc
+    facts_doc: _EncodedDoc
+
+
+_LLMS_BUILD_LOCK = threading.Lock()
+_DOC_BUNDLE_STATE = {'bundle': None}
+_HIST_RECORDS_CACHE = {'db_key': None, 'mono': 0.0, 'records': 0, 'status': 'insufficient'}
 
 
 def _gov_hidden_sets() -> tuple:
@@ -184,19 +212,49 @@ def _get_stable_30d_summary_cached() -> dict:
     return summary
 
 
-def _build_llms_txt_documents() -> tuple:
-    """
-    Build `/llms.txt` (concise AI index + live national summary), `/llms-full.txt`
-    (complete 61-store domestic live headcounts + dossiers, 8-brand price/solo matrix, area breakdown & FAQ),
-    and `/api/llms-facts.json` (structured JSON fact sheet for AI grounding & RAG)
-    with 0ms RAM caching keyed by live data signature.
-    """
-    import column_editorial
-    import price_comparison
-    import second_venues
-    import store_dossiers
-    import store_hours
-    import store_master
+def _encode_doc_payload(text: str) -> _EncodedDoc:
+    raw = text.encode('utf-8')
+    gz = gzip.compress(raw, compresslevel=6, mtime=0) if len(raw) > 256 else None
+    etag = f'W/"{hashlib.sha256(raw).hexdigest()[:16]}"'
+    return _EncodedDoc(raw=raw, gz=gz, etag=etag)
+
+
+_VOLATILE_BUNDLE_CACHE = {'mono': 0.0, 'key': None, 'bundle': None}
+
+
+def _get_hist_records_cached(db_key: str, force_refresh: bool = False) -> tuple:
+    now_m = time.monotonic()
+    with core._aux_doc_cache_lock:
+        if (
+            not force_refresh
+            and _HIST_RECORDS_CACHE['db_key'] == db_key
+            and _HIST_RECORDS_CACHE['mono'] > 0
+        ):
+            ttl = 600.0 if _HIST_RECORDS_CACHE['status'] == 'ok' else 15.0
+            if (now_m - _HIST_RECORDS_CACHE['mono']) < ttl:
+                return _HIST_RECORDS_CACHE['records'], _HIST_RECORDS_CACHE['status']
+    hist_records = 0
+    hist_data_status = 'insufficient'
+    try:
+        db_stats = core.local_db.get_db_stats() or {}
+        if 'error' not in db_stats:
+            raw_rows = int(db_stats.get('count') or db_stats.get('total_rows') or 0)
+            if raw_rows > 0:
+                hist_records = raw_rows
+                hist_data_status = 'ok'
+    except Exception:
+        hist_records = 0
+        hist_data_status = 'insufficient'
+    with core._aux_doc_cache_lock:
+        _HIST_RECORDS_CACHE['db_key'] = db_key
+        _HIST_RECORDS_CACHE['mono'] = now_m
+        _HIST_RECORDS_CACHE['records'] = hist_records
+        _HIST_RECORDS_CACHE['status'] = hist_data_status
+    return hist_records, hist_data_status
+
+
+def _get_or_build_llms_bundle() -> _DocBundle:
+    """Single-flight builder/cache returning _DocBundle with pre-compressed gzip bytes & ETags."""
     core.restore_latest_data_if_empty()
     with core.data_lock:
         stores = list(core.latest_data.get('full_data') or [])
@@ -206,32 +264,97 @@ def _build_llms_txt_documents() -> tuple:
     if hb or hs:
         stores = [s for s in stores if not _is_hidden_with((s or {}).get('name') or '', hb, hs)]
     pub_items = core.scheduled_articles.get_published_articles()
-    hist_records = 0
-    hist_data_status = 'insufficient'
-    try:
-        db_stats = core.local_db.get_db_stats() or {}
-        raw_rows = int(db_stats.get('count') or db_stats.get('total_rows') or 0)
-        if raw_rows > 0:
-            hist_records = raw_rows
-            hist_data_status = 'ok'
-    except Exception:
-        hist_records = 0
-        hist_data_status = 'insufficient'
+    db_key = core.local_db._active_db_key()
+    is_volatile_empty = bool(is_s or not stores)
     cache_key = (
         core._live_data_signature(stores, last_u, is_s),
         tuple(it.get('slug') for it in pub_items),
-        hist_records,
+        db_key,
         (tuple(sorted(hb)), tuple(sorted(hs))),
     )
     llms_cache = core._llms_txt_cache
     with core._aux_doc_cache_lock:
+        existing_b = _DOC_BUNDLE_STATE.get('bundle')
         if (
-            llms_cache['key'] == cache_key
-            and llms_cache['short'] is not None
-            and llms_cache['full'] is not None
-            and llms_cache['facts'] is not None
+            not is_volatile_empty
+            and existing_b is not None
+            and existing_b.key == cache_key
+            and llms_cache.get('key') is not None
+            and llms_cache.get('short') is not None
+            and llms_cache.get('full') is not None
+            and llms_cache.get('facts') is not None
         ):
-            return llms_cache['short'], llms_cache['full'], llms_cache['facts']
+            return existing_b
+
+    with _LLMS_BUILD_LOCK:
+        with core._aux_doc_cache_lock:
+            existing_b2 = _DOC_BUNDLE_STATE.get('bundle')
+            if (
+                not is_volatile_empty
+                and existing_b2 is not None
+                and existing_b2.key == cache_key
+                and llms_cache.get('key') is not None
+                and llms_cache.get('short') is not None
+                and llms_cache.get('full') is not None
+                and llms_cache.get('facts') is not None
+            ):
+                return existing_b2
+            force_hist = llms_cache.get('key') is None
+            if is_volatile_empty:
+                vol_b = _VOLATILE_BUNDLE_CACHE.get('bundle')
+                if (
+                    vol_b is not None
+                    and _VOLATILE_BUNDLE_CACHE.get('key') == cache_key
+                    and (time.monotonic() - float(_VOLATILE_BUNDLE_CACHE.get('mono') or 0.0)) < 5.0
+                ):
+                    return vol_b
+
+        hist_records, hist_data_status = _get_hist_records_cached(db_key, force_refresh=force_hist)
+        bundle = _assemble_llms_bundle(
+            cache_key=cache_key,
+            stores=stores,
+            last_u=last_u,
+            is_s=is_s,
+            hb=hb,
+            hs=hs,
+            pub_items=pub_items,
+            hist_records=hist_records,
+            hist_data_status=hist_data_status,
+            is_volatile_empty=is_volatile_empty,
+        )
+        with core._aux_doc_cache_lock:
+            if not is_volatile_empty:
+                _DOC_BUNDLE_STATE['bundle'] = bundle
+                llms_cache['key'] = cache_key
+                llms_cache['short'] = bundle.short
+                llms_cache['full'] = bundle.full
+                llms_cache['facts'] = bundle.facts
+                llms_cache['facts_json'] = bundle.facts_doc.raw.decode('utf-8')
+            else:
+                _VOLATILE_BUNDLE_CACHE['mono'] = time.monotonic()
+                _VOLATILE_BUNDLE_CACHE['key'] = cache_key
+                _VOLATILE_BUNDLE_CACHE['bundle'] = bundle
+        return bundle
+
+
+def _assemble_llms_bundle(
+    cache_key,
+    stores,
+    last_u,
+    is_s,
+    hb,
+    hs,
+    pub_items,
+    hist_records,
+    hist_data_status,
+    is_volatile_empty,
+) -> _DocBundle:
+    import column_editorial
+    import price_comparison
+    import second_venues
+    import store_dossiers
+    import store_hours
+    import store_master
 
     master_map = store_master.load() or {}
     if hb or hs:
@@ -261,7 +384,8 @@ def _build_llms_txt_documents() -> tuple:
     jst_tz = datetime.timezone(datetime.timedelta(hours=9))
     now_jst = datetime.datetime.now(jst_tz)
     ts_str = last_u or now_jst.strftime('%Y-%m-%d %H:%M:%S')
-    valid_until_jst = (now_jst + datetime.timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+    base_dt = request_guards.parse_jst_ts(ts_str) or now_jst.replace(tzinfo=None)
+    valid_until_jst = (base_dt + datetime.timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
 
     top_crowded = sorted(
         active_stores,
@@ -269,12 +393,21 @@ def _build_llms_txt_documents() -> tuple:
         reverse=True,
     )[:8]
     men_sweet = sorted(
-        [s for s in active_stores if int(s.get('women') or 0) >= 6 and (int(s.get('women') or 0) + int(s.get('men') or 0)) >= 10],
+        [
+            s for s in active_stores
+            if int(s.get('women') or 0) >= 6
+            and (int(s.get('women') or 0) + int(s.get('men') or 0)) >= 10
+            and int(s.get('women') or 0) > int(s.get('men') or 0)
+        ],
         key=lambda x: (int(x.get('women') or 0) / max(1, int(x.get('women') or 0) + int(x.get('men') or 0)), int(x.get('women') or 0)),
         reverse=True,
     )[:5]
     women_sweet = sorted(
-        [s for s in active_stores if int(s.get('men') or 0) >= 5],
+        [
+            s for s in active_stores
+            if int(s.get('men') or 0) >= 5
+            and int(s.get('men') or 0) > int(s.get('women') or 0)
+        ],
         key=lambda x: (int(x.get('men') or 0) - int(x.get('women') or 0), int(x.get('men') or 0)),
         reverse=True,
     )[:5]
@@ -360,7 +493,20 @@ def _build_llms_txt_documents() -> tuple:
 
     brand_table_rows = []
     brand_facts = []
+    _brand_ops_map = {
+        'OLG': 'oriental-lounge',
+        'ag': 'ag',
+        'JIS': 'jis',
+        'ASOBIBAR': 'asobibar',
+        'ヤタコイ': 'yatakoi',
+        'XIX': 'xix',
+        'CLOVERS': 'clovers',
+        'ALFA': 'alfa',
+    }
     for b_code, spec in price_comparison.BRAND_PRICE_SPECS.items():
+        b_ops_key = _brand_ops_map.get(b_code, (spec.get('brand_slug') or str(b_code or '').lower()))
+        if b_ops_key in hb or (spec.get('brand_slug') and spec['brand_slug'] in hb):
+            continue
         b_lbl = spec['brand_label']
         b_url = f"https://aiseki-navi.com/{spec['brand_slug']}" if spec.get('brand_slug') else "https://aiseki-navi.com/price-comparison"
         brand_table_rows.append(
@@ -428,7 +574,8 @@ def _build_llms_txt_documents() -> tuple:
     sv_by_store = sv_master.get('venues_by_store') or {}
     sv_unique_names = {
         (sp.get('name') or '').strip()
-        for s_list in sv_by_store.values()
+        for s_key, s_list in sv_by_store.items()
+        if not _is_hidden_with(s_key, hb, hs)
         for sp in (s_list or [])
         if isinstance(sp, dict) and sp.get('name')
     }
@@ -545,11 +692,27 @@ def _build_llms_txt_documents() -> tuple:
         bspec = price_comparison.BRAND_PRICE_SPECS.get(raw_brand) or {}
         dossier = store_dossiers.get_store_dossier(sname) or {}
         sv_spots = _clean_second_venue_spots(sname)
-        st_live = live_by_name.get(sname) or {}
-        w = int(st_live.get('women') or 0)
-        m = int(st_live.get('men') or 0)
-        tot = w + m
-        fp = round(w / tot * 100) if tot > 0 else None
+        st_live = live_by_name.get(sname)
+        has_live_counts = isinstance(st_live, dict) and (st_live.get('women') is not None or st_live.get('men') is not None)
+        if has_live_counts:
+            try:
+                w = max(0, int(st_live.get('women') or 0))
+            except (TypeError, ValueError):
+                w = None
+            try:
+                m = max(0, int(st_live.get('men') or 0))
+            except (TypeError, ValueError):
+                m = None
+            if w is not None and m is not None:
+                tot = w + m
+                fp = round(w / tot * 100) if tot > 0 else None
+                live_status = 'measured'
+            else:
+                w = m = tot = fp = None
+                live_status = 'no_data'
+        else:
+            w = m = tot = fp = None
+            live_status = 'no_data'
         fp_md = f'{fp}%' if fp is not None else '—（営業時間外・計測待機中）'
         fact_entry = {
             'store_name': seo_n,
@@ -561,6 +724,7 @@ def _build_llms_txt_documents() -> tuple:
             'men': m,
             'total': tot,
             'female_ratio_pct': fp,
+            'live_status': live_status,
             'business_hours': bh_label,
             'male_rate_20_22_per_10m': bspec.get('slot_20_22') or '',
             'solo_entry_policy': bspec.get('solo_rule') or '',
@@ -578,8 +742,12 @@ def _build_llms_txt_documents() -> tuple:
             continue
 
         catch_suffix = f" ｜ 特徴: {dossier['catch']}" if dossier.get('catch') else ""
+        if live_status == 'measured':
+            live_md_seg = f"現在 女性 {w}名・男性 {m}名（計 {tot}名 / 女性比 {fp_md}）"
+        else:
+            live_md_seg = "現在 計測待機中・データ未取得"
         all_store_lines.append(
-            f"- [{seo_n}](https://aiseki-navi.com/store/{slug}) [{brand_label} / {area_label}]: 現在 女性 {w}名・男性 {m}名（計 {tot}名 / 女性比 {fp_md}）{catch_suffix}"
+            f"- [{seo_n}](https://aiseki-navi.com/store/{slug}) [{brand_label} / {area_label}]: {live_md_seg}{catch_suffix}"
         )
         all_store_facts.append(fact_entry)
 
@@ -758,60 +926,87 @@ def _build_llms_txt_documents() -> tuple:
     try:
         facts_json_str = json.dumps(facts_payload, ensure_ascii=False, default=str)
     except Exception:
-        facts_json_str = None
-    with core._aux_doc_cache_lock:
-        llms_cache['key'] = cache_key
-        llms_cache['short'] = short_doc
-        llms_cache['full'] = full_doc
-        llms_cache['facts'] = facts_payload
-        llms_cache['facts_json'] = facts_json_str
-    return short_doc, full_doc, facts_payload
+        facts_json_str = json.dumps({'error': 'serialization_failed'})
+    return _DocBundle(
+        key=cache_key,
+        short=short_doc,
+        full=full_doc,
+        facts=facts_payload,
+        is_volatile_empty=is_volatile_empty,
+        short_doc=_encode_doc_payload(short_doc),
+        full_doc=_encode_doc_payload(full_doc),
+        facts_doc=_encode_doc_payload(facts_json_str),
+    )
+
+
+def _build_llms_txt_documents() -> tuple:
+    """Backward-compatible 3-tuple wrapper returning (short_doc, full_doc, facts_payload)."""
+    b = _get_or_build_llms_bundle()
+    return b.short, b.full, b.facts
+
+
+def _serve_doc_bundle_response(kind: str, mimetype: str, cache_control: str, link_hdr: str):
+    b = _get_or_build_llms_bundle()
+    doc = b.short_doc if kind == 'short' else (b.full_doc if kind == 'full' else b.facts_doc)
+    eff_cc = 'no-store' if b.is_volatile_empty else cache_control
+    inm = (request.headers.get('If-None-Match') or '').strip()
+    if inm and not b.is_volatile_empty and (inm == doc.etag or inm == '*'):
+        resp304 = Response(b'', status=304, mimetype=mimetype)
+        resp304.headers['ETag'] = doc.etag
+        resp304.headers['Cache-Control'] = eff_cc
+        resp304.vary.add('Accept-Encoding')
+        resp304.headers['X-Content-Type-Options'] = 'nosniff'
+        resp304.headers['Access-Control-Allow-Origin'] = '*'
+        resp304.headers['Access-Control-Expose-Headers'] = 'ETag, Link'
+        resp304.headers['Link'] = link_hdr
+        return resp304
+    wants_gzip = (doc.gz is not None) and ('gzip' in request.headers.get('Accept-Encoding', '').lower())
+    body = doc.gz if wants_gzip else doc.raw
+    resp = Response(body, mimetype=mimetype)
+    if wants_gzip:
+        resp.headers['Content-Encoding'] = 'gzip'
+        resp.headers['Content-Length'] = len(doc.gz)
+    resp.headers['ETag'] = doc.etag
+    resp.headers['Cache-Control'] = eff_cc
+    resp.vary.add('Accept-Encoding')
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Expose-Headers'] = 'ETag, Link'
+    resp.headers['Link'] = link_hdr
+    return resp
 
 
 @seo_feeds_bp.route('/llms.txt')
 def llms_txt():
     """Standard LLMO / GEO markdown index with live national crowd summary for AI search engines."""
-    short_doc, _, _ = core._build_llms_txt_documents()
-    resp = Response(short_doc, mimetype='text/plain; charset=utf-8')
-    resp.headers['Cache-Control'] = 'public, max-age=120'
-    resp.headers['X-Content-Type-Options'] = 'nosniff'
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Link'] = '<https://aiseki-navi.com/api/llms-facts.json>; rel="alternate"; type="application/json", <https://aiseki-navi.com/llms-full.txt>; rel="alternate"; type="text/plain"'
-    return resp
+    return _serve_doc_bundle_response(
+        'short',
+        mimetype='text/plain',
+        cache_control='public, max-age=120',
+        link_hdr='<https://aiseki-navi.com/api/llms-facts.json>; rel="alternate"; type="application/json", <https://aiseki-navi.com/llms-full.txt>; rel="alternate"; type="text/plain"',
+    )
 
 
 @seo_feeds_bp.route('/llms-full.txt')
 def llms_full_txt():
     """Comprehensive LLMO / GEO markdown document containing all stores' live headcounts, 7-brand specs & FAQs."""
-    _, full_doc, _ = core._build_llms_txt_documents()
-    resp = Response(full_doc, mimetype='text/plain; charset=utf-8')
-    resp.headers['Cache-Control'] = 'public, max-age=120'
-    resp.headers['X-Content-Type-Options'] = 'nosniff'
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Link'] = '<https://aiseki-navi.com/api/llms-facts.json>; rel="alternate"; type="application/json"'
-    return resp
+    return _serve_doc_bundle_response(
+        'full',
+        mimetype='text/plain',
+        cache_control='public, max-age=120',
+        link_hdr='<https://aiseki-navi.com/api/llms-facts.json>; rel="alternate"; type="application/json"',
+    )
 
 
 @seo_feeds_bp.route('/api/llms-facts.json')
 def api_llms_facts_json():
     """Machine-readable structured JSON fact sheet for AI search grounding, RAG agents, and LLM citations."""
-    _, _, facts_payload = core._build_llms_txt_documents()
-    facts_json_str = None
-    llms_cache = getattr(core, '_llms_txt_cache', None)
-    if isinstance(llms_cache, dict):
-        with core._aux_doc_cache_lock:
-            # Identity check guarantees the pre-serialized string belongs to this exact payload
-            # (app-level cache invalidation resets 'facts', so a stale string can never be served).
-            if llms_cache.get('facts') is facts_payload:
-                facts_json_str = llms_cache.get('facts_json')
-    if facts_json_str:
-        resp = Response(facts_json_str, mimetype='application/json; charset=utf-8')
-    else:
-        resp = jsonify(facts_payload)
-    resp.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=120'
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Link'] = '<https://aiseki-navi.com/llms.txt>; rel="describedby"; type="text/plain"'
-    return resp
+    return _serve_doc_bundle_response(
+        'facts',
+        mimetype='application/json',
+        cache_control='public, max-age=60, stale-while-revalidate=120',
+        link_hdr='<https://aiseki-navi.com/llms.txt>; rel="describedby"; type="text/plain"',
+    )
 
 
 @seo_feeds_bp.route('/api/exchange/area-night.v1.json')
@@ -840,7 +1035,9 @@ def api_exchange_area_night_v1():
 def stats_weekend_index_json():
     """CC BY 4.0 2-Axis Weekend Supply-Demand DI Index JSON (Prepaid Machikon vs Walk-in Aiseki)."""
     import cross_site_bridge
-    raw_days = request.args.get('days', 28, type=int) or 28
+    raw_input = request.args.get('days', 28, type=int) or 28
+    clamped = max(7, min(90, int(raw_input)))
+    raw_days = min((7, 14, 28, 90), key=lambda d: abs(d - clamped))
     cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
     payload = cross_site_bridge.build_weekend_supply_demand_di(days=raw_days)
     measured_cnt = int((payload.get('summary') or {}).get('measured_walkin_areas') or 0)
@@ -856,10 +1053,12 @@ def stats_weekend_index_json():
 def stats_weekend_index_csv():
     """CC BY 4.0 2-Axis Weekend Supply-Demand DI Index CSV."""
     import cross_site_bridge
-    raw_days = request.args.get('days', 28, type=int) or 28
+    raw_input = request.args.get('days', 28, type=int) or 28
+    clamped = max(7, min(90, int(raw_input)))
+    raw_days = min((7, 14, 28, 90), key=lambda d: abs(d - clamped))
     cross_site_bridge.maybe_trigger_partner_pull_async(testing=bool(core.app.testing))
     csv_body = cross_site_bridge.build_weekend_supply_demand_csv(days=raw_days)
-    resp = Response(csv_body, mimetype='text/csv; charset=utf-8')
+    resp = Response(csv_body, mimetype='text/csv')
     resp.headers['Cache-Control'] = 'public, max-age=300'
     resp.headers['Content-Disposition'] = 'inline; filename="aiseki_navi_weekend_supply_demand_di.csv"'
     resp.headers['Access-Control-Allow-Origin'] = '*'

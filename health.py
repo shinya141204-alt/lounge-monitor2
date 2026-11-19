@@ -41,6 +41,7 @@ SOURCE_LABELS = {
 _lock = threading.Lock()
 _state = {}          # source -> {'consecutive_fail': int, 'down': bool, 'last_ok': str, 'last_error': str, 'last_count': int}
 _last_sent = {}      # alert_key -> epoch
+_in_flight_alerts = set()
 _sent_log = []       # 直近の通知（テスト・確認用）
 _known_unknowns = set()
 
@@ -78,17 +79,23 @@ def _post_webhook(url: str, text: str):
 def send_alert(key, message, bypass_cooldown: bool = False):
     """クールダウン付きで通知。送信（またはログ記録）したら True。"""
     now = time.time()
+    url = _resolve_webhook_url()
     with _lock:
         if not bypass_cooldown and (now - _last_sent.get(key, 0) < COOLDOWN_SEC):
             return False
+        if url and key in _in_flight_alerts:
+            return False
+        prev_ts = _last_sent.get(key)
         _last_sent[key] = now
+        if url:
+            _in_flight_alerts.add(key)
         _sent_log.append({'key': key, 'message': message, 'at': _now_str()})
         del _sent_log[:-50]
 
     logging.warning(f"[ALERT] {message}")
-    url = _resolve_webhook_url()
     if url:
         def _post():
+            sent_ok = False
             try:
                 err = _revalidate_webhook_url(url)
                 if err:
@@ -96,9 +103,24 @@ def send_alert(key, message, bypass_cooldown: bool = False):
                     return
                 text = f"【相席ナビ監視】{message}"
                 # Discord は content、Slack は text を見る
-                _post_webhook(url, text)
+                resp = _post_webhook(url, text[:1900])
+                sc = int(getattr(resp, 'status_code', 0) or 0)
+                if 200 <= sc < 300:
+                    sent_ok = True
+                    with _lock:
+                        _last_sent[key] = time.time()
+                else:
+                    logging.error(f"[health] webhook HTTP {sc} for {key}")
             except Exception as e:
-                logging.error(f"[health] webhook failed: {e}")
+                logging.error(f"[health] webhook failed for {key}: {type(e).__name__}")
+            finally:
+                with _lock:
+                    _in_flight_alerts.discard(key)
+                    if not sent_ok:
+                        if prev_ts is None:
+                            _last_sent.pop(key, None)
+                        else:
+                            _last_sent[key] = prev_ts
         threading.Thread(target=_post, daemon=True).start()
     return True
 
@@ -118,7 +140,7 @@ def send_test_webhook() -> dict:
             return {'ok': True, 'message': f'テスト通知の送信に成功しました（HTTP {r.status_code}）。'}
         return {'ok': False, 'error': f'送信先サーバーがエラーを返しました（HTTP {r.status_code}）。'}
     except Exception as e:
-        return {'ok': False, 'error': f'送信エラー: {e}'}
+        return {'ok': False, 'error': f'送信エラー: {type(e).__name__}'}
 
 
 def record_fetch(results_by_name, errors, all_sources):
@@ -135,6 +157,7 @@ def record_fetch(results_by_name, errors, all_sources):
                 st.update({'consecutive_fail': 0, 'down': False, 'last_ok': _now_str(),
                            'last_error': None, 'last_count': len(res)})
                 if was_down:
+                    _last_sent.pop(f'down:{src}', None)
                     alerts_to_send.append((f'recover:{src}', f"✅ {label} のデータ取得が復旧しました（{len(res)}店舗）"))
                 exp = EXPECTED_MIN_STORES.get(src)
                 if exp and len(res) < exp:
@@ -148,7 +171,7 @@ def record_fetch(results_by_name, errors, all_sources):
                     alerts_to_send.append((f'down:{src}', f"🚨 {label} のデータ取得が {st['consecutive_fail']} 回連続で失敗しています（{st['last_error']}）"))
 
     for key, msg in alerts_to_send:
-        send_alert(key, msg)
+        send_alert(key, msg, bypass_cooldown=key.startswith(('down:', 'recover:')))
 
 
 def _is_business_hours():

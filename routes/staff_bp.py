@@ -12,6 +12,7 @@ from urllib.parse import quote
 
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, session, url_for
 
+import request_guards
 from routes._bridge import core
 
 staff_bp = Blueprint('staff_bp', __name__)
@@ -19,16 +20,34 @@ staff_bp = Blueprint('staff_bp', __name__)
 _sns_kit_ctx_cache = {'ctx': None, 'key': None, 'ts': 0.0}
 _sns_slide_bytes_cache = OrderedDict()  # (slide_num, is_jpg, ctx_sig) -> (ts, bytes)
 _sns_zip_bytes_cache = {'key': None, 'ts': 0.0, 'bytes': None}
+_sns_kit_build_lock = threading.Lock()
+_pdca_seed_lock = threading.Lock()
+_pdca_seed_inflight = False
+_pdca_last_seed_mono = 0.0
+_pdca_run_lock = threading.Lock()
 
 
 def _is_same_origin_get_action_allowed() -> bool:
-    """Allow expensive/side-effecting GET flags (`refresh_ai=1`, `flush=1`) only on same-origin or secret-authenticated requests."""
+    """Allow expensive/side-effecting GET flags (`refresh_ai=1`, `flush=1`) only on strict same-origin or secret-authenticated requests."""
     if core._secret_header_ok():
         return True
     sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
     if sec_fetch and sec_fetch not in ('same-origin', 'none'):
         return False
-    return True
+    import contact_form
+    if sec_fetch == 'same-origin':
+        return contact_form.is_same_origin(
+            request.headers.get('Origin'),
+            request.headers.get('Referer'),
+            request.host,
+            strict=False,
+        )
+    return contact_form.is_same_origin(
+        request.headers.get('Origin'),
+        request.headers.get('Referer'),
+        request.host,
+        strict=True,
+    )
 
 
 def _get_visible_live_stores() -> list:
@@ -71,13 +90,16 @@ def _sns_context_sig(ctx: dict) -> tuple:
 
 def _get_sns_kit_context(fast=False):
     import ig_carousel_generator
+    import ops_governance
     import weekly_report
     now_t = time.time()
     live_s = _get_visible_live_stores()
+    gov_sig = (tuple(sorted(ops_governance.get_hidden_brands())), tuple(sorted(ops_governance.get_hidden_stores())))
     live_top_sig = tuple((s.get('name'), int(s.get('women') or 0), int(s.get('men') or 0)) for s in live_s[:8])
     cache_key = (
         core.local_db.DB_PATH,
         live_top_sig,
+        gov_sig,
         datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y%m%d%H'),
     )
     ctx_cache = core._sns_kit_ctx_cache
@@ -88,7 +110,9 @@ def _get_sns_kit_context(fast=False):
     shared_ctx_wrap = core.turbo_store.get_ai_cache("ig_kit_ctx", "latest")
     if isinstance(shared_ctx_wrap, dict) and isinstance(shared_ctx_wrap.get("ctx"), dict):
         saved_top_sig = tuple(tuple(x) for x in (shared_ctx_wrap.get("live_top_sig") or []))
-        if saved_top_sig == live_top_sig or fast or core.is_web_only_role():
+        saved_gov = shared_ctx_wrap.get("gov_sig")
+        gov_matches = (saved_gov == [list(gov_sig[0]), list(gov_sig[1])]) or (saved_gov is None and not gov_sig[0] and not gov_sig[1])
+        if gov_matches and (saved_top_sig == live_top_sig or fast or core.is_web_only_role()):
             ctx = dict(shared_ctx_wrap["ctx"])
             if isinstance(ctx.get("theme"), dict):
                 restored_theme = dict(ctx["theme"])
@@ -102,30 +126,40 @@ def _get_sns_kit_context(fast=False):
                 ctx_cache['ts'] = now_t
             return ctx
 
-    rep = None
-    try:
+    if fast:
         cached_rep = (getattr(weekly_report, '_report_cache', None) or {}).get('data')
-        if fast and isinstance(cached_rep, dict) and 'error' not in cached_rep:
-            rep = cached_rep
-        else:
+        rep = cached_rep if isinstance(cached_rep, dict) and 'error' not in cached_rep else None
+        return ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
+
+    with _sns_kit_build_lock:
+        now_in = time.time()
+        with core._sns_cache_lock:
+            if ctx_cache['ctx'] is not None and ctx_cache['key'] == cache_key and (now_in - ctx_cache['ts'] < 300):
+                return ctx_cache['ctx']
+        rep = None
+        try:
             res = weekly_report.generate_weekly_report()
             if isinstance(res, dict) and 'error' not in res:
                 rep = res
-    except Exception:
-        rep = None
+        except Exception:
+            rep = None
 
-    ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
-    with core._sns_cache_lock:
-        ctx_cache['ctx'] = ctx
-        ctx_cache['key'] = cache_key
-        ctx_cache['ts'] = now_t
-    core.turbo_store.set_ai_cache(
-        "ig_kit_ctx",
-        "latest",
-        {"ctx": ctx, "live_top_sig": [list(x) for x in live_top_sig]},
-        ttl_sec=900,
-    )
-    return ctx
+        ctx = ig_carousel_generator.build_forecast_context(report=rep, live_stores=live_s)
+        with core._sns_cache_lock:
+            ctx_cache['ctx'] = ctx
+            ctx_cache['key'] = cache_key
+            ctx_cache['ts'] = now_in
+        core.turbo_store.set_ai_cache(
+            "ig_kit_ctx",
+            "latest",
+            {
+                "ctx": ctx,
+                "live_top_sig": [list(x) for x in live_top_sig],
+                "gov_sig": [list(gov_sig[0]), list(gov_sig[1])],
+            },
+            ttl_sec=900,
+        )
+        return ctx
 
 
 def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> bytes:
@@ -182,7 +216,7 @@ def _render_cached_ig_slide_bytes(slide_num: int, is_jpg: bool, ctx: dict) -> by
 @staff_bp.route('/staff/analytics')
 def staff_analytics():
     """Master-only analytics summary (page views, affiliate clicks, button clicks, affiliate slot manager & Sheets retention)."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import analytics
     import affiliate_manager
@@ -233,7 +267,7 @@ def _check_master_api_csrf():
         if sec_fetch and sec_fetch not in ('same-origin', 'none'):
             return jsonify({'ok': False, 'error': '不正なリクエスト元です'}), 403
         import contact_form
-        if not contact_form.is_same_origin(request.headers.get('Origin'), request.headers.get('Referer'), request.host):
+        if not contact_form.is_same_origin(request.headers.get('Origin'), request.headers.get('Referer'), request.host, strict=True):
             return jsonify({'ok': False, 'error': 'オリジンが一致しません'}), 403
     return None
 
@@ -248,25 +282,58 @@ def api_ops_governance():
     if request.method == 'GET':
         return jsonify({'ok': True, 'ops_gov': ops_governance.get_governance_dashboard_state()})
 
-    payload = request.get_json(silent=True, force=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     action = str(payload.get('action') or '').strip()
 
+    def _purge_governance_caches():
+        try:
+            import weekly_report
+            weekly_report._report_cache['data'] = None
+            weekly_report._report_cache['last_fetched'] = None
+        except Exception:
+            pass
+        try:
+            core.turbo_store.clear_ai_cache("ig_kit_ctx")
+        except Exception:
+            pass
+        try:
+            with core._sns_cache_lock:
+                _sns_kit_ctx_cache['ctx'] = None
+                _sns_kit_ctx_cache['key'] = None
+                _sns_kit_ctx_cache['ts'] = 0.0
+                _sns_slide_bytes_cache.clear()
+                _sns_zip_bytes_cache['key'] = None
+                _sns_zip_bytes_cache['ts'] = 0.0
+                _sns_zip_bytes_cache['bytes'] = None
+        except Exception:
+            pass
+        core.clear_fast_http_caches(clear_editorial=True)
+        core.invalidate_live_caches(clear_editorial=True)
+
     if action == 'toggle_brand':
-        res = ops_governance.set_brand_hidden(str(payload.get('brand_key') or ''), bool(payload.get('hidden')))
+        raw_h = payload.get('hidden')
+        h_bool = raw_h if isinstance(raw_h, bool) else (str(raw_h or '').strip().lower() in ('1', 'true', 'on', 'yes'))
+        res = ops_governance.set_brand_hidden(str(payload.get('brand_key') or ''), h_bool)
         if not res.get('ok'):
             return jsonify(res), 400
-        core.clear_fast_http_caches()
+        _purge_governance_caches()
         return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
 
     if action == 'toggle_store':
-        res = ops_governance.set_store_hidden(str(payload.get('store_name') or ''), bool(payload.get('hidden')))
+        raw_h = payload.get('hidden')
+        h_bool = raw_h if isinstance(raw_h, bool) else (str(raw_h or '').strip().lower() in ('1', 'true', 'on', 'yes'))
+        res = ops_governance.set_store_hidden(str(payload.get('store_name') or ''), h_bool)
         if not res.get('ok'):
             return jsonify(res), 400
-        core.clear_fast_http_caches()
+        _purge_governance_caches()
         return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
 
     if action == 'resolve_inquiry':
-        res = ops_governance.set_inquiry_resolved(str(payload.get('inquiry_id') or ''), bool(payload.get('resolved', True)))
+        raw_r = payload.get('resolved', True)
+        r_bool = raw_r if isinstance(raw_r, bool) else (str(raw_r or '').strip().lower() in ('1', 'true', 'on', 'yes'))
+        res = ops_governance.set_inquiry_resolved(str(payload.get('inquiry_id') or ''), r_bool)
         if not res.get('ok'):
             return jsonify(res), 400
         return jsonify({**res, 'ops_gov': ops_governance.get_governance_dashboard_state()})
@@ -320,9 +387,9 @@ def api_affiliate_config():
             **affiliate_manager.get_affiliate_slots_status(analytics_data=ana_data, allow_blocking=True),
         })
 
-    payload = request.get_json(silent=True, force=True) or {}
-    if not isinstance(payload, dict):
-        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     slot_id = str(payload.get('slot_id') or '').strip()
     target_url = str(payload.get('url') or '').strip()
     memo = str(payload.get('memo') or '').strip()
@@ -352,7 +419,9 @@ def api_sheets_retention():
     if request.method == 'GET':
         return jsonify(archive_data.get_retention_status(allow_blocking=True))
 
-    payload = request.get_json(silent=True, force=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     dry_run = bool(payload.get('dry_run', False))
     res = archive_data.run_full_sheets_retention(dry_run=dry_run)
     status_code = 200 if res.get('ok') else (409 if res.get('busy') else 500)
@@ -371,18 +440,33 @@ def api_data_audit():
     return jsonify(report)
 
 
-@staff_bp.route('/staff/logout')
+@staff_bp.route('/staff/logout', methods=['GET', 'POST'])
 def staff_logout():
-    """Clear staff and master authentication and return to staff login."""
-    session.pop('is_staff', None)
-    session.pop('is_master', None)
-    return redirect(url_for('staff_monitor'))
+    """Clear staff and master authentication, rotate master epoch on master logout, and return to staff login."""
+    if not core._secret_header_ok():
+        sec_fetch = (request.headers.get('Sec-Fetch-Site') or '').strip().lower()
+        if sec_fetch and sec_fetch not in ('same-origin', 'none'):
+            return jsonify({'ok': False, 'error': '不正なリクエスト元です'}), 403
+        import contact_form
+        strict_origin = (request.method == 'POST')
+        if not contact_form.is_same_origin(request.headers.get('Origin'), request.headers.get('Referer'), request.host, strict=strict_origin):
+            return jsonify({'ok': False, 'error': 'オリジンが一致しません'}), 403
+    if session.get('is_master'):
+        try:
+            import ops_governance
+            ops_governance.rotate_master_session_epoch()
+        except Exception:
+            pass
+    session.clear()
+    resp = redirect(url_for('staff_monitor'))
+    resp.headers['Cache-Control'] = 'private, no-store'
+    return resp
 
 
 @staff_bp.route('/staff/sns-editorial')
 def staff_sns_editorial():
     """Master-only 4-role SNS Editorial Room board across X, Threads, and Instagram."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import sns_editorial
     core.restore_latest_data_if_empty()
@@ -406,7 +490,7 @@ def staff_sns_editorial():
         record_history=False,
         use_ai=True,
         force_ai_refresh=force_ai,
-        ai_cache_only=(not is_json_req),
+        ai_cache_only=(not force_ai),
         tone_mode=tone_mode,
     )
     if is_json_req:
@@ -484,7 +568,9 @@ def api_staff_sns_reel_settings():
     if guard is not None:
         return guard
     import instagram_poster
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     enabled = bool(payload.get('auto_schedule_enabled'))
     saved = instagram_poster.set_reel_auto_schedule_enabled(enabled)
     return jsonify({
@@ -501,7 +587,9 @@ def api_staff_tiktok_settings():
     if guard is not None:
         return guard
     import tiktok_poster
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     enabled = bool(payload.get('auto_schedule_enabled'))
     saved = tiktok_poster.set_tiktok_auto_schedule_enabled(enabled)
     return jsonify({
@@ -520,7 +608,9 @@ def api_staff_sns_reel_publish():
     import instagram_poster
     import reel_generator
     core.restore_latest_data_if_empty()
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
     custom_caption = (payload.get('caption') or '').strip()
     custom_narration = (payload.get('narration_text') or '').strip()
@@ -534,6 +624,8 @@ def api_staff_sns_reel_publish():
             'share_to_feed': share_to_feed,
             'force': True,
         }, worker_only=worker_only)
+        if not job_rec:
+            return jsonify({'ok': False, 'error': 'Async job queue unavailable (Redis required)'}), 503
         return jsonify({
             'ok': True,
             'queued': True,
@@ -564,7 +656,9 @@ def api_staff_tiktok_publish_inbox():
     import reel_generator
     import tiktok_poster
     core.restore_latest_data_if_empty()
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     reel_type = reel_generator.normalize_reel_type(payload.get('reel_type', 'tiktok_gap_shock'))
     custom_caption = (payload.get('caption') or '').strip()
     custom_narration = (payload.get('narration_text') or '').strip()
@@ -576,6 +670,8 @@ def api_staff_tiktok_publish_inbox():
             'narration_text': custom_narration,
             'force': True,
         }, worker_only=worker_only)
+        if not job_rec:
+            return jsonify({'ok': False, 'error': 'Async job queue unavailable (Redis required)'}), 503
         return jsonify({
             'ok': True,
             'queued': True,
@@ -626,7 +722,9 @@ def api_staff_voice_narration_config():
         return guard
     import reel_generator
     import voice_narration
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     action = (payload.get('action') or 'save').strip().lower()
 
     try:
@@ -671,7 +769,8 @@ def api_staff_voice_narration_config():
             'voice_narration': st,
         })
     except ValueError as ve:
-        return jsonify({'ok': False, 'error': str(ve)}), 400
+        logging.warning(f"[staff_bp] voice narration config error: {ve}")
+        return jsonify({'ok': False, 'error': 'Voice ID の形式または設定値が正しくありません。'}), 400
 
 
 @staff_bp.route('/api/staff/voice-narration/voices', methods=['GET', 'POST'])
@@ -681,7 +780,9 @@ def api_staff_voice_narration_voices():
         guard = _check_master_api_csrf()
         if guard is not None:
             return guard
-        payload = request.get_json(silent=True) or {}
+        payload, json_err = request_guards.parse_strict_json_dict()
+        if json_err is not None:
+            return json_err
         temp_key = (payload.get('api_key') or '').strip() or None
     else:
         if not core.is_master_authorized():
@@ -703,7 +804,9 @@ def api_staff_voice_narration_test():
     import reel_generator
     import voice_narration
     core.restore_latest_data_if_empty()
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     rt = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
     raw_text = (payload.get('text') or '').strip()
     if not raw_text:
@@ -746,7 +849,9 @@ def api_staff_voice_narration_phonetic():
     if guard is not None:
         return guard
     import voice_narration
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     raw_text = (payload.get('text') or '').strip()
     clean_script = voice_narration.normalize_narration_script_input(raw_text)
     return jsonify({
@@ -766,7 +871,9 @@ def api_staff_voice_narration_pin_preview():
     import reel_generator
     import voice_narration
     core.restore_latest_data_if_empty()
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     rt = reel_generator.normalize_reel_type(payload.get('reel_type', 'live_top5'))
     narration_text = (payload.get('narration_text') or '').strip()
     voice_on = payload.get('voice_on')
@@ -804,7 +911,8 @@ def api_staff_voice_narration_pin_preview():
             'voice_active': voice_narration.is_voice_narration_active(allow_blocking=False) if voice_on is None else bool(voice_on),
         })
     except Exception as exc:
-        return jsonify({'ok': False, 'error': f"動画レンダリングエラー: {exc}"}), 503
+        logging.error(f"[staff_bp] reel preview error: {type(exc).__name__}: {exc}")
+        return jsonify({'ok': False, 'error': '動画レンダリングエラーが発生しました'}), 503
 
 
 @staff_bp.route('/api/sns-editorial')
@@ -820,7 +928,7 @@ def api_sns_editorial():
     slot_label = (request.args.get('slot') or '22:00').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
-    cache_only = (request.args.get('cache_only') == '1') and not force_ai
+    cache_only = not force_ai
     live_s = _get_visible_live_stores()
     ig_ctx = core._get_sns_kit_context(fast=True) if channel == 'instagram' else None
     return jsonify(sns_editorial.run_editorial_pipeline(
@@ -844,7 +952,9 @@ def api_editorial_tone_mode():
         return guard
     import sns_editorial
     import column_editorial
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     raw_tm = (payload.get('tone_mode') or '').strip().lower()
     norm_tm = sns_editorial.normalize_tone_mode(raw_tm)
     if not norm_tm:
@@ -870,7 +980,9 @@ def api_sns_editorial_gemini_key():
     if guard is not None:
         return guard
     import sns_editorial
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     action = (payload.get('action') or 'save').strip().lower()
     provider = (payload.get('provider') or 'auto').strip().lower()
 
@@ -943,7 +1055,9 @@ def api_sns_editorial_platform_token():
     import instagram_poster
     import tiktok_poster
 
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     ch = (payload.get('channel') or 'threads').strip().lower()
     if ch not in ('threads', 'instagram', 'tiktok'):
         return jsonify({'ok': False, 'error': 'channel は threads / instagram / tiktok を指定してください。'}), 400
@@ -1017,7 +1131,7 @@ def api_sns_editorial_platform_token():
 @staff_bp.route('/staff/column-editorial')
 def staff_column_editorial():
     """Master-only 4-role Column & note.com Editorial Room board."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import column_editorial
     core.restore_latest_data_if_empty()
@@ -1035,7 +1149,7 @@ def staff_column_editorial():
         custom_topic=custom_topic,
         use_ai=True,
         force_ai_refresh=force_ai,
-        ai_cache_only=(not is_json_req),
+        ai_cache_only=(not force_ai),
         tone_mode=tone_mode,
     )
     if is_json_req:
@@ -1060,7 +1174,7 @@ def api_column_editorial():
     custom_topic = (request.args.get('topic') or '').strip()
     tone_mode = (request.args.get('tone') or '').strip().lower() or None
     force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
-    cache_only = (request.args.get('cache_only') == '1') and not force_ai
+    cache_only = not force_ai
     live_s = _get_visible_live_stores()
     return jsonify(column_editorial.run_column_editorial_pipeline(
         live_stores=live_s,
@@ -1080,7 +1194,9 @@ def api_column_editorial_publish():
     if guard is not None:
         return guard
     import column_editorial
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     candidate = payload.get('candidate') or {}
     if not isinstance(candidate, dict):
         return jsonify({'ok': False, 'error': '有効な記事データがありません。'}), 400
@@ -1108,7 +1224,9 @@ def api_column_editorial_delete():
     if guard is not None:
         return guard
     import column_editorial
-    payload = request.get_json(silent=True) or {}
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     slug = (payload.get('slug') or '').strip()
     res = column_editorial.delete_editorial_column(slug)
     if not res.get('ok'):
@@ -1134,37 +1252,53 @@ def api_column_editorial_export_note():
 @staff_bp.route('/staff/pdca')
 def staff_pdca():
     """Master-only Autonomous Closed-Loop PDCA Strategist board."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import pdca_engine
     core.restore_latest_data_if_empty()
     core.trigger_background_fetch_if_needed()
     days = max(1, min(90, request.args.get('days', 14, type=int)))
     is_json_req = request.args.get('format') == 'json'
-    allow_get_side_effect = _is_same_origin_get_action_allowed()
+    force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
     live_s = _get_visible_live_stores()
     has_existing = bool(pdca_engine.get_active_directives(allow_blocking=True))
-    if not has_existing and not is_json_req and allow_get_side_effect:
-        def _seed_pdca_async(stores_snap):
-            try:
-                if not pdca_engine.get_active_directives(allow_blocking=True):
-                    pdca_engine.run_pdca_cycle(
-                        live_stores=stores_snap,
-                        days=days,
-                        apply_actions=True,
-                        use_ai=False,
-                        record_log=True,
-                    )
-            except Exception:
-                pass
-        threading.Thread(target=_seed_pdca_async, args=(live_s,), daemon=True).start()
+    if not has_existing and not is_json_req:
+        def _maybe_spawn_seed():
+            global _pdca_seed_inflight, _pdca_last_seed_mono
+            now_m = time.monotonic()
+            with _pdca_seed_lock:
+                if _pdca_seed_inflight or (now_m - _pdca_last_seed_mono) < 60.0:
+                    return
+                _pdca_seed_inflight = True
+                _pdca_last_seed_mono = now_m
+
+            def _seed_pdca_async(stores_snap):
+                global _pdca_seed_inflight
+                try:
+                    if not pdca_engine.get_active_directives(allow_blocking=True):
+                        pdca_engine.run_pdca_cycle(
+                            live_stores=stores_snap,
+                            days=days,
+                            apply_actions=True,
+                            use_ai=False,
+                            record_log=True,
+                        )
+                except Exception:
+                    pass
+                finally:
+                    with _pdca_seed_lock:
+                        _pdca_seed_inflight = False
+
+            threading.Thread(target=_seed_pdca_async, args=(live_s,), daemon=True).start()
+        _maybe_spawn_seed()
     pdca_data = pdca_engine.run_pdca_cycle(
         live_stores=live_s,
         days=days,
-        apply_actions=(not has_existing and is_json_req and allow_get_side_effect),
+        apply_actions=False,
         use_ai=True,
-        ai_cache_only=(not (is_json_req and allow_get_side_effect)),
-        record_log=(not has_existing and is_json_req and allow_get_side_effect),
+        force_ai_refresh=force_ai,
+        ai_cache_only=(not force_ai),
+        record_log=False,
     )
     if is_json_req:
         return jsonify(pdca_data)
@@ -1193,7 +1327,7 @@ def api_pdca():
     core.restore_latest_data_if_empty()
     days = max(1, min(90, request.args.get('days', 14, type=int)))
     force_ai = (request.args.get('refresh_ai') == '1') and _is_same_origin_get_action_allowed()
-    cache_only = (request.args.get('cache_only') == '1') and not force_ai
+    cache_only = not force_ai
     live_s = _get_visible_live_stores()
     return jsonify(pdca_engine.run_pdca_cycle(
         live_stores=live_s,
@@ -1213,9 +1347,9 @@ def api_pdca_settings():
     if guard is not None:
         return guard
     import pdca_engine
-    payload = request.get_json(silent=True) or {}
-    if not isinstance(payload, dict):
-        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
     auto_sns = payload.get('auto_optimize_sns') if 'auto_optimize_sns' in payload else None
     auto_col = payload.get('auto_replenish_columns') if 'auto_replenish_columns' in payload else None
     updated = pdca_engine.update_pdca_settings(
@@ -1237,22 +1371,33 @@ def api_pdca_run():
         return guard
     import pdca_engine
     core.restore_latest_data_if_empty()
-    payload = request.get_json(silent=True) or {}
-    if not isinstance(payload, dict):
-        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
-    days = _safe_clamped_days(payload.get('days'), default=14)
-    live_s = _get_visible_live_stores()
-    res = pdca_engine.run_pdca_cycle(
-        live_stores=live_s,
-        days=days,
-        apply_actions=True,
-        use_ai=True,
-        ai_cache_only=False,
-        force_ai_refresh=bool(payload.get('refresh_ai')),
-        record_log=True,
-    )
-    core.clear_fast_http_caches()
-    return jsonify({'ok': True, 'pdca': res})
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
+    if not _pdca_run_lock.acquire(blocking=False):
+        return jsonify({'ok': False, 'error': 'PDCAサイクルは現在実行中です。完了までお待ちください。'}), 409
+    dist_locked = False
+    try:
+        dist_locked = core.turbo_store.acquire_named_mutex('pdca_run_manual', ttl_sec=120)
+        if not dist_locked:
+            return jsonify({'ok': False, 'error': 'PDCAサイクルは現在別のプロセスで実行中です。完了までお待ちください。'}), 409
+        days = _safe_clamped_days(payload.get('days'), default=14)
+        live_s = _get_visible_live_stores()
+        res = pdca_engine.run_pdca_cycle(
+            live_stores=live_s,
+            days=days,
+            apply_actions=True,
+            use_ai=True,
+            ai_cache_only=False,
+            force_ai_refresh=bool(payload.get('refresh_ai')),
+            record_log=True,
+        )
+        core.clear_fast_http_caches()
+        return jsonify({'ok': True, 'pdca': res})
+    finally:
+        if dist_locked:
+            core.turbo_store.release_named_mutex('pdca_run_manual')
+        _pdca_run_lock.release()
 
 
 @staff_bp.route('/api/pdca/sns-insights')
@@ -1330,15 +1475,17 @@ def api_pdca_youtube_config():
                 return redirect(f"/staff/pdca?yt_error={quote(err_msg)}#yt-oauth-setup")
             client_json_raw = raw_bytes.decode('utf-8-sig', errors='replace')
 
+    json_payload = {}
     if request.form:
         client_id = (request.form.get('client_id') or '').strip()
         client_secret = (request.form.get('client_secret') or '').strip()
-    else:
-        payload = request.get_json(silent=True) or {}
-        if isinstance(payload, dict):
-            client_json_raw = client_json_raw or str(payload.get('client_json') or '').strip()
-            client_id = client_id or str(payload.get('client_id') or '').strip()
-            client_secret = client_secret or str(payload.get('client_secret') or '').strip()
+    elif not request.files:
+        json_payload, json_err = request_guards.parse_strict_json_dict()
+        if json_err is not None:
+            return json_err
+        client_json_raw = client_json_raw or str(json_payload.get('client_json') or '').strip()
+        client_id = client_id or str(json_payload.get('client_id') or '').strip()
+        client_secret = client_secret or str(json_payload.get('client_secret') or '').strip()
 
     cid, csec, parse_err = youtube_analytics_sync.parse_oauth_client_credentials(
         client_json_raw=client_json_raw,
@@ -1361,10 +1508,8 @@ def api_pdca_youtube_config():
     include_upload = False
     if request.form:
         include_upload = str(request.form.get('include_upload') or '').strip().lower() in ('1', 'true', 'on', 'yes')
-    else:
-        req_json = request.get_json(silent=True) or {}
-        if isinstance(req_json, dict):
-            include_upload = str(req_json.get('include_upload') or '').strip().lower() in ('1', 'true', 'on', 'yes')
+    elif json_payload:
+        include_upload = str(json_payload.get('include_upload') or '').strip().lower() in ('1', 'true', 'on', 'yes')
     if request.args.get('scope') == 'upload' or request.args.get('include_upload') == '1':
         include_upload = True
 
@@ -1399,7 +1544,7 @@ def api_pdca_youtube_config():
 @staff_bp.route('/staff/youtube/oauth/start')
 def staff_youtube_oauth_start():
     """Master-only redirect to Google OAuth2 consent screen (prompts account/Brand Account selection)."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     if not _is_same_origin_get_action_allowed():
         return redirect('/staff/pdca?yt_error=' + quote('同一オリジンから操作してください') + '#yt-oauth-setup')
@@ -1437,7 +1582,7 @@ def staff_youtube_oauth_callback():
     ):
         return Response('', status=204, headers={'Cache-Control': 'private, no-store'})
 
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import pdca_engine
     import sns_insights_loop
@@ -1450,16 +1595,21 @@ def staff_youtube_oauth_callback():
 
     oauth_err = (request.args.get('error') or '').strip()
     if oauth_err:
-        session.pop('yt_oauth_state', None)
-        session.pop('yt_oauth_state_ts', None)
-        session.pop('yt_oauth_upload', None)
-        session.pop('yt_oauth_next', None)
+        expected_err_state = str(session.get('yt_oauth_state') or '')
+        got_err_state = str(request.args.get('state') or '')
+        if expected_err_state and got_err_state and request_guards.safe_compare_digest(expected_err_state, got_err_state):
+            session.pop('yt_oauth_state', None)
+            session.pop('yt_oauth_state_ts', None)
+            session.pop('yt_oauth_upload', None)
+            session.pop('yt_oauth_next', None)
         msg = 'Google認証がキャンセルまたは拒否されました（' + oauth_err[:40] + '）'
         return redirect('/staff/pdca?yt_error=' + quote(msg) + '#yt-oauth-setup')
 
     code = (request.args.get('code') or '').strip()
     code_sig = hashlib.sha256(code.encode('utf-8')).hexdigest()[:24] if code else ''
 
+    ex_res = None
+    next_target = 'pdca'
     with _oauth_cb_lock:
         now_ts = time.time()
         for k_old, (t_old, _) in list(_recent_oauth_codes.items()):
@@ -1478,7 +1628,7 @@ def staff_youtube_oauth_callback():
             not expected_state
             or not got_state
             or (now_ts - state_ts > _OAUTH_STATE_TTL_SEC)
-            or not hmac.compare_digest(expected_state, got_state)
+            or not request_guards.safe_compare_digest(expected_state, got_state)
         ):
             return redirect(
                 '/staff/pdca?yt_error='
@@ -1510,27 +1660,31 @@ def staff_youtube_oauth_callback():
                         pass
             return redirect('/staff/pdca?yt_error=' + quote(err_msg) + '#yt-oauth-setup')
 
-        synced_cnt = 0
-        try:
-            core.restore_latest_data_if_empty()
-            yt_sync = sns_insights_loop.collect_youtube_shorts_insights(limit=25)
-            synced_cnt = int(yt_sync.get('synced') or 0)
-            if ex_res.get('has_comment_scope'):
-                import youtube_poster
-                youtube_poster.backfill_published_moshimo_comments()
-            live_s = _get_visible_live_stores()
-            pdca_engine.run_pdca_cycle(
-                live_stores=live_s,
-                days=14,
-                apply_actions=True,
-                use_ai=False,
-                record_log=False,
-            )
-            core.clear_fast_http_caches()
-        except Exception as exc:
-            logging.warning(f"[staff_bp] Initial YouTube sync after OAuth warning: {exc}")
-
         if code_sig:
+            _recent_oauth_codes[code_sig] = (time.time(), 0)
+
+    synced_cnt = 0
+    try:
+        core.restore_latest_data_if_empty()
+        yt_sync = sns_insights_loop.collect_youtube_shorts_insights(limit=25)
+        synced_cnt = int(yt_sync.get('synced') or 0)
+        if ex_res.get('has_comment_scope'):
+            import youtube_poster
+            youtube_poster.backfill_published_moshimo_comments()
+        live_s = _get_visible_live_stores()
+        pdca_engine.run_pdca_cycle(
+            live_stores=live_s,
+            days=14,
+            apply_actions=True,
+            use_ai=False,
+            record_log=False,
+        )
+        core.clear_fast_http_caches()
+    except Exception as exc:
+        logging.warning(f"[staff_bp] Initial YouTube sync after OAuth warning: {exc}")
+
+    if code_sig:
+        with _oauth_cb_lock:
             _recent_oauth_codes[code_sig] = (time.time(), synced_cnt)
 
     return redirect(_success_redirect_url(synced_cnt, next_target))
@@ -1544,8 +1698,10 @@ def api_pdca_youtube_disconnect():
         return guard
     import youtube_analytics_sync
 
-    payload = request.get_json(silent=True) or {}
-    clear_client = bool(payload.get('clear_client_credentials')) if isinstance(payload, dict) else False
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
+    clear_client = bool(payload.get('clear_client_credentials'))
     youtube_analytics_sync.disconnect_youtube_oauth(clear_client_credentials=clear_client)
     return jsonify({
         'ok': True,
@@ -1569,9 +1725,9 @@ def api_pdca_youtube_auto_post():
             'youtube_auto_post': youtube_poster.get_youtube_auto_post_status(allow_blocking=True),
         })
 
-    payload = request.get_json(silent=True) or {}
-    if not isinstance(payload, dict):
-        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
 
     if str(payload.get('action') or '').strip().lower() == 'backfill_comments':
         bf = youtube_poster.backfill_published_moshimo_comments()
@@ -1605,9 +1761,9 @@ def api_pdca_gcp_credits():
             'gemini_status': sns_editorial.get_gemini_status(allow_blocking=True),
         })
 
-    payload = request.get_json(silent=True) or {}
-    if not isinstance(payload, dict):
-        return jsonify({'ok': False, 'error': '不正なJSONペイロードです'}), 400
+    payload, json_err = request_guards.parse_strict_json_dict()
+    if json_err is not None:
+        return json_err
 
     action = str(payload.get('action') or 'save').strip().lower()
     if action == 'test':
@@ -1710,7 +1866,10 @@ def api_pdca_sns_insights_ingest_csv():
 
     f_obj = None
     if request.files:
-        f_obj = request.files.get('csv_file') or request.files.get('file')
+        f_obj = request.files.get('csv_file') if 'csv_file' in request.files else request.files.get('file')
+
+    if request.files and (f_obj is None or not (getattr(f_obj, 'filename', None) or '').strip()):
+        return jsonify({'ok': False, 'error': 'ファイルが選択されていません'}), 400
 
     if f_obj is not None:
         platform_hint = request.form.get('platform') or 'auto'
@@ -1719,8 +1878,10 @@ def api_pdca_sns_insights_ingest_csv():
             return jsonify({'ok': False, 'error': err_msg}), 400
         return _finalize_insights_ingest_response(ingest_res)
     else:
-        payload = request.get_json(silent=True) or {}
-        if not isinstance(payload, dict) or not payload.get('csv_text'):
+        payload, json_err = request_guards.parse_strict_json_dict()
+        if json_err is not None:
+            return json_err
+        if not payload.get('csv_text'):
             return jsonify({'ok': False, 'error': 'CSV/ZIPファイルまたはcsv_textを指定してください'}), 400
         csv_text = str(payload.get('csv_text') or '')
         if len(csv_text.encode('utf-8', errors='ignore')) > _MAX_INSIGHT_CSV_BYTES:
@@ -1750,7 +1911,9 @@ def api_pdca_sns_insights_ingest():
 
     ingest_res = None
     if request.files and ('csv_file' in request.files or 'file' in request.files):
-        f_obj = request.files.get('csv_file') or request.files.get('file')
+        f_obj = request.files.get('csv_file') if 'csv_file' in request.files else request.files.get('file')
+        if f_obj is None or not (getattr(f_obj, 'filename', None) or '').strip():
+            return jsonify({'ok': False, 'error': 'ファイルが選択されていません'}), 400
         fname = (f_obj.filename or '').lower()
         mime_type = (f_obj.mimetype or '').lower()
         platform_hint = request.form.get('platform') or 'auto'
@@ -1769,14 +1932,16 @@ def api_pdca_sns_insights_ingest():
                 mime_type=f_obj.mimetype or 'image/png',
                 platform_hint=platform_hint,
             )
+    elif request.files:
+        return jsonify({'ok': False, 'error': 'ファイルが選択されていません'}), 400
     else:
-        payload = request.get_json(silent=True) or {}
-        if not isinstance(payload, dict):
-            return jsonify({'ok': False, 'error': '不正なリクエスト形式です（画像・CSVファイルまたはJSONを指定してください）'}), 400
+        payload, json_err = request_guards.parse_strict_json_dict()
+        if json_err is not None:
+            return json_err
         if payload.get('csv_text'):
             csv_raw = str(payload.get('csv_text') or '')
             if len(csv_raw.encode('utf-8', errors='ignore')) > _MAX_INSIGHT_CSV_BYTES:
-                return jsonify({'ok': False, 'error': 'CSVデータサイズは2MB以内にしてください'}), 400
+                return jsonify({'ok': False, 'error': 'CSVデータサイズは4MB以内にしてください'}), 400
             ingest_res = sns_insights_loop.ingest_csv_insights(
                 csv_raw,
                 platform_hint=str(payload.get('platform') or 'auto'),
@@ -1808,7 +1973,7 @@ def api_pdca_sns_insights_ingest():
 @staff_bp.route('/staff/sns-kit')
 def staff_sns_kit():
     """Master-only one-click Instagram / Threads weekend forecast carousel & caption generator."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = core._get_sns_kit_context()
@@ -1820,7 +1985,7 @@ def staff_sns_kit():
 @staff_bp.route('/staff/sns-kit/slide/<int:slide_num>.png')
 def staff_sns_kit_slide(slide_num):
     """Render individual 1080x1350 PNG slide for master mobile save or preview (memoized in RAM)."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     ctx = core._get_sns_kit_context()
     png_bytes = core._render_cached_ig_slide_bytes(slide_num, is_jpg=False, ctx=ctx)
@@ -1833,7 +1998,7 @@ def staff_sns_kit_slide(slide_num):
 @staff_bp.route('/staff/sns-kit/download.zip')
 def staff_sns_kit_zip():
     """Download all 5 portrait PNG slides + Instagram/Threads captions in one ZIP (memoized in RAM)."""
-    if not session.get('is_master'):
+    if not core.is_master_authorized():
         return redirect(url_for('staff_monitor', switch='1'))
     import ig_carousel_generator
     ctx = core._get_sns_kit_context()

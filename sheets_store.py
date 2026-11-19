@@ -24,10 +24,14 @@ def is_disabled():
 
 
 def _is_test_runtime() -> bool:
-    """unittest / pytest 実行中は本番 Google Sheets への実通信をハードロック遮断する。"""
+    """unittest / pytest 実行中は本番 Google Sheets への実通信をハードロック遮断する（本番VMは除く）。"""
+    if is_disabled():
+        return True
     if os.environ.get('ALLOW_LIVE_SHEETS_IN_TESTS', '') == '1':
         return False
-    return ('unittest' in sys.modules) or ('pytest' in sys.modules)
+    if os.environ.get('FLY_APP_NAME') or os.environ.get('DYNO'):
+        return False
+    return bool(os.environ.get('PYTEST_CURRENT_TEST')) or ('unittest' in sys.modules) or ('pytest' in sys.modules)
 
 
 def get_worksheet(title, header):

@@ -16,6 +16,8 @@ import threading
 import time
 from collections import defaultdict, deque
 
+import request_guards
+
 SHEET_TITLE = 'Contact Inquiries'
 SHEET_HEADER = ['received_at_jst', 'category', 'name', 'email', 'message', 'ip_hash', 'user_agent']
 
@@ -39,9 +41,12 @@ TOKEN_MAX_AGE_SEC = 2 * 3600   # 2時間でトークン失効
 
 IP_LIMIT = 3                   # 同一IPから10分間に3件まで
 IP_WINDOW_SEC = 600
-GLOBAL_LIMIT = 150             # サイト全体で1時間に150件まで（削除・訂正依頼は全体上限の対象外）
+GLOBAL_LIMIT = 150             # サイト全体で1時間に150件まで
 GLOBAL_WINDOW_SEC = 3600
 PRIORITY_CATEGORIES = ('removal', 'correction')
+PRIORITY_GLOBAL_LIMIT = 40     # 優先カテゴリにも別枠の全体上限（1時間40件）
+PRIORITY_WEBHOOK_BYPASS_LIMIT = 5  # クールダウン回避は1時間5件まで
+PRIORITY_WEBHOOK_BYPASS_WINDOW_SEC = 3600
 
 _EMAIL_RE = re.compile(r'^[^@\s<>"]+@[^@\s<>"]+\.[^@\s<>"]+$')
 _CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
@@ -88,6 +93,8 @@ _NON_JP_BOT_PHRASES = (
 _rl_lock = threading.Lock()
 _ip_hits = defaultdict(deque)
 _global_hits = deque()
+_priority_global_hits = deque()
+_priority_webhook_hits = deque()
 
 
 def _jst_now() -> datetime.datetime:
@@ -109,7 +116,11 @@ def verify_token(secret: str, token: str, now: float = None) -> str:
     if '.' not in token or len(token) > 80:
         return 'invalid'
     ts, sig = token.split('.', 1)
-    if not ts.isdigit() or not hmac.compare_digest(sig, _sign(secret, ts)):
+    if (
+        not (ts.isascii() and ts.isdigit())
+        or not re.fullmatch(r'[0-9a-f]{40}', sig, re.ASCII)
+        or not request_guards.safe_compare_digest(sig, _sign(secret, ts))
+    ):
         return 'invalid'
     age = (now if now is not None else time.time()) - int(ts)
     if age < TOKEN_MIN_AGE_SEC:
@@ -119,31 +130,93 @@ def verify_token(secret: str, token: str, now: float = None) -> str:
     return ''
 
 
-def is_same_origin(origin: str, referer: str, host: str) -> bool:
-    """Origin（無ければ Referer）がこのサイトのホストと一致するか。どちらも無い場合はトークン検証に委ねる。"""
-    host = (host or '').split(':')[0].lower()
-    for src in (origin, referer):
-        src = (src or '').strip()
-        if not src or src == 'null':
-            continue
-        m = re.match(r'^https?://([^/:]+)', src, re.I)
-        return bool(m) and m.group(1).lower() == host
-    return True
+def _parse_origin_like_url(raw_val: str):
+    from urllib.parse import urlsplit
+    cleaned = (raw_val or '').strip()
+    if not cleaned or cleaned.lower() == 'null':
+        return None
+    try:
+        parsed = urlsplit(cleaned)
+        scheme = (parsed.scheme or '').lower()
+        if scheme not in ('http', 'https'):
+            return None
+        if parsed.username is not None or parsed.password is not None:
+            return None
+        hostname = (parsed.hostname or '').lower()
+        if not hostname:
+            return None
+        port = parsed.port
+    except ValueError:
+        return None
+    return scheme, hostname, port
+
+
+def is_same_origin(origin: str, referer: str, host: str, strict: bool = False) -> bool:
+    """Origin（無ければ Referer）がこのサイトのホスト・ポートと一致するか。Origin: null は即拒否。strict=True時は両方欠落で False。"""
+    from urllib.parse import urlsplit
+    raw_host = (host or '').strip()
+    if not raw_host:
+        return False
+    try:
+        parsed_host = urlsplit(f'//{raw_host}')
+        if (
+            parsed_host.username is not None
+            or parsed_host.password is not None
+            or parsed_host.path
+            or parsed_host.query
+            or parsed_host.fragment
+        ):
+            return False
+        expected_host = (parsed_host.hostname or '').lower()
+        expected_port = parsed_host.port
+    except ValueError:
+        return False
+    if not expected_host:
+        return False
+
+    def _matches(raw_val: str) -> bool:
+        parsed = _parse_origin_like_url(raw_val)
+        if not parsed:
+            return False
+        scheme, cand_host, cand_port = parsed
+        if cand_host != expected_host:
+            return False
+        default_port = 443 if scheme == 'https' else 80
+        eff_cand_port = cand_port if cand_port is not None else default_port
+        if expected_port is not None:
+            return eff_cand_port == expected_port
+        return cand_port is None or cand_port == default_port
+
+    origin_clean = (origin or '').strip()
+    if origin_clean:
+        return _matches(origin_clean)
+    referer_clean = (referer or '').strip()
+    if referer_clean:
+        return _matches(referer_clean)
+    return not strict
 
 
 def check_rate_limit(ip_addr: str, now: float = None, category: str = '') -> bool:
     """送信可能なら True を返し、送信を記録する。上限超過なら False（Redis稼働時は全ワーカー横断）。"""
     import turbo_store
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(ip_addr)
     is_priority = (category or '').strip() in PRIORITY_CATEGORIES
     if now is None and turbo_store.is_shared_bus_active():
-        if turbo_store.get_rate_limit_count('contact_ip', ip_addr, IP_WINDOW_SEC) >= IP_LIMIT:
+        if turbo_store.get_rate_limit_count('contact_ip', norm_ip, IP_WINDOW_SEC) >= IP_LIMIT:
             return False
-        if not is_priority and turbo_store.get_rate_limit_count('contact_global', 'all', GLOBAL_WINDOW_SEC) >= GLOBAL_LIMIT:
+        if is_priority:
+            if turbo_store.get_rate_limit_count('contact_prio_global', 'all', GLOBAL_WINDOW_SEC) >= PRIORITY_GLOBAL_LIMIT:
+                return False
+        elif turbo_store.get_rate_limit_count('contact_global', 'all', GLOBAL_WINDOW_SEC) >= GLOBAL_LIMIT:
             return False
-        ip_cnt = turbo_store.record_rate_limit_hit('contact_ip', ip_addr, IP_WINDOW_SEC)
+        ip_cnt = turbo_store.record_rate_limit_hit('contact_ip', norm_ip, IP_WINDOW_SEC)
         if ip_cnt > IP_LIMIT:
             return False
-        if not is_priority:
+        if is_priority:
+            pr_cnt = turbo_store.record_rate_limit_hit('contact_prio_global', 'all', GLOBAL_WINDOW_SEC)
+            if pr_cnt > PRIORITY_GLOBAL_LIMIT:
+                return False
+        else:
             gl_cnt = turbo_store.record_rate_limit_hit('contact_global', 'all', GLOBAL_WINDOW_SEC)
             if gl_cnt > GLOBAL_LIMIT:
                 return False
@@ -153,13 +226,22 @@ def check_rate_limit(ip_addr: str, now: float = None, category: str = '') -> boo
     with _rl_lock:
         while _global_hits and now - _global_hits[0] >= GLOBAL_WINDOW_SEC:
             _global_hits.popleft()
-        hits = _ip_hits[ip_addr]
+        while _priority_global_hits and now - _priority_global_hits[0] >= GLOBAL_WINDOW_SEC:
+            _priority_global_hits.popleft()
+        hits = _ip_hits[norm_ip]
         while hits and now - hits[0] >= IP_WINDOW_SEC:
             hits.popleft()
-        if len(hits) >= IP_LIMIT or (not is_priority and len(_global_hits) >= GLOBAL_LIMIT):
+        if len(hits) >= IP_LIMIT:
+            return False
+        if is_priority:
+            if len(_priority_global_hits) >= PRIORITY_GLOBAL_LIMIT:
+                return False
+        elif len(_global_hits) >= GLOBAL_LIMIT:
             return False
         hits.append(now)
-        if not is_priority:
+        if is_priority:
+            _priority_global_hits.append(now)
+        else:
             _global_hits.append(now)
         if len(_ip_hits) > 2048:
             for k in [k for k, v in _ip_hits.items() if not v or now - v[-1] >= IP_WINDOW_SEC]:
@@ -172,11 +254,15 @@ def reset_rate_limits_for_tests():
         import turbo_store
         turbo_store.clear_rate_limit('contact_ip')
         turbo_store.clear_rate_limit('contact_global')
+        turbo_store.clear_rate_limit('contact_prio_global')
+        turbo_store.clear_rate_limit('contact_prio_webhook')
     except Exception:
         pass
     with _rl_lock:
         _ip_hits.clear()
         _global_hits.clear()
+        _priority_global_hits.clear()
+        _priority_webhook_hits.clear()
 
 
 def _clean(value: str, max_len: int, multiline: bool = False) -> str:
@@ -201,7 +287,7 @@ def validate(form) -> tuple:
     if len(data['name']) > MAX_NAME_LEN:
         errors.append(f'お名前は{MAX_NAME_LEN}文字以内で入力してください。')
     if data['email']:
-        if len(data['email']) > MAX_EMAIL_LEN or not _EMAIL_RE.match(data['email']):
+        if len(data['email']) > MAX_EMAIL_LEN or (not data['email'].isascii()) or not _EMAIL_RE.match(data['email']):
             errors.append('メールアドレスの形式をご確認ください。')
     if len(data['message']) < MIN_MESSAGE_LEN:
         errors.append(f'お問い合わせ内容は{MIN_MESSAGE_LEN}文字以上で入力してください。')
@@ -292,12 +378,30 @@ def store_inquiry(data: dict, ip_hash: str, user_agent: str = '') -> dict:
         logging.error(f'[contact] sheets append failed: {e}')
     try:
         import health
+        import turbo_store
+        bypass_webhook = False
+        if is_prio:
+            if turbo_store.is_shared_bus_active():
+                bypass_webhook = turbo_store.check_sliding_rate_limit(
+                    'contact_prio_webhook',
+                    'all',
+                    PRIORITY_WEBHOOK_BYPASS_LIMIT,
+                    PRIORITY_WEBHOOK_BYPASS_WINDOW_SEC,
+                )
+            else:
+                now_wh = time.time()
+                with _rl_lock:
+                    while _priority_webhook_hits and now_wh - _priority_webhook_hits[0] >= PRIORITY_WEBHOOK_BYPASS_WINDOW_SEC:
+                        _priority_webhook_hits.popleft()
+                    if len(_priority_webhook_hits) < PRIORITY_WEBHOOK_BYPASS_LIMIT:
+                        _priority_webhook_hits.append(now_wh)
+                        bypass_webhook = True
         preview = data['message'].replace('\n', ' ')[:140]
         prefix = '【至急・削除/訂正依頼】' if is_prio else ''
         routes['webhook'] = bool(health.send_alert(
             f"contact:{received_at}:{ip_hash}",
             f"{prefix}お問い合わせを受信しました（{cat_label}）{' 返信先あり' if data['email'] else ''}：{preview}",
-            bypass_cooldown=is_prio,
+            bypass_cooldown=bypass_webhook,
         ))
     except Exception as e:
         logging.error(f'[contact] webhook notify failed: {e}')

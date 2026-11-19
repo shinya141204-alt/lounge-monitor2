@@ -15,6 +15,7 @@ kill_timeout = "25s"
   ENABLE_PUBLIC_EDGE_CACHE = "1"
   PDCA_AUTO_REPLENISH_DEFAULT = "1"
   MOSHIMO_EVERGREEN_RECYCLE_DEFAULT = "1"
+  FAST_CACHE_TOKENS = "1"
   PYTHONUNBUFFERED = "1"
   TZ = "UTC"
 
@@ -23,8 +24,8 @@ kill_timeout = "25s"
   worker = "sh -c 'APP_ROLE=worker exec python3 worker.py'"
 
 [[statics]]
-  guest_path = "/app/static"
-  url_prefix = "/static"
+  guest_path = "/app/static/reels"
+  url_prefix = "/static/reels"
 
 [http_service]
   internal_port = 8080

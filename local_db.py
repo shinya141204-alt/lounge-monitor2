@@ -1,7 +1,9 @@
+import copy
 import sqlite3
 import datetime
 import math
 import os
+import re
 import sys
 import time
 import threading
@@ -71,6 +73,7 @@ _benchmark_base_cache = {}
 _BENCHMARK_BASE_TTL = 1800.0
 _live_benchmarks_computing = False
 _live_benchmarks_lock = threading.Lock()
+_live_benchmarks_compute_lock = threading.Lock()
 _db_stats_cache = {}
 _DB_STATS_TTL = 120.0
 _store_backfill_in_flight = set()
@@ -78,6 +81,9 @@ _store_backfill_lock = threading.Lock()
 _forecast_schema_ready = set()
 _moat_rollup_schema_ready = set()
 _moat_coverage_cache = {}
+_moat_coverage_lock = threading.Lock()
+_moat_coverage_computing = False
+_MOAT_COVERAGE_TTL = float(os.environ.get('MOAT_COVERAGE_TTL_SEC', '300.0'))
 _watch_intents_lock = threading.Lock()
 _memory_watch_intents = []
 _forecast_acc_report_cache = {}
@@ -86,6 +92,8 @@ _forecast_store_acc_cache = {}
 _FORECAST_STORE_ACC_TTL = 180.0
 _forecast_residual_bias_cache = {}
 _FORECAST_RESIDUAL_TTL = 300.0
+_forecast_cache_epoch = 0
+_last_backfill_attempt_mono = {}
 _forecast_cache_computing = False
 _forecast_cache_lock = threading.Lock()
 _forecast_backfill_in_flight = False
@@ -150,9 +158,12 @@ def _is_hidden_with_sets(ops_gov, store_name: str, hb, hs) -> bool:
 
 
 def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False):
+    db_k = _active_db_key()
+    if store_name and not clear_benchmarks:
+        _store_7d_cache.pop((db_k, store_name), None)
+        return
     _db_stats_cache.clear()
     _moat_coverage_cache.clear()
-    db_k = _active_db_key()
     if store_name:
         _store_7d_cache.pop((db_k, store_name), None)
     else:
@@ -180,9 +191,25 @@ def clear_store_7d_cache(store_name: str = None, clear_benchmarks: bool = False)
 
 def reset_caches_for_tests():
     """Reset in-memory caches, schema-ready memo sets, and thread-local SQLite read handles for isolated unit tests."""
+    global _moat_coverage_computing, _live_benchmarks_computing, _forecast_cache_computing
+    global _forecast_backfill_in_flight, _last_backfill_attempt_mono, _forecast_cache_epoch
     clear_store_7d_cache(clear_benchmarks=True)
     _forecast_schema_ready.clear()
     _moat_rollup_schema_ready.clear()
+    with _moat_coverage_lock:
+        _moat_coverage_computing = False
+    with _live_benchmarks_lock:
+        _live_benchmarks_computing = False
+    with _forecast_cache_lock:
+        _forecast_cache_computing = False
+    with _forecast_backfill_lock:
+        _forecast_backfill_in_flight = False
+        _last_backfill_attempt_mono.clear()
+    _forecast_cache_epoch += 1
+    with _recent_trajectory_lock:
+        _recent_lags_warming.clear()
+    with _votes_lock:
+        _memory_votes.clear()
     with _watch_intents_lock:
         _memory_watch_intents.clear()
     try:
@@ -346,7 +373,8 @@ def _migrate_forecast_columns(conn, cur):
                         pass
             cur.execute(col_ddl)
             conn.commit()
-        except Exception:
+        except Exception as mig_err:
+            print(f"[local_db] _migrate_forecast_columns warning: {mig_err}", file=sys.stderr)
             try:
                 conn.rollback()
             except Exception:
@@ -374,7 +402,8 @@ def _migrate_crowd_votes_columns(conn, cur):
                     pass
         cur.execute("ALTER TABLE crowd_votes ADD COLUMN wait_minutes INTEGER")
         conn.commit()
-    except Exception:
+    except Exception as mig_err:
+        print(f"[local_db] _migrate_crowd_votes_columns warning: {mig_err}", file=sys.stderr)
         try:
             conn.rollback()
         except Exception:
@@ -406,7 +435,8 @@ def _migrate_external_context_columns(conn, cur):
                         pass
             cur.execute(col_ddl)
             conn.commit()
-        except Exception:
+        except Exception as mig_err:
+            print(f"[local_db] _migrate_external_context_columns warning: {mig_err}", file=sys.stderr)
             try:
                 conn.rollback()
             except Exception:
@@ -646,13 +676,27 @@ def _ensure_moat_rollup_schema() -> bool:
         try:
             with turbo_store.pg_connection() as conn:
                 with conn.cursor() as cur:
-                    _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
-                    conn.commit()
-                    _migrate_crowd_votes_columns(conn, cur)
-                    _migrate_external_context_columns(conn, cur)
-                    _migrate_jis_metrics_columns(conn, cur)
-            _moat_rollup_schema_ready.add(db_k)
-            return True
+                    cur.execute("SET LOCAL lock_timeout = '5s'")
+                    cur.execute("SELECT pg_advisory_lock(742901)")
+                    try:
+                        _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
+                        conn.commit()
+                        _migrate_crowd_votes_columns(conn, cur)
+                        _migrate_external_context_columns(conn, cur)
+                        jis_ok = _migrate_jis_metrics_columns(conn, cur)
+                    finally:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                        try:
+                            cur.execute("SELECT pg_advisory_unlock(742901)")
+                            conn.commit()
+                        except Exception:
+                            pass
+            if jis_ok:
+                _moat_rollup_schema_ready.add(db_k)
+            return bool(jis_ok)
         except Exception as err:
             print(f"[local_db] _ensure_moat_rollup_schema PG warning: {err}", file=sys.stderr)
             return False
@@ -665,9 +709,10 @@ def _ensure_moat_rollup_schema() -> bool:
             conn.commit()
             _migrate_crowd_votes_columns(conn, cur)
             _migrate_external_context_columns(conn, cur)
-            _migrate_jis_metrics_columns(conn, cur)
-            _moat_rollup_schema_ready.add(db_k)
-            return True
+            jis_ok = _migrate_jis_metrics_columns(conn, cur)
+            if jis_ok:
+                _moat_rollup_schema_ready.add(db_k)
+            return bool(jis_ok)
         except Exception as err:
             print(f"[local_db] _ensure_moat_rollup_schema SQLite warning: {err}", file=sys.stderr)
             return False
@@ -681,109 +726,123 @@ def init_db():
         try:
             with turbo_store.pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS monitor_logs (
-                            id BIGSERIAL PRIMARY KEY,
-                            timestamp TEXT NOT NULL,
-                            store_name TEXT NOT NULL,
-                            men INTEGER NOT NULL,
-                            women INTEGER NOT NULL,
-                            source TEXT,
-                            UNIQUE(timestamp, store_name)
-                        );
-                    """)
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_ts_store_wm ON monitor_logs(timestamp, store_name, women, men);")
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS crowd_votes (
-                            id BIGSERIAL PRIMARY KEY,
-                            timestamp TEXT NOT NULL,
-                            store_name TEXT NOT NULL,
-                            vote_type TEXT NOT NULL,
-                            ip_hash TEXT,
-                            wait_minutes INTEGER
-                        );
-                    """)
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS store_pos_telemetry_logs (
-                            id BIGSERIAL PRIMARY KEY,
-                            timestamp TEXT NOT NULL,
-                            store_name TEXT NOT NULL,
-                            telemetry_type TEXT NOT NULL,
-                            men_groups INTEGER NOT NULL DEFAULT 0,
-                            women_groups INTEGER NOT NULL DEFAULT 0,
-                            matched_groups INTEGER NOT NULL DEFAULT 0,
-                            men_waiting_groups INTEGER NOT NULL DEFAULT 0,
-                            men_waiting_guests INTEGER NOT NULL DEFAULT 0,
-                            women_waiting_groups INTEGER NOT NULL DEFAULT 0,
-                            vip_guests INTEGER NOT NULL DEFAULT 0,
-                            raw_json TEXT,
-                            UNIQUE(timestamp, store_name)
-                        );
-                    """)
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_pos_tel_store_ts ON store_pos_telemetry_logs(store_name, timestamp);")
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS external_context_logs (
-                            id BIGSERIAL PRIMARY KEY,
-                            timestamp TEXT NOT NULL,
-                            city_key TEXT NOT NULL,
-                            temp_c DOUBLE PRECISION,
-                            precip_mm DOUBLE PRECISION,
-                            weather_code INTEGER,
-                            wind_kmh DOUBLE PRECISION,
-                            is_rainy INTEGER NOT NULL DEFAULT 0,
-                            active_arenas_json TEXT,
-                            transit_disrupted INTEGER NOT NULL DEFAULT 0,
-                            transit_lines_json TEXT,
-                            UNIQUE(timestamp, city_key)
-                        );
-                    """)
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);")
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS forecast_accuracy_logs (
-                            id BIGSERIAL PRIMARY KEY,
-                            predicted_at TEXT NOT NULL,
-                            target_at TEXT NOT NULL,
-                            store_name TEXT NOT NULL,
-                            model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
-                            start_women INTEGER NOT NULL,
-                            start_men INTEGER NOT NULL,
-                            start_wpct INTEGER NOT NULL,
-                            pred_women INTEGER NOT NULL,
-                            pred_men INTEGER NOT NULL,
-                            pred_wpct INTEGER NOT NULL,
-                            v1_pred_wpct INTEGER,
-                            flip_risk_pct INTEGER NOT NULL DEFAULT 0,
-                            alert_code TEXT NOT NULL DEFAULT 'steady',
-                            resolved_at TEXT,
-                            actual_women INTEGER,
-                            actual_men INTEGER,
-                            actual_wpct INTEGER,
-                            error_wpct_pt INTEGER,
-                            abs_error_wpct_pt INTEGER,
-                            v1_abs_error_wpct_pt INTEGER,
-                            error_women INTEGER,
-                            error_men INTEGER,
-                            raw_pred_wpct INTEGER,
-                            online_bias_adj REAL DEFAULT 0.0,
-                            is_backfill INTEGER DEFAULT 0,
-                            UNIQUE(predicted_at, store_name)
-                        );
-                    """)
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
-                    cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
-                    _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
-                    conn.commit()
-                    _migrate_forecast_columns(conn, cur)
-                    _migrate_crowd_votes_columns(conn, cur)
-                    _migrate_external_context_columns(conn, cur)
-                    _migrate_jis_metrics_columns(conn, cur)
+                    cur.execute("SET LOCAL lock_timeout = '5s'")
+                    cur.execute("SELECT pg_advisory_lock(742901)")
+                    try:
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS monitor_logs (
+                                id BIGSERIAL PRIMARY KEY,
+                                timestamp TEXT NOT NULL,
+                                store_name TEXT NOT NULL,
+                                men INTEGER NOT NULL,
+                                women INTEGER NOT NULL,
+                                source TEXT,
+                                UNIQUE(timestamp, store_name)
+                            );
+                        """)
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_store_ts ON monitor_logs(store_name, timestamp);")
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_ts_store_wm ON monitor_logs(timestamp, store_name, women, men);")
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS crowd_votes (
+                                id BIGSERIAL PRIMARY KEY,
+                                timestamp TEXT NOT NULL,
+                                store_name TEXT NOT NULL,
+                                vote_type TEXT NOT NULL,
+                                ip_hash TEXT,
+                                wait_minutes INTEGER
+                            );
+                        """)
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_store_ts ON crowd_votes(store_name, timestamp);")
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_votes_ts ON crowd_votes(timestamp, store_name, vote_type);")
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS store_pos_telemetry_logs (
+                                id BIGSERIAL PRIMARY KEY,
+                                timestamp TEXT NOT NULL,
+                                store_name TEXT NOT NULL,
+                                telemetry_type TEXT NOT NULL,
+                                men_groups INTEGER NOT NULL DEFAULT 0,
+                                women_groups INTEGER NOT NULL DEFAULT 0,
+                                matched_groups INTEGER NOT NULL DEFAULT 0,
+                                men_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                                men_waiting_guests INTEGER NOT NULL DEFAULT 0,
+                                women_waiting_groups INTEGER NOT NULL DEFAULT 0,
+                                vip_guests INTEGER NOT NULL DEFAULT 0,
+                                raw_json TEXT,
+                                UNIQUE(timestamp, store_name)
+                            );
+                        """)
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_pos_tel_store_ts ON store_pos_telemetry_logs(store_name, timestamp);")
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS external_context_logs (
+                                id BIGSERIAL PRIMARY KEY,
+                                timestamp TEXT NOT NULL,
+                                city_key TEXT NOT NULL,
+                                temp_c DOUBLE PRECISION,
+                                precip_mm DOUBLE PRECISION,
+                                weather_code INTEGER,
+                                wind_kmh DOUBLE PRECISION,
+                                is_rainy INTEGER NOT NULL DEFAULT 0,
+                                active_arenas_json TEXT,
+                                transit_disrupted INTEGER NOT NULL DEFAULT 0,
+                                transit_lines_json TEXT,
+                                UNIQUE(timestamp, city_key)
+                            );
+                        """)
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_ext_ctx_city_ts ON external_context_logs(city_key, timestamp);")
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS forecast_accuracy_logs (
+                                id BIGSERIAL PRIMARY KEY,
+                                predicted_at TEXT NOT NULL,
+                                target_at TEXT NOT NULL,
+                                store_name TEXT NOT NULL,
+                                model_version TEXT NOT NULL DEFAULT 'v3.1-statespace',
+                                start_women INTEGER NOT NULL,
+                                start_men INTEGER NOT NULL,
+                                start_wpct INTEGER NOT NULL,
+                                pred_women INTEGER NOT NULL,
+                                pred_men INTEGER NOT NULL,
+                                pred_wpct INTEGER NOT NULL,
+                                v1_pred_wpct INTEGER,
+                                flip_risk_pct INTEGER NOT NULL DEFAULT 0,
+                                alert_code TEXT NOT NULL DEFAULT 'steady',
+                                resolved_at TEXT,
+                                actual_women INTEGER,
+                                actual_men INTEGER,
+                                actual_wpct INTEGER,
+                                error_wpct_pt INTEGER,
+                                abs_error_wpct_pt INTEGER,
+                                v1_abs_error_wpct_pt INTEGER,
+                                error_women INTEGER,
+                                error_men INTEGER,
+                                raw_pred_wpct INTEGER,
+                                online_bias_adj REAL DEFAULT 0.0,
+                                is_backfill INTEGER DEFAULT 0,
+                                UNIQUE(predicted_at, store_name)
+                            );
+                        """)
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_pending ON forecast_accuracy_logs(resolved_at, target_at);")
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_store_pred ON forecast_accuracy_logs(store_name, predicted_at);")
+                        cur.execute("CREATE INDEX IF NOT EXISTS idx_fc_acc_resolved_pred ON forecast_accuracy_logs(predicted_at, resolved_at);")
+                        _create_moat_rollup_tables_on_cursor(cur, is_pg=True)
+                        conn.commit()
+                        _migrate_forecast_columns(conn, cur)
+                        _migrate_crowd_votes_columns(conn, cur)
+                        _migrate_external_context_columns(conn, cur)
+                        jis_ok = _migrate_jis_metrics_columns(conn, cur)
+                    finally:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                        try:
+                            cur.execute("SELECT pg_advisory_unlock(742901)")
+                            conn.commit()
+                        except Exception:
+                            pass
             turbo_store.init_postgres_aux_schema()
             _forecast_schema_ready.add(_active_db_key())
-            _moat_rollup_schema_ready.add(_active_db_key())
+            if jis_ok:
+                _moat_rollup_schema_ready.add(_active_db_key())
             _db_stats_cache.clear()
             print("[local_db] PostgreSQL database initialized successfully.")
             return
@@ -907,6 +966,25 @@ def init_db():
         finally:
             conn.close()
 
+def _normalize_jst_ts_str(raw_ts) -> str:
+    """Normalize a timestamp string into canonical naive JST `YYYY-MM-DD HH:MM:SS`."""
+    if raw_ts is None:
+        return ''
+    s = str(raw_ts).strip()
+    if not s:
+        return ''
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', s):
+        return s
+    try:
+        import request_guards
+        dt = request_guards.parse_jst_ts(s)
+        if dt is not None:
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
+    return ''
+
+
 def insert_logs(items, timestamp_str):
     """
     Inserts a batch of store records into PostgreSQL or SQLite.
@@ -920,6 +998,11 @@ def insert_logs(items, timestamp_str):
     fresh_items = [item for item in items if isinstance(item, dict) and not item.get('stale')]
     if not fresh_items:
         return 0
+
+    norm_ts = _normalize_jst_ts_str(timestamp_str)
+    if not norm_ts:
+        norm_ts = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp_str = norm_ts
 
     rows = []
     for item in fresh_items:
@@ -1224,27 +1307,36 @@ def get_store_history(store_name, days=30):
 
 def get_weekly_history(start_ts_str):
     """
-    Retrieves all store records from start_ts_str to current from PostgreSQL/SQLite.
+    Retrieves all store records from start_ts_str to current from PostgreSQL/SQLite in bounded 7-day chunks.
     Returns: list of dicts [{'ts': ..., 'name': ..., 'men': ..., 'women': ..., 'source': ...}]
     """
     try:
-        rows = _fetch_all_rows("""
+        norm_start = _normalize_jst_ts_str(start_ts_str) or str(start_ts_str or '')
+        end_ts_str = (datetime.datetime.now(_JST_TZ).replace(tzinfo=None) + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        out = []
+        limit_cap = 250000
+        for chunk in _iter_ts_window_in_7d_chunks(
+            """
             SELECT timestamp, store_name, men, women, source
             FROM monitor_logs
-            WHERE timestamp >= ?
+            WHERE timestamp >= ? AND timestamp <= ?
             ORDER BY timestamp ASC
-            LIMIT 250000
-        """, (start_ts_str,))
-        return [
-            {
-                'ts': r[0],
-                'name': r[1],
-                'men': r[2],
-                'women': r[3],
-                'source': r[4] or ''
-            }
-            for r in rows
-        ]
+            """,
+            norm_start,
+            end_ts_str,
+        ):
+            for r in chunk:
+                out.append({
+                    'ts': r[0],
+                    'name': r[1],
+                    'men': r[2],
+                    'women': r[3],
+                    'source': r[4] or ''
+                })
+                if len(out) >= limit_cap:
+                    print(f"[local_db] get_weekly_history hit cap ({limit_cap} rows); truncating.", file=sys.stderr)
+                    return out
+        return out
     except Exception as e:
         print(f"[local_db] Query weekly history error: {e}", file=sys.stderr)
         return []
@@ -1275,15 +1367,16 @@ def get_db_stats():
         _db_stats_cache[db_k] = (now_mono, res)
         return dict(res)
     except Exception as e:
-        return {'count': 0, 'error': str(e)}
+        print(f"[local_db] get_db_stats error: {type(e).__name__}", file=sys.stderr)
+        return {'count': 0, 'error': type(e).__name__}
 
-def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
-    """Executes a Google Sheets gviz query and inserts returned rows into SQLite."""
+def _fetch_gviz_rows_and_insert_ex(query: str, timeout: int = 35) -> tuple:
+    """Executes a Google Sheets gviz query and returns `(ok: bool, inserted_count: int)`."""
     import logger
     access_token = logger.get_access_token()
     spreadsheet_id = logger.get_spreadsheet_id()
     if not access_token or not spreadsheet_id:
-        return 0
+        return (False, 0)
 
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tq={urllib.parse.quote(query)}"
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -1291,19 +1384,24 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
     try:
         response = session.get(url, headers=headers, timeout=timeout)
         if response.status_code != 200:
-            return 0
-    except Exception as req_err:
-        return 0
+            return (False, 0)
+    except Exception:
+        return (False, 0)
 
     text = response.text
     if "google.visualization.Query.setResponse(" not in text:
-        return 0
+        return (False, 0)
 
-    json_str = text[text.find("{"):text.rfind("}") + 1]
-    data_json = json.loads(json_str)
+    try:
+        json_str = text[text.find("{"):text.rfind("}") + 1]
+        data_json = json.loads(json_str)
+    except Exception:
+        return (False, 0)
+    if data_json.get('status') != 'ok':
+        return (False, 0)
     rows = data_json.get('table', {}).get('rows', [])
     if not rows:
-        return 0
+        return (True, 0)
 
     batch = []
     for row in rows:
@@ -1314,17 +1412,24 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
             men_val = cols[2].get('v') if cols[2] else 0
             women_val = cols[3].get('v') if cols[3] else 0
             src_val = cols[4].get('v') if len(cols) > 4 and cols[4] else ''
-            if ts_val and name_val:
-                batch.append((
-                    str(ts_val),
-                    str(name_val),
-                    int(men_val) if men_val is not None else 0,
-                    int(women_val) if women_val is not None else 0,
-                    str(src_val)
-                ))
+            norm_ts = _normalize_jst_ts_str(ts_val)
+            if not norm_ts or not name_val:
+                continue
+            try:
+                men_i = int(men_val) if men_val is not None else 0
+                women_i = int(women_val) if women_val is not None else 0
+            except (TypeError, ValueError):
+                continue
+            batch.append((
+                norm_ts,
+                str(name_val).strip(),
+                men_i,
+                women_i,
+                str(src_val or ''),
+            ))
 
     if not batch:
-        return 0
+        return (True, 0)
 
     if _is_pg():
         inserted = turbo_store.execute_pg_values_batch(
@@ -1338,7 +1443,7 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
         )
         if inserted > 0:
             clear_store_7d_cache()
-        return int(inserted or 0)
+        return (True, int(inserted or 0))
 
     inserted_total = 0
     chunk_size = 800
@@ -1362,7 +1467,13 @@ def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
 
     if inserted_total > 0:
         clear_store_7d_cache()
-    return inserted_total
+    return (True, inserted_total)
+
+
+def _fetch_gviz_rows_and_insert(query: str, timeout: int = 35) -> int:
+    """Executes a Google Sheets gviz query and inserts returned rows into SQLite/PG."""
+    _, cnt = _fetch_gviz_rows_and_insert_ex(query, timeout=timeout)
+    return cnt
 
 
 def sync_recent_from_google_sheets(hours=2):
@@ -1467,6 +1578,21 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
 
     _sync_in_progress = True
     try:
+        # Capture pre-sync DB watermarks BEFORE inserting the recent 2h window so delta sync never skips gaps.
+        pre_cnt, pre_min_ts, pre_max_ts = 0, None, None
+        try:
+            cnt_rows = _fetch_all_rows(
+                "SELECT (SELECT COUNT(*) FROM monitor_logs), "
+                "(SELECT MIN(timestamp) FROM monitor_logs), "
+                "(SELECT MAX(timestamp) FROM monitor_logs)"
+            )
+            if cnt_rows and cnt_rows[0]:
+                pre_cnt = int(cnt_rows[0][0] or 0)
+                pre_min_ts = cnt_rows[0][1]
+                pre_max_ts = cnt_rows[0][2]
+        except Exception:
+            pass
+
         # Step 1: Prioritize the last 2 hours first so 15-min momentum works within 0.5s of boot
         imported_recent = sync_recent_from_google_sheets(hours=2)
         if imported_recent and callable(on_recent_synced):
@@ -1484,24 +1610,35 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
         now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
         total_imported = 0
 
-        # Shortcut: if PostgreSQL/SQLite already covers the requested history window, only sync delta since max_ts
+        # Shortcut: if PostgreSQL/SQLite already covers the requested history window, only sync delta since pre_max_ts
         try:
             target_min_str = (now_jst - datetime.timedelta(days=max(1, int(days)) - 1)).strftime("%Y-%m-%d 00:00:00")
-            cnt_rows = _fetch_all_rows(
-                "SELECT (SELECT COUNT(*) FROM monitor_logs), "
-                "(SELECT MIN(timestamp) FROM monitor_logs), "
-                "(SELECT MAX(timestamp) FROM monitor_logs)"
-            )
-            cnt_row = cnt_rows[0] if cnt_rows else None
-            if cnt_row and int(cnt_row[0] or 0) >= 8000 and cnt_row[1] and cnt_row[2] and str(cnt_row[1]) <= target_min_str:
-                delta_query = f"SELECT A, B, C, D, E WHERE A >= '{cnt_row[2]}'"
-                delta_imported = _fetch_gviz_rows_and_insert(delta_query, timeout=25)
-                _partial_recent_only = False
-                _full_sync_completed = True
-                if delta_imported > 0:
-                    _notify_sync_complete()
-                print(f"[local_db] Fast delta sync complete! Local DB already had {cnt_row[0]} rows; imported {delta_imported} delta rows.")
-                return
+            if pre_cnt >= 8000 and pre_min_ts and pre_max_ts and str(pre_min_ts) <= target_min_str:
+                pre_dt = _parse_jst_ts(str(pre_max_ts))
+                pre_naive = pre_dt.replace(tzinfo=None) if pre_dt else now_jst
+                delta_imported = 0
+                delta_ok = True
+                if (now_jst - pre_naive).total_seconds() > 4 * 86400:
+                    cur_d = pre_naive
+                    while cur_d <= now_jst:
+                        nxt_d = min(now_jst, cur_d + datetime.timedelta(days=4))
+                        q_d = f"SELECT A, B, C, D, E WHERE A >= '{cur_d.strftime('%Y-%m-%d %H:%M:%S')}' AND A <= '{nxt_d.strftime('%Y-%m-%d %H:%M:%S')}'"
+                        ok_d, imp_d = _fetch_gviz_rows_and_insert_ex(q_d, timeout=25)
+                        delta_ok = delta_ok and ok_d
+                        delta_imported += imp_d
+                        if cur_d == nxt_d:
+                            break
+                        cur_d = nxt_d + datetime.timedelta(seconds=1)
+                else:
+                    delta_query = f"SELECT A, B, C, D, E WHERE A >= '{pre_max_ts}'"
+                    delta_ok, delta_imported = _fetch_gviz_rows_and_insert_ex(delta_query, timeout=25)
+                if delta_ok:
+                    _partial_recent_only = False
+                    _full_sync_completed = True
+                    if delta_imported > 0:
+                        _notify_sync_complete()
+                    print(f"[local_db] Fast delta sync complete! Local DB already had {pre_cnt} rows; imported {delta_imported} delta rows.")
+                    return
         except Exception:
             pass
 
@@ -1510,6 +1647,8 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
         cursor_end = now_jst
         remaining_days = max(1, int(days))
         first_chunk = True
+        any_chunk_ok = False
+        all_chunks_ok = True
 
         while remaining_days > 0:
             step = min(3 if first_chunk else chunk_days, remaining_days)
@@ -1522,7 +1661,11 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
             else:
                 query = f"SELECT A, B, C, D, E WHERE A >= '{start_str}' AND A <= '{end_str}'"
 
-            imported = _fetch_gviz_rows_and_insert(query, timeout=40)
+            ok_c, imported = _fetch_gviz_rows_and_insert_ex(query, timeout=40)
+            if ok_c:
+                any_chunk_ok = True
+            else:
+                all_chunks_ok = False
             total_imported += imported
             if first_chunk and imported > 0:
                 _partial_recent_only = False
@@ -1534,13 +1677,19 @@ def sync_from_google_sheets(days=30, on_recent_synced=None):
             if remaining_days > 0:
                 time.sleep(0.8)
 
-        if total_imported > 0:
+        if all_chunks_ok and any_chunk_ok and total_imported > 0:
             _partial_recent_only = False
             _full_sync_completed = True
             _notify_sync_complete()
             print(f"[local_db] Sync complete! Imported {total_imported} rows into local SQLite.")
-        else:
+        elif all_chunks_ok and any_chunk_ok:
             print("[local_db] Sync: no rows returned from Google Sheets.")
+        elif any_chunk_ok:
+            if total_imported > 0:
+                _notify_sync_complete()
+            print(f"[local_db] Sync partially completed ({total_imported} rows); some chunks failed, keeping partial state.", file=sys.stderr)
+        else:
+            print("[local_db] Sync: all chunk fetches failed; keeping partial state.", file=sys.stderr)
 
     except Exception as e:
         print(f"[local_db] Sync exception: {e}", file=sys.stderr)
@@ -1955,21 +2104,32 @@ def _iter_ts_window_in_7d_chunks(
     start_ts: str,
     end_ts: str = None,
     extra_params: tuple = (),
+    half_open: bool = False,
 ):
     """
     Generator variant of `_fetch_ts_window_in_7d_chunks`: yields one <=7-day chunk's row list at a time so
     callers scanning wide windows can aggregate incrementally without holding all chunks in memory (512MB VM).
+    When `half_open=True`, caller SQL uses `>= ? AND < ?` and ranges are emitted as `[lo, next_lo)` without gaps.
     """
     s_dt = _parse_jst_ts(start_ts)
     e_dt = _parse_jst_ts(end_ts) if end_ts else datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
     if s_dt is None or e_dt is None or e_dt < s_dt:
-        hi = end_ts or "9999-12-31 23:59:59"
-        yield _fetch_all_rows(sql_range_qmark, (start_ts, hi) + tuple(extra_params))
+        print(f"[local_db] _iter_ts_window_in_7d_chunks invalid range: start={start_ts!r}, end={end_ts!r}", file=sys.stderr)
         return
 
     cur_lo = s_dt
     step = datetime.timedelta(days=7)
     one_sec = datetime.timedelta(seconds=1)
+    if half_open:
+        end_bound = e_dt + one_sec
+        while cur_lo < end_bound:
+            cur_hi = min(end_bound, cur_lo + step)
+            lo_s = cur_lo.strftime("%Y-%m-%d %H:%M:%S")
+            hi_s = cur_hi.strftime("%Y-%m-%d %H:%M:%S")
+            yield _fetch_all_rows(sql_range_qmark, (lo_s, hi_s) + tuple(extra_params))
+            cur_lo = cur_hi
+        return
+
     while cur_lo <= e_dt:
         cur_hi = min(e_dt, cur_lo + step - one_sec)
         lo_s = cur_lo.strftime("%Y-%m-%d %H:%M:%S")
@@ -1983,10 +2143,11 @@ def _fetch_ts_window_in_7d_chunks(
     start_ts: str,
     end_ts: str = None,
     extra_params: tuple = (),
+    half_open: bool = False,
 ) -> list:
     """Read `[start_ts, end_ts]` in bounded <=7-day chunks to avoid large single-query wire buffers on 512MB VMs."""
     out = []
-    for chunk in _iter_ts_window_in_7d_chunks(sql_range_qmark, start_ts, end_ts, extra_params):
+    for chunk in _iter_ts_window_in_7d_chunks(sql_range_qmark, start_ts, end_ts, extra_params, half_open=half_open):
         out.extend(chunk)
     return out
 
@@ -2647,9 +2808,9 @@ def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
     """
     _ensure_moat_rollup_schema()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    cutoff_date = now_jst.date() - datetime.timedelta(days=max(31, int(monitor_days)))
+    cutoff_date = now_jst.date() - datetime.timedelta(days=max(90, int(monitor_days)))
     mon_cutoff = cutoff_date.strftime("%Y-%m-%d") + " 00:00:00"
-    vote_cutoff = (now_jst - datetime.timedelta(days=max(2, int(vote_days)))).strftime("%Y-%m-%d %H:%M:%S")
+    vote_cutoff = (now_jst - datetime.timedelta(days=max(2, min(14, int(vote_days))))).strftime("%Y-%m-%d %H:%M:%S")
 
     # Step 1: Identify expiring raw dates (bounded to 7 days/run to guarantee low memory) + recent 3 days and roll up BEFORE pruning
     rollup_ok = True
@@ -2677,80 +2838,120 @@ def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
 
     deleted_mon = 0
     anonymized_votes = 0
+    errors = []
+    now_prune_str = now_jst.strftime("%Y-%m-%d %H:%M:%S")
     try:
         if _is_pg():
-            with turbo_store.pg_connection() as conn:
-                with conn.cursor() as cur:
-                    if rollup_ok:
-                        cur.execute("DELETE FROM monitor_logs WHERE timestamp < %s", (delete_before,))
-                        deleted_mon = max(0, cur.rowcount or 0)
-                        try:
-                            cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < %s", (delete_before,))
-                            cur.execute("DELETE FROM external_context_logs WHERE timestamp < %s", (delete_before,))
-                            cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < %s", (delete_before,))
-                        except Exception:
-                            pass
-                    cur.execute(
-                        "UPDATE crowd_votes SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
-                        (vote_cutoff,),
-                    )
-                    anonymized_votes = max(0, cur.rowcount or 0)
-                    try:
+            if rollup_ok:
+                try:
+                    with turbo_store.pg_connection() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute("DELETE FROM monitor_logs WHERE timestamp < %s", (delete_before,))
+                            pending_mon = max(0, cur.rowcount or 0)
+                            for idx_aux, (aux_sql, aux_param) in enumerate((
+                                ("DELETE FROM store_pos_telemetry_logs WHERE timestamp < %s", delete_before),
+                                ("DELETE FROM external_context_logs WHERE timestamp < %s", delete_before),
+                                ("DELETE FROM forecast_accuracy_logs WHERE predicted_at < %s", delete_before),
+                            )):
+                                sp_name = f"sp_aux_{idx_aux}"
+                                try:
+                                    cur.execute(f"SAVEPOINT {sp_name}")
+                                    cur.execute(aux_sql, (aux_param,))
+                                    cur.execute(f"RELEASE SAVEPOINT {sp_name}")
+                                except Exception as aux_err:
+                                    try:
+                                        cur.execute(f"ROLLBACK TO SAVEPOINT {sp_name}")
+                                        cur.execute(f"RELEASE SAVEPOINT {sp_name}")
+                                    except Exception:
+                                        pass
+                                    msg = f"aux_prune_{idx_aux}: {type(aux_err).__name__}"
+                                    errors.append(msg)
+                                    print(f"[local_db] prune_old_logs PG {msg}: {aux_err}", file=sys.stderr)
+                        conn.commit()
+                        deleted_mon = pending_mon
+                except Exception as tx1_err:
+                    msg = f"pg_raw_delete: {type(tx1_err).__name__}"
+                    errors.append(msg)
+                    print(f"[local_db] prune_old_logs PG Tx1 error: {tx1_err}", file=sys.stderr)
+
+            try:
+                with turbo_store.pg_connection() as conn:
+                    with conn.cursor() as cur:
                         cur.execute(
-                            "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
+                            "UPDATE crowd_votes SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
                             (vote_cutoff,),
                         )
-                        cur.execute(
-                            "DELETE FROM web_push_subscriptions WHERE expires_at < %s",
-                            (now_jst.strftime("%Y-%m-%d %H:%M:%S"),),
-                        )
-                        cur.execute(
-                            "UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < %s AND ip_hash IS NOT NULL AND ip_hash != ''",
-                            (vote_cutoff,),
-                        )
-                    except Exception:
-                        pass
-                conn.commit()
+                        pending_anon = max(0, cur.rowcount or 0)
+                        for idx_p, (priv_sql, priv_param) in enumerate((
+                            ("UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < %s AND ip_hash IS NOT NULL AND ip_hash != ''", vote_cutoff),
+                            ("DELETE FROM web_push_subscriptions WHERE expires_at < %s", now_prune_str),
+                            ("UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < %s AND ip_hash IS NOT NULL AND ip_hash != ''", vote_cutoff),
+                        )):
+                            sp_name = f"sp_priv_{idx_p}"
+                            try:
+                                cur.execute(f"SAVEPOINT {sp_name}")
+                                cur.execute(priv_sql, (priv_param,))
+                                cur.execute(f"RELEASE SAVEPOINT {sp_name}")
+                            except Exception as priv_err:
+                                try:
+                                    cur.execute(f"ROLLBACK TO SAVEPOINT {sp_name}")
+                                    cur.execute(f"RELEASE SAVEPOINT {sp_name}")
+                                except Exception:
+                                    pass
+                                msg = f"priv_prune_{idx_p}: {type(priv_err).__name__}"
+                                errors.append(msg)
+                                print(f"[local_db] prune_old_logs PG {msg}: {priv_err}", file=sys.stderr)
+                    conn.commit()
+                    anonymized_votes = pending_anon
+            except Exception as tx2_err:
+                msg = f"pg_privacy_anonymize: {type(tx2_err).__name__}"
+                errors.append(msg)
+                print(f"[local_db] prune_old_logs PG Tx2 error: {tx2_err}", file=sys.stderr)
         else:
             with _db_lock:
                 conn = get_connection()
                 try:
                     cur = conn.cursor()
+                    pending_mon = 0
                     if rollup_ok:
                         cur.execute("DELETE FROM monitor_logs WHERE timestamp < ?", (delete_before,))
-                        deleted_mon = max(0, cur.rowcount or 0)
-                        try:
-                            cur.execute("DELETE FROM store_pos_telemetry_logs WHERE timestamp < ?", (delete_before,))
-                            cur.execute("DELETE FROM external_context_logs WHERE timestamp < ?", (delete_before,))
-                            cur.execute("DELETE FROM forecast_accuracy_logs WHERE predicted_at < ?", (delete_before,))
-                        except Exception:
-                            pass
+                        pending_mon = max(0, cur.rowcount or 0)
+                        for idx_aux, (aux_sql, aux_param) in enumerate((
+                            ("DELETE FROM store_pos_telemetry_logs WHERE timestamp < ?", delete_before),
+                            ("DELETE FROM external_context_logs WHERE timestamp < ?", delete_before),
+                            ("DELETE FROM forecast_accuracy_logs WHERE predicted_at < ?", delete_before),
+                        )):
+                            try:
+                                cur.execute(aux_sql, (aux_param,))
+                            except Exception as aux_err:
+                                msg = f"sqlite_aux_{idx_aux}: {type(aux_err).__name__}"
+                                errors.append(msg)
+                                print(f"[local_db] prune_old_logs SQLite {msg}: {aux_err}", file=sys.stderr)
                     cur.execute(
                         "UPDATE crowd_votes SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
                         (vote_cutoff,),
                     )
-                    anonymized_votes = max(0, cur.rowcount or 0)
-                    try:
-                        cur.execute(
-                            "UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
-                            (vote_cutoff,),
-                        )
-                        cur.execute(
-                            "DELETE FROM web_push_subscriptions WHERE expires_at < ?",
-                            (now_jst.strftime("%Y-%m-%d %H:%M:%S"),),
-                        )
-                        cur.execute(
-                            "UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < ? AND ip_hash IS NOT NULL AND ip_hash != ''",
-                            (vote_cutoff,),
-                        )
-                    except Exception:
-                        pass
+                    pending_anon = max(0, cur.rowcount or 0)
+                    for idx_p, (priv_sql, priv_param) in enumerate((
+                        ("UPDATE store_watch_intents SET ip_hash = '' WHERE timestamp < ? AND ip_hash IS NOT NULL AND ip_hash != ''", vote_cutoff),
+                        ("DELETE FROM web_push_subscriptions WHERE expires_at < ?", now_prune_str),
+                        ("UPDATE web_push_subscriptions SET ip_hash = '' WHERE created_at < ? AND ip_hash IS NOT NULL AND ip_hash != ''", vote_cutoff),
+                    )):
+                        try:
+                            cur.execute(priv_sql, (priv_param,))
+                        except Exception as priv_err:
+                            msg = f"sqlite_priv_{idx_p}: {type(priv_err).__name__}"
+                            errors.append(msg)
+                            print(f"[local_db] prune_old_logs SQLite {msg}: {priv_err}", file=sys.stderr)
                     conn.commit()
+                    deleted_mon = pending_mon
+                    anonymized_votes = pending_anon
                 finally:
                     conn.close()
         if deleted_mon > 0:
             clear_store_7d_cache(clear_benchmarks=True)
     except Exception as err:
+        errors.append(f"prune_error: {type(err).__name__}")
         print(f"[local_db] prune_old_logs error: {err}", file=sys.stderr)
     return {
         'deleted_monitor_logs': deleted_mon,
@@ -2758,6 +2959,8 @@ def prune_old_logs(monitor_days: int = 90, vote_days: int = 14) -> dict:
         'anonymized_crowd_votes': anonymized_votes,
         'rolled_up_hours': rolled_up_count,
         'rollup_ok': rollup_ok,
+        'errors': errors,
+        'partial_error': bool(errors),
     }
 
 
@@ -3177,8 +3380,20 @@ def add_watch_intent(store_name: str, target_cond: str = "female_55", ip_hash: s
     """
     if target_cond not in ("female_55", "zero_wait", "evening_peak"):
         return False, "invalid_cond"
-    canon = resolve_canonical_store_name(store_name) or str(store_name or "").strip()
-    if not canon:
+    clean_ip_hash = str(ip_hash or "").strip()
+    if not clean_ip_hash:
+        return False, "invalid_ip"
+    raw_store = str(store_name or "").strip()
+    if not raw_store or len(raw_store) > 80:
+        return False, "invalid_store"
+    canon = resolve_canonical_store_name(raw_store)
+    try:
+        import store_master as _sm
+        master = _sm.load() or {}
+    except Exception:
+        master = {}
+    valid_stores = _get_valid_domestic_canonical_stores() | set(master.keys())
+    if not canon or (valid_stores and canon not in valid_stores):
         return False, "invalid_store"
 
     _ensure_moat_rollup_schema()
@@ -3187,13 +3402,13 @@ def add_watch_intent(store_name: str, target_cond: str = "female_55", ip_hash: s
     cutoff_15m = (now_jst - datetime.timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
     cutoff_10m = (now_jst - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     cutoff_6h = (now_jst - datetime.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S")
-    identity = voter_id or ip_hash
+    identity = str(voter_id or "").strip() or clean_ip_hash
 
     with _watch_intents_lock:
         ip_cnt_10m = 0
         already = False
         for item in _memory_watch_intents:
-            if ip_hash and item.get("ip_hash") == ip_hash and item["timestamp"] >= cutoff_10m:
+            if item.get("ip_hash") == clean_ip_hash and item["timestamp"] >= cutoff_10m:
                 ip_cnt_10m += 1
             if (
                 identity
@@ -3207,14 +3422,14 @@ def add_watch_intent(store_name: str, target_cond: str = "female_55", ip_hash: s
             return False, "rate_limited"
         if already:
             return False, "already_watching"
-        if ip_hash and turbo_store.is_shared_bus_active():
-            if not turbo_store.check_sliding_rate_limit("watch_intent_ip", ip_hash, 20, 600):
+        if turbo_store.is_shared_bus_active():
+            if not turbo_store.check_sliding_rate_limit("watch_intent_ip", clean_ip_hash, 20, 600):
                 return False, "rate_limited"
         _memory_watch_intents.append({
             "timestamp": now_str,
             "store_name": canon,
             "target_cond": target_cond,
-            "ip_hash": ip_hash,
+            "ip_hash": clean_ip_hash,
             "identity": identity,
         })
         _memory_watch_intents[:] = [w for w in _memory_watch_intents if w["timestamp"] >= cutoff_6h]
@@ -3240,9 +3455,8 @@ def add_watch_intent(store_name: str, target_cond: str = "female_55", ip_hash: s
                     conn.commit()
                 finally:
                     conn.close()
-        _moat_coverage_cache.clear()
-    except Exception:
-        pass
+    except Exception as err:
+        print(f"[local_db] add_watch_intent persist warning: {err}", file=sys.stderr)
     return True, "ok"
 
 
@@ -3557,14 +3771,7 @@ def purge_dead_web_push_endpoints(endpoints: list[str]) -> int:
         return total_cnt
 
 
-def get_moat_coverage_summary() -> dict:
-    """Return cached high-level counts of Aiseki Navi's proprietary multi-layer dataset."""
-    db_k = _active_db_key()
-    now_m = time.monotonic()
-    cached = _moat_coverage_cache.get(db_k)
-    if cached and (now_m - cached[0]) < 90.0:
-        return dict(cached[1])
-
+def _compute_moat_coverage_uncached(db_k: str) -> dict:
     out = {
         "raw_snapshots": 0,
         "min_timestamp": None,
@@ -3591,37 +3798,98 @@ def get_moat_coverage_summary() -> dict:
     out["min_timestamp"] = db_st.get("min_timestamp")
     out["max_timestamp"] = db_st.get("max_timestamp")
     try:
-        rows = _fetch_all_rows(
-            "SELECT "
-            "(SELECT COUNT(*) FROM store_hourly_rollups), "
-            "(SELECT COUNT(*) FROM store_pos_telemetry_logs), "
-            "(SELECT COUNT(*) FROM external_context_logs), "
-            "(SELECT COUNT(*) FROM store_event_history), "
-            "(SELECT COUNT(*) FROM arena_schedule_events), "
-            "(SELECT COUNT(*) FROM crowd_votes), "
-            "(SELECT COUNT(*) FROM store_watch_intents), "
-            "(SELECT COALESCE(SUM(sample_count), 0) FROM store_hourly_rollups), "
-            "(SELECT MIN(date_jst) FROM store_hourly_rollups)"
-        )
-        if rows and rows[0]:
-            r = rows[0]
-            out["rolled_up_hours"] = int(r[0] or 0)
-            out["pos_telemetry_rows"] = int(r[1] or 0)
-            out["weather_context_rows"] = int(r[2] or 0)
-            out["event_history_count"] = int(r[3] or 0)
-            out["arena_events_count"] = int(r[4] or 0)
-            out["crowd_votes_total"] = int(r[5] or 0)
-            out["watch_intents_total"] = int(r[6] or 0)
-            out["rollup_observations"] = int(r[7] or 0)
-            out["rollup_min_date"] = r[8] or None
-    except Exception:
+        pg_est = {}
+        if _is_pg():
+            try:
+                est_rows = _fetch_all_rows(
+                    "SELECT relname, n_live_tup FROM pg_stat_user_tables "
+                    "WHERE relname IN ('store_hourly_rollups','store_pos_telemetry_logs','external_context_logs',"
+                    "'store_event_history','arena_schedule_events','crowd_votes','store_watch_intents')"
+                )
+                for r in est_rows:
+                    if r and r[0]:
+                        pg_est[str(r[0])] = int(r[1] or 0)
+            except Exception:
+                pg_est = {}
+
+        if _is_pg() and pg_est.get("store_hourly_rollups", 0) > 5000:
+            rows = _fetch_all_rows(
+                "SELECT COALESCE(SUM(sample_count), 0), MIN(date_jst) FROM store_hourly_rollups"
+            )
+            if rows and rows[0]:
+                out["rollup_observations"] = int(rows[0][0] or 0)
+                out["rollup_min_date"] = rows[0][1] or None
+            out["rolled_up_hours"] = pg_est.get("store_hourly_rollups", 0)
+            out["pos_telemetry_rows"] = pg_est.get("store_pos_telemetry_logs", 0)
+            out["weather_context_rows"] = pg_est.get("external_context_logs", 0)
+            out["event_history_count"] = pg_est.get("store_event_history", 0)
+            out["arena_events_count"] = pg_est.get("arena_schedule_events", 0)
+            out["crowd_votes_total"] = pg_est.get("crowd_votes", 0)
+            out["watch_intents_total"] = pg_est.get("store_watch_intents", 0)
+        else:
+            rows = _fetch_all_rows(
+                "SELECT "
+                "COALESCE((SELECT COUNT(*) FROM store_pos_telemetry_logs), 0), "
+                "COALESCE((SELECT COUNT(*) FROM external_context_logs), 0), "
+                "COALESCE((SELECT COUNT(*) FROM store_event_history), 0), "
+                "COALESCE((SELECT COUNT(*) FROM arena_schedule_events), 0), "
+                "COALESCE((SELECT COUNT(*) FROM crowd_votes), 0), "
+                "COALESCE((SELECT COUNT(*) FROM store_watch_intents), 0)"
+            )
+            r_agg = _fetch_all_rows(
+                "SELECT COUNT(*), COALESCE(SUM(sample_count), 0), MIN(date_jst) FROM store_hourly_rollups"
+            )
+            if rows and rows[0]:
+                r = rows[0]
+                out["pos_telemetry_rows"] = int(r[0] or 0)
+                out["weather_context_rows"] = int(r[1] or 0)
+                out["event_history_count"] = int(r[2] or 0)
+                out["arena_events_count"] = int(r[3] or 0)
+                out["crowd_votes_total"] = int(r[4] or 0)
+                out["watch_intents_total"] = int(r[5] or 0)
+            if r_agg and r_agg[0]:
+                out["rolled_up_hours"] = int(r_agg[0][0] or 0)
+                out["rollup_observations"] = int(r_agg[0][1] or 0)
+                out["rollup_min_date"] = r_agg[0][2] or None
+    except Exception as err:
+        print(f"[local_db] get_moat_coverage_summary error: {err}", file=sys.stderr)
         return out
 
-    _moat_coverage_cache[db_k] = (now_m, dict(out))
+    _moat_coverage_cache[db_k] = (time.monotonic(), dict(out))
     return out
 
 
-def get_monthly_store_stats_rows(days: int = 30) -> list:
+def get_moat_coverage_summary() -> dict:
+    """Return cached high-level counts of Aiseki Navi's proprietary multi-layer dataset (300s TTL + SWR)."""
+    global _moat_coverage_computing
+    db_k = _active_db_key()
+    now_m = time.monotonic()
+    cached = _moat_coverage_cache.get(db_k)
+    if cached and (now_m - cached[0]) < _MOAT_COVERAGE_TTL:
+        return dict(cached[1])
+    if cached is not None:
+        # SWR: return stale copy immediately and refresh asynchronously
+        with _moat_coverage_lock:
+            if not _moat_coverage_computing:
+                _moat_coverage_computing = True
+                def _bg_cov():
+                    global _moat_coverage_computing
+                    try:
+                        _compute_moat_coverage_uncached(db_k)
+                    finally:
+                        with _moat_coverage_lock:
+                            _moat_coverage_computing = False
+                threading.Thread(target=_bg_cov, daemon=True).start()
+        return dict(cached[1])
+
+    with _moat_coverage_lock:
+        cached2 = _moat_coverage_cache.get(db_k)
+        if cached2 and (time.monotonic() - cached2[0]) < _MOAT_COVERAGE_TTL:
+            return dict(cached2[1])
+        return dict(_compute_moat_coverage_uncached(db_k))
+
+
+def get_monthly_store_stats_rows(days: int = 30, raise_on_error: bool = False) -> list:
     """
     Build clean CC BY 4.0 primary statistical rows per domestic store over the past `days` days
     for `/stats/monthly.csv` and LLM/researcher citation. Strictly uses `store_master.seo_name`
@@ -3680,7 +3948,11 @@ def get_monthly_store_stats_rows(days: int = 30) -> list:
                     "avg_wpct": round(float(r[6]), 1) if r[6] is not None else None,
                 }
         except Exception:
+            if raise_on_error:
+                raise
             agg = {}
+    elif raise_on_error:
+        raise RuntimeError("Local database is unavailable")
 
     brand_ja_map = {
         "olg": "オリエンタルラウンジ",
@@ -3799,6 +4071,9 @@ def get_year_end_whitepaper_data() -> dict:
         # Negative counts are clamped to 0 exactly as the former per-row Python path did (`max(0, v)`).
         w_cl = "(CASE WHEN women > 0 THEN women ELSE 0 END)"
         m_cl = "(CASE WHEN men > 0 THEN men ELSE 0 END)"
+        q1a_ok = True
+        q1b_ok = True
+        observed_dates = set()
         try:
             # 1a) SQL-side (day, store) aggregation of 20-23h rows: mathematically identical sums/counts to the
             #     former raw-row loop, but transfers ~days x stores tuples instead of hundreds of thousands.
@@ -3827,6 +4102,7 @@ def get_year_end_whitepaper_data() -> dict:
                     n = int(r[2] or 0)
                     if n <= 0:
                         continue
+                    observed_dates.add(ds)
                     memo = day_pre_memo.get(ds)
                     if memo is None:
                         ctx = arena_calendar.classify_day_context(ds)
@@ -3844,8 +4120,9 @@ def get_year_end_whitepaper_data() -> dict:
                         bucket["sum_m"] += float(r[4] or 0)
                         bucket["sum_wp"] += float(r[5] or 0)
                         bucket["wp_n"] += n
-        except Exception:
-            pass
+        except Exception as err:
+            q1a_ok = False
+            print(f"[local_db] get_year_end_whitepaper_data 1a error: {err}", file=sys.stderr)
         try:
             # 1b) Per-store all-hours peak via window function: 1 row per store per <=7-day chunk.
             #     Ties resolve to the earliest timestamp (earlier chunks win on equal totals below).
@@ -3873,13 +4150,15 @@ def get_year_end_whitepaper_data() -> dict:
                     ds = str(r[3] or "")
                     if not ds or not _store_ok(sn):
                         continue
+                    observed_dates.add(ds)
                     wv = int(r[1] or 0)
                     mv = int(r[2] or 0)
                     prev_pk = store_peaks.get(sn)
                     if prev_pk is None or (wv + mv) > prev_pk["total"]:
                         store_peaks[sn] = {"women": wv, "men": mv, "total": wv + mv, "date": ds}
-        except Exception:
-            pass
+        except Exception as err:
+            q1b_ok = False
+            print(f"[local_db] get_year_end_whitepaper_data 1b error: {err}", file=sys.stderr)
 
     def _fmt_bucket(b):
         if b["samples"] < 5:
@@ -3905,7 +4184,12 @@ def get_year_end_whitepaper_data() -> dict:
 
     # 2) Upcoming year-end dome/arena concerts (Nov-Dec 2026) mapped to affected terminal lounge hubs
     hub_by_vid = {h["venue_id"]: h for h in moat_intelligence.MAJOR_ARENA_HUBS}
-    upcoming_arenas = get_upcoming_arena_events(days_ahead=60, from_date=today_str, limit=60)
+    try:
+        year_end_dt = datetime.date(int(today_str[:4]), 12, 31)
+        dyn_ahead = max(60, (year_end_dt - datetime.date.fromisoformat(today_str)).days + 2)
+    except Exception:
+        dyn_ahead = 60
+    upcoming_arenas = get_upcoming_arena_events(days_ahead=dyn_ahead, from_date=today_str, limit=60)
     enriched_arenas = []
     for ev in upcoming_arenas:
         hub = hub_by_vid.get(ev.get("venue_id"))
@@ -3933,15 +4217,22 @@ def get_year_end_whitepaper_data() -> dict:
     milestone_rows = []
     for m_date, label_ja, s_tag in milestones:
         c = arena_calendar.classify_day_context(m_date)
+        if m_date < today_str:
+            m_status = "実測集計済み" if m_date in observed_dates else "集計対象外（期間外/未記録）"
+        elif m_date == today_str:
+            m_status = "本日リアルタイム計測中"
+        else:
+            m_status = "到来後に実測値を自動追記"
         milestone_rows.append({
             "date_jst": m_date,
             "label_ja": label_ja,
             "season_tag": s_tag,
             "is_payday_window": bool(c.get("is_payday_window")),
             "is_bonus_window": bool(c.get("is_bonus_window")),
-            "status": "実測集計済み" if m_date < today_str else ("本日リアルタイム計測中" if m_date == today_str else "到来後に実測値を自動追記"),
+            "status": m_status,
         })
 
+    moat_cov = get_moat_coverage_summary()
     payload = {
         "generated_date": today_str,
         "pre_holiday_20_23": _fmt_bucket(wd_stats["pre_holiday"]),
@@ -3949,15 +4240,15 @@ def get_year_end_whitepaper_data() -> dict:
         "top_peak_stores": top_peak_stores,
         "upcoming_arena_events": enriched_arenas[:24],
         "milestones": milestone_rows,
-        "moat_coverage": get_moat_coverage_summary(),
+        "moat_coverage": moat_cov,
     }
     is_empty = (
         wd_stats["pre_holiday"]["samples"] == 0
         and wd_stats["weekday"]["samples"] == 0
         and not top_peak_stores
     )
-    if not is_empty:
-        # Empty state (DB outage / cold start) is never cached so the next request retries (AGENTS.md §9).
+    if (not is_empty) and q1a_ok and q1b_ok and int((moat_cov or {}).get("raw_snapshots") or 0) > 0:
+        # Empty/partial-error state is never cached so the next request retries (AGENTS.md §9).
         with _whitepaper_lock:
             _whitepaper_cache["key"] = cache_key
             _whitepaper_cache["mono"] = time.monotonic()
@@ -3975,7 +4266,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     cached = _store_7d_cache.get(cache_key)
     if cached is not None and (now_mono - cached[0] < _STORE_7D_TTL):
         if cached[1].get("has_history") or not is_partial_recent_only():
-            return cached[1]
+            return copy.deepcopy(cached[1])
 
     from collections import defaultdict
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
@@ -3999,6 +4290,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
             db_query_failed = True
             rows = []
     else:
+        db_query_failed = True
         rows = []
     if not db_query_failed and is_partial_recent_only() and not has_multi_day_span(rows):
         _trigger_store_backfill_async(store_name, days=10)
@@ -4043,13 +4335,13 @@ def get_store_7day_analytics(store_name: str) -> dict:
             wpct = (w / tot) * 100.0
             wd_ratios[biz_wd].append(wpct)
             if 18 <= h <= 20:
-                slot_ratios["19:00〜21:00（早割・1軒目帯）"].append(wpct)
+                slot_ratios["18:00〜21:00（早割・1軒目帯）"].append(wpct)
             elif 21 <= h <= 22:
                 slot_ratios["21:00〜23:00（ピーク帯）"].append(wpct)
             elif h == 23 or h == 0:
                 slot_ratios["23:00〜翌1:00（終電前後・2回転目）"].append(wpct)
             elif 1 <= h <= 4:
-                slot_ratios["翌1:00〜03:00（深夜オールナイト帯）"].append(wpct)
+                slot_ratios["翌1:00〜05:00（深夜オールナイト帯）"].append(wpct)
 
         if 21 <= h <= 23:
             peak_band_women.append(w)
@@ -4147,7 +4439,7 @@ def get_store_7day_analytics(store_name: str) -> dict:
     }
     if db_query_failed:
         return result
-    _store_7d_cache[cache_key] = (time.monotonic(), result)
+    _store_7d_cache[cache_key] = (time.monotonic(), copy.deepcopy(result))
     if len(_store_7d_cache) > _STORE_7D_CACHE_MAX:
         items_snap = list(_store_7d_cache.items())
         items_snap.sort(key=lambda kv: kv[1][0])
@@ -4175,10 +4467,11 @@ def _is_synthetic_seed_alias(store_name: str) -> bool:
     return False
 
 
-def _is_ghost_multistore_batch(dt: datetime.datetime, smap: dict) -> bool:
+def _is_ghost_multistore_batch(dt: datetime.datetime, smap: dict, mode: str = "strict") -> bool:
     """Detect timezone-shifted (PDT -16h) ghost batches in multi-store (>=15 stores) snapshots."""
     if len(smap) < 15 or dt is None:
         return False
+    dt = _to_naive_jst(dt)
     h = dt.hour
     tot_all = 0
     n_open = 0
@@ -4201,10 +4494,16 @@ def _is_ghost_multistore_batch(dt: datetime.datetime, smap: dict) -> bool:
         return True
     if h == 18 and dt.minute < 8 and n_open == 1 and tot_all >= 25:
         return True
-    if 19 <= h <= 23 and (tot_all < 100 or n_open <= 6):
-        return True
-    if 0 <= h <= 2 and (tot_all < 25 or n_open <= 2):
-        return True
+    if mode == "benchmark":
+        if 19 <= h <= 23 and (tot_all < 40 or n_open <= 3):
+            return True
+        if 0 <= h <= 2 and (tot_all < 15 or n_open <= 1):
+            return True
+    else:
+        if 19 <= h <= 23 and (tot_all < 100 or n_open <= 6):
+            return True
+        if 0 <= h <= 2 and (tot_all < 25 or n_open <= 2):
+            return True
     if 2 <= h <= 7:
         if n_open >= 10 and n_w_only >= max(6, int(n_open * 0.45)):
             return True
@@ -4222,8 +4521,8 @@ def _is_ghost_multistore_batch(dt: datetime.datetime, smap: dict) -> bool:
                         mild_viol += 1
             if severe_viol >= 2 or mild_viol >= max(5, int(len(smap) * 0.20)):
                 return True
-        except Exception:
-            pass
+        except Exception as err:
+            print(f"[local_db] _is_ghost_multistore_batch close-check warning: {err}", file=sys.stderr)
     return False
 
 
@@ -4248,6 +4547,7 @@ def _extract_clean_snapshot_batches(
     valid_domestic: set = None,
     check_taint: bool = False,
     exclude_korea: bool = True,
+    ghost_mode: str = "strict",
 ) -> list:
     """
     Group ascending `(timestamp, store_name, women, men)` rows into strict <=2.0s scrape batches
@@ -4301,7 +4601,7 @@ def _extract_clean_snapshot_batches(
     if cur_map and not cur_tainted:
         batches.append((cur_dt, cur_ts, cur_map))
 
-    stage1 = [b for b in batches if not _is_ghost_multistore_batch(b[0], b[2])]
+    stage1 = [b for b in batches if not _is_ghost_multistore_batch(b[0], b[2], mode=ghost_mode)]
     if len(stage1) <= 1:
         return stage1
 
@@ -4341,7 +4641,7 @@ def _extract_clean_snapshot_batches(
 
 
 def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) -> dict:
-    """Scans the last 30 days of monitor_logs once (with ghost-batch filtering) and returns hour/weekday base accumulators."""
+    """Scans the last 30 days of monitor_logs in 7-day incremental chunks (low memory) and returns base accumulators."""
     from collections import defaultdict
     by_wd_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
     by_hour = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
@@ -4351,37 +4651,60 @@ def _compute_benchmark_base_from_sqlite(cutoff_str: str, end_str: str = None) ->
     band_stats = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0]))
     stores_seen = set()
     _date_memo = {}
+    grouped_acc = defaultdict(lambda: [0.0, 0.0, 0])
 
-    raw_rows = []
     if _db_available():
         try:
-            now_end_str = (datetime.datetime.now(_JST_TZ).replace(tzinfo=None) + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
-            hi_bound = max(now_end_str, str(end_str or ""))
-            raw_rows = _fetch_ts_window_in_7d_chunks(
-                """
-                SELECT timestamp, store_name, women, men
-                FROM monitor_logs
-                WHERE timestamp >= ? AND timestamp <= ?
-                ORDER BY timestamp ASC
-                """,
-                cutoff_str,
-                hi_bound,
-            )
+            now_dt = datetime.datetime.now(_JST_TZ).replace(tzinfo=None)
+            now_end_str = (now_dt + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+            raw_end = str(end_str or "").strip()
+            hi_bound = min(now_end_str, raw_end) if raw_end else now_end_str
+            s_dt = _parse_jst_ts(cutoff_str)
+            e_dt = _parse_jst_ts(hi_bound)
+            if s_dt is None or e_dt is None or e_dt < s_dt:
+                return None
+            cur_lo = s_dt.replace(tzinfo=None)
+            end_naive = e_dt.replace(tzinfo=None)
+            step = datetime.timedelta(days=7)
+            one_sec = datetime.timedelta(seconds=1)
+            carry_rows = []
+            while cur_lo <= end_naive:
+                cur_hi = min(end_naive, cur_lo + step - one_sec)
+                chunk_rows = _fetch_ts_window_in_7d_chunks(
+                    """
+                    SELECT timestamp, store_name, women, men
+                    FROM monitor_logs
+                    WHERE timestamp >= ? AND timestamp <= ?
+                    ORDER BY timestamp ASC
+                    """,
+                    cur_lo.strftime("%Y-%m-%d %H:%M:%S"),
+                    cur_hi.strftime("%Y-%m-%d %H:%M:%S"),
+                )
+                cur_lo = cur_hi + one_sec
+                if not chunk_rows:
+                    continue
+                combined = carry_rows + chunk_rows if carry_rows else chunk_rows
+                clean_batches = _extract_clean_snapshot_batches(
+                    combined, check_taint=False, exclude_korea=False, ghost_mode="benchmark"
+                )
+                last_carry_ts = carry_rows[-1][0] if carry_rows else ""
+                for dt, ts_s, smap in clean_batches:
+                    if last_carry_ts and ts_s <= last_carry_ts:
+                        continue
+                    d_str = ts_s[:10]
+                    h = dt.hour
+                    for sname, (w, m) in smap.items():
+                        if w > 0 or m > 0:
+                            acc = grouped_acc[(sname, d_str, h)]
+                            acc[0] += float(w)
+                            acc[1] += float(m)
+                            acc[2] += 1
+                tail_cutoff_dt = (_parse_jst_ts(str(chunk_rows[-1][0])) or now_dt) - datetime.timedelta(seconds=3600)
+                tail_cutoff_s = tail_cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+                carry_rows = [r for r in chunk_rows if str(r[0] or "") >= tail_cutoff_s]
         except Exception as e:
             print(f"[local_db] get_all_stores_live_benchmarks error: {e}", file=sys.stderr)
             return None
-
-    clean_batches = _extract_clean_snapshot_batches(raw_rows, check_taint=False, exclude_korea=False)
-    grouped_acc = defaultdict(lambda: [0.0, 0.0, 0])
-    for dt, ts_s, smap in clean_batches:
-        d_str = ts_s[:10]
-        h = dt.hour
-        for sname, (w, m) in smap.items():
-            if w > 0 or m > 0:
-                acc = grouped_acc[(sname, d_str, h)]
-                acc[0] += float(w)
-                acc[1] += float(m)
-                acc[2] += 1
 
     for (sname, d_str, h), (sum_w, sum_m, cnt) in grouped_acc.items():
         if not sname or not d_str or len(d_str) < 10 or cnt <= 0:
@@ -4605,7 +4928,11 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
     db_k = _active_db_key()
     cache_key = (db_k, cur_wd, cur_h)
     now_mono = time.monotonic()
-    db_row_count = int(get_db_stats().get("count") or 0) if _db_available() else 0
+    db_st_now = get_db_stats() if _db_available() else {}
+    db_row_count = int((db_st_now or {}).get("count") or 0)
+
+    def _copy_bm_map(bm: dict) -> dict:
+        return {k: dict(v) for k, v in (bm or {}).items()}
 
     if not force_refresh:
         cached = _live_benchmarks_cache.get(cache_key)
@@ -4615,10 +4942,10 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
             small_db_mutated = (db_row_count < 2500 and db_row_count != cached_cnt)
             if not small_db_mutated:
                 if now_mono - cached_ts < _LIVE_BENCHMARKS_TTL:
-                    return cached_out
+                    return _copy_bm_map(cached_out)
                 if not allow_blocking:
                     refresh_live_benchmarks_async()
-                    return cached_out
+                    return _copy_bm_map(cached_out)
 
         # Fast O(1) derivation from 30-min base cache (eliminates top-of-hour DB stampede)
         base_entry = _benchmark_base_cache.get(db_k)
@@ -4629,47 +4956,55 @@ def get_all_stores_live_benchmarks(now_jst: datetime.datetime = None, allow_bloc
                 if now_mono - base_ts < _BENCHMARK_BASE_TTL:
                     derived = _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
                     _live_benchmarks_cache[cache_key] = (now_mono, derived, db_row_count)
-                    return derived
+                    return _copy_bm_map(derived)
                 if not allow_blocking:
                     refresh_live_benchmarks_async()
-                    return _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
+                    return _copy_bm_map(_derive_benchmarks_for_slot(base_data, cur_wd, cur_h))
 
         # True non-blocking guard when cold & DB is syncing or large (>=5,000 rows)
         if not allow_blocking and (_sync_in_progress or db_row_count >= 5000):
             refresh_live_benchmarks_async()
             for k, v in list(_live_benchmarks_cache.items()):
                 if k[0] == db_k and v and v[1]:
-                    return v[1]
+                    return _copy_bm_map(v[1])
             return {}
 
-    cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
-    end_bound = max(
-        (now_jst + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
-        str((get_db_stats() or {}).get("max_timestamp") or ""),
-    )
-    base_data = _compute_benchmark_base_from_sqlite(cutoff_str, end_str=end_bound)
-    if base_data is None:
-        # Transient DB error: never poison the 30-min base cache with empty benchmarks
-        fallback_cached = _live_benchmarks_cache.get(cache_key)
-        if fallback_cached is not None:
-            return fallback_cached[1]
-        return {}
-    now_done = time.monotonic()
-    _benchmark_base_cache[db_k] = (now_done, db_row_count, base_data)
-    if len(_benchmark_base_cache) > 4:
-        base_snap = list(_benchmark_base_cache.items())
-        base_snap.sort(key=lambda kv: kv[1][0])
-        for k_ev, _ in base_snap[:max(1, len(base_snap) - 4)]:
-            _benchmark_base_cache.pop(k_ev, None)
+    with _live_benchmarks_compute_lock:
+        if not force_refresh:
+            cached_recheck = _live_benchmarks_cache.get(cache_key)
+            if cached_recheck is not None:
+                c_ts, c_out = cached_recheck[0], cached_recheck[1]
+                c_cnt = cached_recheck[2] if len(cached_recheck) > 2 else db_row_count
+                if not (db_row_count < 2500 and db_row_count != c_cnt) and (time.monotonic() - c_ts < _LIVE_BENCHMARKS_TTL):
+                    return _copy_bm_map(c_out)
+        cutoff_str = (now_jst - datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+        end_bound = max(
+            (now_jst + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            str((db_st_now or {}).get("max_timestamp") or ""),
+        )
+        base_data = _compute_benchmark_base_from_sqlite(cutoff_str, end_str=end_bound)
+        if base_data is None:
+            # Transient DB error: never poison the 30-min base cache with empty benchmarks
+            fallback_cached = _live_benchmarks_cache.get(cache_key)
+            if fallback_cached is not None:
+                return _copy_bm_map(fallback_cached[1])
+            return {}
+        now_done = time.monotonic()
+        _benchmark_base_cache[db_k] = (now_done, db_row_count, base_data)
+        if len(_benchmark_base_cache) > 4:
+            base_snap = list(_benchmark_base_cache.items())
+            base_snap.sort(key=lambda kv: kv[1][0])
+            for k_ev, _ in base_snap[:max(1, len(base_snap) - 4)]:
+                _benchmark_base_cache.pop(k_ev, None)
 
-    out = _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
-    _live_benchmarks_cache[cache_key] = (now_done, out, db_row_count)
-    if len(_live_benchmarks_cache) > _LIVE_BENCHMARKS_CACHE_MAX:
-        items_snap = list(_live_benchmarks_cache.items())
-        items_snap.sort(key=lambda kv: kv[1][0])
-        for k, _ in items_snap[:max(1, len(items_snap) - _LIVE_BENCHMARKS_CACHE_MAX)]:
-            _live_benchmarks_cache.pop(k, None)
-    return out
+        out = _derive_benchmarks_for_slot(base_data, cur_wd, cur_h)
+        _live_benchmarks_cache[cache_key] = (now_done, out, db_row_count)
+        if len(_live_benchmarks_cache) > _LIVE_BENCHMARKS_CACHE_MAX:
+            items_snap = list(_live_benchmarks_cache.items())
+            items_snap.sort(key=lambda kv: kv[1][0])
+            for k, _ in items_snap[:max(1, len(items_snap) - _LIVE_BENCHMARKS_CACHE_MAX)]:
+                _live_benchmarks_cache.pop(k, None)
+        return _copy_bm_map(out)
 
 
 def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blocking: bool = True) -> dict:
@@ -4699,10 +5034,11 @@ def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blo
         st = h_map.get(h)
         if not st or st[2] < 2:
             return None
+        raw_tot = st[0] + st[1]
         aw = round(st[0] / st[2], 1)
         am = round(st[1] / st[2], 1)
         tot = aw + am
-        wp = round((aw / tot) * 100, 1) if tot >= 2.0 else 50.0
+        wp = round((st[0] / raw_tot) * 100, 1) if (tot >= 2.0 and raw_tot > 0) else None
         return {"w": aw, "m": am, "total": round(tot, 1), "wpct": wp, "n": int(st[2])}
 
     for sname in base_data.get("stores_seen") or ():
@@ -4714,31 +5050,38 @@ def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blo
         p23 = _slot_point(h_map, 23)
 
         reversal_hour = None
-        if p20 and p20["wpct"] >= 58.0:
+        if p20 and p20.get("wpct") is not None and p20["wpct"] >= 58.0:
             for cand_h in (22, 23, 0, 1, 2):
                 pt = _slot_point(h_map, cand_h)
-                if pt and pt["total"] >= 8.0 and pt["wpct"] < 50.0:
+                if pt and pt.get("wpct") is not None and pt["total"] >= 8.0 and pt["wpct"] < 50.0:
                     reversal_hour = cand_h
                     break
 
-        rebound_w = 0.0
-        if p23 and p01 and p01["w"] > p23["w"]:
-            rebound_w = round(p01["w"] - p23["w"], 1)
-        elif p00 and p01 and p01["w"] > p00["w"]:
-            rebound_w = round(p01["w"] - p00["w"], 1)
+        rebound_w = None
+        if p23 and p01:
+            rebound_w = round(max(0.0, p01["w"] - p23["w"]), 1)
+        elif p00 and p01:
+            rebound_w = round(max(0.0, p01["w"] - p00["w"]), 1)
 
-        if reversal_hour is not None:
-            archetype = "early_female_late_male_flip"
-            archetype_ja = f"序盤女性先行→{reversal_hour}時台から男性先行へ反転（女子待ちゼロ化）"
-        elif p22 and p01 and p01["total"] >= 70.0 and p01["w"] >= p22["w"] * 0.85:
-            archetype = "midnight_monster_surge"
-            archetype_ja = "終電後も100名規模の熱量が続く深夜2波・大箱拮抗型"
-        elif p20 and p00 and p20["wpct"] >= 62.0 and p00["wpct"] >= 56.0:
-            archetype = "steady_female_lead"
-            archetype_ja = "20時〜終電後まで女性優位が崩れにくい安定ラウンジ型"
+        has_any_slot = any(pt is not None and pt.get("wpct") is not None for pt in (p20, p22, p23, p00, p01))
+        if not has_any_slot:
+            archetype = None
+            archetype_ja = None
+            data_status = "insufficient"
         else:
-            archetype = "first_train_early_peak"
-            archetype_ja = "20〜22時が中心で終電前に落ち着く1軒目ピーク型"
+            data_status = "ok"
+            if reversal_hour is not None:
+                archetype = "early_female_late_male_flip"
+                archetype_ja = f"序盤女性先行→{reversal_hour}時台から男性先行へ反転（女子待ちゼロ化）"
+            elif p22 and p01 and p01["total"] >= 70.0 and p01["w"] >= p22["w"] * 0.85:
+                archetype = "midnight_monster_surge"
+                archetype_ja = "終電後も70名以上の熱量が続く深夜2波・大箱拮抗型"
+            elif p20 and p00 and p20.get("wpct") is not None and p00.get("wpct") is not None and p20["wpct"] >= 62.0 and p00["wpct"] >= 56.0:
+                archetype = "steady_female_lead"
+                archetype_ja = "20時〜終電後まで女性優位が崩れにくい安定ラウンジ型"
+            else:
+                archetype = "first_train_early_peak"
+                archetype_ja = "20〜22時が中心で終電前に落ち着く1軒目ピーク型"
 
         st_meta = static_per_store.get(sname) or {}
         profiles[sname] = {
@@ -4751,6 +5094,7 @@ def get_all_stores_hourly_waveforms(now_jst: datetime.datetime = None, allow_blo
             "second_wave_rebound_w": rebound_w,
             "waveform_archetype": archetype,
             "waveform_archetype_ja": archetype_ja,
+            "data_status": data_status,
             "midnight_retention_pct": st_meta.get("midnight_retention_pct"),
         }
     return profiles
@@ -4988,7 +5332,10 @@ def _ensure_forecast_schema() -> bool:
 
 
 def _invalidate_forecast_caches():
+    global _forecast_cache_epoch
+    _forecast_cache_epoch += 1
     db_k = _active_db_key()
+    _last_backfill_attempt_mono.pop(db_k, None)
     for k in list(_forecast_acc_report_cache.keys()):
         if isinstance(k, tuple) and k and k[0] == db_k:
             _forecast_acc_report_cache.pop(k, None)
@@ -5080,17 +5427,19 @@ def _record_snapshot_to_trajectory_ring(items: list, timestamp_str: str):
         if not merged:
             ring.append((dt_naive, smap))
             ring.sort(key=lambda x: x[0])
-        if len(ring) > 28:
-            ring = ring[-28:]
+        if ring:
+            cutoff_ring_dt = ring[-1][0] - datetime.timedelta(minutes=90)
+            ring = [e for e in ring if e[0] >= cutoff_ring_dt][-120:]
         _recent_trajectory_ring[db_k] = ring
 
 
-def _warm_trajectory_ring_from_db(target_dt_naive: datetime.datetime):
+def _warm_trajectory_ring_from_db(target_dt_naive: datetime.datetime, db_cnt: int = None):
     """Populate `_recent_trajectory_ring` from the last 85 minutes of `monitor_logs` (cleaned of ghost batches)."""
     if not _db_available():
         return
     db_k = _active_db_key()
-    db_cnt = int(get_db_stats().get("count") or 0)
+    if db_cnt is None:
+        db_cnt = int(get_db_stats().get("count") or 0)
     if db_cnt <= 0:
         with _recent_trajectory_lock:
             _recent_trajectory_warmed_at[db_k] = (time.monotonic(), 0, target_dt_naive)
@@ -5128,8 +5477,9 @@ def _warm_trajectory_ring_from_db(target_dt_naive: datetime.datetime):
             if not merged:
                 ring.append((e_dt, e_map))
         ring.sort(key=lambda x: x[0])
-        if len(ring) > 28:
-            ring = ring[-28:]
+        if ring:
+            cutoff_ring_dt = ring[-1][0] - datetime.timedelta(minutes=90)
+            ring = [e for e in ring if e[0] >= cutoff_ring_dt][-120:]
         _recent_trajectory_ring[db_k] = ring
         _recent_trajectory_warmed_at[db_k] = (time.monotonic(), db_cnt, target_dt_naive)
 
@@ -5137,44 +5487,26 @@ def _warm_trajectory_ring_from_db(target_dt_naive: datetime.datetime):
 def _extract_lags_from_ring_entries(ring_entries: list, target_dt_naive: datetime.datetime) -> dict:
     if not ring_entries:
         return {}
-    b15, err15 = None, 999.0
-    b30, err30 = None, 999.0
-    b60, err60 = None, 999.0
+    per_store = {}
     for b_dt, b_map in ring_entries:
         dm = (target_dt_naive - b_dt).total_seconds() / 60.0
         if 8.0 <= dm <= 23.0:
-            e = abs(dm - 15.0)
-            if e < err15:
-                err15, b15 = e, b_map
+            slot_key, err = "lag_15m", abs(dm - 15.0)
         elif 23.0 < dm <= 42.0:
-            e = abs(dm - 30.0)
-            if e < err30:
-                err30, b30 = e, b_map
+            slot_key, err = "lag_30m", abs(dm - 30.0)
         elif 48.0 <= dm <= 75.0:
-            e = abs(dm - 60.0)
-            if e < err60:
-                err60, b60 = e, b_map
-
-    if b15 is None and b30 is None and b60 is None:
-        return {}
-
-    stores = set()
-    if b15:
-        stores.update(b15.keys())
-    if b30:
-        stores.update(b30.keys())
-    if b60:
-        stores.update(b60.keys())
+            slot_key, err = "lag_60m", abs(dm - 60.0)
+        else:
+            continue
+        for s, vals in b_map.items():
+            st_rec = per_store.setdefault(s, {})
+            prev = st_rec.get(slot_key)
+            if prev is None or err < prev[0]:
+                st_rec[slot_key] = (err, vals)
 
     out = {}
-    for s in stores:
-        d = {}
-        if b15 and s in b15:
-            d["lag_15m"] = b15[s]
-        if b30 and s in b30:
-            d["lag_30m"] = b30[s]
-        if b60 and s in b60:
-            d["lag_60m"] = b60[s]
+    for s, st_rec in per_store.items():
+        d = {k: v[1] for k, v in st_rec.items()}
         if d:
             out[s] = d
     return out
@@ -5211,7 +5543,7 @@ def get_cached_recent_lags_map(now_jst: datetime.datetime = None, allow_db_warm:
         )
         if db_cnt > 0 and not already_checked:
             if allow_db_warm or (db_cnt < 2500 and not _sync_in_progress):
-                _warm_trajectory_ring_from_db(target_dt)
+                _warm_trajectory_ring_from_db(target_dt, db_cnt=db_cnt)
                 with _recent_trajectory_lock:
                     snap = list(_recent_trajectory_ring.get(db_k) or ())
             else:
@@ -5224,7 +5556,7 @@ def get_cached_recent_lags_map(now_jst: datetime.datetime = None, allow_db_warm:
                 if spawn:
                     def _bg_warm():
                         try:
-                            _warm_trajectory_ring_from_db(target_dt)
+                            _warm_trajectory_ring_from_db(target_dt, db_cnt=db_cnt)
                         except Exception:
                             pass
                         finally:
@@ -5432,9 +5764,9 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
         row_id = int(r[0])
         tgt_str = str(r[1])
         sname = str(r[2])
-        pred_w = int(r[3] or 0)
-        pred_m = int(r[4] or 0)
-        pred_wp = int(r[5] or 50)
+        pred_w = int(r[3]) if r[3] is not None else 0
+        pred_m = int(r[4]) if r[4] is not None else 0
+        pred_wp = int(r[5]) if r[5] is not None else 50
         v1_wp = int(r[6]) if r[6] is not None else None
         tgt_dt = _parse_jst_ts(tgt_str)
         if tgt_dt is None:
@@ -5473,8 +5805,9 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                     """,
                     (w_lo, w_hi),
                 )
-            except Exception:
-                raw_ov_rows = []
+            except Exception as ov_err:
+                print(f"[local_db] overdue forecast monitor_logs query error (skipping cluster): {ov_err}", file=sys.stderr)
+                continue
             clean_ov_batches = _extract_clean_snapshot_batches(
                 raw_ov_rows,
                 valid_domestic=valid_domestic,
@@ -5502,6 +5835,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
     if updates or stale_delete_ids:
         if _is_pg():
             try:
+                pending_res = 0
                 with turbo_store.pg_connection() as conn:
                     with conn.cursor() as cur:
                         for u in updates:
@@ -5521,13 +5855,14 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                                 """,
                                 u,
                             )
-                            resolved_cnt += max(0, cur.rowcount or 0)
+                            pending_res += max(0, cur.rowcount or 0)
                         if stale_delete_ids:
                             cur.execute(
                                 "DELETE FROM forecast_accuracy_logs WHERE id = ANY(%s) AND resolved_at IS NULL",
                                 (stale_delete_ids,),
                             )
                     conn.commit()
+                    resolved_cnt = pending_res
             except Exception as err:
                 print(f"[local_db] PG forecast resolution error: {err}", file=sys.stderr)
         else:
@@ -5535,6 +5870,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                 conn = get_connection()
                 try:
                     cur = conn.cursor()
+                    pending_res = 0
                     if updates:
                         cur.executemany(
                             """
@@ -5552,7 +5888,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                             """,
                             updates,
                         )
-                        resolved_cnt = len(updates)
+                        pending_res = len(updates)
                     if stale_delete_ids:
                         qmarks = ",".join("?" for _ in stale_delete_ids)
                         cur.execute(
@@ -5560,6 +5896,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                             tuple(stale_delete_ids),
                         )
                     conn.commit()
+                    resolved_cnt = pending_res
                 except Exception as err:
                     print(f"[local_db] SQLite forecast resolution error: {err}", file=sys.stderr)
                 finally:
@@ -5749,7 +6086,7 @@ def record_and_resolve_forecasts(items: list, timestamp_str: str, resolve_only: 
                 finally:
                     conn.close()
 
-    if resolved_cnt > 0 or recorded_cnt > 0 or stale_delete_ids:
+    if resolved_cnt > 0 or stale_delete_ids:
         _invalidate_forecast_caches()
     return {"resolved": resolved_cnt, "recorded": recorded_cnt}
 
@@ -5770,10 +6107,16 @@ def backfill_forecast_accuracy_from_history(
     Causally backfill resolved 60-minute predictions from historical `monitor_logs` (cleaned of PDT ghost batches)
     so accuracy reports and online store calibration reflect the active model immediately without future leakage.
     """
-    global _forecast_backfill_in_flight
+    global _forecast_backfill_in_flight, _last_backfill_attempt_mono
 
     if not _db_available() or not _ensure_forecast_schema():
         return {"inserted": 0, "skipped": True}
+
+    db_k_bf = _active_db_key()
+    now_bf_mono = time.monotonic()
+    last_bf = _last_backfill_attempt_mono.get(db_k_bf, 0.0)
+    if not force and not _already_claimed and last_bf > 0.0 and (now_bf_mono - last_bf) < 1800.0:
+        return {"inserted": 0, "skipped": True, "cooldown": True}
 
     acquired_flight = False
     if not force and not _already_claimed:
@@ -5782,6 +6125,7 @@ def backfill_forecast_accuracy_from_history(
                 return {"inserted": 0, "skipped": True, "in_flight": True}
             _forecast_backfill_in_flight = True
             acquired_flight = True
+    _last_backfill_attempt_mono[db_k_bf] = now_bf_mono
 
     try:
         import moat_intelligence
@@ -5833,6 +6177,7 @@ def backfill_forecast_accuracy_from_history(
             check_taint=True,
             exclude_korea=True,
         )
+        del raw_rows
         n_b = len(clean_batches)
         if n_b < 2:
             return {"inserted": 0, "skipped": True, "existing_resolved": existing_resolved}
@@ -6029,7 +6374,7 @@ def backfill_forecast_accuracy_from_history(
                         cur.execute(
                             # M12: purge prior-version BACKFILL rows and pre-v3 PDT-tainted legacy rows; v3+ live-resolved history is permanent.
                             "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != %s"
-                            " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1%%' OR model_version LIKE 'v2%%')",
+                            " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1.%%' OR model_version LIKE 'v2.%%')",
                             (cur_ver,),
                         )
                     conn.commit()
@@ -6060,7 +6405,7 @@ def backfill_forecast_accuracy_from_history(
                     cur.execute(
                         # M12: purge prior-version BACKFILL rows and pre-v3 PDT-tainted legacy rows; v3+ live-resolved history is permanent.
                         "DELETE FROM forecast_accuracy_logs WHERE resolved_at IS NOT NULL AND model_version != ?"
-                        " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1%' OR model_version LIKE 'v2%')",
+                        " AND (COALESCE(is_backfill, 0) = 1 OR model_version LIKE 'v1.%' OR model_version LIKE 'v2.%')",
                         (cur_ver,),
                     )
                     conn.commit()
@@ -6178,8 +6523,11 @@ def _refresh_forecast_caches_from_db(days: int = 21):
             """,
             (cutoff_str,),
         )
-    except Exception:
-        rows = []
+    except Exception as err:
+        print(f"[local_db] _refresh_forecast_caches_from_db query error (preserving existing caches): {err}", file=sys.stderr)
+        prev_b = _forecast_residual_bias_cache.get(db_k)
+        prev_a = _forecast_store_acc_cache.get(db_k)
+        return (prev_b[1] if prev_b else {}), (prev_a[1] if prev_a else {})
 
     from collections import defaultdict
     store_acc = defaultdict(lambda: [0.0, 0.0, 0, 0, None])  # sname -> [sum_abs, sum_signed, within10, n, latest_dict]
@@ -6193,10 +6541,10 @@ def _refresh_forecast_caches_from_db(days: int = 21):
     for r in rows:
         sname = str(r[0] or "")
         pred_at = str(r[1] or "")
-        pred_wp = int(r[2] or 0)
-        act_wp = int(r[3] or 0)
-        err_pt = float(r[4] or 0.0)
-        abs_pt = float(r[5] or 0.0)
+        pred_wp = int(r[2]) if r[2] is not None else 0
+        act_wp = int(r[3]) if r[3] is not None else 0
+        err_pt = float(r[4]) if r[4] is not None else 0.0
+        abs_pt = float(r[5]) if r[5] is not None else 0.0
         aw = int(r[6] or 0)
         am = int(r[7] or 0)
         row_ver = str(r[8] or "") if len(r) > 8 else ""
@@ -6488,8 +6836,8 @@ def get_forecast_accuracy_report(
     now_mono = time.monotonic()
 
     def _slice_report(rep: dict) -> dict:
-        out_rep = dict(rep)
-        out_rep["recent_resolved"] = list(rep.get("recent_resolved") or [])[:limit_recent]
+        out_rep = copy.deepcopy(rep)
+        out_rep["recent_resolved"] = list(out_rep.get("recent_resolved") or [])[:limit_recent]
         return out_rep
 
     cached = _forecast_acc_report_cache.get(cache_key)
@@ -6545,7 +6893,7 @@ def get_forecast_accuracy_report(
 
     if auto_backfill and allow_blocking and store_filter is None:
         try:
-            backfill_forecast_accuracy_from_history(days=days, min_existing=40, max_rows=4500)
+            backfill_forecast_accuracy_from_history(days=min(21, days), min_existing=40, max_rows=4500)
         except Exception:
             pass
 
@@ -6681,8 +7029,12 @@ def get_forecast_accuracy_report(
         tgt_at = str(r[1] or "")
         res_at = str(r[2] or "")
         sname = str(r[3] or "")
-        sw, sm, swp = int(r[4] or 0), int(r[5] or 0), int(r[6] or 0)
-        pw, pm, pwp = int(r[7] or 0), int(r[8] or 0), int(r[9] or 0)
+        sw = int(r[4]) if r[4] is not None else 0
+        sm = int(r[5]) if r[5] is not None else 0
+        swp = int(r[6]) if r[6] is not None else 0
+        pw = int(r[7]) if r[7] is not None else 0
+        pm = int(r[8]) if r[8] is not None else 0
+        pwp = int(r[9]) if r[9] is not None else 0
         v1_pwp = int(r[10]) if r[10] is not None else None
         flip_r = int(r[11] or 0)
         acode = str(r[12] or "steady")
@@ -6903,7 +7255,7 @@ def get_forecast_accuracy_report(
 
     bias_cache_entry = _forecast_residual_bias_cache.get(db_k)
     if bias_cache_entry is None and n_valid > 0:
-        bias_map_now, _ = _refresh_forecast_caches_from_db(days=days)
+        bias_map_now, _ = _refresh_forecast_caches_from_db(days=21)
     else:
         bias_map_now = bias_cache_entry[1] if bias_cache_entry else {}
 

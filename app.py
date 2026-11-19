@@ -10,6 +10,7 @@ import logger
 import os
 import sys
 import json
+import mimetypes
 import re
 import time
 import local_db
@@ -18,16 +19,23 @@ import turbo_store
 import request_guards
 import zlib
 from collections import defaultdict, OrderedDict
+from werkzeug.utils import safe_join
 
 from logging.handlers import RotatingFileHandler
 
 # Set up logging with automatic size rotation (max 5MB, keep 2 backups) to prevent disk overflow
 # (absolute path so the app also works when started from another working directory, e.g. tests)
 log_file_path = os.environ.get('APP_LOG_PATH') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.log')
+_app_role_env = (os.environ.get('APP_ROLE') or '').strip().lower()
 _is_fly_multiworker_web = bool(
     os.environ.get('FLY_APP_NAME')
     and not os.environ.get('APP_LOG_PATH')
-    and (os.environ.get('APP_ROLE') or '').strip().lower() == 'web'
+    and _app_role_env == 'web'
+)
+_is_fly_stdout_only = bool(
+    os.environ.get('FLY_APP_NAME')
+    and not os.environ.get('APP_LOG_PATH')
+    and _app_role_env in ('web', 'worker')
 )
 
 console = logging.StreamHandler()
@@ -38,7 +46,7 @@ root_logger = logging.getLogger('')
 root_logger.setLevel(logging.INFO)
 # Clear any default handlers to avoid duplicates
 root_logger.handlers.clear()
-if not _is_fly_multiworker_web:
+if not _is_fly_stdout_only:
     file_handler = RotatingFileHandler(log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding='utf-8')
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
@@ -108,7 +116,8 @@ def _compute_session_auth_gen(is_master: bool) -> str:
     """Compute a non-reversible HMAC generation fingerprint so rotating passcodes or tapping Force-Logout revokes active cookies."""
     import ops_governance
     if is_master:
-        msg = f'auth_gen:master:{MASTER_PASSCODE}'.encode('utf-8')
+        m_epoch = ops_governance.get_master_session_epoch(allow_blocking=True)
+        msg = f'auth_gen:master:{MASTER_PASSCODE}:{m_epoch}'.encode('utf-8')
     else:
         eff_staff = ops_governance.get_effective_staff_passcode(STAFF_PASSCODE)
         epoch = ops_governance.get_staff_session_epoch()
@@ -119,53 +128,60 @@ def _compute_session_auth_gen(is_master: bool) -> str:
 @app.before_request
 def enforce_session_passcode_generation():
     """Revoke staff/master sessions immediately if passcodes were rotated or if a legacy 90d cookie lacks `auth_gen` in production."""
+    if request.endpoint == 'static' or request.path.startswith('/static/'):
+        return
     if not (session.get('is_staff') or session.get('is_master')):
         return
     tok = session.get('auth_gen')
     is_m = bool(session.get('is_master'))
     if tok:
-        if not hmac.compare_digest(str(tok), _compute_session_auth_gen(is_m)):
+        if not request_guards.safe_compare_digest(tok, _compute_session_auth_gen(is_m)):
             session.clear()
     elif os.environ.get('FLY_APP_NAME'):
         session.clear()
 
 
-def _is_login_rate_limited(ip_addr: str) -> bool:
+def _is_login_rate_limited(ip_addr: str, scope: str = 'staff') -> bool:
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(ip_addr)
     if turbo_store.is_shared_bus_active():
-        return turbo_store.get_rate_limit_count('staff_login', ip_addr, LOGIN_WINDOW_SEC) >= LOGIN_MAX_ATTEMPTS
+        return turbo_store.get_rate_limit_count(f'staff_login:{scope}', norm_ip, LOGIN_WINDOW_SEC) >= LOGIN_MAX_ATTEMPTS
     now_t = time.time()
+    k = (scope, norm_ip)
     with _login_failures_lock:
-        recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
+        recent = [t for t in _login_failures.get(k, []) if now_t - t < LOGIN_WINDOW_SEC]
         if recent:
-            _login_failures[ip_addr] = recent
+            _login_failures[k] = recent
         else:
-            _login_failures.pop(ip_addr, None)
+            _login_failures.pop(k, None)
         return len(recent) >= LOGIN_MAX_ATTEMPTS
 
 
-def _record_login_failure(ip_addr: str) -> None:
+def _record_login_failure(ip_addr: str, scope: str = 'staff') -> None:
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(ip_addr)
     if turbo_store.is_shared_bus_active():
-        turbo_store.record_rate_limit_hit('staff_login', ip_addr, LOGIN_WINDOW_SEC)
+        turbo_store.record_rate_limit_hit(f'staff_login:{scope}', norm_ip, LOGIN_WINDOW_SEC)
         return
     now_t = time.time()
+    k = (scope, norm_ip)
     with _login_failures_lock:
         if len(_login_failures) > 512:
             stale_ips = [
-                k for k, ts_list in _login_failures.items()
+                key for key, ts_list in _login_failures.items()
                 if not ts_list or (now_t - ts_list[-1] >= LOGIN_WINDOW_SEC)
             ]
-            for k in stale_ips:
-                _login_failures.pop(k, None)
-        recent = [t for t in _login_failures.get(ip_addr, []) if now_t - t < LOGIN_WINDOW_SEC]
+            for key in stale_ips:
+                _login_failures.pop(key, None)
+        recent = [t for t in _login_failures.get(k, []) if now_t - t < LOGIN_WINDOW_SEC]
         recent.append(now_t)
-        _login_failures[ip_addr] = recent
+        _login_failures[k] = recent
 
 
-def _clear_login_failures(ip_addr: str) -> None:
+def _clear_login_failures(ip_addr: str, scope: str = 'staff') -> None:
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(ip_addr)
     if turbo_store.is_shared_bus_active():
-        turbo_store.clear_rate_limit('staff_login', ip_addr)
+        turbo_store.clear_rate_limit(f'staff_login:{scope}', norm_ip)
     with _login_failures_lock:
-        _login_failures.pop(ip_addr, None)
+        _login_failures.pop((scope, norm_ip), None)
 
 
 @app.context_processor
@@ -199,11 +215,13 @@ def _secret_header_ok() -> bool:
     if not secret:
         return False
     ip = get_client_ip()
-    if _is_login_rate_limited(ip):
+    if _is_login_rate_limited(ip, scope='master'):
         return False
-    if hmac.compare_digest(secret, ADMIN_API_SECRET):
+    expected_secret = (os.environ.get('ADMIN_API_SECRET') or '').strip() or ADMIN_API_SECRET
+    if request_guards.safe_compare_digest(secret, expected_secret):
+        _clear_login_failures(ip, scope='master')
         return True
-    _record_login_failure(ip)
+    _record_login_failure(ip, scope='master')
     return False
 
 
@@ -263,26 +281,31 @@ request_guards.register_request_guards(app, _render_http_error)
 
 @app.after_request
 def compress_response(response):
-    """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG responses."""
-    is_staff_sess = bool(session.get('is_staff') or session.get('is_master'))
+    """Set cache headers and automatically gzip-compress JSON/HTML/CSS/JS/XML/SVG/CSV/text responses."""
+    is_static_req = (request.endpoint == 'static') or request.path.startswith('/static/')
+    is_staff_sess = False if is_static_req else bool(session.get('is_staff') or session.get('is_master'))
 
     # 0. Baseline security headers (HSTS only when served over HTTPS behind Fly's proxy)
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    if not request.path.startswith('/embed/'):
+    is_embed = request.path.startswith('/embed/')
+    if not is_embed:
         response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
-        response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors 'self'")
-    else:
-        response.headers.setdefault('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors *")
+    response.headers.setdefault('Content-Security-Policy', request_guards.build_csp_header(request.path, is_embed=is_embed))
+    response.headers.setdefault('Content-Security-Policy-Report-Only', request_guards.build_csp_report_only_header(request.path, is_embed=is_embed))
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()')
     if request.is_secure:
         response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+
     # 1. Unified Cache-Control headers (ISSUE-01 / F5.2)
-    if request.path.startswith('/static/') and response.status_code == 200:
-        if request.args.get('v'):
-            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
-        else:
-            response.headers['Cache-Control'] = 'public, max-age=86400'
+    if is_static_req and response.status_code in (200, 304):
+        if 'Cache-Control' not in response.headers:
+            v_param = request.args.get('v') or ''
+            if re.fullmatch(r'[A-Za-z0-9_.-]{1,32}', v_param):
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=86400'
+        return response
     elif request.path in ('/sw.js', '/api/status'):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
@@ -294,7 +317,7 @@ def compress_response(response):
         response.headers['Pragma'] = 'no-cache'
     elif (
         response.content_type and 'text/html' in response.content_type and response.status_code == 200
-        and not request.path.startswith('/embed/')
+        and not is_embed
         and 'no-store' not in (response.headers.get('Cache-Control') or '')
     ):
         if (
@@ -309,38 +332,160 @@ def compress_response(response):
             # Allow browser back/forward cache (bfcache) for instant 0ms back-navigation while revalidating normal loads
             response.headers['Cache-Control'] = 'private, no-cache, must-revalidate, max-age=0'
 
-    # 2. Gzip compression
-    if (
-        response.status_code < 200
-        or response.status_code >= 300
-        or response.direct_passthrough
-        or 'Content-Encoding' in response.headers
-        or 'gzip' not in request.headers.get('Accept-Encoding', '').lower()
-    ):
+    # 2. Vary: Accept-Encoding + Gzip compression on compressible representations
+    if response.status_code < 200 or response.status_code >= 300 or response.direct_passthrough:
         return response
-    ctype = response.content_type or ''
-    if (
+    ctype = (response.content_type or '').lower()
+    is_compressible_mime = (
         'application/json' in ctype
         or 'text/html' in ctype
         or 'text/css' in ctype
         or 'application/javascript' in ctype
+        or 'text/javascript' in ctype
         or 'application/xml' in ctype
         or 'text/xml' in ctype
         or 'image/svg+xml' in ctype
+        or 'text/csv' in ctype
+        or 'text/plain' in ctype
+    )
+    if not is_compressible_mime:
+        return response
+    response.vary.add('Accept-Encoding')
+    if (
+        'Content-Encoding' in response.headers
+        or 'gzip' not in _parse_accept_encoding(request.headers.get('Accept-Encoding', ''))
     ):
-        data = response.get_data()
-        if len(data) > 500:
-            compressed = gzip.compress(data, compresslevel=4)
-            response.set_data(compressed)
-            response.headers['Content-Encoding'] = 'gzip'
-            response.headers['Content-Length'] = len(compressed)
-            prev_vary = response.headers.get('Vary', '')
-            if not prev_vary:
-                response.headers['Vary'] = 'Accept-Encoding'
-            elif 'accept-encoding' not in prev_vary.lower():
-                response.headers['Vary'] = f"{prev_vary}, Accept-Encoding"
+        return response
+    data = response.get_data()
+    if len(data) > 500:
+        compressed = gzip.compress(data, compresslevel=4)
+        response.set_data(compressed)
+        response.headers['Content-Encoding'] = 'gzip'
+        response.headers['Content-Length'] = len(compressed)
 
     return response
+
+
+def _parse_accept_encoding(header_val: str) -> set:
+    """Parse Accept-Encoding into lowercased encoding tokens, excluding q=0 entries (RFC 9110)."""
+    accepted = set()
+    for raw_item in (header_val or '').split(','):
+        item = raw_item.strip()
+        if not item:
+            continue
+        parts = [p.strip() for p in item.split(';')]
+        enc = parts[0].lower()
+        if not enc:
+            continue
+        q_zero = False
+        for param in parts[1:]:
+            if '=' in param:
+                k, v = param.split('=', 1)
+                if k.strip().lower() == 'q':
+                    try:
+                        if float(v.strip()) <= 0.0:
+                            q_zero = True
+                    except ValueError:
+                        pass
+        if not q_zero:
+            accepted.add(enc)
+    return accepted
+
+
+_STATIC_PRECOMPRESS_EXTS = frozenset({'.css', '.js', '.svg', '.json'})
+_STATIC_MIME_FALLBACKS = {
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.json': 'application/json; charset=utf-8',
+    '.webp': 'image/webp',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.woff2': 'font/woff2',
+    '.mp4': 'video/mp4',
+}
+
+
+def serve_static_asset(filename):
+    """Pre-compressed (.br/.gz) + ETag + 304 + strict Cache-Control static asset handler."""
+    abs_path = safe_join(app.static_folder, filename)
+    if not abs_path or not os.path.isfile(abs_path):
+        abort(404)
+    ext = os.path.splitext(abs_path)[1].lower()
+    ae_tokens = _parse_accept_encoding(request.headers.get('Accept-Encoding') or '')
+    chosen_path = abs_path
+    enc = ''
+    if ext in _STATIC_PRECOMPRESS_EXTS:
+        if 'br' in ae_tokens and os.path.isfile(abs_path + '.br'):
+            chosen_path = abs_path + '.br'
+            enc = 'br'
+        elif 'gzip' in ae_tokens and os.path.isfile(abs_path + '.gz'):
+            chosen_path = abs_path + '.gz'
+            enc = 'gzip'
+
+    st = os.stat(chosen_path)
+    etag = f'W/"{st.st_mtime_ns:x}-{st.st_size:x}-{enc or "raw"}"'
+    v_param = request.args.get('v') or ''
+    cc_val = 'public, max-age=31536000, immutable' if re.fullmatch(r'[A-Za-z0-9_.-]{1,32}', v_param) else 'public, max-age=86400'
+    ctype = _STATIC_MIME_FALLBACKS.get(ext) or mimetypes.guess_type(abs_path)[0] or 'application/octet-stream'
+
+    inm = (request.headers.get('If-None-Match') or '').strip()
+    if inm and (inm == etag or inm == '*'):
+        resp304 = Response(b'', status=304, mimetype=ctype)
+        resp304.headers['ETag'] = etag
+        resp304.headers['Cache-Control'] = cc_val
+        resp304.vary.add('Accept-Encoding')
+        resp304.headers['X-Content-Type-Options'] = 'nosniff'
+        return resp304
+
+    with open(chosen_path, 'rb') as f:
+        body = f.read()
+    resp = Response(body, status=200, content_type=ctype)
+    if enc:
+        resp.headers['Content-Encoding'] = enc
+    resp.headers['Content-Length'] = len(body)
+    resp.headers['ETag'] = etag
+    resp.headers['Cache-Control'] = cc_val
+    resp.vary.add('Accept-Encoding')
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
+
+app.view_functions['static'] = serve_static_asset
+
+
+_csp_report_lock = threading.Lock()
+_csp_report_counts = {}
+
+
+@app.route('/api/csp-report', methods=['POST'])
+def receive_csp_report():
+    """Rate-limited, non-blocking CSP Report-Only violation sink (in-memory counters + sampled log only)."""
+    if not turbo_store.check_sliding_rate_limit('csp_report_ip', get_client_ip(), limit=30, window_sec=60):
+        return ('', 204)
+    try:
+        raw = request.get_data(cache=False)[:16384]
+        data = json.loads(raw.decode('utf-8', errors='ignore')) if raw else {}
+        rep = data.get('csp-report') if isinstance(data, dict) else None
+        if not isinstance(rep, dict) and isinstance(data, list) and data:
+            rep = (data[0] or {}).get('body') if isinstance(data[0], dict) else None
+        if isinstance(rep, dict):
+            _clean_log = lambda s, lim: re.sub(r'[\r\n\t\x00-\x1f\x7f]+', ' ', str(s or ''))[:lim]
+            directive = _clean_log(rep.get('violated-directive') or rep.get('effectiveDirective') or 'unknown', 64)
+            blocked = _clean_log(rep.get('blocked-uri') or rep.get('blockedURL') or '', 120)
+            doc_uri = _clean_log(rep.get('document-uri') or rep.get('documentURL') or '', 120)
+            k = (directive, blocked)
+            with _csp_report_lock:
+                if len(_csp_report_counts) > 128 and k not in _csp_report_counts:
+                    _csp_report_counts.clear()
+                cnt = _csp_report_counts.get(k, 0) + 1
+                _csp_report_counts[k] = cnt
+            if cnt <= 3 or (cnt % 50) == 0:
+                logging.info(f"[CSP-Report] directive={directive} blocked={blocked} doc={doc_uri} count={cnt}")
+    except Exception:
+        pass
+    return ('', 204)
 
 @app.before_request
 def redirect_to_custom_domain():
@@ -399,6 +544,37 @@ def _start_web_analytics_flusher():
     return True
 
 
+_web_prewarm_watcher_started = False
+
+
+def _start_web_prewarm_watcher():
+    """Poll shared Redis snapshot publication in APP_ROLE=web and prewarm /, /api/status cleanly."""
+    global _web_prewarm_watcher_started
+    if _web_prewarm_watcher_started:
+        return False
+    _web_prewarm_watcher_started = True
+
+    def _watcher_loop():
+        jitter = 0.2 + (os.getpid() % 5) * 0.3
+        time.sleep(jitter)
+        last_pub_epoch = None
+        while True:
+            try:
+                if turbo_store.is_shared_bus_active():
+                    snap = turbo_store.get_live_snapshot(bypass_l1=False)
+                    pub_ep = snap.get('published_at_epoch') if isinstance(snap, dict) else None
+                    if pub_ep is not None and pub_ep != last_pub_epoch:
+                        last_pub_epoch = pub_ep
+                        sync_latest_data_from_shared_bus()
+                        prewarm_ssr_and_status_caches()
+            except Exception as err:
+                logging.debug(f"Web prewarm watcher tick skipped: {err}")
+            time.sleep(2.5)
+
+    threading.Thread(target=_watcher_loop, name="web-prewarm-watcher", daemon=True).start()
+    return True
+
+
 def _ensure_scheduler_started_async():
     global _scheduler_started, _web_boot_initialized
     if is_web_only_role():
@@ -408,15 +584,28 @@ def _ensure_scheduler_started_async():
                     _web_boot_initialized = True
                     if os.environ.get('DISABLE_SCHEDULER') != '1':
                         _start_web_analytics_flusher()
+                        if not app.testing:
+                            _start_web_prewarm_watcher()
+
                     def _init_web_only():
+                        global _web_boot_initialized
                         try:
                             local_db.init_db()
-                            restore_latest_data_if_empty()
-                            if os.environ.get('DISABLE_SCHEDULER') != '1':
-                                local_db.refresh_forecast_caches_async(days=21)
-                                local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
                         except Exception as e:
-                            logging.warning(f"Web-only lightweight boot warning: {e}")
+                            logging.warning(f"Web-only init_db warning (will retry): {e}")
+                            with _scheduler_lock:
+                                _web_boot_initialized = False
+                            return
+                        try:
+                            restore_latest_data_if_empty()
+                        except Exception as e:
+                            logging.warning(f"Web-only restore warning: {e}")
+                        if os.environ.get('DISABLE_SCHEDULER') != '1':
+                            try:
+                                local_db.refresh_forecast_caches_async(days=21)
+                            except Exception as e:
+                                logging.warning(f"Web-only forecast cache warm warning: {e}")
+
                     threading.Thread(target=_init_web_only, daemon=True).start()
         return
     if os.environ.get('DISABLE_SCHEDULER') == '1' or _scheduler_started:
@@ -427,223 +616,20 @@ def _ensure_scheduler_started_async():
         _scheduler_started = True
 
     def _boot():
-        try:
-            from apscheduler.executors.pool import ThreadPoolExecutor as APSThreadPoolExecutor
-            local_db.init_db()
-            restore_latest_data_if_empty()
-            local_db.refresh_forecast_caches_async(days=21)
-            local_db.trigger_forecast_backfill_async(days=21, min_existing=80, max_rows=4500)
-
-            scheduler = BackgroundScheduler(
-                timezone="UTC",
-                executors={
-                    'default': APSThreadPoolExecutor(8),
-                    'sns_ai': APSThreadPoolExecutor(4),
-                },
-                job_defaults={
-                    'misfire_grace_time': 600,
-                    'coalesce': True,
-                    'max_instances': 1,
-                },
-            )
-            scheduler.add_job(func=update_job, trigger="interval", minutes=1)
-            def _flush_analytics():
-                try:
-                    import analytics
-                    analytics.flush()
-                except Exception as err:
-                    logging.error(f"analytics flush failed: {err}")
-            atexit.register(_flush_analytics)
-            scheduler.add_job(func=_flush_analytics, trigger="interval", minutes=10)
-            scheduler.add_job(func=lambda: local_db.sync_from_google_sheets(days=2), trigger="interval", hours=2)
-            # Human-paced anti-spam schedule with idempotent retry windows within each target hour:
-            # First run posts with natural jitter; if a transient API/network hiccup occurs, the follow-up tick
-            # within the same hour automatically retries (and exits in <0.1ms once `job_state.is_done` is True).
-            import bonus_alert, data_audit, events, instagram_poster, note_poster, ops_governance, pdca_engine, sns_editorial, threads_poster, tiktok_poster, tips_poster
-            from apscheduler.triggers.combining import OrTrigger
-            from apscheduler.triggers.cron import CronTrigger
-            def _visible_live_stores():
-                with data_lock:
-                    cur_copy, cur_seed = list(latest_data.get('full_data') or []), bool(latest_data.get('is_seed'))
-                return ops_governance.filter_visible_stores(cur_copy), cur_seed
-            def _x_data_law_wrap(slot_lbl="19:15"):
-                if not sns_editorial.should_fire_scheduled_slot_now("x_data_law", slot_lbl):
-                    return
-                run_scheduled_x_data_law_post(slot_lbl)
-            def _x_search_wrap(slot_lbl="22:00"):
-                if not sns_editorial.should_fire_scheduled_slot_now("x_search", slot_lbl):
-                    return
-                run_scheduled_x_search_catcher_post(slot_lbl)
-            scheduler.add_job(func=_x_data_law_wrap, trigger="cron", day_of_week="mon,tue,wed,thu,fri", hour=10, minute="17,21,25,29,33,38,42", jitter=60, args=["19:15"], executor="sns_ai")
-            scheduler.add_job(func=_x_search_wrap, trigger="cron", day_of_week="fri,sat", hour=13, minute="2,6,10,14,18,22,27", jitter=60, args=["22:00"], executor="sns_ai")
-            def _note_check_job():
-                try:
-                    note_poster.check_and_post_new_note()
-                except Exception as err:
-                    logging.error(f"Scheduled note promotion check failed: {err}")
-            # Check note RSS during calm midday (12:20 JST) and mid-afternoon (15:20 JST) windows
-            scheduler.add_job(func=_note_check_job, trigger="cron", hour="3,6", minute=20, jitter=240, executor="sns_ai")
-            def _threads_conv_job():
-                try:
-                    if not sns_editorial.should_fire_scheduled_slot_now("threads_conv", "21:15"):
-                        return
-                    cur_stores, _ = _visible_live_stores()
-                    threads_poster.execute_scheduled_conversational_threads_post(cur_stores, slot_label="21:15")
-                except Exception as err:
-                    logging.error(f"Scheduled conversational Threads post failed: {err}")
-            scheduler.add_job(func=_threads_conv_job, trigger="cron", day_of_week="tue,thu,fri,sun", hour=12, minute="18,22,26,30,34,39,43", jitter=60, executor="sns_ai")
-            def _ig_reel_scheduled_job(slot_lbl="20:00"):
-                try:
-                    if not sns_editorial.should_fire_scheduled_slot_now("ig_reel", slot_lbl):
-                        return
-                    cur_stores, is_seed = _visible_live_stores()
-                    if instagram_poster.is_reel_auto_schedule_enabled(allow_blocking=False):
-                        import moshimo_reel_queue
-                        moshimo_reel_queue.dispatch_scheduled_ig_reel(cur_stores, slot_label=slot_lbl, is_seed=is_seed)
-                    if slot_lbl == "20:00":
-                        import youtube_poster
-                        youtube_poster.dispatch_scheduled_youtube_short(stores=cur_stores, slot_label=slot_lbl, is_seed=is_seed)
-                except Exception as err:
-                    logging.error(f"Scheduled short-video post failed: {err}")
-            scheduler.add_job(func=_ig_reel_scheduled_job, trigger="cron", hour=11, minute="4,10,16,22,28,34,40", jitter=50, args=["20:00"], executor="sns_ai")
-            scheduler.add_job(func=_ig_reel_scheduled_job, trigger=OrTrigger([CronTrigger(hour=13, minute="54", jitter=45, timezone="UTC"), CronTrigger(hour=14, minute="0,6,12,18,24,30", jitter=50, timezone="UTC")]), args=["22:50"], executor="sns_ai")
-            def _tiktok_inbox_job(slot_lbl="20:35"):
-                try:
-                    if not tiktok_poster.is_tiktok_auto_schedule_enabled(allow_blocking=False) or not tiktok_poster.is_tiktok_token_configured() or not sns_editorial.should_fire_scheduled_slot_now("tiktok", slot_lbl):
-                        return
-                    cur_stores, is_seed = _visible_live_stores()
-                    if cur_stores and not is_seed:
-                        tiktok_poster.execute_scheduled_tiktok_inbox_post(cur_stores, slot_label=slot_lbl, force=False)
-                except Exception as err:
-                    logging.error(f"Scheduled TikTok Inbox post failed: {err}")
-            scheduler.add_job(func=_tiktok_inbox_job, trigger="cron", day_of_week="wed,fri,sat", hour=11, minute="39,45,51,57", jitter=50, args=["20:35"], executor="sns_ai")
-            def _crawl_events_job():
-                try:
-                    evs = events.fetch_all_events(force_refresh=True)
-                    with data_lock:
-                        cur_stores = list(latest_data.get('full_data') or [])
-                    data_audit.run_data_audit(live_stores=cur_stores, all_events=evs, send_alerts=True)
-                except Exception as err:
-                    logging.error(f"Scheduled events crawl failed: {err}")
-            scheduler.add_job(func=_crawl_events_job, trigger="cron", hour="1,8,20", minute=0)
-            def _scheduled_articles_release_job():
-                try:
-                    scheduled_articles.check_and_announce_newly_published()
-                except Exception as err:
-                    logging.error(f"Scheduled articles release check failed: {err}")
-            scheduler.add_job(func=_scheduled_articles_release_job, trigger="interval", minutes=15, executor="sns_ai")
-            def _x_weekly_sun_fallback_job():
-                try:
-                    if sns_editorial.should_fire_scheduled_slot_now("x_weekly", "19:00"):
-                        run_scheduled_weekly_x_post(force=False)
-                except Exception as err:
-                    logging.error(f"Scheduled weekly X post failed: {err}")
-            scheduler.add_job(func=_x_weekly_sun_fallback_job, trigger="cron", day_of_week="sun", hour=10, minute="2,7,12,18,24", jitter=75, executor="sns_ai")
-            import sns_insights_loop
-            scheduler.add_job(func=sns_insights_loop.run_scheduled_sync_safe, trigger="cron", hour="8,18", minute=25, jitter=90, executor="sns_ai")
-            def _pdca_autonomous_job():
-                try:
-                    cur_stores, _ = _visible_live_stores()
-                    pdca_engine.run_pdca_cycle(
-                        live_stores=cur_stores,
-                        days=14,
-                        apply_actions=True,
-                        use_ai=False,
-                        use_ai_for_replenish=True,
-                        record_log=True,
-                    )
-                except Exception as err:
-                    logging.error(f"Autonomous PDCA cycle failed: {err}")
-            # Run daily before evening SNS rush (17:35 JST = 08:35 UTC) and after late-night close (03:35 JST = 18:35 UTC)
-            scheduler.add_job(func=_pdca_autonomous_job, trigger="cron", hour="8,18", minute=35, jitter=120, executor="sns_ai")
-            def _sheets_retention_job():
-                try:
-                    import archive_data
-                    archive_data.run_scheduled_retention_job()
-                except Exception as err:
-                    logging.error(f"Scheduled Google Sheets retention job failed: {err}")
-            # Run daily during quiet early-morning off-hours (06:20 JST = 21:20 UTC) to prevent 10M-cell ceiling
-            scheduler.add_job(func=_sheets_retention_job, trigger="cron", hour=21, minute=20, jitter=120)
-            def _daily_token_and_db_maintenance_job():
-                try:
-                    import threads_poster
-                    import instagram_poster
-                    import tiktok_poster
-                    if hasattr(threads_poster, 'maybe_refresh_threads_token'):
-                        threads_poster.maybe_refresh_threads_token()
-                    if hasattr(instagram_poster, 'maybe_refresh_ig_token'):
-                        instagram_poster.maybe_refresh_ig_token()
-                    if hasattr(tiktok_poster, 'refresh_tiktok_token_if_needed'):
-                        tiktok_poster.refresh_tiktok_token_if_needed(force=False)
-                except Exception as err:
-                    logging.warning(f"Daily Meta/TikTok token auto-refresh check warning: {err}")
-                try:
-                    import arena_calendar
-                    arena_calendar.get_arena_schedule_events(allow_blocking=True, force_refresh=True)
-                except Exception as err:
-                    logging.warning(f"Daily arena schedule refresh warning: {err}")
-                try:
-                    local_db.rollup_store_hourly_stats(days_back=4)
-                    local_db.prune_old_logs(monitor_days=90, vote_days=14)
-                except Exception as err:
-                    logging.warning(f"Daily SQLite rollup/prune warning: {err}")
-            # Run daily at 06:35 JST (21:35 UTC) so Meta/TikTok tokens renew even on quiet weekdays and SQLite stays lean
-            scheduler.add_job(func=_daily_token_and_db_maintenance_job, trigger="cron", hour=21, minute=35, jitter=120, executor="sns_ai")
-            scheduler.start()
-            # Priority #1 at t=0s: scrape live headcounts first without competing with SQLite backfill or Sheets reads
-            trigger_background_fetch_if_needed()
-
-            def _staggered_background_warmup():
-                try:
-                    import events as _ev_boot
-                    has_disk_events = os.path.exists(_ev_boot.CACHE_FILE)
-                    if has_disk_events:
-                        _ev_boot.fetch_all_events(force_refresh=False, allow_blocking=False)
-
-                    # Stage 1 (t+5s): Sync 10 days of SQLite crowd history (sufficient for 7d reports & store analytics)
-                    time.sleep(5)
-                    local_db.sync_from_google_sheets(days=10, on_recent_synced=refresh_momentum_from_db)
-
-                    # Stage 2: Restore crowd votes & warm Job State / Analytics caches sequentially (zero lock contention)
-                    time.sleep(2)
-                    local_db.restore_votes_from_sheets(hours=24)
-                    try:
-                        import job_state as _js
-                        import analytics as _an
-                        import sns_editorial as _se
-                        import affiliate_manager as _afm
-                        import archive_data as _ard
-                        _js.all_keys()
-                        _afm._load_overrides(allow_blocking=True)
-                        _ard.get_retention_status(allow_blocking=True)
-                        _an._refresh_sheet_rows_async()
-                        _se.fetch_live_weather_context(allow_blocking=True)
-                    except Exception:
-                        pass
-
-                    # Stage 3: Crawl 20+ external event pages & seed PDCA directives after user traffic has settled
-                    time.sleep(30 if has_disk_events else 12)
-                    _crawl_events_job()
-                    import pdca_engine as _pdca_boot
-                    if not _pdca_boot.get_active_directives(allow_blocking=True):
-                        with data_lock:
-                            boot_stores = list(latest_data.get('full_data') or [])
-                        _pdca_boot.run_pdca_cycle(live_stores=boot_stores, days=14, apply_actions=True, use_ai=False, record_log=True)
-                except Exception as err:
-                    logging.error(f"Staggered background warmup error: {err}")
-
-            threading.Thread(target=_staggered_background_warmup, daemon=True).start()
-            logging.info("APScheduler & staggered background warmup started successfully")
-        except Exception as e:
-            logging.error(f"Scheduler boot error: {e}")
+        import scheduler_jobs
+        scheduler_jobs.boot_legacy_scheduler(sys.modules[__name__])
 
     threading.Thread(target=_boot, daemon=True).start()
+
 
 @app.before_request
 def start_scheduler():
     _ensure_scheduler_started_async()
     if is_web_only_role() and not request.path.startswith('/static/') and request.path != '/api/health':
-        sync_latest_data_from_shared_bus()
+        try:
+            sync_latest_data_from_shared_bus()
+        except Exception as e:
+            logging.warning(f"Web-only bus sync warning: {e}")
 
 # Global storage for analysis cache
 analysis_cache = {
@@ -676,63 +662,6 @@ def clear_analysis_and_report_caches():
 local_db.register_sync_complete_callback(clear_analysis_and_report_caches)
 
 
-@app.route('/api/analysis/<path:store_name>')
-def get_store_analysis(store_name):
-    """Returns aggregated hourly and weekly data for a specific store."""
-    clean_name = (store_name or '').strip()
-    if not clean_name or len(clean_name) > 80 or any(ord(ch) < 32 for ch in clean_name):
-        return jsonify({'error': 'Store not found'}), 404
-
-    import ops_governance
-    import store_master
-    internal_name = store_master.to_internal_store_name(clean_name)
-    if ops_governance.is_store_hidden(internal_name):
-        return jsonify({'error': 'Store not found'}), 404
-    master_map = store_master.load()
-    if internal_name not in master_map:
-        with data_lock:
-            live_names = {s.get('name') for s in (latest_data.get('full_data') or [])}
-        cached_proc = (analysis_cache.get('processed_per_store') or {}).get(internal_name)
-        if internal_name not in live_names and cached_proc is None:
-            return jsonify({'error': 'Store not found'}), 404
-    clean_name = internal_name
-
-
-    import store_analysis
-    raw_entry = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
-    proc_entry = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
-    raw_ts = raw_entry.get('last_fetched') if isinstance(raw_entry, dict) else None
-    def _safe_analysis_call():
-        p, code = store_analysis.compute_store_analysis_payload(
-            clean_name,
-            analysis_cache=analysis_cache,
-            cache_duration=ANALYSIS_CACHE_DURATION,
-        )
-        if isinstance(p, dict) and 'store_name' in p:
-            p = dict(p)
-            p['store_name'] = store_master.seo_name(internal_name)
-        return p, code
-
-    if proc_entry is not None and raw_ts is not None:
-        return _cached_json_response(
-            ('analysis', local_db.DB_PATH, clean_name, raw_ts),
-            _safe_analysis_call,
-            ttl_sec=60.0,
-        )
-    payload, status_code = _safe_analysis_call()
-    if status_code == 200:
-        new_proc = (analysis_cache.get('processed_per_store') or {}).get(clean_name)
-        new_raw = (analysis_cache.get('raw_data_by_store') or {}).get(clean_name)
-        new_ts = new_raw.get('last_fetched') if isinstance(new_raw, dict) else None
-        if new_proc is not None and new_ts is not None:
-            return _cached_json_response(
-                ('analysis', local_db.DB_PATH, clean_name, new_ts),
-                lambda: (payload, 200),
-                ttl_sec=60.0,
-            )
-    return jsonify(payload), status_code
-
-
 # Global storage for the latest data (thread-safe)
 data_lock = threading.Lock()
 latest_data = {
@@ -741,12 +670,13 @@ latest_data = {
     'full_data': []
 }
 _shared_source_health = {}
+_last_bus_snap_token = None
 LATEST_STATUS_SNAPSHOT_FILE = os.environ.get('LATEST_STATUS_SNAPSHOT_FILE') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'latest_status_cache.json')
 
 
 def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
     """Pull the latest 53-store snapshot published by `worker.py` via Redis / shared bus in <0.5ms."""
-    global _shared_source_health
+    global _shared_source_health, _last_bus_snap_token
     if not turbo_store.is_shared_bus_active():
         return False
     if not force_l1 and request_guards.should_skip_duplicate_bus_sync(bool(latest_data.get('full_data'))):
@@ -755,6 +685,11 @@ def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
     if not snap or not isinstance(snap.get('full_data'), list) or not snap['full_data']:
         return False
     import ops_governance
+    gov_sig = (tuple(sorted(ops_governance.get_hidden_brands())), tuple(sorted(ops_governance.get_hidden_stores())))
+    snap_token = (snap.get('published_at_epoch'), snap.get('last_updated'), bool(snap.get('is_seed')), gov_sig)
+    if not force_l1 and snap_token == _last_bus_snap_token and latest_data.get('full_data'):
+        request_guards.mark_bus_synced_for_request()
+        return True
     snap_stores = ops_governance.filter_visible_stores(snap['full_data'])
     snap_updated = snap.get('last_updated')
     snap_seed = bool(snap.get('is_seed'))
@@ -772,8 +707,9 @@ def sync_latest_data_from_shared_bus(force_l1: bool = False) -> bool:
             latest_data['last_updated'] = snap_updated
             latest_data['is_seed'] = snap_seed
             changed = True
+    _last_bus_snap_token = snap_token
     if changed:
-        clear_fast_http_caches(clear_editorial=False)
+        invalidate_live_caches(clear_editorial=False)
     request_guards.mark_bus_synced_for_request()
     return True
 
@@ -786,7 +722,7 @@ def save_latest_status_snapshot():
                 return
             payload = {
                 'last_updated': latest_data.get('last_updated'),
-                'full_data': latest_data.get('full_data', [])
+                'full_data': [dict(s) for s in (latest_data.get('full_data') or [])]
             }
         try:
             import health as _hlth
@@ -799,7 +735,7 @@ def save_latest_status_snapshot():
         except Exception:
             pass
         os.makedirs(os.path.dirname(LATEST_STATUS_SNAPSHOT_FILE), exist_ok=True)
-        tmp_path = LATEST_STATUS_SNAPSHOT_FILE + '.tmp'
+        tmp_path = f"{LATEST_STATUS_SNAPSHOT_FILE}.{os.getpid()}.{threading.get_ident()}.tmp"
         with open(tmp_path, 'w', encoding='utf-8') as f:
             import json
             json.dump(payload, f, ensure_ascii=False)
@@ -925,320 +861,58 @@ def restore_latest_data_if_empty():
     return False
 
 
-_BRAND_CLS_MAP = {
-    'OLG': 'brand-olg',
-    'オリエンタルラウンジ': 'brand-olg',
-    'ag': 'brand-ag',
-    'JIS': 'brand-jis',
-    'ASOBIBAR': 'brand-asobibar',
-    'XIX': 'brand-xix',
-    'ALFA': 'brand-alfa',
-    'ヤタコイ': 'brand-yatakoi',
-    'YATAKOI': 'brand-yatakoi',
-    'CLOVERS': 'brand-clovers',
-}
-
-_ssr_payload_cache_lock = threading.Lock()
-_ssr_payload_cache = {'key': None, 'payload': None}
-_status_json_cache_lock = threading.Lock()
-_status_json_cache = {'key': None, 'raw': None, 'gzip': None, 'etag': None}
-_api_json_cache_lock = threading.Lock()
-_api_json_cache = OrderedDict()
-_page_html_cache_lock = threading.Lock()
-_page_html_cache = OrderedDict()
-_editorial_html_cache = OrderedDict()
-_PAGE_HTML_CACHE_MAX = 128
-_EDITORIAL_HTML_CACHE_MAX = 64
-_ogp_bytes_cache_lock = threading.Lock()
-_ogp_bytes_cache = OrderedDict()
-_OGP_BYTES_CACHE_MAX = 24
-_sns_cache_lock = threading.Lock()
-_staff_editorial_preview_cache = {'ts': 0.0, 'sig': None, 'data': None}
-_aux_doc_cache_lock = threading.Lock()
-_sitemap_xml_cache = {'key': None, 'xml': None}
-_llms_txt_cache = {'key': None, 'short': None, 'full': None, 'facts': None}
-_CACHE_QUERY_ALLOWLIST = ('s', 'area', 'slot', 'channel', 'switch', 'days', 'format', 'share')
-
-
-def _normalize_cache_query_args() -> tuple:
-    if not request.args:
-        return ()
-    out = []
-    for k in _CACHE_QUERY_ALLOWLIST:
-        if k not in request.args:
-            continue
-        raw_v = (request.args.get(k) or '').strip()
-        if k == 's':
-            if re.fullmatch(r'\d{8}_\d{4}', raw_v):
-                norm_v = raw_v
-            else:
-                import analytics
-                norm_v = analytics.normalize_inflow_source(raw_v)
-            if norm_v:
-                out.append(('s', norm_v))
-            continue
-        out.append((k, raw_v[:64]))
-    return tuple(out)
+from cache_core import (
+    _CACHE_QUERY_ALLOWLIST,
+    _EDITORIAL_HTML_CACHE_MAX,
+    _OGP_BYTES_CACHE_MAX,
+    _PAGE_HTML_CACHE_MAX,
+    _api_json_cache,
+    _api_json_cache_lock,
+    _aux_doc_cache_lock,
+    _build_precompressed_response,
+    _cached_json_response,
+    _editorial_html_cache,
+    _get_cached_events_nonblocking,
+    _get_cached_html_or_render,
+    _gov_sig,
+    _is_static_editorial_route,
+    _live_data_signature,
+    _llms_txt_cache,
+    _normalize_cache_query_args,
+    _ogp_bytes_cache,
+    _ogp_bytes_cache_lock,
+    _page_html_cache,
+    _page_html_cache_lock,
+    _runtime_env_probe,
+    _sitemap_xml_cache,
+    _sns_cache_lock,
+    _ssr_inflight,
+    _ssr_payload_cache,
+    _ssr_payload_cache_lock,
+    _staff_editorial_preview_cache,
+    _status_inflight,
+    _status_json_cache,
+    _status_json_cache_lock,
+    clear_fast_http_caches,
+    get_live_gen,
+    invalidate_live_caches,
+    is_fast_cache_tokens_enabled,
+)
+from ssr_payload import (
+    BRAND_CLS_MAP as _BRAND_CLS_MAP,
+    CLIENT_STATUS_DROP_KEYS as _CLIENT_STATUS_DROP_KEYS,
+    attach_store_benchmarks as _attach_store_benchmarks,
+    build_deferred_card_pool as _build_deferred_card_pool,
+    build_top_provenance_meta as _build_top_provenance_meta,
+    client_status_payload as _client_status_payload,
+    enrich_for_ssr as _ssr_enrich_impl,
+    enrich_stores_for_status as _enrich_stores_for_status,
+    finalize_enriched_ranking as _finalize_enriched_ranking,
+)
 
 
-def clear_fast_http_caches(clear_editorial: bool = True):
-    """Clear short-lived SSR/HTML/status caches when underlying data mutates."""
-    with _ssr_payload_cache_lock:
-        _ssr_payload_cache['key'] = None
-        _ssr_payload_cache['payload'] = None
-    with _status_json_cache_lock:
-        _status_json_cache['key'] = None
-        _status_json_cache['raw'] = None
-        _status_json_cache['gzip'] = None
-        _status_json_cache['etag'] = None
-    with _api_json_cache_lock:
-        _api_json_cache.clear()
-    with _page_html_cache_lock:
-        _page_html_cache.clear()
-        if clear_editorial:
-            _editorial_html_cache.clear()
-    with _ogp_bytes_cache_lock:
-        _ogp_bytes_cache.clear()
-    with _aux_doc_cache_lock:
-        _llms_txt_cache['key'] = None
-        _llms_txt_cache['short'] = None
-        _llms_txt_cache['full'] = None
-        _llms_txt_cache['facts'] = None
-    if clear_editorial:
-        try:
-            from routes import portal_bp as _pb_mod
-            _pb_mod.clear_monthly_csv_cache()
-        except Exception:
-            pass
-        if clear_editorial:
-            _sitemap_xml_cache['key'] = None
-            _sitemap_xml_cache['xml'] = None
-    if clear_editorial:
-        with _sns_cache_lock:
-            _staff_editorial_preview_cache['ts'] = 0.0
-            _staff_editorial_preview_cache['sig'] = None
-            _staff_editorial_preview_cache['data'] = None
-            _sns_kit_ctx_cache['ctx'] = None
-            _sns_kit_ctx_cache['key'] = None
-            _sns_kit_ctx_cache['ts'] = 0.0
-            _sns_slide_bytes_cache.clear()
-            _sns_zip_bytes_cache['key'] = None
-            _sns_zip_bytes_cache['ts'] = 0.0
-            _sns_zip_bytes_cache['bytes'] = None
-
-
-def _build_precompressed_response(raw_bytes: bytes, gz_bytes: bytes, content_type: str, status_code: int = 200):
-    wants_gzip = (gz_bytes is not None) and ('gzip' in request.headers.get('Accept-Encoding', '').lower())
-    if wants_gzip:
-        resp = Response(gz_bytes, status=status_code, content_type=content_type)
-        resp.headers['Content-Encoding'] = 'gzip'
-        resp.headers['Content-Length'] = len(gz_bytes)
-        resp.headers['Vary'] = 'Accept-Encoding'
-        return resp
-    return Response(raw_bytes, status=status_code, content_type=content_type)
-
-
-def _cached_json_response(cache_key, build_dict_fn, ttl_sec=30.0):
-    now_mono = time.monotonic()
-    with _api_json_cache_lock:
-        hit = _api_json_cache.get(cache_key)
-        if hit is not None and (now_mono - hit[0] < ttl_sec):
-            _api_json_cache.move_to_end(cache_key)
-            return _build_precompressed_response(hit[1], hit[2], 'application/json', hit[3])
-    payload, status_code = build_dict_fn()
-    raw_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-    gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if (status_code == 200 and len(raw_bytes) > 500) else None
-    if status_code == 200:
-        with _api_json_cache_lock:
-            _api_json_cache[cache_key] = (now_mono, raw_bytes, gz_bytes, status_code)
-            _api_json_cache.move_to_end(cache_key)
-            while len(_api_json_cache) > 96:
-                _api_json_cache.popitem(last=False)
-    return _build_precompressed_response(raw_bytes, gz_bytes, 'application/json', status_code)
-
-
-def _live_data_signature(stores, last_updated=None, is_seed=False):
-    return (
-        last_updated,
-        bool(is_seed),
-        tuple(
-            (
-                s.get('name'),
-                int(s.get('women') or 0),
-                int(s.get('men') or 0),
-                int(s.get('women_diff') or 0),
-                int(s.get('men_diff') or 0),
-                int((s.get('votes') or {}).get('smooth') or 0),
-                int((s.get('votes') or {}).get('waiting') or 0),
-                int((s.get('votes') or {}).get('lively') or 0),
-                int((s.get('pos_telemetry') or {}).get('waiting_groups') or 0),
-                int((s.get('pos_telemetry') or {}).get('matched_groups') or 0),
-            )
-            for s in (stores or [])
-        ),
-    )
-
-
-def _get_cached_events_nonblocking():
-    """Return events from memory or disk cache without spawning network threads."""
-    try:
-        import events as _ev
-        mem_evs = _ev._events_memory_cache.get('events')
-        if mem_evs:
-            return mem_evs, _ev._events_memory_cache.get('updated_at')
-        if os.path.exists(_ev.CACHE_FILE):
-            with open(_ev.CACHE_FILE, 'r', encoding='utf-8') as f:
-                disk_data = json.load(f)
-            if disk_data.get('events'):
-                disk_data['events'] = _ev._ensure_regional_events(disk_data['events'])
-                _ev._events_memory_cache = disk_data
-                return disk_data['events'], disk_data.get('updated_at')
-    except Exception:
-        pass
-    return [], None
-
-
-def _runtime_env_probe():
-    """Lightweight microsecond probe so business-hour transitions or test mocks immediately invalidate HTML/SSR caches."""
-    sh_sig = None
-    ev_sig = None
-    db_sig = id(getattr(local_db, 'get_store_7day_analytics', None))
-    wr_mod = sys.modules.get('weekly_report')
-    wr_sig = id(getattr(wr_mod, 'generate_weekly_report', None)) if wr_mod else None
-    try:
-        import store_hours as _sh
-        hp = _sh.get_business_hours_status('OLG 新宿', total_guests=0)
-        sh_sig = (id(_sh.get_business_hours_status), hp.get('is_open_now'), hp.get('today_hours_label'))
-    except Exception:
-        pass
-    try:
-        import events as _ev
-        ev_sig = (id(_ev.fetch_all_events), id(_ev.get_events_for_store))
-    except Exception:
-        pass
-    gov_sig = None
-    try:
-        import ops_governance as _og
-        gov_sig = (tuple(sorted(_og.get_hidden_brands())), tuple(sorted(_og.get_hidden_stores())))
-    except Exception:
-        pass
-    return (sh_sig, ev_sig, db_sig, wr_sig, gov_sig)
-
-
-def _is_static_editorial_route(path: str) -> bool:
-    return path == '/guide' or path.startswith('/guide/') or path in ('/grooming', '/privacy', '/about', '/columns')
-
-
-def _get_cached_html_or_render(cache_extra_key, render_fn, ttl_sec=660.0):
-    """Fast thread-safe memoizer for rendered HTML strings keyed on session auth + live data signature."""
-    is_editorial = _is_static_editorial_route(request.path)
-    pub_slugs = tuple(a.get('slug') for a in scheduled_articles.get_published_articles())
-    norm_q = _normalize_cache_query_args()
-    is_staff = bool(session.get('is_staff'))
-    is_master = bool(session.get('is_master'))
-
-    if is_editorial:
-        eff_ttl = max(ttl_sec, 300.0)
-        full_key = (
-            request.path,
-            norm_q,
-            is_staff,
-            is_master,
-            pub_slugs,
-            _runtime_env_probe(),
-            cache_extra_key,
-        )
-        target_cache = _editorial_html_cache
-        max_entries = _EDITORIAL_HTML_CACHE_MAX
-    else:
-        eff_ttl = ttl_sec
-        now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-        bucket_15m = now_jst.strftime('%Y%m%d%H%M') if request.path == '/' else f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 15) * 15:02d}"
-        with data_lock:
-            cur_stores = latest_data.get('full_data') or []
-            last_upd = latest_data.get('last_updated')
-            is_seed = bool(latest_data.get('is_seed'))
-            live_sig = _live_data_signature(cur_stores, last_upd, is_seed)
-        _, ev_upd = _get_cached_events_nonblocking()
-        full_key = (
-            request.path,
-            norm_q,
-            is_staff,
-            is_master,
-            local_db.DB_PATH,
-            bucket_15m,
-            pub_slugs,
-            ev_upd,
-            _runtime_env_probe(),
-            live_sig,
-            cache_extra_key,
-        )
-        target_cache = _page_html_cache
-        max_entries = _PAGE_HTML_CACHE_MAX
-
-    now_mono = time.monotonic()
-    with _page_html_cache_lock:
-        hit = target_cache.get(full_key)
-        if hit is not None and (now_mono - hit[0] < eff_ttl):
-            target_cache.move_to_end(full_key)
-            return _build_precompressed_response(hit[1], hit[2], 'text/html; charset=utf-8')
-    rendered = render_fn()
-    if isinstance(rendered, str):
-        raw_bytes = rendered.encode('utf-8')
-        gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if len(raw_bytes) > 500 else None
-        with _page_html_cache_lock:
-            target_cache[full_key] = (now_mono, raw_bytes, gz_bytes)
-            target_cache.move_to_end(full_key)
-            while len(target_cache) > max_entries:
-                target_cache.popitem(last=False)
-        return _build_precompressed_response(raw_bytes, gz_bytes, 'text/html; charset=utf-8')
-    return rendered
-
-
-def _attach_store_benchmarks(item: dict, sname: str, w: int, m: int, benchmarks: dict) -> None:
-    """Attach usual same-weekday/hour comparison and core-time / post-last-train retention fields."""
-    bm = benchmarks.get(sname) if benchmarks else None
-    is_korea = (item.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
-    # No fabricated fallbacks: unmeasured core-time / midnight retention stay None (never '20-22時' / 58 / 82 / 60)
-    usual_w = bm.get('usual_women') if bm else None
-    usual_m = bm.get('usual_men') if bm else None
-    slot_label = (bm.get('usual_slot_label') if bm else None) or '普段同時間帯'
-    has_core = bool(bm and bm.get('has_measured_core'))
-    has_mid = bool(bm and bm.get('has_measured_midnight'))
-    core_short = bm.get('core_time_short') if has_core else None
-    core_wpct = bm.get('core_time_wpct') if has_core else None
-    mid_pct = bm.get('midnight_retention_pct') if has_mid else None
-    mid_label = bm.get('midnight_label_short') if (has_mid and mid_pct is not None) else None
-
-    tot = w + m
-    if tot > 0 and usual_w is not None:
-        w_diff_usual = int(round(w - usual_w))
-    else:
-        w_diff_usual = None
-    if tot > 0 and usual_m is not None:
-        m_diff_usual = int(round(m - usual_m))
-    else:
-        m_diff_usual = None
-
-    item['usual_women'] = usual_w
-    item['usual_men'] = usual_m
-    item['usual_w_diff'] = w_diff_usual
-    item['usual_m_diff'] = m_diff_usual
-    item['usual_slot_label'] = slot_label
-    item['core_time_short'] = None if is_korea else core_short
-    item['core_time_wpct'] = None if is_korea else core_wpct
-    item['midnight_retention_pct'] = None if is_korea else mid_pct
-    item['midnight_label_short'] = None if is_korea else mid_label
-    item['has_measured_core'] = False if (is_korea or not bm) else bool(bm.get('has_measured_core'))
-    item['has_measured_midnight'] = False if (is_korea or not bm) else bool(bm.get('has_measured_midnight'))
-
-
-def _enrich_for_ssr(stores):
-    """Attach display fields (brand_code, brand_cls, display_title, area_label, ladies_pct, men_pct, event badge)
-    for instant server-side HTML card rendering."""
-    import store_master
-    import store_hours
-    master = store_master.load()
+def _enrich_for_ssr(stores, is_seed: bool = False):
+    """Attach display fields for instant server-side HTML card rendering."""
     try:
         benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
     except Exception:
@@ -1251,115 +925,27 @@ def _enrich_for_ssr(stores):
             ev_mod = _ev_m
         except Exception:
             ev_mod = None
-
-    # Count duplicate display_names so same-city stores (e.g. 新宿) get brand prefix
-    disp_counts = defaultdict(int)
-    temp = []
-    for s in stores:
-        sname = (s.get('name') or '').strip()
-        info = master.get(sname, {})
-        if info:
-            brand = _jinja_brand_ja(info.get('brand') or '')
-            disp = info.get('display_name') or sname
-        else:
-            if re.match(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)(?:\s+|(?=[^a-zA-Z0-9])|$)', sname, flags=re.IGNORECASE):
-                brand = 'ag'
-                disp = re.sub(r'^(?:OLG\s+ag|ORIENTAL\s+ag|ag)\s*', '', sname, flags=re.IGNORECASE).strip() or 'ag'
-            elif re.match(r'^(?:OLG|ORIENTAL)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() in ('OLG', 'ORIENTAL'):
-                brand = 'オリエンタルラウンジ'
-                disp = re.sub(r'^(?:OLG|ORIENTAL)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'オリエンタルラウンジ'
-            elif re.match(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', sname, flags=re.IGNORECASE) or str(s.get('source') or '').upper() == 'YATAKOI':
-                brand = 'ヤタコイ'
-                disp = re.sub(r'^(?:ヤタコイ|YATAKOI)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or 'ヤタコイ'
-            else:
-                raw_prefix = re.split(r'\s+', sname)[0] if sname else ''
-                brand = _jinja_brand_ja(str(s.get('source') or raw_prefix))
-                disp = re.sub(r'^(?:JIS|ASOBIBAR|XIX|ALFA|CLOVERS)(?:\s+|$)', '', sname, flags=re.IGNORECASE).strip() or sname
-        area = info.get('area_label') or ''
-        disp_counts[disp] += 1
-        temp.append((s, brand, disp, area))
-
-    enriched = []
-    dom_rank = 0
-    for s, brand, disp, area in temp:
-        w = int(s.get('women') or 0)
-        m = int(s.get('men') or 0)
-        tot = w + m
-        l_pct = round((w / tot) * 100) if tot > 0 else 0
-        m_pct = (100 - l_pct) if tot > 0 else 0
-        item = dict(s)
-        sname = s.get('name', '')
-        h_info = store_hours.get_business_hours_status(sname, total_guests=tot)
-        is_korea = (s.get('region') == 'Korea') or ('カンナム' in sname) or ('ホンデ' in sname)
-        if not is_korea:
-            dom_rank += 1
-            item['ssr_rank'] = dom_rank
-        else:
-            item['ssr_rank'] = None
-        is_dup = disp_counts[disp] > 1
-        item['ssr_brand'] = brand
-        item['ssr_brand_cls'] = _BRAND_CLS_MAP.get(brand, 'brand-other')
-        item['ssr_is_dup'] = is_dup
-        item['ssr_disp'] = disp
-        item['ssr_title'] = f"{brand} {disp}" if is_dup else disp
-        item['ssr_area'] = area
-        item['ssr_ladies_pct'] = l_pct
-        item['ssr_men_pct'] = m_pct
-        item['is_open_now'] = h_info['is_open_now']
-        item['today_hours_label'] = h_info['today_hours_label']
-        _attach_store_benchmarks(item, sname, w, m, benchmarks)
-        ev_badge = ''
-        ev_title = ''
-        if ev_mod is not None and sname:
-            try:
-                matched_evs = ev_mod.get_events_for_store(
-                    sname,
-                    store_only=True,
-                    allow_blocking=False,
-                    preloaded_events=preloaded_evs,
-                )
-                if matched_evs:
-                    has_disc = any(e.get('tag') == '割引・特典' for e in matched_evs)
-                    ev_badge = '公式特典' if has_disc else '公式フェア'
-                    ev_title = matched_evs[0].get('title') or ''
-            except Exception:
-                pass
-        item['ssr_event_badge'] = ev_badge
-        item['ssr_event_title'] = ev_title
-        enriched.append(item)
-    try:
-        import moat_intelligence
-        moat_intelligence.enrich_stores_with_moat_signals(enriched, allow_weather_blocking=False)
-    except Exception:
-        pass
     with data_lock:
-        _lu_ssr = latest_data.get('last_updated')
-    _finalize_enriched_ranking(
-        enriched,
-        last_updated=_lu_ssr,
+        lu_ssr = latest_data.get('last_updated')
+    return _ssr_enrich_impl(
+        stores,
+        is_seed=bool(is_seed),
+        last_updated=lu_ssr,
         benchmarks=benchmarks,
+        preloaded_evs=preloaded_evs,
+        ev_mod=ev_mod,
         local_db_mod=local_db,
         is_testing=bool(app.testing),
+        brand_ja_fn=_jinja_brand_ja,
     )
-    import store_master
-    for item in enriched:
-        raw_n = item.get('name', '')
-        s_seo = store_master.seo_name(raw_n)
-        item['seo_name'] = s_seo
-        item['name'] = s_seo
-        if 'slug' not in item or not item['slug']:
-            item['slug'] = store_master.slug_of(raw_n)
-    return enriched
-
 
 
 def get_initial_status_payload():
-    """Return status dict for SSR embedding in index.html if available (memoized per live snapshot & 15m bucket)."""
+    """Return status dict for SSR embedding in index.html if available (memoized + Single-Flight)."""
     restore_latest_data_if_empty()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     bucket_15m = now_jst.strftime('%Y%m%d%H%M')
     _, ev_upd = _get_cached_events_nonblocking()
-    env_probe = _runtime_env_probe()
     import ops_governance
     with data_lock:
         full_d = latest_data.get('full_data')
@@ -1369,22 +955,48 @@ def get_initial_status_payload():
         is_s = bool(latest_data.get('is_seed'))
         raw_copy = list(full_d)
     raw_copy = ops_governance.filter_visible_stores(raw_copy)
-    c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, env_probe)
+    if is_fast_cache_tokens_enabled():
+        c_key = (get_live_gen(), bucket_15m, last_u, is_s, len(raw_copy), ev_upd, _gov_sig(), getattr(local_db, 'DB_PATH', None))
+    else:
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), bucket_15m, ev_upd, _runtime_env_probe())
 
+    ev = None
+    is_leader = False
     with _ssr_payload_cache_lock:
         if _ssr_payload_cache['key'] == c_key and _ssr_payload_cache['payload'] is not None:
             return _ssr_payload_cache['payload']
+        inflight = _ssr_inflight.get(c_key)
+        if inflight is not None and (time.monotonic() - inflight[1] < 10.0):
+            ev = inflight[0]
+        else:
+            ev = threading.Event()
+            _ssr_inflight[c_key] = (ev, time.monotonic())
+            is_leader = True
 
-    payload = {
-        'timestamp': last_u,
-        'ranking': _enrich_for_ssr(raw_copy),
-        'status': 'success',
-        'is_seed': is_s,
-    }
-    with _ssr_payload_cache_lock:
-        _ssr_payload_cache['key'] = c_key
-        _ssr_payload_cache['payload'] = payload
-    return payload
+    if not is_leader and ev is not None:
+        ev.wait(timeout=0.5)
+        with _ssr_payload_cache_lock:
+            if _ssr_payload_cache['key'] == c_key and _ssr_payload_cache['payload'] is not None:
+                return _ssr_payload_cache['payload']
+
+    try:
+        payload = {
+            'timestamp': last_u,
+            'ranking': _enrich_for_ssr(raw_copy, is_seed=is_s),
+            'status': 'success',
+            'is_seed': is_s,
+        }
+        with _ssr_payload_cache_lock:
+            _ssr_payload_cache['key'] = c_key
+            _ssr_payload_cache['payload'] = payload
+        return payload
+    finally:
+        if is_leader:
+            with _ssr_payload_cache_lock:
+                cur = _ssr_inflight.get(c_key)
+                if cur is not None and cur[0] is ev:
+                    _ssr_inflight.pop(c_key, None)
+            ev.set()
 
 
 _prewarm_in_progress = False
@@ -1527,7 +1139,7 @@ def refresh_momentum_from_db():
                             latest_data['last_updated'] = latest_ts
                         latest_data['is_seed'] = False
                 save_latest_status_snapshot()
-                clear_fast_http_caches(clear_editorial=False)
+                invalidate_live_caches(clear_editorial=False)
                 prewarm_ssr_and_status_caches()
                 print("[app] Cold-start seed promoted to live counts from fast Google Sheets sync.")
                 return
@@ -1561,7 +1173,7 @@ def refresh_momentum_from_db():
                 latest_data['top_store'] = full_data[0] if full_data else None
         if updated_any:
             save_latest_status_snapshot()
-            clear_fast_http_caches(clear_editorial=False)
+            invalidate_live_caches(clear_editorial=False)
             prewarm_ssr_and_status_caches()
             print("[app] Momentum (15-min women_diff/men_diff) refreshed from newly synced SQLite baseline.")
     except Exception as e:
@@ -1717,7 +1329,7 @@ def update_job(force=False, _claimed=False):
             except Exception:
                 pass
             save_latest_status_snapshot()
-            clear_fast_http_caches(clear_editorial=False)
+            invalidate_live_caches(clear_editorial=False)
             prewarm_ssr_and_status_caches()
             print(f"Data updated. Top store: {top_store['name'] if top_store else 'None'}")
             _last_update_error = None
@@ -1837,15 +1449,6 @@ def index():
     return _get_cached_html_or_render(cache_sig, _render)
 
 
-from ssr_payload import (
-    CLIENT_STATUS_DROP_KEYS as _CLIENT_STATUS_DROP_KEYS,
-    build_deferred_card_pool as _build_deferred_card_pool,
-    build_top_provenance_meta as _build_top_provenance_meta,
-    client_status_payload as _client_status_payload,
-    finalize_enriched_ranking as _finalize_enriched_ranking,
-)
-
-
 def _redirect_preserving_query(target_path: str, code: int = 301):
     """Redirect to canonical internal path while preserving safe query parameters (such as SNS `?s=` attribution)."""
     raw_qs = (request.query_string or b'').decode('utf-8', 'ignore').strip()
@@ -1888,6 +1491,28 @@ AFFILIATE_REDIRECTS = {
     'women_second_venue': os.environ.get('AFFILIATE_URL_SECOND_VENUE') or os.environ.get('AFFILIATE_URL_IKYU') or 'https://px.a8.net/svt/ejp?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P',
 }
 
+def issue_human_proof_cookie(secret_key: str, now_ts: int = None) -> str:
+    """Issue a signed human-proof cookie value (`ts.hmac24`) preventing raw `an_hp=1` spoofing."""
+    ts = int(time.time()) if now_ts is None else int(now_ts)
+    sig = hmac.new(str(secret_key or '').encode('utf-8'), f'an_hp_v1:{ts}'.encode('utf-8'), hashlib.sha256).hexdigest()[:24]
+    return f'{ts}.{sig}'
+
+
+def verify_human_proof_cookie(secret_key: str, val: str, max_age_sec: int = 2592000, now_ts: int = None) -> bool:
+    raw = str(val or '').strip()
+    if '.' not in raw or len(raw) > 64:
+        return False
+    ts_s, sig_s = raw.split('.', 1)
+    if not ts_s.isascii() or not ts_s.isdigit() or not re.fullmatch(r'[0-9a-f]{24}', sig_s):
+        return False
+    ts = int(ts_s)
+    cur = int(time.time()) if now_ts is None else int(now_ts)
+    if (cur - ts) < -10 or (cur - ts) > max(60, int(max_age_sec)):
+        return False
+    expected = issue_human_proof_cookie(secret_key, now_ts=ts)
+    return request_guards.safe_compare_digest(raw, expected)
+
+
 @app.route('/link/<path:item_id>', methods=['GET', 'POST'])
 def affiliate_redirect(item_id):
     """Safe internal redirect shielding affiliate links from ad-blockers & non-JS crawlers."""
@@ -1897,15 +1522,31 @@ def affiliate_redirect(item_id):
     target_url = affiliate_manager.resolve_affiliate_url(clean_id, allow_blocking=False) or AFFILIATE_REDIRECTS.get(clean_id)
     if not target_url:
         return redirect(url_for('index'))
-    is_staff_probe = (
-        (request.args.get('staff_test') or '').strip().lower() in ('1', 'true')
-        or bool(session.get('is_staff') or session.get('is_master'))
+    is_auth_staff = is_admin_authorized()
+    has_staff_test_flag = _is_staff_test_request(include_referrer=True)
+    ua_low = (request.headers.get('User-Agent') or '').lower()
+    is_audit_probe_ua = (
+        ('aisekinavi-opssentinel' in ua_low or ua_low.startswith('curl/'))
+        and (request.args.get('staff_test') or '').strip().lower() in ('1', 'true')
     )
-    if not is_staff_probe and (_is_bot_request() or _is_prefetch_request()):
+    if not is_auth_staff and _is_prefetch_request():
         resp_bot = redirect('/for-women' if clean_id.startswith('women_') else '/grooming', code=302)
         resp_bot.headers['X-Robots-Tag'] = 'noindex, nofollow'
         resp_bot.headers['Cache-Control'] = 'private, no-store'
         return resp_bot
+    if not is_auth_staff and _is_bot_request():
+        if is_audit_probe_ua:
+            if not turbo_store.check_sliding_rate_limit('aff_probe_ip', get_client_ip(), limit=20, window_sec=600):
+                return ('Too Many Requests', 429)
+            resp_probe = redirect(target_url, code=302)
+            resp_probe.headers['X-Robots-Tag'] = 'noindex, nofollow'
+            resp_probe.headers['Cache-Control'] = 'private, no-store'
+            return resp_probe
+        resp_bot = redirect('/for-women' if clean_id.startswith('women_') else '/grooming', code=302)
+        resp_bot.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        resp_bot.headers['Cache-Control'] = 'private, no-store'
+        return resp_bot
+    skip_tracking = bool(is_auth_staff or has_staff_test_flag)
     ref_path = affiliate_manager.resolve_safe_ref_path(
         request.args.get('from', ''), request.referrer or '', request.host or ''
     )
@@ -1916,14 +1557,15 @@ def affiliate_redirect(item_id):
     require_hp = app.config.get('ENFORCE_AFFILIATE_HUMAN_PROOF')
     if require_hp is None:
         require_hp = not bool(app.config.get('TESTING'))
-    if not is_staff_probe:
+    if not is_auth_staff:
         is_post_ok = (
             request.method == 'POST'
             and affiliate_manager.verify_click_confirm_token(
                 str(app.secret_key), clean_id, request.form.get('csrf_clk', '')
             )
         )
-        is_get_ok = request.method == 'GET' and ((not require_hp) or request.cookies.get('an_hp') == '1')
+        has_valid_hp = verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', '')) or (request.cookies.get('an_hp') == '1')
+        is_get_ok = request.method == 'GET' and ((not require_hp) or has_valid_hp)
         if not (is_post_ok or is_get_ok):
             qs_map = {}
             if ref_path and ref_path != '-':
@@ -1941,13 +1583,19 @@ def affiliate_redirect(item_id):
                 'Cache-Control': 'private, no-store',
             })
     client_ip = get_client_ip()
-    if (
-        not is_staff_probe
-        and turbo_store.check_sliding_rate_limit('aff_clk_ip', client_ip, limit=30, window_sec=600)
-        and turbo_store.check_sliding_rate_limit(
-            'aff_clk_human', f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}", limit=10, window_sec=600
+    if not is_auth_staff:
+        rl_ok = (
+            turbo_store.check_sliding_rate_limit('aff_clk_ip', client_ip, limit=30, window_sec=600)
+            and turbo_store.check_sliding_rate_limit(
+                'aff_clk_human', f"{client_ip}|{(request.headers.get('User-Agent') or '')[:80]}", limit=10, window_sec=600
+            )
         )
-    ):
+        if not rl_ok:
+            resp_rl = redirect('/for-women' if clean_id.startswith('women_') else '/grooming', code=302)
+            resp_rl.headers['X-Robots-Tag'] = 'noindex, nofollow'
+            resp_rl.headers['Cache-Control'] = 'private, no-store'
+            return resp_rl
+    if not skip_tracking:
         try:
             analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
             if inflow_tag:
@@ -1958,8 +1606,9 @@ def affiliate_redirect(item_id):
     resp = redirect(target_url, code=(303 if request.method == 'POST' else 302))
     resp.headers['X-Robots-Tag'] = 'noindex, nofollow'
     resp.headers['Cache-Control'] = 'private, no-store'
-    if request.method == 'POST':
+    if request.method == 'POST' and not is_auth_staff:
         resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
+        resp.set_cookie('an_hp_sig', issue_human_proof_cookie(str(app.secret_key)), max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure), httponly=True)
     return resp
 
 # --- First-party analytics (no personal data) ---
@@ -2072,18 +1721,20 @@ def _is_staff_test_request(include_referrer: bool = False) -> bool:
 @app.after_request
 def track_page_views(response):
     try:
+        if request.endpoint == 'static' or request.path.startswith('/static/'):
+            return response
         if (request.method == 'GET' and response.status_code == 200
                 and (request.path == '/' or request.path.startswith(_TRACKED_PAGE_PREFIXES))
                 and not request.path.endswith('.csv')
                 and not session.get('is_staff')
                 and not session.get('is_master')
-                and not _is_staff_test_request()
+                and not _is_staff_test_request(include_referrer=True)
                 and not _is_bot_request()
                 and not _is_prefetch_request()):
             import analytics
             pv_ok = True
             if not app.config.get('TESTING'):
-                has_hp = request.cookies.get('an_hp') == '1'
+                has_hp = verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', ''))
                 pv_ok = turbo_store.check_sliding_rate_limit(
                     'pv_ip_hp' if has_hp else 'pv_ip_nohp',
                     get_client_ip(),
@@ -2131,7 +1782,9 @@ def track_event():
         or not turbo_store.check_sliding_rate_limit('api_track', ua_key, limit=120, window_sec=60)
     ):
         return ('', 204)
-    payload = request.get_json(silent=True, force=True) or {}
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return ('', 204)
     ev_name = re.sub(r'[^A-Za-z0-9_.:-]', '', str(payload.get('event', '')).strip())[:30]
     if ev_name not in _BEACON_ALLOWED_EVENTS:
         return ('', 204)
@@ -2145,8 +1798,11 @@ def track_event():
     if ev_name == 'cushion_click':
         analytics.track_sns_cushion_attribution(clean_lbl, request.cookies.get('an_src'))
     resp = app.response_class('', status=204)
-    if request.cookies.get('an_hp') != '1':
-        resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
+    if ev_name != 'affiliate_impression':
+        if request.cookies.get('an_hp') != '1':
+            resp.set_cookie('an_hp', '1', max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure))
+        if not verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', '')):
+            resp.set_cookie('an_hp_sig', issue_human_proof_cookie(str(app.secret_key)), max_age=2592000, path='/', samesite='Lax', secure=bool(request.is_secure), httponly=True)
     return resp
 
 
@@ -2157,27 +1813,29 @@ def staff_monitor():
     client_ip = get_client_ip()
 
     if request.method == 'POST':
-        if _is_login_rate_limited(client_ip):
+        if _is_login_rate_limited(client_ip, scope='master') or _is_login_rate_limited(client_ip, scope='staff'):
             return render_template('staff_login.html', error='試行回数が上限に達しました。5分ほど待ってから再度お試しください'), 429
         import ops_governance
         eff_staff_passcode = ops_governance.get_effective_staff_passcode(STAFF_PASSCODE)
         entered = request.form.get('passcode', '').strip()
-        if entered and hmac.compare_digest(entered, MASTER_PASSCODE):
-            _clear_login_failures(client_ip)
+        if entered and request_guards.safe_compare_digest(entered, MASTER_PASSCODE):
+            _clear_login_failures(client_ip, scope='master')
+            _clear_login_failures(client_ip, scope='staff')
             session['is_staff'] = True
             session['is_master'] = True
             session['auth_gen'] = _compute_session_auth_gen(True)
             session.permanent = True
             return redirect(url_for('staff_monitor'))
-        elif entered and hmac.compare_digest(entered, eff_staff_passcode):
-            _clear_login_failures(client_ip)
+        elif entered and request_guards.safe_compare_digest(entered, eff_staff_passcode):
+            _clear_login_failures(client_ip, scope='staff')
             session['is_staff'] = True
             session['is_master'] = False
             session['auth_gen'] = _compute_session_auth_gen(False)
             session.permanent = True
             return redirect(url_for('staff_monitor'))
         else:
-            _record_login_failure(client_ip)
+            _record_login_failure(client_ip, scope='staff')
+            _record_login_failure(client_ip, scope='master')
             error = 'パスコードが正しくありません'
 
     # URL-query passcode login (?passcode=...) was removed: passcodes in URLs leak into
@@ -2256,10 +1914,8 @@ def trigger_background_fetch_if_needed():
     In `APP_ROLE=web` mode, syncs from the shared Redis snapshot published by `worker.py` instead of scraping."""
     global _is_fetching, _fetch_started_at
     if is_web_only_role():
-        if sync_latest_data_from_shared_bus():
-            return
-        if turbo_store.is_shared_bus_active():
-            return
+        sync_latest_data_from_shared_bus()
+        return
     if os.environ.get('DISABLE_SCHEDULER') == '1':
         return
 
@@ -2302,7 +1958,12 @@ def trigger_background_fetch_if_needed():
 
 @app.route('/sw.js')
 def serve_sw():
-    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    sw_path = safe_join(app.static_folder, 'sw.js')
+    if not sw_path or not os.path.isfile(sw_path):
+        abort(404)
+    with open(sw_path, 'rb') as f:
+        body = f.read()
+    return Response(body, status=200, mimetype='application/javascript')
 
 @app.route('/api/status')
 def get_status():
@@ -2311,11 +1972,6 @@ def get_status():
     trigger_background_fetch_if_needed()
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
     now_bucket = f"{now_jst.strftime('%Y%m%d%H')}_{(now_jst.minute // 10) * 10:02d}"
-    try:
-        _hp = store_hours.get_business_hours_status('OLG 新宿', total_guests=0)
-        _sh_sig = (id(store_hours.get_business_hours_status), _hp.get('is_open_now'), _hp.get('today_hours_label'))
-    except Exception:
-        _sh_sig = None
     import ops_governance
     with data_lock:
         full_d = latest_data.get('full_data')
@@ -2329,85 +1985,92 @@ def get_status():
         is_s = bool(latest_data.get('is_seed'))
         raw_copy = list(full_d)
     raw_copy = ops_governance.filter_visible_stores(raw_copy)
-    c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
+    if is_fast_cache_tokens_enabled():
+        c_key = (get_live_gen(), now_bucket, last_u, is_s, len(raw_copy), _gov_sig(), getattr(local_db, 'DB_PATH', None))
+    else:
+        try:
+            _hp = store_hours.get_business_hours_status('OLG 新宿', total_guests=0)
+            _sh_sig = (id(store_hours.get_business_hours_status), _hp.get('is_open_now'), _hp.get('today_hours_label'))
+        except Exception:
+            _sh_sig = None
+        c_key = (_live_data_signature(raw_copy, last_u, is_s), now_bucket, _sh_sig)
 
     inm = (request.headers.get('If-None-Match') or '').strip()
+
+    def _serve_cached_status():
+        etag_cached = _status_json_cache.get('etag') or ''
+        if inm and etag_cached and inm == etag_cached:
+            resp_304 = Response(status=304)
+            resp_304.headers['ETag'] = etag_cached
+            resp_304.vary.add('Accept-Encoding')
+            return resp_304
+        resp_hit = _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
+        if etag_cached:
+            resp_hit.headers['ETag'] = etag_cached
+        return resp_hit
+
+    ev = None
+    is_leader = False
     with _status_json_cache_lock:
         if _status_json_cache['key'] == c_key and _status_json_cache['raw'] is not None:
-            etag_cached = _status_json_cache.get('etag') or ''
-            if inm and etag_cached and inm == etag_cached:
-                resp_304 = Response(status=304)
-                resp_304.headers['ETag'] = etag_cached
-                return resp_304
-            resp_hit = _build_precompressed_response(_status_json_cache['raw'], _status_json_cache['gzip'], 'application/json')
-            if etag_cached:
-                resp_hit.headers['ETag'] = etag_cached
-            return resp_hit
+            return _serve_cached_status()
+        inflight = _status_inflight.get(c_key)
+        if inflight is not None and (time.monotonic() - inflight[1] < 10.0):
+            ev = inflight[0]
+        else:
+            ev = threading.Event()
+            _status_inflight[c_key] = (ev, time.monotonic())
+            is_leader = True
+
+    if not is_leader and ev is not None:
+        ev.wait(timeout=0.5)
+        with _status_json_cache_lock:
+            if _status_json_cache['key'] == c_key and _status_json_cache['raw'] is not None:
+                return _serve_cached_status()
 
     try:
-        benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
-    except Exception:
-        benchmarks = {}
+        try:
+            benchmarks = local_db.get_all_stores_live_benchmarks(allow_blocking=False)
+        except Exception:
+            benchmarks = {}
 
-    enriched_ranking = []
-    for s in raw_copy:
-        item = dict(s)
-        sname = item.get('name', '')
-        w = int(item.get('women') or 0)
-        m = int(item.get('men') or 0)
-        if 'is_open_now' not in item or item.get('is_open_now') is None:
-            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
-            item['is_open_now'] = h_info['is_open_now']
-            item['today_hours_label'] = h_info['today_hours_label']
-        elif 'today_hours_label' not in item:
-            h_info = store_hours.get_business_hours_status(sname, total_guests=w + m)
-            item['today_hours_label'] = h_info['today_hours_label']
-        _attach_store_benchmarks(item, sname, w, m, benchmarks)
-        enriched_ranking.append(item)
-    try:
-        import moat_intelligence
-        moat_intelligence.enrich_stores_with_moat_signals(enriched_ranking, allow_weather_blocking=False)
-    except Exception:
-        pass
+        enriched_ranking = _enrich_stores_for_status(
+            raw_copy,
+            last_updated=last_u,
+            benchmarks=benchmarks,
+            local_db_mod=local_db,
+            is_testing=bool(app.testing),
+            is_seed=is_s,
+        )
 
-    _finalize_enriched_ranking(
-        enriched_ranking,
-        last_updated=last_u,
-        benchmarks=benchmarks,
-        local_db_mod=local_db,
-        is_testing=bool(app.testing),
-    )
-
-    import store_master
-    for item in enriched_ranking:
-        raw_n = item.get('name', '')
-        s_seo = store_master.seo_name(raw_n)
-        item['seo_name'] = s_seo
-        item['name'] = s_seo
-        if 'slug' not in item or not item['slug']:
-            item['slug'] = store_master.slug_of(raw_n)
-
-
-    raw_bytes = json.dumps({
-        'timestamp': last_u,
-        'ranking': enriched_ranking,
-        'status': 'success',
-        'is_seed': is_s,
-    }, ensure_ascii=False).encode('utf-8')
-    gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if len(raw_bytes) > 500 else None
-    etag_val = f'W/"{zlib.crc32(raw_bytes):08x}-{len(raw_bytes):x}"'
-    with _status_json_cache_lock:
-        _status_json_cache['key'] = c_key
-        _status_json_cache['raw'] = raw_bytes
-        _status_json_cache['gzip'] = gz_bytes
-        _status_json_cache['etag'] = etag_val
-    if inm and inm == etag_val:
-        resp_304 = Response(status=304)
-        resp_304.headers['ETag'] = etag_val
-        return resp_304
-    resp_fresh = _build_precompressed_response(raw_bytes, gz_bytes, 'application/json')
-    resp_fresh.headers['ETag'] = etag_val
-    return resp_fresh
+        raw_bytes = json.dumps({
+            'timestamp': last_u,
+            'ranking': enriched_ranking,
+            'status': 'success',
+            'is_seed': is_s,
+        }, ensure_ascii=False).encode('utf-8')
+        gz_bytes = gzip.compress(raw_bytes, compresslevel=4) if len(raw_bytes) > 500 else None
+        etag_val = f'W/"{zlib.crc32(raw_bytes):08x}-{len(raw_bytes):x}"'
+        with _status_json_cache_lock:
+            _status_json_cache['key'] = c_key
+            _status_json_cache['raw'] = raw_bytes
+            _status_json_cache['gzip'] = gz_bytes
+            _status_json_cache['etag'] = etag_val
+        if inm and inm == etag_val:
+            resp_304 = Response(status=304)
+            resp_304.headers['ETag'] = etag_val
+            resp_304.vary.add('Accept-Encoding')
+            return resp_304
+        resp_fresh = _build_precompressed_response(raw_bytes, gz_bytes, 'application/json')
+        resp_fresh.headers['ETag'] = etag_val
+        return resp_fresh
+    finally:
+        if is_leader:
+            with _status_json_cache_lock:
+                cur = _status_inflight.get(c_key)
+                if cur is not None and cur[0] is ev:
+                    _status_inflight.pop(c_key, None)
+            ev.set()
 
 @app.route('/api/health')
 def health_check():
@@ -2470,9 +2133,9 @@ def view_logs():
             f.seek(max(0, size - 200 * 1024), os.SEEK_SET)
             content = f.read().decode('utf-8', errors='replace')
         return Response(content, mimetype='text/plain; charset=utf-8')
-    if _is_fly_multiworker_web:
+    if _is_fly_stdout_only:
         return Response(
-            "Production web workers stream logs directly to stdout (use `flyctl logs -a aiseki-navi-tokyo`).\n",
+            "Production workers stream logs directly to stdout (use `flyctl logs -a aiseki-navi-tokyo`).\n",
             mimetype='text/plain; charset=utf-8',
         )
     return "No logs found.", 404
@@ -2491,124 +2154,15 @@ def get_thread_status():
         'fetch_errors': getattr(monitor, 'fetch_errors', {})
     })
 
-@app.route('/api/weekly-report')
-def get_weekly_report():
-    try:
-        import weekly_report
-        import store_master
-
-        def _clean_report(rep):
-            if not isinstance(rep, dict):
-                return rep
-            rep_clean = dict(rep)
-            for k in ('stores', 'anaba_stores'):
-                new_list = []
-                for s in rep_clean.get(k, []):
-                    item = dict(s)
-                    if item.get('brand') == 'OLG':
-                        item['brand'] = 'オリエンタルラウンジ'
-                    if 'name' in item:
-                        item['name'] = store_master.seo_name(item['name'])
-                    new_list.append(item)
-                rep_clean[k] = new_list
-            if 'by_brand' in rep_clean and isinstance(rep_clean['by_brand'], dict):
-                cleaned_bb = {}
-                for b_name, b_data in rep_clean['by_brand'].items():
-                    safe_b = 'オリエンタルラウンジ' if b_name == 'OLG' else b_name
-                    cleaned_bb[safe_b] = b_data
-                rep_clean['by_brand'] = cleaned_bb
-            return rep_clean
-
-        def _build_weekly():
-            report = weekly_report.generate_weekly_report()
-            if not isinstance(report, dict) or "error" in report:
-                return {"status": "error", "error": (report or {}).get("error") if isinstance(report, dict) else "invalid_report"}, 500
-            return {"status": "success", "data": _clean_report(report)}, 200
-
-        # Cache key is decided BEFORE generation: a hit returns pre-gzipped bytes with zero report generation / cleanup copies
-        lf = weekly_report._report_cache.get('last_fetched')
-        if lf is None:  # report not generated yet (or just invalidated): never cache under an anonymous key
-            payload, code = _build_weekly()
-            return jsonify(payload), code
-        gen_sig = id(getattr(weekly_report, 'generate_weekly_report', None))
-        return _cached_json_response(('weekly_report', local_db.DB_PATH, lf, gen_sig), _build_weekly, ttl_sec=60.0)
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
-
-@app.route('/api/events')
-def get_events():
-    """Returns active events and promotions for lounge stores."""
-    try:
-        import events
-        import store_master
-
-        def _clean_evs(ev_list):
-            out = []
-            for ev in (ev_list or []):
-                item = dict(ev)
-                if item.get('brand') == 'OLG':
-                    item['brand'] = 'オリエンタルラウンジ'
-                if 'target_stores' in item and isinstance(item['target_stores'], list):
-                    item['target_stores'] = [store_master.seo_name(s) for s in item['target_stores']]
-                out.append(item)
-            return out
-
-        store = request.args.get('store', '').strip()
-        internal_store = store_master.to_internal_store_name(store) if store else ''
-        force = (
-            (request.args.get('refresh', '').lower() == 'true')
-            and is_master_authorized()
-            and (request.headers.get('Sec-Fetch-Site') or '').lower() != 'cross-site'
-        )
-        if not force:
-            ev_upd = events._events_memory_cache.get('updated_at')
-            ev_cnt = len(events._events_memory_cache.get('events') or [])
-            if ev_cnt > 0:
-                return _cached_json_response(
-                    ('events', internal_store, ev_upd, ev_cnt),
-                    lambda: (
-                        (lambda evs: {'status': 'success', 'count': len(evs), 'events': _clean_evs(evs)})(
-                            events.get_events_for_store(internal_store, allow_blocking=False) if internal_store else events.fetch_all_events(force_refresh=False, allow_blocking=False)
-                        ),
-                        200,
-                    ),
-                    ttl_sec=60.0,
-                )
-        if internal_store:
-            evs = events.get_events_for_store(internal_store, allow_blocking=force)
-        else:
-            evs = events.fetch_all_events(force_refresh=force, allow_blocking=force)
-        cleaned = _clean_evs(evs)
-        return jsonify({
-            'status': 'success',
-            'count': len(cleaned),
-            'events': cleaned
-        })
-    except Exception as e:
-        return jsonify({'status': 'error', 'error': str(e)}), 500
-
-@app.route('/api/votes/<path:store_name>')
-def get_store_votes(store_name):
-    """Returns user crowd votes in the last 4 hours for a specific store."""
-    import store_master
-    import ops_governance
-    if not store_name or len(store_name) > 80 or any(ord(ch) < 32 for ch in store_name):
-        return jsonify({'status': 'error', 'error': 'Invalid store name'}), 400
-    internal_name = store_master.to_internal_store_name(store_name)
-    if not store_master.get(internal_name):
-        return jsonify({'status': 'error', 'error': 'Store not found'}), 404
-    if ops_governance.is_store_hidden(internal_name or store_name):
-        return jsonify({'status': 'error', 'error': 'Store not found'}), 404
-    counts = local_db.get_recent_votes(store_name=internal_name, hours=4)
-    disp_name = store_master.seo_name(internal_name) if internal_name else store_name
-    return jsonify({'status': 'success', 'store_name': disp_name, 'votes': counts})
-
 @app.route('/api/vote', methods=['POST'])
 def post_store_vote():
     """Submits a one-tap live crowd vote from a user."""
     import hashlib
     import store_master
-    payload = request.get_json(silent=True) or {}
+    raw_payload = request.get_json(silent=True)
+    if raw_payload is not None and not isinstance(raw_payload, dict):
+        return jsonify({'status': 'error', 'error': 'Invalid JSON payload'}), 400
+    payload = raw_payload or {}
     raw_store = str(payload.get('store_name', '')).strip()
     vote_type = str(payload.get('vote_type', '')).strip()
     if not raw_store or vote_type not in ('smooth', 'waiting', 'lively'):
@@ -2627,7 +2181,14 @@ def post_store_vote():
             return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     elif not store_master.get(store_name):
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
-    if _is_staff_test_request(include_referrer=True):
+    raw_st_flag = payload.get('staff_test')
+    payload_staff_test = (raw_st_flag is True) or (str(raw_st_flag or '').strip().lower() in ('1', 'true'))
+    if (
+        _is_staff_test_request(include_referrer=True)
+        or payload_staff_test
+        or bool(session.get('is_staff'))
+        or bool(session.get('is_master'))
+    ):
         counts = local_db.get_recent_votes(store_name=store_name, hours=4)
         return jsonify({
             'status': 'success',
@@ -2637,19 +2198,20 @@ def post_store_vote():
         })
 
     client_ip = get_client_ip()
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(client_ip)
     sec_bytes = str(app.secret_key).encode('utf-8')
-    ip_hash = hmac.new(sec_bytes, f"vote_ip:{client_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+    ip_hash = hmac.new(sec_bytes, f"vote_ip:{norm_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
     raw_voter = str(payload.get('voter_id', '')).strip()[:64]
     voter_hash = hmac.new(sec_bytes, f"vote_id:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16] if raw_voter else ''
 
     raw_wait = payload.get('wait_minutes')
     wait_minutes = None
-    if raw_wait is not None and raw_wait != '':
+    if raw_wait is not None and raw_wait != '' and not isinstance(raw_wait, bool):
         try:
             w_int = int(raw_wait)
             if w_int in (0, 15, 30, 45):
                 wait_minutes = w_int
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             wait_minutes = None
 
     ok, reason = local_db.add_crowd_vote(
@@ -2676,7 +2238,7 @@ def post_store_vote():
                 break
     if ok:
         turbo_store.update_live_snapshot_store_votes(store_name, counts)
-        clear_fast_http_caches(clear_editorial=False)
+        invalidate_live_caches(clear_editorial=False)
 
     return jsonify({
         'status': 'success' if ok else 'duplicate',
@@ -2691,7 +2253,10 @@ def post_watch_intent():
     """Records an anonymous first-party condition-watch intent from a user on /store/<slug>."""
     import hashlib
     import store_master
-    payload = request.get_json(silent=True) or {}
+    raw_payload = request.get_json(silent=True)
+    if raw_payload is not None and not isinstance(raw_payload, dict):
+        return jsonify({'status': 'error', 'error': 'Invalid JSON payload'}), 400
+    payload = raw_payload or {}
     raw_store = str(payload.get('store_name', '')).strip()
     target_cond = str(payload.get('target_cond', 'female_55')).strip()
     if not raw_store or target_cond not in ('female_55', 'zero_wait', 'evening_peak'):
@@ -2710,7 +2275,14 @@ def post_watch_intent():
             return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
     elif not store_master.get(store_name):
         return jsonify({'status': 'error', 'error': 'Unknown store'}), 400
-    if _is_staff_test_request(include_referrer=True):
+    raw_st_flag = payload.get('staff_test')
+    payload_staff_test = (raw_st_flag is True) or (str(raw_st_flag or '').strip().lower() in ('1', 'true'))
+    if (
+        _is_staff_test_request(include_referrer=True)
+        or payload_staff_test
+        or bool(session.get('is_staff'))
+        or bool(session.get('is_master'))
+    ):
         watch_info = local_db.get_watch_intent_counts(store_name=store_name, hours=6)
         return jsonify({
             'status': 'success',
@@ -2721,11 +2293,12 @@ def post_watch_intent():
         })
 
     client_ip = get_client_ip()
+    norm_ip = turbo_store.normalize_ip_for_rate_limit(client_ip)
     sec_bytes = str(app.secret_key).encode('utf-8')
     raw_voter = str(payload.get('voter_id', '')).strip()[:64]
-    ip_hash = hmac.new(sec_bytes, f"watch_ip:{client_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+    ip_hash = hmac.new(sec_bytes, f"watch_ip:{norm_ip}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
     voter_hash = (
-        hmac.new(sec_bytes, f"watch_id:{client_ip}:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+        hmac.new(sec_bytes, f"watch_id:{norm_ip}:{raw_voter}".encode('utf-8'), hashlib.sha256).hexdigest()[:16]
         if raw_voter else ''
     )
 

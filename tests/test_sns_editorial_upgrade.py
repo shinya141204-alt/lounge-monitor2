@@ -1205,12 +1205,12 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                 with client.session_transaction() as sess:
                     sess["is_staff"] = True
                     sess["is_master"] = True
-                r_off = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": False})
+                r_off = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": False}, headers={"Origin": "http://localhost"})
                 self.assertEqual(r_off.status_code, 200)
                 self.assertFalse(r_off.get_json()["auto_schedule_enabled"])
                 self.assertFalse(tiktok_poster.is_tiktok_auto_schedule_enabled())
 
-                r_on = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": True})
+                r_on = client.post("/api/staff/tiktok/settings", json={"auto_schedule_enabled": True}, headers={"Origin": "http://localhost"})
                 self.assertEqual(r_on.status_code, 200)
                 self.assertTrue(r_on.get_json()["auto_schedule_enabled"])
                 self.assertTrue(tiktok_poster.is_tiktok_auto_schedule_enabled())
@@ -1317,6 +1317,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     r_reel = client.post(
                         "/api/staff/sns-reel/publish?async=1",
                         json={"reel_type": "live_top5", "caption": "テスト", "share_to_feed": True},
+                        headers={"Origin": "http://localhost"},
                     )
                     self.assertEqual(r_reel.status_code, 202)
                     j_reel = r_reel.get_json()
@@ -1327,6 +1328,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
                     r_tt = client.post(
                         "/api/staff/tiktok/publish-inbox?async=1",
                         json={"reel_type": "tiktok_gap_shock", "caption": "テストTikTok"},
+                        headers={"Origin": "http://localhost"},
                     )
                     self.assertEqual(r_tt.status_code, 202)
                     j_tt = r_tt.get_json()
@@ -1546,6 +1548,7 @@ class SnsEditorialUpgradeTests(unittest.TestCase):
         pref_resp = client.post(
             "/api/sns-editorial/ai-config",
             json={"action": "set_pref", "engine_pref": "claude"},
+            headers={"Origin": "http://localhost"},
         )
         self.assertEqual(pref_resp.status_code, 200)
         pref_json = pref_resp.get_json()

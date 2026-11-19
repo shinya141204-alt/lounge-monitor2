@@ -4112,7 +4112,7 @@
                         var resp = await fetch("/api/moshimo-reel-queue", {
                             method: "POST",
                             headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                            body: JSON.stringify({ ep_id: _selectedMoshimoEpId, force: true })
+                            body: JSON.stringify({ action: "publish_instagram", ep_id: _selectedMoshimoEpId, force: true })
                         });
                         var data = await resp.json();
                         if (!resp.ok || (data.ok === false && data.status !== "success")) {
