@@ -541,6 +541,17 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "oriental-lounge-vip-app",
+        "path": "/guide/oriental-lounge-vip-app",
+        "eyecatch": "/static/eyecatch-oriental-lounge-vip-app.jpg",
+        "title": "オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点と公式アプリ『SOLOTTE!』",
+        "main_text": (
+            "オリエンタルラウンジのVIP席がいくらか、公式サイトの料金表には載っていない。\n\n"
+            "利用前に店へ聞くべき3点、受付提示で男性チャージ550円が0円になる公式アプリ『SOLOTTE!』の仕様、国内29店舗の実測時間帯データをリプ欄に整理しました。\n"
+            "#相席ナビ #相席ラウンジ"
+        ),
+    },
+    {
         "slug": "shibuya-ebisu-comparison",
         "path": "/guide/shibuya-ebisu-comparison",
         "eyecatch": "/static/eyecatch-shibuya-ebisu-comparison.jpg",

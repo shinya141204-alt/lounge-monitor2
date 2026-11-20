@@ -90,6 +90,7 @@ RESERVED_STATIC_SLUGS = {
     "lounge-vs-aisekiya-bar",
     "app-fatigue-vs-lounge",
     "non-alcohol-lounge-guide",
+    "oriental-lounge-vip-app",
 }
 
 COLUMN_AI_CLICHES = (
@@ -455,6 +456,7 @@ THEME_ARCHETYPES = {
 }
 
 EXISTING_STATIC_COLUMNS = [
+    {"slug": "oriental-lounge-vip-app", "path": "/guide/oriental-lounge-vip-app", "template": "guide_oriental_lounge_vip_app.html", "title": "オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点とチャージ550円が0円になる公式アプリ『SOLOTTE!』"},
     {"slug": "shibuya-ebisu-comparison", "path": "/guide/shibuya-ebisu-comparison", "template": "guide_shibuya_ebisu_comparison.html", "title": "渋谷・恵比寿の相席ラウンジ・回遊バー5店舗比較｜山手線1駅で変わる年齢層・料金・時間波形の実測検証"},
     {"slug": "ueno-kinshicho-machida", "path": "/guide/ueno-kinshicho-machida", "template": "guide_ueno_kinshicho_machida.html", "title": "上野・錦糸町・町田・柏の相席ラウンジ5店舗比較｜仲町通りの隣接2店と沿線ターミナルの実測データ検証"},
     {"slug": "yokohama-omiya-kanto", "path": "/guide/yokohama-omiya-kanto", "template": "guide_yokohama_omiya_kanto.html", "title": "横浜・大宮・宇都宮・高崎の相席ラウンジ5店舗比較｜都心へ出ずに選ぶ時間波形・料金・ソロ入店検証"},
@@ -463,7 +465,7 @@ EXISTING_STATIC_COLUMNS = [
     {"slug": "hiroshima-okayama-matsuyama", "path": "/guide/hiroshima-okayama-matsuyama", "template": "guide_hiroshima_okayama_matsuyama.html", "title": "広島・岡山・松山の相席ラウンジ6店舗比較｜新天地半径185mの3店競合と「入店単価固定・半額」の料金構造"},
     {"slug": "sapporo-sendai-north", "path": "/guide/sapporo-sendai-north", "template": "guide_sapporo_sendai_north.html", "title": "札幌すすきの・仙台国分町の相席ラウンジ比較｜1都市1大型店に集約されたJIS札幌・ag仙台の時間波形と曜日ルール"},
     {"slug": "lounge-vs-screened-date", "path": "/guide/lounge-vs-screened-date", "template": "guide_lounge_vs_screened_date.html", "title": "相席ラウンジ vs 審査制1対1デート比較｜「複数人のライブ感」か「メッセージ不要の1対1」か、実測ログで見る使い分け境界線"},
-    {"slug": "dress-code-cleanliness", "path": "/guide/dress-code-cleanliness", "template": "guide_dress_code_cleanliness.html", "title": "相席ラウンジの服装・清潔感チェック完全ガイド｜ブランド別NGドレスコードと「70cmソファ席の間接照明」で損しない身だしなみ"},
+    {"slug": "dress-code-cleanliness", "path": "/guide/dress-code-cleanliness", "template": "guide_dress_code_cleanliness.html", "title": "オリエンタルラウンジ・相席ラウンジの服装＆ドレスコード基準｜ブランド別NG一覧と「70cmソファ席の間接照明」で損しない身だしなみ"},
     {"slug": "brand-waveform-asymmetry", "path": "/guide/brand-waveform-asymmetry", "template": "guide_brand_waveform_asymmetry.html", "title": "同じ街でも20時と深夜0時で「主役」は入れ替わる｜実測ログが映す5大ブランドの時間波形と、男女で真逆になる店選び"},
     {"slug": "crowd-rush-paradox", "path": "/guide/crowd-rush-paradox", "template": "guide_crowd_rush_paradox.html", "title": "金曜22時の「女性比60%」を見て向かうと3割が男余りに逆転する｜98万件ログが暴いた『群衆殺到パラドックス』と70%安全圏"},
     {"slug": "for-women", "path": "/for-women", "template": "for_women.html", "title": "「受付で30分放置…」をゼロにする女子のための相席ラウンジ完全ガイド｜待ち0店舗の見分け方＆席替え・退店術"},
@@ -477,7 +479,7 @@ EXISTING_STATIC_COLUMNS = [
     {"slug": "weekday-strategy", "path": "/guide/weekday-strategy", "template": "guide_weekday.html", "title": "水曜・木曜の平日夜が実は一番話しやすいデータ的理由"},
     {"slug": "guide", "path": "/guide", "template": "guide_article.html", "title": "相席ラウンジ完全攻略ガイド｜時間帯・男女比・店選びの基本"},
     {"slug": "shinjuku", "path": "/guide/shinjuku", "template": "guide_shinjuku.html", "title": "新宿エリア3店舗の客層・男女比・使い分けガイド"},
-    {"slug": "solo-vs-pair", "path": "/guide/solo-vs-pair", "template": "guide_solo_pair.html", "title": "1人参戦（ソロ）vs 2人組ペアのメリット・立ち回り比較"},
+    {"slug": "solo-vs-pair", "path": "/guide/solo-vs-pair", "template": "guide_solo_pair.html", "title": "オリエンタルラウンジ・JIS・相席屋は1人（ひとり）で入れる？全61店舗のソロ入店可否と2人組比較"},
     {"slug": "second-venue", "path": "/guide/second-venue", "template": "guide_second_venue.html", "title": "2軒目の誘い方と断られない声かけタイミング"},
     {"slug": "first-10-minutes", "path": "/guide/first-10-minutes", "template": "guide_first_10min.html", "title": "最初の10分で差がつく会話テンポと距離70cmの清潔感"},
     {"slug": "grooming", "path": "/grooming", "template": "grooming.html", "title": "入店前の身だしなみ・清潔感チェックリスト"},

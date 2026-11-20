@@ -489,13 +489,19 @@ def receive_csp_report():
 
 @app.before_request
 def redirect_to_custom_domain():
-    """Redirect traffic from old .onrender.com domain to custom domain aiseki-navi.com (301 Permanent)."""
-    host = request.host.split(':')[0].lower()
-    if host.endswith('onrender.com'):
-        url = 'https://aiseki-navi.com' + request.path
+    """Redirect traffic from legacy .onrender.com and www.aiseki-navi.com to canonical apex aiseki-navi.com (301/308 Permanent)."""
+    from urllib.parse import quote
+    host = request.host.split(':')[0].rstrip('.').lower()
+    if host == 'www.aiseki-navi.com' or host == 'onrender.com' or host.endswith('.onrender.com'):
+        raw_path = request.path or '/'
+        safe_path = '/' + raw_path.lstrip('/')
+        encoded_path = quote(safe_path, safe="/:@!$&'()*+,;=-._~")
+        url = 'https://aiseki-navi.com' + encoded_path
         if request.query_string:
-            url += '?' + request.query_string.decode('utf-8', errors='ignore')
-        return redirect(url, code=301)
+            qs = request.query_string.decode('latin-1')
+            url += '?' + qs
+        status_code = 301 if request.method in ('GET', 'HEAD') else 308
+        return redirect(url, code=status_code)
 
 _scheduler_started = False
 _scheduler_lock = threading.Lock()

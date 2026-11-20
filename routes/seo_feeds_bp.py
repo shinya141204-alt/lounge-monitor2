@@ -657,7 +657,8 @@ def _assemble_llms_bundle(
 - [2026年 忘年会・クリスマス・年末年始＆ドーム終演連動データ白書 (/stats/year-end-2026)](https://aiseki-navi.com/stats/year-end-2026): 年末繁忙期マイルストーン・6大ドーム公式公演日程連動レポート
 - [データ考察コラム一覧 (/columns)](https://aiseki-navi.com/columns): 行動経済学・実測ログに基づく全コラム一覧
 - [相席ラウンジ vs 審査制1対1デート徹底比較 (/guide/lounge-vs-screened-date)](https://aiseki-navi.com/guide/lounge-vs-screened-date): 実測ログに基づく時間帯別の相席ラウンジ効率と、メッセージ不要の1対1デート・恋活アプリの男女別使い分け基準
-- [相席ラウンジの服装・清潔感チェック完全ガイド (/guide/dress-code-cleanliness)](https://aiseki-navi.com/guide/dress-code-cleanliness): 5大ブランドの入店NGドレスコード一覧と、70cmソファ席・2700K間接照明の下で損しない身だしなみ設計
+- [相席ラウンジの服装・ドレスコード基準と70cmソファ席の清潔感 (/guide/dress-code-cleanliness)](https://aiseki-navi.com/guide/dress-code-cleanliness): オリエンタルラウンジほか5大ブランドの入店NG服装・ドレスコード一覧と、70cmソファ席・2700K間接照明の下で損しない身だしなみ設計
+- [オリエンタルラウンジVIP席の料金ルールと公式アプリ『SOLOTTE!』・相席ナビの使い分け (/guide/oriental-lounge-vip-app)](https://aiseki-navi.com/guide/oriental-lounge-vip-app): 公式非公開のVIP席で確認すべき3点、男性チャージ550円が0円になる公式アプリ『SOLOTTE!』の仕様、国内29店舗の30日実測に基づく通常席の時間帯別予算
 - [5大ブランドの時間波形と男女で真逆になる店選びデータ検証 (/guide/brand-waveform-asymmetry)](https://aiseki-navi.com/guide/brand-waveform-asymmetry): オリエンタルラウンジ・ag・JIS・ヤタコイ・ASOBIBARの時間帯クロスオーバーと男女の本音非対称を解明
 - [金土22時の群衆殺到パラドックスと70%バッファの法則 (/guide/crowd-rush-paradox)](https://aiseki-navi.com/guide/crowd-rush-paradox): 金土22時発で29.8%が男余りへ転落する逆転現象と回避プロトコル
 - [23時20分の終電崖と深夜0時30分の第2波データ検証 (/guide/last-train-cliff)](https://aiseki-navi.com/guide/last-train-cliff): 終電前40分間の退店波と23時前後で主役が入れ替わる街別の店選び
@@ -1187,7 +1188,8 @@ def sitemap_xml():
     lm_crowd_rush = _template_lastmod('guide_crowd_rush_paradox.html', '2026-11-03')
     lm_waveform = _template_lastmod('guide_brand_waveform_asymmetry.html', '2026-11-04')
     lm_screened = _template_lastmod('guide_lounge_vs_screened_date.html', '2026-11-04')
-    lm_dress = _template_lastmod('guide_dress_code_cleanliness.html', '2026-11-04')
+    lm_dress = _template_lastmod('guide_dress_code_cleanliness.html', '2026-11-20')
+    lm_vip_app = _template_lastmod('guide_oriental_lounge_vip_app.html', '2026-11-20')
     lm_shibuya_ebisu = _template_lastmod('guide_shibuya_ebisu_comparison.html', '2026-11-08')
     lm_ueno_east = _template_lastmod('guide_ueno_kinshicho_machida.html', '2026-11-08')
     lm_yokohama_kanto = _template_lastmod('guide_yokohama_omiya_kanto.html', '2026-11-08')
@@ -1226,6 +1228,7 @@ def sitemap_xml():
         lm_waveform,
         lm_screened,
         lm_dress,
+        lm_vip_app,
         lm_shibuya_ebisu,
         lm_ueno_east,
         lm_yokohama_kanto,
@@ -1445,6 +1448,12 @@ def sitemap_xml():
   <url>
     <loc>https://aiseki-navi.com/guide/dress-code-cleanliness</loc>
     <lastmod>{lm_dress}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://aiseki-navi.com/guide/oriental-lounge-vip-app</loc>
+    <lastmod>{lm_vip_app}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>

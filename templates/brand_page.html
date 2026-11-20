@@ -535,13 +535,61 @@
         </section>
         {% endif %}
 
+        {% if stores %}
+        <section class="guide-box" aria-label="{{ brand.name }} 国内{{ domestic_store_count or store_count }}店舗の料金・1人入店・営業時間・30日実測平均一覧">
+            <h2>{{ brand.name }} 国内{{ domestic_store_count or store_count }}店舗の料金・1人入店・30日実測平均一覧</h2>
+            <p style="font-size: 0.82rem; margin-bottom: 10px;">各店舗の男性60分料金目安（平日／週末）・営業時間・男性1名入店可否に加え、直近30日間の22時台／深夜0時台の平均男女人数（実測サンプル5件以上）を一覧で比較できます。</p>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; min-width: 780px; border-collapse: collapse; font-size: 0.79rem; font-variant-numeric: tabular-nums;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-strong); color: var(--text-sub); text-align: left;">
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">店舗名</th>
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">男性60分目安</th>
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">営業時間</th>
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">1人入店</th>
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">22時台実測</th>
+                            <th scope="col" style="padding: 8px 8px; white-space: nowrap;">0時台実測</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in stores %}
+                        {% if s.region != 'Korea' %}
+                        <tr style="border-bottom: 1px solid var(--border-subtle);">
+                            <td style="padding: 8px 8px; font-weight: 700; white-space: nowrap;"><a href="/store/{{ s.slug }}" style="color: var(--text-main); text-decoration: underline; text-underline-offset: 2px;">{{ s.seo_name }}</a></td>
+                            <td style="padding: 8px 8px; color: var(--text-main); line-height: 1.45;">{% if s.est_weekday_label or s.est_weekend_label %}<span style="color: var(--text-sub);">平日</span> {{ s.est_weekday_label or '公式要確認' }}<br><span style="color: var(--text-sub);">週末</span> {{ s.est_weekend_label or '公式要確認' }}{% else %}<span style="color: var(--text-sub);">店舗ページ参照</span>{% endif %}</td>
+                            <td style="padding: 8px 8px; color: var(--text-sub); white-space: nowrap;">{{ s.hours_label or s.today_hours_label or '公式要確認' }}</td>
+                            <td style="padding: 8px 8px; color: var(--text-main);">{{ s.solo_rule or '店舗ページ参照' }}</td>
+                            <td style="padding: 8px 8px; color: var(--text-main); white-space: nowrap;">{% if s.wf_h22 %}女{{ '%.1f'|format(s.wf_h22.w) }} : 男{{ '%.1f'|format(s.wf_h22.m) }}{% if s.wf_h22.get('wpct') is not none %} ({{ '%.0f'|format(s.wf_h22.get('wpct')) }}%){% endif %}{% else %}<span style="color: var(--text-sub);">計測蓄積中</span>{% endif %}</td>
+                            <td style="padding: 8px 8px; color: var(--text-main); white-space: nowrap;">{% if s.wf_h00 %}女{{ '%.1f'|format(s.wf_h00.w) }} : 男{{ '%.1f'|format(s.wf_h00.m) }}{% if s.wf_h00.get('wpct') is not none %} ({{ '%.0f'|format(s.wf_h00.get('wpct')) }}%){% endif %}{% else %}<span style="color: var(--text-sub);">計測蓄積中</span>{% endif %}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if brand.slug == 'asobibar' %}
+        <section class="guide-box" aria-label="ASOBIBAR（アソビバー）の料金システム・カラーバンド・向いている人の特徴">
+            <h2>ASOBIBAR（アソビバー）の料金システム・カラーバンドの仕組み・向き不向きまとめ</h2>
+            <p><strong>1. 時間課金なし・入場チケット制の料金構造：</strong>ASOBIBAR（アソビバー）は、オリエンタルラウンジやJIS（ジス）のような「10分ごと従量課金」ではなく、男性は入場時に定額（目安：早割 平日2,500円〜／通常 平日3,500〜4,500円・金土4,500〜5,500円、ドリンク＆フード交換チケット付。最新額は公式・店頭要確認）を支払う仕組みです。相席待ちでメーターが増え続けることがないため、滞在時間が読みやすい点が大きな特徴です。女性は入場0円・飲み放題無料で利用できます。</p>
+            <p><strong>2. カラーバンドで来店目的が見える仕組み：</strong>入店時に手首へ付けるカラーバンドの色で「恋活」「飲み友」「友達作り」「楽しくワイワイ」などの温度感を共有できます。着席固定ではなくスタンディング回遊＋ダーツ・カラオケ・ボードゲーム等が中心のため、1人（ソロ）参戦でも共通の遊びから自然に会話を始めやすい設計です。</p>
+            <p><strong>3. メリットと注意点（実測データから見えること）：</strong>10分課金を気にせず長居でき全10店舗で1名入店に対応している一方、自由回遊型のため<strong>自ら声をかける行動力</strong>が必要になります。また2026年11月20日時点の全国10店舗30日実測データでは20時台の平均女性比30.3%・22時台40.5%と、着席型ラウンジ（20時台70%前後）より男性先行になりやすい傾向があります。入店前に本ページで女性人数が10名以上入っている店舗を選ぶのが鍵です。</p>
+            <p style="margin-bottom:0; font-size:0.82rem;">※相席ラウンジ・相席屋・立ち飲み相席バー（ASOBIBAR・パブリックスタンド）の違いは<a href="/guide/lounge-vs-aisekiya-bar" style="color:var(--accent-text); text-decoration:underline;">相席ラウンジとは？相席屋・THE SINGLE・相席バー4業態の実測比較</a>でも詳しく整理しています。</p>
+        </section>
+        {% endif %}
+
         <section class="guide-box">
             <h2>{{ brand.name }}の客層・年齢層と「待ち時間」を回避する立ち回り</h2>
             <p>{{ brand.strategy_text_1 }}</p>
             <p>{{ brand.strategy_text_2 }}</p>
             <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 14px;">
                 <a href="/price-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">店舗別の4時間帯料金・単独料金・イベント比較を見る ›</a>
-                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">主要ブランドの徹底比較コラム ›</a>
+                {% if brand.slug in ('oriental-lounge', 'ag') %}
+                <a href="/guide/oriental-lounge-vip-app" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">VIP席の確認3点＆公式アプリ『SOLOTTE!』ガイド ›</a>
+                {% endif %}
+                <a href="/guide/brand-comparison" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">主要ブランドの比較コラム ›</a>
                 <a href="/guide/solo-vs-pair" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">男性1人入店vs2人組データ検証 ›</a>
                 <a href="/guide/dress-code-cleanliness" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">服装規定・清潔感チェック ›</a>
                 <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データ ›</a>

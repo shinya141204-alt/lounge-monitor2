@@ -264,17 +264,17 @@ SCHEDULED_ARTICLES = [
         "template": "guide_lounge_vs_aisekiya_bar.html",
         "publish_at": "2026-11-18 19:00:00",
         "publish_at_ja": "2026年11月18日(水) 19:00",
-        "lastmod": "2026-11-18",
+        "lastmod": "2026-11-20",
         "eyecatch_jpg": "/static/eyecatch-lounge-vs-aisekiya-bar.jpg",
         "eyecatch_webp": "/static/eyecatch-lounge-vs-aisekiya-bar.webp",
         "badge": "4業態実測比較",
         "read_time": "約6分で読める",
         "tag_primary": ("tag-pink", "11.5万時間データ検証"),
-        "tag_secondary": ("tag-cyan", "ラウンジ・相席屋・1対1・立ち飲み"),
-        "title": "相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜女性比61%と39%を分ける4業態の実測比較",
-        "short_title": "相席ラウンジ・相席屋・1対1・立ち飲み4業態の実測比較",
-        "desc": "着席ソファ型の相席ラウンジ（オリエンタルラウンジ・JIS・ag）、居酒屋型の相席屋、1対1専門のTHE SINGLE、自由回遊型のASOBIBAR・パブリックスタンド。11.5万時間ログから、女性比率が61〜64%と39%に分かれる理由を比較検証。",
-        "x_title": "相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較",
+        "tag_secondary": ("tag-cyan", "相席ラウンジ・相席屋・相席バー"),
+        "title": "相席ラウンジとは？相席屋・THE SINGLE・相席バー（立ち飲み）との違いを実測比較｜女性比61%と39%の境界線",
+        "short_title": "相席ラウンジとは？相席屋・1対1・相席バー4業態の実測比較",
+        "desc": "相席ラウンジとは何か、居酒屋型の相席屋・1対1専門のTHE SINGLE・立ち飲み相席バー（ASOBIBAR・パブリックスタンド）とどう違うのか。11.5万時間ログから、女性比率が61〜64%と39.0%に分かれる構造を比較検証。",
+        "x_title": "相席ラウンジとは？相席屋・THE SINGLE・相席バー4業態の実測比較",
         "x_main_text": (
             "同じ金曜夜の渋谷・新宿・梅田なのに、着席の相席ラウンジは女性比61〜64%、立ち飲みバー（ASOBIBAR）は女性比39.0%と20pt以上の差がつく。\n\n"
             "理由は「10分従量課金か定額無制限か」という滞在時間の構造。\n\n"

@@ -232,6 +232,20 @@ def _render_brand_page(brand_slug):
     if not brand:
         return redirect(url_for('index'))
 
+    try:
+        wf_map_30d = core.local_db.get_all_stores_hourly_waveforms(allow_blocking=False) or {}
+    except Exception:
+        wf_map_30d = {}
+
+    def _safe_wf_slot(pt):
+        if not isinstance(pt, dict):
+            return None
+        if pt.get('w') is None or pt.get('m') is None:
+            return None
+        if int(pt.get('n') or 0) < 5 or float(pt.get('total') or 0.0) < 1.0:
+            return None
+        return pt
+
     def _render():
         with core.data_lock:
             raw_copy = list(core.latest_data.get('full_data') or [])
@@ -247,6 +261,7 @@ def _render_brand_page(brand_slug):
         ]
 
         matched = []
+        import price_comparison
         for sname in all_names:
             if store_master.brand_key_of(sname) == brand_slug:
                 s_live = live_map.get(sname, {})
@@ -255,6 +270,14 @@ def _render_brand_page(brand_slug):
                 w_cnt = int(s_live.get('women', 0) or 0)
                 m_cnt = int(s_live.get('men', 0) or 0)
                 h_info = store_hours.get_business_hours_status(sname, total_guests=(w_cnt + m_cnt))
+                p_prof = None
+                try:
+                    p_prof = price_comparison.get_store_price_profile(sname, live_store=s_live)
+                except Exception:
+                    p_prof = None
+                wf_st = wf_map_30d.get(sname) if isinstance(wf_map_30d, dict) else None
+                wf_h22 = _safe_wf_slot(wf_st.get('h22') if isinstance(wf_st, dict) else None)
+                wf_h00 = _safe_wf_slot(wf_st.get('h00') if isinstance(wf_st, dict) else None)
                 matched.append({
                     'name': sname,
                     'seo_name': store_master.seo_name(sname),
@@ -268,6 +291,12 @@ def _render_brand_page(brand_slug):
                     'is_open_now': h_info['is_open_now'],
                     'today_hours_label': h_info['today_hours_label'],
                     'hours_label': h_info['hours_label'],
+                    'solo_rule': (p_prof or {}).get('solo_rule') or '',
+                    'est_weekday_label': (p_prof or {}).get('est_60m_weekday_label') or '',
+                    'est_weekend_label': (p_prof or {}).get('est_60m_weekend_label') or '',
+                    'vibe_short': (p_prof or {}).get('vibe_short') or '',
+                    'wf_h22': wf_h22,
+                    'wf_h00': wf_h00,
                 })
 
         matched.sort(key=lambda x: (x.get('region') != 'Korea', x['women'], x['men'], bool(x.get('is_open_now'))), reverse=True)
@@ -281,7 +310,6 @@ def _render_brand_page(brand_slug):
         total_w = sum(x['women'] for x in matched)
         total_m = sum(x['men'] for x in matched)
         import affiliate_manager
-        import price_comparison
         brand_code_map = {
             'oriental-lounge': 'OLG',
             'ag': 'ag',
@@ -302,6 +330,7 @@ def _render_brand_page(brand_slug):
             brand_spec=brand_spec,
             stores=matched,
             store_count=len(matched),
+            domestic_store_count=dom_rank,
             total_women=total_w,
             total_men=total_m,
             last_updated=last_updated,
@@ -309,9 +338,11 @@ def _render_brand_page(brand_slug):
             is_staff=bool(session.get('is_staff')),
         )
     import affiliate_manager as _am_brand
+    _has_brand_wf = bool(wf_map_30d)
     brand_cache_sig = (
         'brand',
         brand_slug,
+        _has_brand_wf,
         _am_brand.are_slots_sharing_url('dating_bachelor', 'dating_instant', allow_blocking=False),
         _am_brand.is_slot_monetized('women_beauty_clinic', allow_blocking=False),
         _am_brand.is_slot_monetized('women_dating_bachelor', allow_blocking=False),
@@ -2062,6 +2093,12 @@ def guide_lounge_vs_screened_date():
 def guide_dress_code_cleanliness():
     """Editorial practical guide on 5-brand dress codes and 70cm sofa spotlight cleanliness checks."""
     return core._get_cached_html_or_render('guide_dress_code_cleanliness', lambda: render_template('guide_dress_code_cleanliness.html'))
+
+
+@portal_bp.route('/guide/oriental-lounge-vip-app')
+def guide_oriental_lounge_vip_app():
+    """Editorial guide on Oriental Lounge VIP room inquiry points, SOLOTTE! official app perks, and cross-brand comparison."""
+    return core._get_cached_html_or_render('guide_oriental_lounge_vip_app', lambda: render_template('guide_oriental_lounge_vip_app.html'))
 
 
 @portal_bp.route('/guide/shibuya-ebisu-comparison')

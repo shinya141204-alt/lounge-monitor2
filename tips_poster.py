@@ -336,12 +336,19 @@ TIPS_LIST = [
         "19時台は女性12.2名に男性2.9名と1軒目中心で、23時台には男性17.3名まで増える。\n"
         "飲めない男性は19〜20時台、女性は20時半〜21時台が馴染みやすい。"
     ),
+    # 76: オリエンタルラウンジVIP席＆公式アプリ『SOLOTTE!』
+    (
+        "オリエンタルラウンジの受付前で慌ててアプリを入れている人が意外と多い。\n"
+        "公式アプリ『SOLOTTE!』は入店前に登録して受付提示するだけで、男性チャージ550円が0円になる。\n"
+        "店選びは他ブランドも見比べられる相席ナビ、入店後の注文・席替えは公式アプリと分けると無駄がない。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点と公式アプリ『SOLOTTE!』", "/guide/oriental-lounge-vip-app"),
     ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide"),
-    ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar"),
+    ("相席ラウンジとは？相席屋・THE SINGLE・相席バー4業態の実測比較", "/guide/lounge-vs-aisekiya-bar"),
     ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality"),
     ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality"),
     ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy"),
@@ -489,6 +496,8 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("non-alcohol-lounge-guide"):
             return ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide")
         return ("相席ラウンジ実践コラム・記事一覧", "/columns")
+    if idx == 76:
+        return ("オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点と公式アプリ『SOLOTTE!』", "/guide/oriental-lounge-vip-app")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
 
