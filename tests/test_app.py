@@ -2573,7 +2573,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertEqual(r_set.status_code, 200)
             self.assertTrue(r_set.get_json()['settings']['auto_replenish_columns'])
 
-            future_naive = datetime.datetime(2026, 11, 20, 12, 0, 0)
+            future_naive = datetime.datetime(2026, 12, 31, 12, 0, 0)
             with mock.patch.object(scheduled_articles, 'now_jst_naive', return_value=future_naive), \
                  mock.patch('sns_editorial.get_gemini_api_key', return_value=''):
                 auto_cycle = pdca_engine.run_pdca_cycle(

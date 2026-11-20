@@ -306,6 +306,30 @@ SCHEDULED_ARTICLES = [
             "#相席ラウンジ #相席ナビ"
         ),
     },
+    {
+        "slug": "non-alcohol-lounge-guide",
+        "path": "/guide/non-alcohol-lounge-guide",
+        "template": "guide_non_alcohol_lounge_guide.html",
+        "publish_at": "2026-11-21 19:00:00",
+        "publish_at_ja": "2026年11月21日(土) 19:00",
+        "lastmod": "2026-11-21",
+        "eyecatch_jpg": "/static/eyecatch-non-alcohol-lounge-guide.jpg",
+        "eyecatch_webp": "/static/eyecatch-non-alcohol-lounge-guide.webp",
+        "badge": "ノンアル・下戸×時間帯",
+        "read_time": "約5分で読める",
+        "tag_primary": ("tag-pink", "30日時間帯ログ検証"),
+        "tag_secondary": ("tag-cyan", "19時台79.6% vs 23時台"),
+        "title": "お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた",
+        "short_title": "お酒が飲めない人は相席ラウンジで浮くのか？",
+        "desc": "飲み放題の店で自分だけウーロン茶。それで浮くかどうかは、何時に入るかで変わります。直近30日の人数ログでは19時台は女性12.2名・男性2.9名、23時台は男性17.3名。飲めない男女それぞれの入りやすい時間、切り上げどき、ブランドの選び方をまとめました。",
+        "x_title": "お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた",
+        "x_main_text": (
+            "飲み放題の店で、自分だけウーロン茶。相席ラウンジでお酒が飲めない人は浮くのか。\n\n"
+            "直近30日のログでは、19時台は女性12.2名に男性2.9名（女性比79.6%）。23時台には男性が17.3名まで増えます。\n\n"
+            "飲めない男女それぞれの入りやすい時間帯と店選びはリプ欄に。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
 ]
 
 

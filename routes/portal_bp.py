@@ -2195,6 +2195,12 @@ def guide_app_fatigue_vs_lounge():
     return _render_scheduled_guide('app-fatigue-vs-lounge')
 
 
+@portal_bp.route('/guide/non-alcohol-lounge-guide')
+def guide_non_alcohol_lounge_guide():
+    """Scheduled editorial data study on non-alcohol / low-tolerance guests across 19:00 and 23:00 hourly waveforms."""
+    return _render_scheduled_guide('non-alcohol-lounge-guide')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""

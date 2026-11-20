@@ -331,10 +331,16 @@ TIPS_LIST = [
         "着席の相席ラウンジと立ち飲みバーでは男女比が20pt以上変わる。59店舗の実測ではオリエンタルラウンジ・JIS・agは女性比59〜64%、ASOBIBARは39.0%。\n"
         "10分課金で自動案内か、定額で自分から声をかけるかで使い分けるのが近道です。"
     ),
+    (
+        "飲み放題の店でウーロン茶だけだと浮くのか。\n"
+        "19時台は女性12.2名に男性2.9名と1軒目中心で、23時台には男性17.3名まで増える。\n"
+        "飲めない男性は19〜20時台、女性は20時半〜21時台が馴染みやすい。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide"),
     ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar"),
     ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality"),
     ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality"),
@@ -478,6 +484,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("lounge-vs-aisekiya-bar"):
             return ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar")
         return ("店舗別料金・開催中イベント比較", "/price-comparison")
+    if idx == 75:
+        import scheduled_articles
+        if scheduled_articles.is_published("non-alcohol-lounge-guide"):
+            return ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide")
+        return ("相席ラウンジ実践コラム・記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
 
@@ -738,6 +749,7 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "tenjin_daimyo_compact_hop", "lens": "福岡・大名の徒歩2分圏内に3ブランドが揃っていて、屋台や夜カフェへの2軒目移動まで一連で完結する天神のコンパクトさ", "related_path": "/guide/fukuoka-tenjin-kyushu"},
     {"key": "hiroshima_shintenchi_185m", "lens": "広島・新天地公園まわりの半径185mに3店舗が集まり、1軒目の混み具合を見てから2分で切り替えられる回りやすさ", "related_path": "/guide/hiroshima-okayama-matsuyama"},
     {"key": "susukino_kokubuncho_winter_indoor", "lens": "札幌すすきのや仙台国分町の寒い夜に、1店舗へ熱気が集まるからこそ早い時間と0時過ぎでガラリと変わるフロアの表情", "related_path": "/guide/sapporo-sendai-north"},
+    {"key": "non_alcohol_early_evening", "lens": "飲み放題の店でお酒を頼まずお茶やノンアルで過ごす夜に、19〜20時台の1軒目フロアと23時台の飲み会帰りフロアで変わる居心地の違い", "related_path": "/guide/non-alcohol-lounge-guide"},
 )
 
 

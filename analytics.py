@@ -859,6 +859,7 @@ _PAGE_TITLES = {
     '/guide/dome-live-after-surge': '📖 ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証',
     '/guide/lounge-vs-aisekiya-bar': '📖 相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較',
     '/guide/app-fatigue-vs-lounge': '📖 アプリ疲れの夜になぜ相席ラウンジへ人が戻るのか｜2週間往復vs着席0秒検証',
+    '/guide/non-alcohol-lounge-guide': '📖 お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }
