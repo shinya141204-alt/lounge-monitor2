@@ -861,6 +861,7 @@ _PAGE_TITLES = {
     '/guide/lounge-vs-aisekiya-bar': '📖 相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較',
     '/guide/app-fatigue-vs-lounge': '📖 アプリ疲れの夜になぜ相席ラウンジへ人が戻るのか｜2週間往復vs着席0秒検証',
     '/guide/non-alcohol-lounge-guide': '📖 お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた',
+    '/guide/even-ratio-wait-trap': '📖 「女40・男36」なのに30分待たされる理由｜男女比53%の罠と『余白＋10名』',
     '/for-women': '💄 女子のための相席ラウンジ完全ガイド＆待ちゼロ店舗ボード',
     '/privacy': '⚖️ 運営者情報・プライバシーポリシー',
 }

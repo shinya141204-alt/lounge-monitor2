@@ -2238,6 +2238,12 @@ def guide_non_alcohol_lounge_guide():
     return _render_scheduled_guide('non-alcohol-lounge-guide')
 
 
+@portal_bp.route('/guide/even-ratio-wait-trap')
+def guide_even_ratio_wait_trap():
+    """Scheduled editorial data study on why near-even 50-54% gender ratios still cause 30-minute waits."""
+    return _render_scheduled_guide('even-ratio-wait-trap')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""
