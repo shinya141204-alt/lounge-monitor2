@@ -347,10 +347,16 @@ TIPS_LIST = [
         "リアルタイム人数が「女性40・男性36」のようにほぼ1対1の店は、実は空き女性が少なく30分待ちになりやすい。\n"
         "表示は相席中も含む総数。待つ時間を減らしたい夜ほど、引き算で「女性−男性＝＋10名以上」の店を選ぶのが近道。"
     ),
+    # 78: 早割18時入店の女性ゼロ74.8%と金土18:50・平日19:20の境目
+    (
+        "18時開店の相席ラウンジは、18:00時点で74.8%が女性0名。安く飲むつもりが待機料金で高くつきやすい。\n"
+        "境目は金土18:50・平日19:20。女性が増え始める一方で男性はまだ少ないため、待機を抑えて早割枠を使える。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
+    ("早割18時入店は得か損か｜女性ゼロ74.8%と金土18:50・平日19:20の境目", "/guide/early-bird-timing"),
     ("「女40・男36」なのに30分待たされる理由｜男女比53%の罠と『余白＋10名』", "/guide/even-ratio-wait-trap"),
     ("オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点と公式アプリ『SOLOTTE!』", "/guide/oriental-lounge-vip-app"),
     ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide"),
@@ -508,6 +514,11 @@ def _column_for_tip_index(idx: int) -> tuple:
         import scheduled_articles
         if scheduled_articles.is_published("even-ratio-wait-trap"):
             return ("「女40・男36」なのに30分待たされる理由｜男女比53%の罠と『余白＋10名』", "/guide/even-ratio-wait-trap")
+        return ("相席ラウンジ実践コラム・記事一覧", "/columns")
+    if idx == 78:
+        import scheduled_articles
+        if scheduled_articles.is_published("early-bird-timing"):
+            return ("相席ラウンジの早割、18:00に入ると4回に3回は女性ゼロ｜金土18:50・平日19:20が境目", "/guide/early-bird-timing")
         return ("相席ラウンジ実践コラム・記事一覧", "/columns")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
@@ -771,6 +782,7 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "susukino_kokubuncho_winter_indoor", "lens": "札幌すすきのや仙台国分町の寒い夜に、1店舗へ熱気が集まるからこそ早い時間と0時過ぎでガラリと変わるフロアの表情", "related_path": "/guide/sapporo-sendai-north"},
     {"key": "non_alcohol_early_evening", "lens": "飲み放題の店でお酒を頼まずお茶やノンアルで過ごす夜に、19〜20時台の1軒目フロアと23時台の飲み会帰りフロアで変わる居心地の違い", "related_path": "/guide/non-alcohol-lounge-guide"},
     {"key": "even_ratio_wait_trap", "lens": "リアルタイム人数が『女性40・男性36』のようにほぼ1対1で賑わって見える店ほど、実際は着席済みの組が多くて30分待ちが起きやすいという店内総人数表示の罠", "related_path": "/guide/even-ratio-wait-trap"},
+    {"key": "early_bird_timing", "lens": "『20時まで早割で安いから』と18:00ジャストに入店しても4回に3回は女性0名で待機料金が進みやすく、実は金土18:50・平日19:20を境に景色が変わるという立ち上がりの差", "related_path": "/guide/early-bird-timing"},
 )
 
 

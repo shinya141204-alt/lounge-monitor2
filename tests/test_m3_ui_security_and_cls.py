@@ -223,7 +223,7 @@ class TestM3UiSecurityAndCls(unittest.TestCase):
         self.assertNotRegex(nav_txt, r"(sessionStorage|localStorage)\.(setItem|getItem)\([^)]*staff_test")
 
     def test_m3_p1_04_guide_externalization_and_metadata_preserved(self):
-        """M3-P1-04: 全40 guide_*.html が guide.css?v=1, meta color-scheme, fetchpriority=high を保持すること"""
+        """M3-P1-04: 全41 guide_*.html が guide.css?v=1, meta color-scheme, fetchpriority=high を保持すること"""
         guide_css = _read_text(os.path.join(REPO_ROOT, "static", "guide.css"))
         store_css = _read_text(os.path.join(REPO_ROOT, "static", "store_detail.css"))
         for css_txt in (guide_css, store_css):
@@ -231,7 +231,7 @@ class TestM3UiSecurityAndCls(unittest.TestCase):
             self.assertNotIn("{%", css_txt)
 
         guides = sorted(glob.glob(os.path.join(TEMPLATES_DIR, "guide_*.html")))
-        self.assertEqual(len(guides), 40)
+        self.assertEqual(len(guides), 41)
         for gp in guides:
             txt = _read_text(gp)
             fn = os.path.basename(gp)

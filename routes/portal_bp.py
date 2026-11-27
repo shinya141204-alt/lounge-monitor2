@@ -2244,6 +2244,12 @@ def guide_even_ratio_wait_trap():
     return _render_scheduled_guide('even-ratio-wait-trap')
 
 
+@portal_bp.route('/guide/early-bird-timing')
+def guide_early_bird_timing():
+    """Scheduled editorial data study on 18:00-19:50 early-bird arrival curves and waiting-fee traps."""
+    return _render_scheduled_guide('early-bird-timing')
+
+
 @portal_bp.route('/guide/<slug>')
 def guide_dynamic_scheduled(slug):
     """Dynamic route serving scheduled or live columns published from the Column Editorial Room."""

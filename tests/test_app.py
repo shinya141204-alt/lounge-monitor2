@@ -2823,7 +2823,7 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
 
             # Re-enable `auto_optimize_sns=True` + verify history table renders Japanese style label (`街別ギャップ・ハシゴ型(+4)`)
             pdca_engine.update_pdca_settings(auto_optimize_sns=True, auto_replenish_columns=True)
-            future_naive = datetime.datetime(2026, 11, 25, 12, 0, 0)
+            future_naive = datetime.datetime(2026, 11, 29, 12, 0, 0)
             seen_replenish_ai = []
             orig_col_pipe = column_editorial.run_column_editorial_pipeline
 
