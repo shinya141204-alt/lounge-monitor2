@@ -80,7 +80,7 @@
             "name": "相席ラウンジで一番女性比率が高く入りやすい曜日はいつですか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "相席ナビの全国統計データでは、水曜日（平均女性比約57.8%）と木曜日（平均女性比約56.9%）の20:00〜22:00が最も女性比率が高く、男性の入店待ち時間も発生しにくい穴場曜日となっています。一方、来店総数が最大になるのは金曜日・土曜日の21:00〜翌1:00です。"
+              "text": "相席ナビの直近90日全国統計データ（19時〜翌1時台）では、水曜日（平均女性比61.4%）と木曜日（同61.3%）が高く、特に20:00〜21:59の早い時間帯は月〜木で65.9%〜66.6%に達し、男性の入店待ち時間も発生しにくい穴場曜日となっています。一方、来店総数が最大になるのは金曜日・土曜日の21:00〜翌1:00です。"
             }
           },
           {
@@ -108,7 +108,7 @@
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
     <script>try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>html.theme-light{background-color:#f6f6f7;}</style>
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         :root {
             --bg-dark: var(--calm-bg, #111113);
@@ -1049,7 +1049,7 @@
             .hmx-tab { transition: background-color 0.15s ease, color 0.15s ease; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -2634,6 +2634,45 @@
                     }
                 }
             </script>
+        </section>
+
+        {% if monthly_archives %}
+        <section class="stats-method-card" aria-label="月次一次統計アーカイブと関連統計レポート">
+            <h2 style="margin: 0 0 10px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">月次統計アーカイブ（固定URL・CC BY 4.0）＆ 関連レポート</h2>
+            <p style="margin: 0 0 12px; font-size: 0.84rem; color: var(--text-sub); line-height: 1.7;">
+                1時間ロールアップから集計した月ごとの店舗別ピーク人数・平均男女比スナップショットを固定URLで公開しています。週末の需給DI指数や年末年始の混雑白書とあわせてご参照ください。
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;">
+                {% for ym in monthly_archives %}
+                <a href="/stats/monthly/{{ ym }}" class="stats-cta-secondary">{{ ym }} 月次データ&nbsp;›</a>
+                {% endfor %}
+                <a href="/stats/weekend-index" class="stats-cta-secondary">週末イベント・相席需給DI&nbsp;›</a>
+                <a href="/stats/year-end-2026" class="stats-cta-secondary">忘年会・年末年始＆ドーム連動白書&nbsp;›</a>
+            </div>
+            <div style="padding-top: 12px; border-top: 1px solid var(--border-subtle); font-size: 0.82rem; color: var(--text-sub); display: flex; flex-wrap: wrap; gap: 8px 16px;">
+                <span style="color: var(--text-main); font-weight: 700;">関連データ検証コラム：</span>
+                <a href="/guide/weekday-strategy" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">水曜・木曜20時の女性比率検証</a>
+                <a href="/guide/brand-waveform-asymmetry" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">5大ブランド時間帯波形</a>
+                <a href="/guide/crowd-rush-paradox" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">週末22時・群衆殺到パラドックス</a>
+                <a href="/guide/last-train-cliff" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">23時20分の終電崖データ</a>
+                <a href="/area/shinjuku" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">新宿・西新宿エリア</a>
+                <a href="/area/shibuya" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">渋谷・恵比寿エリア</a>
+                <a href="/area/umeda" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">大阪・梅田エリア</a>
+                <a href="/area/fukuoka" style="color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px;">福岡・天神エリア</a>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="stats-method-card" aria-label="相席ナビ統計白書に関するよくある質問">
+            <h2 style="margin: 0 0 12px; font-size: 1.04rem; border: none; padding-left: 0; color: var(--accent-text);">よくある質問（FAQ）</h2>
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                <h3 style="margin: 0 0 6px; font-size: 0.92rem; color: var(--text-main);">Q. 相席ラウンジで一番女性比率が高く入りやすい曜日はいつですか？</h3>
+                <p style="margin: 0; font-size: 0.84rem; color: var(--text-sub); line-height: 1.7;">相席ナビの直近90日全国統計データ（19時〜翌1時台）では、水曜日（平均女性比61.4%）と木曜日（同61.3%）が高く、特に20:00〜21:59の早い時間帯は月〜木で65.9%〜66.6%に達し、男性の入店待ち時間も発生しにくい穴場曜日となっています。一方、来店総数が最大になるのは金曜日・土曜日の21:00〜翌1:00です。</p>
+            </div>
+            <div style="padding: 12px 0 0;">
+                <h3 style="margin: 0 0 6px; font-size: 0.92rem; color: var(--text-main);">Q. 相席ナビの統計データはブログやSNSで引用できますか？</h3>
+                <p style="margin: 0; font-size: 0.84rem; color: var(--text-sub); line-height: 1.7;">はい、出典として「相席ナビ（https://aiseki-navi.com/stats）」へのリンクを明記いただければ、個人ブログ・SNS・Webメディア等で自由に引用・転載いただけます。</p>
+            </div>
         </section>
 
         <div style="text-align: center; margin-top: 26px;">

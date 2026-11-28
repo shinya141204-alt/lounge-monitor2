@@ -541,6 +541,183 @@ def build_pinned_tweet_thread(app_url: str = "") -> tuple:
 
 COLUMN_PROMO_LIST = [
     {
+        "slug": "early-bird-timing",
+        "path": "/guide/early-bird-timing",
+        "eyecatch": "/static/eyecatch-early-bird-timing.jpg",
+        "title": "相席ラウンジの早割、18:00に入ると4回に3回は女性ゼロ｜金土18:50・平日19:20が境目",
+        "main_text": (
+            "18:00、開店と同時に入った相席ラウンジに女性がいるのは4回に1回（女性0名率74.8%）。\n"
+            "残りの3回は向かいが空いたまま、待機料金だけが進みます。\n\n"
+            "50分ずらした18:50は女性平均6.6名・男性1.3名。\n"
+            "曜日ごとの境目はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "even-ratio-wait-trap",
+        "path": "/guide/even-ratio-wait-trap",
+        "eyecatch": "/static/eyecatch-even-ratio-wait-trap.jpg",
+        "title": "「女40・男36」なのに30分待たされる理由｜男女比53%の罠と『余白＋10名』",
+        "main_text": (
+            "「女性40名・男性36名」なのに30分待たされる夜がある。\n\n"
+            "表示は空き枠ではなく相席中も含めた総数。差が4名の店は1時間後に37.2%で男性が逆転していました。\n\n"
+            "入店前の『余白＋10名』の計算はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "app-fatigue-vs-lounge",
+        "path": "/guide/app-fatigue-vs-lounge",
+        "eyecatch": "/static/eyecatch-app-fatigue-vs-lounge.jpg",
+        "title": "「アプリ疲れ」の夜になぜ相席ラウンジへ人が戻るのか｜90日実測ログ検証",
+        "main_text": (
+            "2週間メッセージを重ねて会ったのに、その場の空気感が少し違って疲れてしまう夜がある。\n\n"
+            "直近90日・244,394回の計測ログで見ると、20時台は女性比69.1%、23時台は52.1%。アプリや審査制1対1デートとの使い分けはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "non-alcohol-lounge-guide",
+        "path": "/guide/non-alcohol-lounge-guide",
+        "eyecatch": "/static/eyecatch-non-alcohol-lounge-guide.jpg",
+        "title": "お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた",
+        "main_text": (
+            "飲み放題の店で、自分だけウーロン茶。相席ラウンジでお酒が飲めない人は浮くのか。\n\n"
+            "直近30日のログでは、19時台は女性12.2名に男性2.9名（女性比79.6%）。23時台には男性が17.3名まで増えます。\n\n"
+            "飲めない男女それぞれの入りやすい時間帯と店選びはリプ欄に。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "lounge-vs-aisekiya-bar",
+        "path": "/guide/lounge-vs-aisekiya-bar",
+        "eyecatch": "/static/eyecatch-lounge-vs-aisekiya-bar.jpg",
+        "title": "相席ラウンジとは？4業態の仕組みと着席vs立ち飲み実測比較",
+        "main_text": (
+            "同じ繁華街なのに、着席ラウンジ3ブランドは女性比58〜63%、立ち飲みバー（ASOBIBAR）10店は38.0%と20pt以上開く（30日107,123回計測）。\n\n"
+            "理由は10分従量制と定額制の構造差。相席屋・THE SINGLE含む4業態比較はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "dome-live-after-surge",
+        "path": "/guide/dome-live-after-surge",
+        "eyecatch": "/static/eyecatch-dome-live-after-surge.jpg",
+        "title": "ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証",
+        "main_text": (
+            "5万人規模のドーム公演が終わった夜、梅田・新宿・天神・すすきのの相席ラウンジで何が起きるか。\n\n"
+            "終演60〜90分後に主要駅店の女性人数が一段増えます。男女別の狙い目と待ち回避法はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "free-food-reality",
+        "path": "/guide/free-food-reality",
+        "eyecatch": "/static/eyecatch-free-food-reality.jpg",
+        "title": "相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線",
+        "main_text": (
+            "「男は10分750円払ってるのに女はタダ飯？」と疑ってしまう人へ。\n\n"
+            "9.6万件ログで見ると、19時台は女性比率80.9%の先行ディナー帯ですが、22時台には男性が8倍以上に急増して本格相席へ切り替わります。\n\n"
+            "女性の沈黙の逃げ場フードと会話のコツはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "line-exchange-reality",
+        "path": "/guide/line-exchange-reality",
+        "eyecatch": "/static/eyecatch-line-exchange-reality.jpg",
+        "title": "相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線",
+        "main_text": (
+            "席では笑顔でLINE交換したのに、翌日お礼を送ったら既読スルーされる理由。\n\n"
+            "男性は1組しか話していなくても、女性は1晩で平均3組（計6名）と会話しています。\n\n"
+            "お酒も入った翌朝の記憶容量と、退店30分以内に差がつく連絡プロトコルをまとめました。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "sunday-lounge-strategy",
+        "path": "/guide/sunday-lounge-strategy",
+        "eyecatch": "/static/eyecatch-sunday-lounge-strategy.jpg",
+        "title": "日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目",
+        "main_text": (
+            "日曜夜の相席ラウンジは土曜の3割の人数だけど、女性比率は61.2%と高い。\n\n"
+            "ただ「21時半」に翌朝仕事のOLが一斉に帰るため、金土の感覚で遅く入ると男性余りに。\n\n"
+            "18時台サク飲みか、22時以降の月曜休み組（美容・アパレル）狙いかの二択。\n\n"
+            "データはリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "rain-payday",
+        "path": "/guide/rain-payday",
+        "eyecatch": "/static/eyecatch-rain-payday.jpg",
+        "title": "雨の日・給料日前・連休中日｜9.6万件ログで見る穴場日の傾向",
+        "main_text": (
+            "25日の給料日直後は男性の待ち列ができているのに、15〜24日の給料日前はライバルが減り、女性比は62.1%（+7.4pt）まで上がる。\n\n"
+            "雨の日に前髪を濡らしたくない人が集まる地下直結の店など、穴場の日の話はリプ欄で。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "thirties-lounge-guide",
+        "path": "/guide/thirties-lounge-guide",
+        "eyecatch": "/static/eyecatch-thirties-lounge-guide.jpg",
+        "title": "相席ラウンジは30代でも浮かない？｜27.6万件ログで見る店選びの境界線",
+        "main_text": (
+            "「20代前半ばかりで浮くんじゃないか」とためらっている30代の人へ。\n\n"
+            "agは20代前半が7割ほどだけれど、オリエンタルラウンジやJISは社会人が6割を超える。\n\n"
+            "水木20時の社会人が集まる時間帯と店選びはリプ欄に続きます。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "table-change-protocol",
+        "path": "/guide/table-change-protocol",
+        "eyecatch": "/static/eyecatch-table-change-protocol.jpg",
+        "title": "相席ラウンジの席替え｜言い出せない男性と察している女性の心理",
+        "main_text": (
+            "会話が止まったテーブルで「席替えを頼んだら失礼かな」と迷う間にも、10分750円のメーターは回っている。\n\n"
+            "女性10名未満の店で頼むと、男性1人で待つ時間に料金だけがかかることも。\n\n"
+            "お互いの気持ちを損なわずに席を離れる方法はリプ欄へ。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "cost-break-even",
+        "path": "/guide/cost-break-even",
+        "eyecatch": "/static/eyecatch-cost-break-even.jpg",
+        "title": "90分粘るか、40分で切り上げるか｜相席ラウンジ料金の損益分岐点",
+        "main_text": (
+            "少し言いにくい話をすると、噛み合わない席で「悪い気もするし」と90分延長しても、向かいの女性も内心いつ出ようか時計を見ていることが多い。\n\n"
+            "1万近いレシートを見て改札で後悔する前に、40分で区切る目安をリプ欄に。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "osaka-kita-vs-minami",
+        "path": "/guide/osaka-kita-vs-minami",
+        "eyecatch": "/static/eyecatch-osaka-kita-vs-minami.jpg",
+        "title": "梅田キタと難波ミナミ｜大阪全9店舗の南北ハシゴ",
+        "main_text": (
+            "梅田の1軒目で「45分待ち」と言われた夜。東通りで粘るか、御堂筋線で9分南へ降りるかで、その後の流れがまるで変わる。\n\n"
+            "20時は茶屋町（女子率86%）、深夜0時以降はJIS梅田と難波に主役が移る。\n\n"
+            "全9店の南北の回り方はリプ欄にまとめました。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
+        "slug": "local-vs-urban",
+        "path": "/guide/local-vs-urban",
+        "eyecatch": "/static/eyecatch-local-vs-urban.jpg",
+        "title": "地方店と都心大型店｜深夜0時に女性が121%へ増える理由",
+        "main_text": (
+            "東京の感覚で出張先の相席ラウンジに20時に行ったら空いていて、居酒屋終わりの23時半に覗いたら女性グループで満席近かった。\n\n"
+            "地方18店は終電の壁が薄く、深夜0〜2時に女性が121.1%まで増える。\n\n"
+            "地元の人の過ごし方と狙い目はリプ欄で。\n"
+            "#相席ラウンジ #相席ナビ"
+        ),
+    },
+    {
         "slug": "oriental-lounge-vip-app",
         "path": "/guide/oriental-lounge-vip-app",
         "eyecatch": "/static/eyecatch-oriental-lounge-vip-app.jpg",
@@ -832,19 +1009,31 @@ COLUMN_PROMO_LIST = [
 def get_active_column_promo_list() -> list:
     """Return currently public column promo items (published scheduled articles newest-first + permanent list)."""
     dynamic_items = []
+    seen_slugs = set()
+    unpublished_slugs = set()
     try:
         import scheduled_articles
+        for s in scheduled_articles.get_all_scheduled_articles(allow_blocking=False):
+            if not scheduled_articles.is_published(s):
+                unpublished_slugs.add(s.get("slug"))
         for s in scheduled_articles.get_published_articles():
-            dynamic_items.append({
-                "slug": s["slug"],
-                "path": s["path"],
-                "eyecatch": s.get("eyecatch_jpg") or "",
-                "title": s["x_title"],
-                "main_text": s["x_main_text"],
-            })
+            sl = s.get("slug")
+            if sl and sl not in seen_slugs:
+                seen_slugs.add(sl)
+                dynamic_items.append({
+                    "slug": sl,
+                    "path": s["path"],
+                    "eyecatch": s.get("eyecatch_jpg") or "",
+                    "title": s["x_title"],
+                    "main_text": s["x_main_text"],
+                })
     except Exception:
         pass
-    return dynamic_items + COLUMN_PROMO_LIST
+    tail_items = [
+        item for item in COLUMN_PROMO_LIST
+        if item.get("slug") not in seen_slugs and item.get("slug") not in unpublished_slugs
+    ]
+    return dynamic_items + tail_items
 
 
 def load_column_eyecatch_bytes(item: dict) -> tuple:

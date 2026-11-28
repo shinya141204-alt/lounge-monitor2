@@ -332,10 +332,11 @@ class SeoLlmoDesignGoalAuditTests(unittest.TestCase):
                 expected_alternates.issubset(alts),
                 f"{path}: missing LLMO alternate links {expected_alternates - alts}",
             )
-            # Stale store count check
-            html = self.raw_html_map[path]
-            for stale in ("全国51店舗", "全51店舗", "国内51店舗"):
-                self.assertNotIn(stale, html, f"{path}: stale store count phrase '{stale}' found")
+            # Stale store count check (historical /stats/monthly/* snapshots reflect their archived month's active store count)
+            if not path.startswith("/stats/monthly/"):
+                html = self.raw_html_map[path]
+                for stale in ("全国51店舗", "全51店舗", "国内51店舗"):
+                    self.assertNotIn(stale, html, f"{path}: stale store count phrase '{stale}' found")
 
         # robots.txt symmetry check
         robots_txt = self.client.get("/robots.txt").data.decode("utf-8")

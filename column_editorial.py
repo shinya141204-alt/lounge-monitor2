@@ -93,6 +93,8 @@ RESERVED_STATIC_SLUGS = {
     "oriental-lounge-vip-app",
     "even-ratio-wait-trap",
     "early-bird-timing",
+    "table-change-protocol",
+    "thirties-lounge-guide",
 }
 
 COLUMN_AI_CLICHES = (

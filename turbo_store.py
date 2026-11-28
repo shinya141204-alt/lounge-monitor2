@@ -1451,10 +1451,29 @@ def analytics_replace_from_sheets(rows: list) -> int:
     return len(batch)
 
 
+def _iter_date_chunks_since(start_date_str: str, chunk_days: int = 14):
+    """Yield inclusive `(lo_ymd, hi_ymd)` chunks up to tomorrow JST so wide PG scans avoid 512MB memory spikes."""
+    try:
+        s_dt = datetime.date.fromisoformat(str(start_date_str or "")[:10])
+    except ValueError:
+        yield (str(start_date_str or ""), None)
+        return
+    end_dt = datetime.datetime.now(JST).date() + datetime.timedelta(days=1)
+    if s_dt > end_dt:
+        return
+    step = datetime.timedelta(days=max(1, int(chunk_days or 14)))
+    one_day = datetime.timedelta(days=1)
+    cur = s_dt
+    while cur <= end_dt:
+        hi = min(end_dt, cur + step - one_day)
+        yield (cur.isoformat(), hi.isoformat())
+        cur = hi + one_day
+
+
 def analytics_query_since(start_date_str: str) -> list:
     """
     Return `[[date_jst, event, label, count], ...]` from PostgreSQL or test bus in <2ms,
-    or `None` if PostgreSQL/test bus is not active.
+    or `None` if PostgreSQL/test bus is not active. Queries Postgres in <=14-day chunks.
     """
     if _mem_bus_enabled:
         with _mem_lock:
@@ -1466,22 +1485,35 @@ def analytics_query_since(start_date_str: str) -> list:
 
     if is_postgres_active() and init_postgres_aux_schema():
         try:
+            out = []
             with pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        SELECT date_jst, event, label, count
-                        FROM analytics_daily
-                        WHERE date_jst >= %s;
-                        """,
-                        (start_date_str,),
-                    )
-                    rows = cur.fetchall()
+                    for lo_d, hi_d in _iter_date_chunks_since(start_date_str, chunk_days=14):
+                        if hi_d is None:
+                            cur.execute(
+                                """
+                                SELECT date_jst, event, label, count
+                                FROM analytics_daily
+                                WHERE date_jst >= %s;
+                                """,
+                                (lo_d,),
+                            )
+                        else:
+                            cur.execute(
+                                """
+                                SELECT date_jst, event, label, count
+                                FROM analytics_daily
+                                WHERE date_jst >= %s AND date_jst <= %s;
+                                """,
+                                (lo_d, hi_d),
+                            )
+                        for r in cur.fetchall():
+                            out.append([r[0], r[1], r[2], int(r[3])])
                 try:
                     conn.rollback()
                 except Exception:
                     pass
-                return [[r[0], r[1], r[2], int(r[3])] for r in rows]
+                return out
         except Exception as err:
             logger.warning(f"[turbo_store] analytics_query_since pg error: {err}")
     return None
@@ -1574,7 +1606,7 @@ def analytics_hourly_replace_from_sheets(rows: list) -> int:
 def analytics_hourly_query_since(start_date_str: str) -> list:
     """
     Return `[[date_jst, hour_jst, bucket, count], ...]` from PostgreSQL or test bus in <2ms,
-    or `None` if PostgreSQL/test bus is not active.
+    or `None` if PostgreSQL/test bus is not active. Queries Postgres in <=14-day chunks.
     """
     if _mem_bus_enabled:
         with _mem_lock:
@@ -1586,22 +1618,35 @@ def analytics_hourly_query_since(start_date_str: str) -> list:
 
     if is_postgres_active() and init_postgres_aux_schema():
         try:
+            out = []
             with pg_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        SELECT date_jst, hour_jst, bucket, count
-                        FROM analytics_hourly
-                        WHERE date_jst >= %s;
-                        """,
-                        (start_date_str,),
-                    )
-                    rows = cur.fetchall()
+                    for lo_d, hi_d in _iter_date_chunks_since(start_date_str, chunk_days=14):
+                        if hi_d is None:
+                            cur.execute(
+                                """
+                                SELECT date_jst, hour_jst, bucket, count
+                                FROM analytics_hourly
+                                WHERE date_jst >= %s;
+                                """,
+                                (lo_d,),
+                            )
+                        else:
+                            cur.execute(
+                                """
+                                SELECT date_jst, hour_jst, bucket, count
+                                FROM analytics_hourly
+                                WHERE date_jst >= %s AND date_jst <= %s;
+                                """,
+                                (lo_d, hi_d),
+                            )
+                        for r in cur.fetchall():
+                            out.append([r[0], int(r[1]), r[2], int(r[3])])
                 try:
                     conn.rollback()
                 except Exception:
                     pass
-                return [[r[0], int(r[1]), r[2], int(r[3])] for r in rows]
+                return out
         except Exception as err:
             logger.warning(f"[turbo_store] analytics_hourly_query_since pg error: {err}")
     return None

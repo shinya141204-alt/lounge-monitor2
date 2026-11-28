@@ -119,7 +119,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         :root {
             --bg-dark: var(--calm-bg, #111113);
@@ -706,7 +706,7 @@
             .concierge-gold-btn { width: 100%; }
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -928,12 +928,12 @@
             <!-- Prominent 3-Second Concierge CTA -->
             <div class="concierge-promo-banner">
                 <div class="concierge-promo-copy">
-                    <span class="concierge-promo-badge">AISEKI CONCIERGE ｜ 0.1秒リアルタイム判定</span>
+                    <span class="concierge-promo-badge">AISEKI CONCIERGE ｜ リアルタイム判定</span>
                     <p class="concierge-promo-title">{{ selected_area.info.short_name }}で今夜入るべき「第1候補」と「徒歩ハシゴ保険」を即診断</p>
                     <p class="concierge-promo-desc">1人参戦の入店規定・営業時間・現在の男女バランス・終電後の定着率まで加味して最適ルートを提案します。</p>
                 </div>
                 <a href="/concierge?area={{ c_area_key }}" class="concierge-gold-btn">
-                    このエリアで今夜の3秒穴場＆ハシゴ診断をする ›
+                    このエリアの穴場＆徒歩ハシゴ診断をする ›
                 </a>
             </div>
 
@@ -962,7 +962,7 @@
             <div class="tactical-deep-grid">
                 {% if selected_area.info.hopping_route %}
                 <section class="tactical-card">
-                    <h3>徒歩ハシゴ黄金ルート</h3>
+                    <h3>徒歩ハシゴ定番ルート</h3>
                     <p>{{ selected_area.info.hopping_route }}</p>
                 </section>
                 {% endif %}
@@ -1038,12 +1038,12 @@
         <!-- National Concierge Banner -->
         <div class="concierge-promo-banner">
             <div class="concierge-promo-copy">
-                <span class="concierge-promo-badge">3秒穴場＆ハシゴ診断コンシェルジュ</span>
+                <span class="concierge-promo-badge">穴場＆徒歩ハシゴ診断コンシェルジュ</span>
                 <p class="concierge-promo-title">どの店舗に入るか迷ったら、条件を選ぶだけで「本命＋徒歩ハシゴ候補」を即時判定</p>
                 <p class="concierge-promo-desc">新宿・渋谷・梅田・難波・横浜・大宮・名古屋・福岡・広島・札幌・仙台など全国主要エリアに対応。</p>
             </div>
             <a href="/concierge" class="concierge-gold-btn">
-                今夜の3秒穴場＆ハシゴ診断を開く ›
+                今夜の穴場＆徒歩ハシゴ診断を開く ›
             </a>
         </div>
 

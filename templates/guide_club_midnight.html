@@ -82,9 +82,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -302,7 +302,7 @@
                         <tr><td>オリエンタルラウンジ 宇都宮</td><td>―</td><td>144%</td><td>177%</td><td>92%</td></tr>
                         <tr><td>オリエンタルラウンジ 宮崎</td><td>―</td><td>140%</td><td>141%</td><td>97%</td></tr>
                         <tr><td>JIS 福岡</td><td>○</td><td>138%</td><td>114%</td><td>93%</td></tr>
-                        <tr><td>CLOVERS 広島</td><td>―</td><td>129%</td><td>130%</td><td>99%</td></tr>
+                        <tr><td>CLOVERS（クローバーズ） 広島</td><td>―</td><td>129%</td><td>130%</td><td>99%</td></tr>
                         <tr><td>オリエンタルラウンジ 心斎橋</td><td>○</td><td>127%</td><td>132%</td><td>96%</td></tr>
                         <tr><td>オリエンタルラウンジ 熊本</td><td>―</td><td>127%</td><td>130%</td><td>74%</td></tr>
                         <tr><td>JIS 茶屋町</td><td>○</td><td>35%</td><td>64%</td><td>19%</td></tr>
@@ -337,6 +337,12 @@
                     再現：リポジトリ内の <code>scripts/article_stats.py --days 56 --min-days-store 14</code> で同じ数値を出力できます（2026年11月5日集計）。
                 </p>
             </aside>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 終電後（深夜0時以降）でも女性が多い相席ラウンジのエリアはどこですか？</p>
+                <p class="faq-a">大阪（梅田・茶屋町・心斎橋・難波）、東京（渋谷・新宿歌舞伎町）、名古屋（栄・錦）、福岡（天神・大名）、札幌（すすきの）など、徒歩圏内に大型ダンスクラブが密集しているエリアの店舗は、深夜0時半〜3時頃に「クラブ帰りの2回転目（第2波）」の女性が再流入しやすく、終電後も高い盛り上がりを見せます。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="深夜の二山目に向けたナイトケア・2軒目予約と女性向け店舗ボード">

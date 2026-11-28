@@ -49,7 +49,7 @@
 <div class="portal-global-nav-row">
         <nav class="portal-global-nav" aria-label="メインナビゲーション">
             <a href="/" class="portal-nav-item{% if nav_active == 'ranking' %} active{% endif %}"{% if nav_active == 'ranking' %} aria-current="page"{% endif %}>リアルタイム順位</a>
-            <a href="/concierge" class="portal-nav-item{% if nav_active == 'concierge' %} active{% endif %}"{% if nav_active == 'concierge' %} aria-current="page"{% endif %}>3秒穴場診断</a>
+            <a href="/concierge" class="portal-nav-item{% if nav_active == 'concierge' %} active{% endif %}"{% if nav_active == 'concierge' %} aria-current="page"{% endif %}>穴場診断</a>
             <a href="/for-women" class="portal-nav-item{% if nav_active == 'for_women' %} active{% endif %}"{% if nav_active == 'for_women' %} aria-current="page"{% endif %}>初めての女性向け安心ガイド</a>
             <a href="/price-comparison" class="portal-nav-item{% if nav_active == 'price_comparison' %} active{% endif %}"{% if nav_active == 'price_comparison' %} aria-current="page"{% endif %}>料金・イベント比較</a>
             <a href="/columns" class="portal-nav-item{% if nav_active == 'columns' %} active{% endif %}"{% if nav_active == 'columns' %} aria-current="page"{% endif %}>コラム・記事一覧</a>
@@ -62,5 +62,5 @@
             <span class="portal-theme-btn-text">ライト表示</span>
         </button>
 </div>
-        <script>(function(){if(window.__syncPortalThemeBtns)window.__syncPortalThemeBtns();var n=document.querySelector('.portal-global-nav'),a=n&&n.querySelector('.portal-nav-item.active');if(n&&a&&n.scrollWidth>n.clientWidth){n.scrollLeft=Math.max(0,(a.offsetLeft-n.offsetLeft)-(n.clientWidth-a.offsetWidth)/2);}})();</script>
+        <script>(function(){if(window.__syncPortalThemeBtns)window.__syncPortalThemeBtns();var n=document.querySelector('.portal-global-nav'),a=n&&n.querySelector('.portal-nav-item.active');function syncNavFade(){if(!n)return;var maxS=Math.max(0,n.scrollWidth-n.clientWidth);n.classList.toggle('can-scroll-left',n.scrollLeft>6);n.classList.toggle('can-scroll-right',maxS>6&&n.scrollLeft<maxS-6);}if(n){if(a&&n.scrollWidth>n.clientWidth){n.scrollLeft=Math.max(0,(a.offsetLeft-n.offsetLeft)-(n.clientWidth-a.offsetWidth)/2);}syncNavFade();n.addEventListener('scroll',syncNavFade,{passive:true});window.addEventListener('resize',syncNavFade,{passive:true});}})();</script>
         {% include '_nav_loader.html' %}

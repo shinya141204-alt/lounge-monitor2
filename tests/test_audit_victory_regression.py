@@ -62,8 +62,10 @@ class VictoryAuditRegressionTests(unittest.TestCase):
         with open('templates/index.html', 'r', encoding='utf-8') as f:
             html = f.read()
         self.assertNotIn("filterEventsModal('ORIENTAL'", html)
+        self.assertNotIn('data-ui-arg="ORIENTAL"', html)
         self.assertNotIn('data-filter="ORIENTAL"', html)
-        self.assertIn("filterEventsModal('ORIENTAL_LOUNGE'", html)
+        self.assertIn('data-ui-click="filterEventsModal"', html)
+        self.assertIn('data-ui-arg="ORIENTAL_LOUNGE"', html)
         self.assertIn('data-filter="ORIENTAL_LOUNGE"', html)
 
 if __name__ == '__main__':

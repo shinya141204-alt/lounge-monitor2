@@ -230,7 +230,7 @@ class M4FixesRegressionTests(unittest.TestCase):
 
     # 5. P2: /sw.js Vary: Accept-Encoding + gzip compression
     def test_p2_sw_js_vary_and_gzip(self):
-        r_gz = self.client.get("/sw.js?v=122", headers={"Accept-Encoding": "gzip"})
+        r_gz = self.client.get("/sw.js?v=127", headers={"Accept-Encoding": "gzip"})
         try:
             self.assertEqual(r_gz.status_code, 200)
             self.assertIn("Accept-Encoding", r_gz.headers.get("Vary", ""))
@@ -241,7 +241,7 @@ class M4FixesRegressionTests(unittest.TestCase):
             self.assertIn("no-store", cc)
             self.assertIn("must-revalidate", cc)
             decompressed = gzip.decompress(r_gz.data).decode("utf-8")
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v122'", decompressed)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v127'", decompressed)
         finally:
             r_gz.close()
 
@@ -251,7 +251,7 @@ class M4FixesRegressionTests(unittest.TestCase):
             self.assertEqual(r_plain.status_code, 200)
             self.assertIn("Accept-Encoding", r_plain.headers.get("Vary", ""))
             self.assertIsNone(r_plain.headers.get("Content-Encoding"))
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v122'", r_plain.data.decode("utf-8"))
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v127'", r_plain.data.decode("utf-8"))
         finally:
             r_plain.close()
 

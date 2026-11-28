@@ -75,7 +75,7 @@
     <meta name="color-scheme" content="dark light">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         :root {
             --bg-dark: var(--calm-bg, #111113);
@@ -358,7 +358,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -594,6 +594,24 @@
                 <a href="/guide/dress-code-cleanliness" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">服装規定・清潔感チェック ›</a>
                 <a href="/guide/weekday-strategy" style="color: var(--accent-text); font-size: 0.84rem; font-weight: 600; text-decoration: none;">曜日・時間帯別の穴場データ ›</a>
             </div>
+        </section>
+
+        <section class="guide-box" aria-label="{{ brand.name }}に関するよくある質問">
+            <h2>{{ brand.name }}に関するよくある質問（FAQ）</h2>
+            <div style="padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
+                <h3 style="margin: 0 0 6px; font-size: 0.94rem; color: var(--text-main);">Q. {{ brand.name }}の現在の男女人数・混雑状況はどこで確認できますか？</h3>
+                <p style="margin: 0; font-size: 0.86rem; color: var(--text-sub); line-height: 1.7;">『相席ナビ』の本ページにて、全国{{ store_count }}店舗の{{ brand.name }}のリアルタイム女性人数・男性人数・女性比率（%）を毎分自動更新で無料公開しています。{% if (total_women + total_men) > 0 %}現在合計で女性{{ total_women }}名・男性{{ total_men }}名が来店中です。{% else %}夕方オープン後は全店舗の現在人数と男女比がリアルタイムで反映されます。{% endif %}</p>
+            </div>
+            <div style="padding: 12px 0;{% if brand_spec %} border-bottom: 1px solid var(--border-subtle);{% endif %}">
+                <h3 style="margin: 0 0 6px; font-size: 0.94rem; color: var(--text-main);">Q. {{ brand.name }}で男性の待ち時間を避けて相席するコツは？</h3>
+                <p style="margin: 0; font-size: 0.86rem; color: var(--text-sub); line-height: 1.7;">{{ brand.faq_tip }}</p>
+            </div>
+            {% if brand_spec %}
+            <div style="padding: 12px 0 0;">
+                <h3 style="margin: 0 0 6px; font-size: 0.94rem; color: var(--text-main);">Q. {{ brand.name }}の料金システム・男性1人（ソロ）入店可否・女性料金は？</h3>
+                <p style="margin: 0; font-size: 0.86rem; color: var(--text-sub); line-height: 1.7;">{{ brand.name }}の男性料金はチャージ「{{ brand_spec.charge_str }}」、相席時は平日「{{ brand_spec.weekday_10m_str }}」・週末「{{ brand_spec.weekend_10m_str }}」、待機時は「{{ brand_spec.wait_fee_str }}」が目安です。男性1名（ソロ）入店規定は「{{ brand_spec.solo_rule }}」となっており、女性は「{{ brand_spec.default_women_perk }}」で利用できます（来店前に各店公式案内もご確認ください）。</p>
+            </div>
+            {% endif %}
         </section>
         </main>
 

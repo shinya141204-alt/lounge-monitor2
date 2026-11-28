@@ -65,7 +65,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         :root {
             --bg-dark: var(--calm-bg);
@@ -140,7 +140,7 @@
             border-radius: 18px;
             padding: 28px 24px;
         }
-        .content-box a:not(.rec-btn):not(.grooming-jump-chip):not(.editorial-bridge-btn):not(.audience-switch-link) {
+        .content-box a:not(.rec-btn):not(.grooming-jump-chip):not(.grooming-quick-btn):not(.grooming-quick-sublink):not(.editorial-bridge-btn):not(.audience-switch-link) {
             color: var(--text-main);
             font-weight: 600;
             text-decoration: underline;
@@ -211,6 +211,88 @@
             background: var(--text-main);
             color: var(--bg-dark);
             border-color: var(--text-main);
+        }
+        .grooming-quick-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin: 14px 0 22px;
+        }
+        .grooming-quick-item {
+            background: var(--card-elev);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 13px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .grooming-quick-item.is-mode-highlight {
+            border-color: var(--text-main);
+            box-shadow: 0 0 0 1px var(--text-main);
+        }
+        .grooming-quick-kicker {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-sub);
+        }
+        .grooming-quick-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.4;
+        }
+        .grooming-quick-desc {
+            font-size: 0.79rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .grooming-quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .grooming-quick-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--cm-cta-bg);
+            color: var(--cm-cta-text);
+            border: 1px solid var(--cm-cta-bg);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none !important;
+        }
+        body.theme-light .grooming-quick-btn {
+            background: #18181b;
+            border-color: #18181b;
+            color: #ffffff;
+        }
+        .grooming-quick-sublink {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main) !important;
+            font-size: 0.76rem;
+            font-weight: 600;
+            text-decoration: none !important;
+        }
+        .grooming-sections-flow {
+            display: flex;
+            flex-direction: column;
+        }
+        .grooming-section-group.is-prioritized {
+            order: -1;
         }
         .rec-card {
             background: var(--card-elev);
@@ -291,7 +373,7 @@
             margin-bottom: 4px;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
 </head>
 
 <body>
@@ -320,15 +402,53 @@
                 <a class="audience-switch-link" href="/for-women">女性向け実践ガイドを見る&nbsp;›</a>
             </aside>
             <nav class="grooming-mode-bar" aria-label="目的別クイック移動と現在人数ボード">
-                <p class="grooming-mode-title">{% if active_mode == 'waiting' %}いま満席・男性待機中の方へ：代替アプリ・近隣穴場へすぐ切り替えられます{% elif active_mode == 'second' %}2軒目・次回デートの空席確保セクションへ移動できます{% else %}いまの状況に合わせて必要な項目へ移動できます{% endif %}</p>
+                <p class="grooming-mode-title">{% if active_mode == 'waiting' %}いま満席・男性待機中の方へ：代替アプリ・近隣穴場へすぐ切り替えられます{% elif active_mode == 'second' %}2軒目・次回デートの空席確保セクションを最優先に表示しています{% else %}いまの状況に合わせて必要な項目へ移動できます{% endif %}</p>
                 <div class="grooming-jump-row">
-                    <a href="#skin-beard" class="grooming-jump-chip{% if active_mode == 'prep' %} is-active{% endif %}">① 入店前の清潔感ケア</a>
-                    <a href="#night-care" class="grooming-jump-chip{% if active_mode == 'second' %} is-active{% endif %}">② 2軒目バー空席確保</a>
-                    <a href="#backup-apps" class="grooming-jump-chip{% if active_mode == 'waiting' %} is-active{% endif %}">③ 満席時の代替アプリ</a>
+                    <a href="/grooming?mode=prep#skin-beard" class="grooming-jump-chip{% if active_mode == 'prep' %} is-active{% endif %}">① 入店前の清潔感ケア</a>
+                    <a href="/grooming?mode=second#night-care" class="grooming-jump-chip{% if active_mode == 'second' %} is-active{% endif %}">② 2軒目バー空席確保</a>
+                    <a href="/grooming?mode=waiting#backup-apps" class="grooming-jump-chip{% if active_mode == 'waiting' %} is-active{% endif %}">③ 満席時の代替アプリ</a>
                     <a href="/" class="grooming-jump-chip">リアルタイム順位へ戻る&nbsp;›</a>
-                    <a href="/concierge" class="grooming-jump-chip">3秒穴場診断&nbsp;›</a>
+                    <a href="/concierge" class="grooming-jump-chip">穴場＆ハシゴ診断&nbsp;›</a>
                 </div>
             </nav>
+
+            {% if not is_staff and not session.get('is_staff') %}
+            <section class="grooming-quick-matrix" aria-label="状況別の準備・代替サービス早見表">
+                <div class="grooming-quick-item{% if active_mode == 'prep' %} is-mode-highlight{% endif %}" data-aff-slot="mens_skincare_clinic"{% if active_mode == 'prep' %} style="order:-1;"{% endif %}>
+                    <div>
+                        <div class="grooming-quick-kicker">入店前の清潔感ケア</div>
+                        <p class="grooming-quick-title">夕方のテカリ・口元を整える</p>
+                        <p class="grooming-quick-desc">距離70cmのソファ席で差が出る肌・ヒゲ・服の定番セットを厳選。</p>
+                    </div>
+                    <div class="grooming-quick-actions">
+                        <a href="/link/mens_skincare_clinic?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="grooming-quick-btn">ORBIS Mr.初回セット ›</a>
+                        <a href="#skin-beard" class="grooming-quick-sublink">ヒゲ・服装一覧 ↓</a>
+                    </div>
+                </div>
+                <div class="grooming-quick-item{% if active_mode == 'second' %} is-mode-highlight{% endif %}" data-aff-slot="second_venue_reservation"{% if active_mode == 'second' %} style="order:-1;"{% endif %}>
+                    <div>
+                        <div class="grooming-quick-kicker">2軒目バー・後日デート確保</div>
+                        <p class="grooming-quick-title">駅チカの個室・隠れ家を予約</p>
+                        <p class="grooming-quick-desc">相席後の2軒目満席を防ぎ、スマートに次の席へ移動できます。</p>
+                    </div>
+                    <div class="grooming-quick-actions">
+                        <a href="/link/second_venue_reservation?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="grooming-quick-btn">一休.com空席を見る ›</a>
+                        <a href="#night-care" class="grooming-quick-sublink">サプリ・誘い方 ↓</a>
+                    </div>
+                </div>
+                <div class="grooming-quick-item{% if active_mode == 'waiting' %} is-mode-highlight{% endif %}" data-aff-slot="dating_instant"{% if active_mode == 'waiting' %} style="order:-1;"{% endif %}>
+                    <div>
+                        <div class="grooming-quick-kicker">満席・男性待ちの即切替</div>
+                        <p class="grooming-quick-title">待機課金を避けて今夜合流</p>
+                        <p class="grooming-quick-desc">店頭待ちが長い夜は、近隣で今日飲める定番アプリへ切り替え。</p>
+                    </div>
+                    <div class="grooming-quick-actions">
+                        <a href="/link/dating_instant?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="grooming-quick-btn">今日飲めるアプリ ›</a>
+                        <a href="#backup-apps" class="grooming-quick-sublink">1対1アプリ比較 ↓</a>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
             <p>
                 仕事終わりの19時半。友人と合流してラウンジへ向かう直前、ふと立ち寄った駅のトイレの鏡を見て「夕方でおでこがだいぶテカっている……」と気づいた経験はありませんか。<br>
                 相席ラウンジのL字ソファやボックス席は、相手との距離が<strong>40〜70cmほど</strong>しかありません。入店前に整えておきたい<strong>「口元・肌・きれいめ私服・ナイトケア」</strong>の定番アイテムから、週末ピークで満席だった夜に切り替えられる<strong>「2軒目予約・恋活アプリ」</strong>まで実用目線で整理しました（ブランド別の入店NG規定は<a href="/guide/dress-code-cleanliness">『服装・清潔感チェックポイント』</a>を参照）。
@@ -357,12 +477,14 @@
                 </ul>
             </div>
 
+            <div class="grooming-sections-flow">
+            <section class="grooming-section-group{% if active_mode == 'prep' %} is-prioritized{% endif %}" data-grooming-group="prep">
             <h2 id="skin-beard">1. 夕方の「青ヒゲ・剃り残し」をなくして口元をすっきりさせる</h2>
             <p>
                 朝しっかりシェービングして家を出ても、仕事終わりの20時ごろにはどうしても鼻下やアゴ周りにうっすら青みが戻ってきます。しかもラウンジの間接照明は天井の真上から落ちるので、昼間のオフィス以上に口元の影が強調されやすい環境です。入店前の鏡チェックはもちろん、医療脱毛で少しずつベースを整えておくと夕方の疲れた印象が出にくくなります。
             </p>
             {% if not is_staff and not session.get('is_staff') %}
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="mens_hair_removal">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">口元の清潔感ケア</span>
                 <h3 class="rec-title">メンズ医療ヒゲ脱毛プログラム</h3>
@@ -371,7 +493,7 @@
                     <li>朝のシェービング時間を短縮でき、カミソリ負けの気になりにくい清潔な口元を保ちやすい</li>
                     <li>照明が落ちた70cmのソファ席でも、口元の影を気にせず自然に会話へ集中できる</li>
                 </ul>
-                <a href="/link/hair_removal?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイトで詳細を見る&nbsp;›</a>
+                <a href="/link/mens_hair_removal?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイトで詳細を見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BEL1F+61B8KY+328C+2HCB1D" alt="" style="display:none;">
             </div>
             {% endif %}
@@ -390,7 +512,7 @@
                 1軒目で少しお酒を入れたり、空調の効いた店内にいたりすると、男性の肌はどうしても皮脂が浮いてスポット照明を反射しやすくなります。入店前のティッシュオフに加えて、ベタつかないメンズ用の洗顔・化粧水で日頃から水分と油分のバランスを整えておくと、深夜や店を出たあとの明るい駅構内でも落ち着いた肌印象を保てます。
             </p>
             {% if not is_staff and not session.get('is_staff') %}
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="mens_skincare_clinic">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">定番メンズスキンケア</span>
                 <h3 class="rec-title">ORBIS Mr.（オルビス ミスター）</h3>
@@ -399,7 +521,7 @@
                     <li>洗顔・化粧水・保湿液のシンプルな手順で、スキンケア初心者でも洗面台に置くだけで続けやすい</li>
                     <li>まずは自分の肌に合うか試せるトライアルセットから始められる</li>
                 </ul>
-                <a href="/link/orbis?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">初回限定セットを公式で見る&nbsp;›</a>
+                <a href="/link/mens_skincare_clinic?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">初回限定セットを公式で見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www18.a8.net/0.gif?a8mat=4BEL1F+67V08I+1USQ+2Z90WX" alt="" style="display:none;">
             </div>
             {% endif %}
@@ -409,7 +531,7 @@
                 休日のラウンジでは、大きなブランドロゴが入った派手な服よりも、「サイズ感の合ったジャケットや無地のきれいめニット＋清潔な爪と靴」といったシンプルな大人カジュアルが一番落ち着いて見られます。気合が入りすぎていない自然体の服装は、向かい合う相手も構えずに話しやすくなります。「私服を選ぶといつも同じ格好になってしまう」という方は、スタイリストが組み合わせた一式が届くサービスを使うと、ラウンジでも2軒目の夜カフェでも浮かない一着が揃います。
             </p>
             {% if not is_staff and not session.get('is_staff') %}
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="spu_styleup">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">スタイリスト監修コーデ</span>
                 <h3 class="rec-title">SPU スタイルアップ便（メンズきれいめ服の定期便）</h3>
@@ -418,10 +540,12 @@
                     <li>休日の夕方に「今日何を着ていこう」と迷う時間や、店頭で服を探す手間を減らせる</li>
                     <li>オリエンタルラウンジやJISの照明にも、後日のランチ・カフェデートにもそのままなじむシルエット</li>
                 </ul>
-                <a href="/link/spu?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">スタイルアップ便の公式を見る&nbsp;›</a>
+                <a href="/link/spu_styleup?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">スタイルアップ便の公式を見る&nbsp;›</a>
             </div>
             {% endif %}
+            </section>
 
+            <section class="grooming-section-group{% if active_mode == 'second' %} is-prioritized{% endif %}" data-grooming-group="second">
             <h2 id="night-care">4. 飲み放題＆2軒目も余裕を持って楽しむ「乾杯前後のナイトケア習慣」</h2>
             <p>
                 相席ラウンジは基本的に時間制のセルフ・タブレット飲み放題です。乾杯のビールからハイボール、さらに盛り上がって2軒目のバーへ流れると、気づかないうちにいつも以上のペースになりがちです。翌日に仕事や予定がある平日の夜ほど、<strong>入店前や乾杯前後のリフレッシュ習慣として個包装サプリ</strong>を取り入れておくと、終盤まで落ち着いた会話のテンポを保てます。
@@ -437,7 +561,7 @@
                 さりげない気遣いとしてジャケットの内ポケットやカバンに個包装のサプリを忍ばせておくと、自分のペースを保つ習慣になるだけでなく、乾杯直後の空気がやわらぐきっかけにもなります。
             </p>
             {% if not is_staff and not session.get('is_staff') %}
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="night_care_supplement">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">飲み放題・2軒目の夜のお供に</span>
                 <h3 class="rec-title">乾杯サポート・ナイトケアサプリ</h3>
@@ -449,7 +573,7 @@
                 <a href="/link/night_care_supplement?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">公式サイト・キャンペーンを見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29" alt="" style="display:none;">
             </div>
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="second_venue_reservation">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">2軒目バー・後日デートの席確保に</span>
                 <h3 class="rec-title">一休.comレストラン（大人の隠れ家バー・ディナー予約）</h3>
@@ -462,7 +586,9 @@
                 <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" alt="" style="display:none;">
             </div>
             {% endif %}
+            </section>
 
+            <section class="grooming-section-group{% if active_mode == 'waiting' %} is-prioritized{% endif %}" data-grooming-group="waiting">
             <h2 id="backup-apps">5. 週末に「どのお店も満席・男性待ち」だったときの2つの選択肢</h2>
             <p>
                 金曜や土曜の22時過ぎは、エリア内の店舗がどこも男性の入店待ちになっている夜もあります。そんなときに待合スペースで1時間立ち尽くすのではなく、その場で切り替えられる選択肢を持っておくと週末の夜を無駄にせずに済みます。
@@ -476,7 +602,7 @@
                 また、「今日は複数人でワイワイ飲むより、最初から1対1で落ち着いて食事したいな」という気分の夜もあります。そんな日に備えて、<strong>「今日これから近くで飲めるアプリ」</strong>と<strong>「1対1で落ち着いて会えるデート・恋活アプリ」</strong>を自分のスタイルに合わせて1つ入れておくと、混雑ピークの夜でも無理なく動けます（時間帯データに基づく費用・相性の詳しい比較は<a href="/guide/lounge-vs-screened-date">『相席ラウンジと審査制1対1デートの使い分け』</a>で検証しています）。
             </p>
             {% if not is_staff and not session.get('is_staff') %}
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="dating_instant">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">① 今日これから・満席時のサブ選択肢</span>
                 <h3 class="rec-title">今から近くで飲める相手が見つかる定番恋活アプリ</h3>
@@ -488,7 +614,7 @@
                 <a href="/link/dating_instant?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">無料登録・公式サイトを見る&nbsp;›</a>
                 <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BEK9C+21TRSI+5SFC+61RI9" alt="" style="display:none;">
             </div>
-            <div class="rec-card">
+            <div class="rec-card" data-aff-slot="dating_bachelor">
                 <span class="rec-badge pr-badge">PR</span>
                 <span class="rec-badge">② 1対1カフェ＆食事デート派</span>
                 <h3 class="rec-title">相方を探さず1対1で落ち着いて会える恋活・デートアプリ</h3>
@@ -500,6 +626,8 @@
                 <a href="/link/dating_bachelor?from=/grooming" target="_blank" rel="nofollow sponsored noopener" class="rec-btn">1対1デート・恋活アプリの公式を見る&nbsp;›</a>
             </div>
             {% endif %}
+            </section>
+            </div>
         </article>
         </main>
 

@@ -144,9 +144,20 @@
         }
     }
 </style>
+{% set _ssc_is_flat = (brand_spec is defined and brand_spec and brand_spec.is_flat_rate) or ('ASOBIBAR' in (surface_smart_cta.kicker or '')) or ('ヤタコイ' in (surface_smart_cta.kicker or '')) or ('アソビバー' in (surface_smart_cta.kicker or '')) %}
+{% set _ssc_title = surface_smart_cta.title or '' %}
+{% if _ssc_is_flat %}
+{% set _ssc_title = _ssc_title | replace('単独待機10分330円を重ねる前に', '単独での待機時間を重ねる前に') | replace('単独待機10分330円', '単独での待機時間') %}
+{% endif %}
+{% set _ssc_sub = (surface_smart_cta.sub or '') | replace('最初の10分の会話継続率が変わります', '最初の10分の印象や会話の入りやすさが変わります') %}
+{% if _ssc_is_flat %}
+{% set _ssc_sub = _ssc_sub | replace('単独待機コスト', '単独での待機時間') | replace('単独待機料金', '待ち時間') %}
+{% endif %}
+{% set _ssc_sublink_label = (surface_smart_cta.sublink_label or '') | replace('3秒診断', '穴場診断') | replace('3秒', '') %}
 <aside id="surface-smart-cta-card"
        class="surface-smart-cta pr-card-item"
        data-context-slot="surface_smart_context"
+       data-aff-slot="{{ surface_smart_cta.slot_id or '' }}"
        data-context-mode="{{ surface_smart_cta.mode }}"
        data-women-variant='{{ surface_smart_cta.women_variant | tojson }}'
        aria-label="現在の混雑・時間帯に応じたおすすめサービスと関連ガイド">
@@ -156,13 +167,13 @@
                 <span class="surface-smart-pill">PR</span>
                 <span id="surface-smart-cta-kicker" class="surface-smart-kicker">{{ surface_smart_cta.kicker }}</span>
             </div>
-            <div id="surface-smart-cta-title" class="surface-smart-title">{{ surface_smart_cta.title }}</div>
-            <div id="surface-smart-cta-sub" class="surface-smart-sub">{{ surface_smart_cta.sub }}</div>
+            <div id="surface-smart-cta-title" class="surface-smart-title">{{ _ssc_title }}</div>
+            <div id="surface-smart-cta-sub" class="surface-smart-sub">{{ _ssc_sub }}</div>
         </div>
         <span id="surface-smart-cta-btn" class="surface-smart-btn">{{ surface_smart_cta.cta_label }}</span>
     </a>
     <div class="surface-smart-foot">
-        <a id="surface-smart-cta-sublink" class="surface-smart-sublink" href="{{ surface_smart_cta.sublink_href }}" data-cushion="1">{{ surface_smart_cta.sublink_label }}</a>
+        <a id="surface-smart-cta-sublink" class="surface-smart-sublink" href="{{ surface_smart_cta.sublink_href }}" data-cushion="1">{{ _ssc_sublink_label }}</a>
         <a id="surface-smart-cta-women-sublink" class="surface-smart-sublink" href="{{ surface_smart_cta.women_sublink_href }}" data-cushion="1">{{ surface_smart_cta.women_sublink_label }}</a>
     </div>
     <img id="surface-smart-cta-pixel" class="pr-tracking-pixel"{% if surface_smart_cta.tracking_pixel %} src="{{ surface_smart_cta.tracking_pixel }}"{% else %} style="display:none;"{% endif %} width="1" height="1" alt="" loading="lazy" aria-hidden="true">
@@ -201,6 +212,9 @@
         var wsl = document.getElementById('surface-smart-cta-women-sublink');
         var px = document.getElementById('surface-smart-cta-pixel');
         if (lk) lk.href = wv.href;
+        if (wv.canonical_slot_id || wv.slot_id) {
+            card.setAttribute('data-aff-slot', wv.canonical_slot_id || wv.slot_id);
+        }
         if (kk && wv.kicker) kk.textContent = wv.kicker;
         if (tt && wv.title) tt.textContent = wv.title;
         if (sb && wv.sub) sb.textContent = wv.sub;

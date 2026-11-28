@@ -389,7 +389,7 @@ class AnalyticsTests(unittest.TestCase):
         r = self.client.get('/link/orbis', headers={'User-Agent': 'Mozilla/5.0', 'Referer': 'https://aiseki-navi.com/grooming'})
         self.assertEqual(r.status_code, 302)
         labels = dict(analytics.summary(1)['by_label']['affiliate_click'])
-        self.assertEqual(labels.get('orbis @ /grooming'), 1)
+        self.assertEqual(labels.get('mens_skincare_clinic @ /grooming'), 1)
 
     def test_bots_are_not_counted(self):
         self.client.get('/columns', headers={'User-Agent': 'Googlebot/2.1'})
@@ -1166,7 +1166,7 @@ class GrowthFeaturesTests(unittest.TestCase):
             r = self.client.get(p)
             self.assertEqual(r.status_code, 200, f"Public path {p} returned {r.status_code}")
             body = r.data.decode('utf-8')
-            self.assertIn('/static/calm.css?v=52', body, f"{p} missing /static/calm.css?v=52")
+            self.assertIn('/static/calm.css?v=57', body, f"{p} missing /static/calm.css?v=57")
             if '/static/style.css' in body:
                 self.assertRegex(body, r'/static/style\.css\?v=2026\d+_\d+', f"{p} missing versioned /static/style.css")
             self.assertIn('公式ホームページ', body, f"{p} missing official website verification notice")
@@ -1179,7 +1179,7 @@ class GrowthFeaturesTests(unittest.TestCase):
                 sr = self.client.get(sp)
                 self.assertEqual(sr.status_code, 200, f"Scheduled path {sp} returned {sr.status_code}")
                 sbody = sr.data.decode('utf-8')
-                self.assertIn('/static/calm.css?v=52', sbody, f"{sp} missing /static/calm.css?v=52")
+                self.assertIn('/static/calm.css?v=57', sbody, f"{sp} missing /static/calm.css?v=57")
                 if '/static/style.css' in sbody:
                     self.assertRegex(sbody, r'/static/style\.css\?v=2026\d+_\d+', f"{sp} missing versioned /static/style.css")
                 self.assertIn('公式ホームページ', sbody, f"{sp} missing official website verification notice")
@@ -1410,7 +1410,9 @@ class GrowthFeaturesTests(unittest.TestCase):
         p_rank = nav_block.find('今の順位')
         p_price = nav_block.find('料金比較')
         p_women = nav_block.find('初めての女性向け安心ガイド')
-        p_menu = nav_block.find('メニュー（3秒診断')
+        p_menu = nav_block.find('メニュー（穴場診断')
+        if p_menu < 0:
+            p_menu = nav_block.find('メニュー（3秒診断')
         self.assertTrue(0 <= p_rank < p_price < p_women < p_menu, "Top compact nav order must be 今の順位 -> 料金比較 -> 初めての女性向け安心ガイド -> メニュー")
         self.assertIn('コラム・記事一覧', idx_html)
 
@@ -1779,7 +1781,7 @@ class FullAuditRegressionTests(unittest.TestCase):
         sw_resp = self.client.get('/sw.js')
         try:
             sw_txt = sw_resp.data.decode('utf-8')
-            self.assertIn("CACHE_NAME = 'aiseki-navi-v122'", sw_txt)
+            self.assertIn("CACHE_NAME = 'aiseki-navi-v127'", sw_txt)
             self.assertIn("event.waitUntil", sw_txt)
         finally:
             sw_resp.close()
@@ -2622,8 +2624,8 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.assertEqual(r_bad.status_code, 302)
             with analytics._lock:
                 pending_labels = {(ev, lbl): cnt for (_d, ev, lbl), cnt in analytics._pending.items()}
-            self.assertEqual(pending_labels.get(('affiliate_click', 'women_second_venue @ /for-women')), 1)
-            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ -')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'second_venue_reservation @ /for-women')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'mens_skincare_clinic @ -')), 1)
 
             desc_ikyu = analytics.describe_label('affiliate_click', 'women_second_venue @ /for-women')
             self.assertIn('一休.comレストラン', desc_ikyu['title'])
@@ -2768,9 +2770,9 @@ class AutonomousPdcaEngineTests(unittest.TestCase):
             self.client.get('/link/orbis?from=/guide/foo@bar', headers=human_headers)
             with analytics._lock:
                 pending_labels = {(ev, lbl): cnt for (_d, ev, lbl), cnt in analytics._pending.items()}
-            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ /concierge')), 1)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'mens_skincare_clinic @ /concierge')), 1)
             self.assertEqual(pending_labels.get(('affiliate_click', 'dating_instant @ /concierge')), 1)
-            self.assertEqual(pending_labels.get(('affiliate_click', 'orbis @ -')), 3)
+            self.assertEqual(pending_labels.get(('affiliate_click', 'mens_skincare_clinic @ -')), 3)
 
             # 3. Canonical `/guide` in `tips_poster` + 301 legacy redirects preserve `?s=` inflow & `an_src` cookie
             self.assertEqual(tips_poster._column_for_tip_index(50)[1], '/guide')
@@ -3510,9 +3512,9 @@ class WomenFeaturesACDETests(unittest.TestCase):
             # 未収益化の0円直URL（women_dating_bachelor / women_beauty_clinic）は既定で出し分け遮断され、収益化済みの3枠が描画される
             self.assertNotIn('/link/women_dating_bachelor', html)
             self.assertNotIn('/link/women_beauty_clinic', html)
-            self.assertIn('/link/women_second_venue', html)
+            self.assertIn('/link/second_venue_reservation', html)
             self.assertIn('/link/women_cosme_salon', html)
-            self.assertIn('/link/women_night_supplement', html)
+            self.assertIn('/link/night_care_supplement', html)
             self.assertIn('a8mat=4BELTJ+7RTR3M+3H28+5ZU29', html)
             self.assertIsNone(bare_oriental_re.search(html))
 
@@ -4554,16 +4556,16 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
         home_html = self.client.get('/').data.decode('utf-8')
         self.assertIn('class="compact-concierge-link"', home_html)
         self.assertIn('href="/concierge"', home_html)
-        self.assertIn('calm.css?v=52', home_html)
+        self.assertIn('calm.css?v=57', home_html)
 
-        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=52
+        # 3. Subpages & columns include one-tap theme toggle button (.portal-theme-toggle-btn or #for-women-theme-btn) and calm.css?v=57
         for pub_route in ('/concierge', '/areas', '/columns', '/price-comparison', '/for-women', '/stats', '/grooming', '/privacy', '/guide/shinjuku'):
             r_sub = self.client.get(pub_route)
             self.assertEqual(r_sub.status_code, 200, msg=f"{pub_route} failed")
             sub_html = r_sub.data.decode('utf-8')
             expected_btn = 'for-women-theme-btn' if pub_route == '/for-women' else 'portal-theme-toggle-btn'
             self.assertIn(expected_btn, sub_html, msg=f"Missing theme toggle on {pub_route}")
-            self.assertIn('calm.css?v=52', sub_html, msg=f"Outdated calm.css on {pub_route}")
+            self.assertIn('calm.css?v=57', sub_html, msg=f"Outdated calm.css on {pub_route}")
 
         # 4. Staff & Master dashboards support light mode, theme toggle, and fixed reel video player
         with self.client.session_transaction() as s:
@@ -4754,9 +4756,9 @@ class AIUltraGrowthSuiteTests(unittest.TestCase):
 
         app_module.clear_fast_http_caches()
         home_html = self.client.get('/').data.decode('utf-8')
-        self.assertIn('calm.css?v=52', home_html)
-        self.assertIn('app.js?v=20261120_1', home_html)
-        self.assertIn('/sw.js?v=122', home_html)
+        self.assertIn('calm.css?v=57', home_html)
+        self.assertIn('app.js?v=20261128_1', home_html)
+        self.assertIn('/sw.js?v=127', home_html)
 
         # 2. TikTok 9:16 Safe-Zone Reel Templates & Captions (zero bare 'オリエンタル' or 'OLG')
         sample_stores = [

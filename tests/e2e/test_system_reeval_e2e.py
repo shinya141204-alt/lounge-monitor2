@@ -317,7 +317,7 @@ class TestTier1F1WebCoreAndEdge(_IsolatedE2EBase):
 
     def test_t1_f1_03_cache_control_static_immutable_and_sw_status_no_store(self):
         self._seed_live_stores(count=10)
-        with self.client.get("/static/calm.css?v=52") as r_static_v:
+        with self.client.get("/static/calm.css?v=57") as r_static_v:
             self.assertEqual(r_static_v.status_code, 200)
             self.assertEqual(r_static_v.headers.get("Cache-Control"), "public, max-age=31536000, immutable")
 
@@ -480,6 +480,18 @@ class TestTier1F3NonContamAndAffiliate(_IsolatedE2EBase):
     def test_t1_f3_02_link_redirect_with_an_hp_cookie_sets_noindex_nostore(self):
         app_module.app.config["ENFORCE_AFFILIATE_HUMAN_PROOF"] = True
         self.client.set_cookie("an_hp", "1")
+        with patch.object(analytics, "track") as mock_track:
+            resp_unsigned = self.client.get("/link/dating?from=/&s=x_post", headers={"User-Agent": _HUMAN_UA})
+            self.assertEqual(resp_unsigned.status_code, 200)
+            self.assertIn("csrf_clk", resp_unsigned.get_data(as_text=True))
+            self.assertEqual(resp_unsigned.headers.get("X-Robots-Tag"), "noindex, nofollow")
+            self.assertEqual(resp_unsigned.headers.get("Cache-Control"), "private, no-store")
+            self.assertNotIn("affiliate_click", [c.args[0] for c in mock_track.call_args_list])
+
+        self.client.set_cookie(
+            "an_hp_sig",
+            app_module.issue_human_proof_cookie(str(app_module.app.secret_key)),
+        )
         with patch.object(analytics, "track") as mock_track:
             resp = self.client.get("/link/dating?from=/&s=x_post", headers={"User-Agent": _HUMAN_UA})
             self.assertEqual(resp.status_code, 302)

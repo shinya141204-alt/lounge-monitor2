@@ -13,7 +13,7 @@ import x_poster
 
 logger = logging.getLogger(__name__)
 
-# 71 human-toned observations blending street realities and empirical lounge data.
+# 81 human-toned observations blending street realities and empirical lounge data.
 # Each tip is sized so that the tip + footer + hashtag stays strictly within X API's 280-weight limit.
 TIPS_LIST = [
     # --- 1. 会話・空気感・乾杯10分のリアル (idx 0..9 -> /guide/first-10-minutes) ---
@@ -92,7 +92,7 @@ TIPS_LIST = [
         "入店前にさっと拭いておく。意外と見られているのがスマホの清潔感だったりする。"
     ),
     (
-        "服の値段はほとんど見られていないのに、ニットの毛玉と首元のヨレは3秒で気づかれている。\n"
+        "服の値段はほとんど見られていないのに、ニットの毛玉と首元のヨレは席に着いた瞬間に気づかれている。\n"
         "ユニクロで全然かまわないので、くたびれていない服を着ていく。それが向かいに座る人への最低限の礼儀になる。"
     ),
     (
@@ -328,7 +328,7 @@ TIPS_LIST = [
         "女性側の後ろめたさや沈黙の緊張を解くことで、食の好みから普段のエリアや2軒目の話題へと自然に展開できます。"
     ),
     (
-        "着席の相席ラウンジと立ち飲みバーでは男女比が20pt以上変わる。59店舗の実測ではオリエンタルラウンジ・JIS・agは女性比59〜64%、ASOBIBARは39.0%。\n"
+        "着席の相席ラウンジと立ち飲みバーでは男女比が20pt以上変わる。59店舗・107,123回計測ではオリエンタルラウンジ・JIS（ジス）・ag（アグ）は女性比58〜63%、ASOBIBAR（アソビバー）は38.0%。\n"
         "10分課金で自動案内か、定額で自分から声をかけるかで使い分けるのが近道です。"
     ),
     (
@@ -352,15 +352,27 @@ TIPS_LIST = [
         "18時開店の相席ラウンジは、18:00時点で74.8%が女性0名。安く飲むつもりが待機料金で高くつきやすい。\n"
         "境目は金土18:50・平日19:20。女性が増え始める一方で男性はまだ少ないため、待機を抑えて早割枠を使える。"
     ),
+    # 79: 「アプリ疲れ」の夜に相席ラウンジへ人が戻る理由
+    (
+        "マッチングアプリで2週間やり取りして会ったのに、その場の空気が少し違って疲れる夜がある。\n"
+        "90日・244,394回の計測では20時台は女性比69.1%。文面の往復を挟まず、今夜そのまま話せる気軽さが見直されている。"
+    ),
+    # 80: ドーム・アリーナ終演後の相席ラウンジ急増波
+    (
+        "5万人規模のドーム公演が終わった夜、ターミナル駅近くの相席ラウンジが動くのは終演60〜90分後。\n"
+        "駅に着く10分前に男性先行の店舗を見ておくと、参戦帰りの女性ペアも受付待ちを抑えてすぐ座りやすい。"
+    ),
 ]
 
 
 _FALLBACK_COLUMNS = [
     ("早割18時入店は得か損か｜女性ゼロ74.8%と金土18:50・平日19:20の境目", "/guide/early-bird-timing"),
     ("「女40・男36」なのに30分待たされる理由｜男女比53%の罠と『余白＋10名』", "/guide/even-ratio-wait-trap"),
+    ("「アプリ疲れ」の夜になぜ相席ラウンジへ人が戻るのか｜90日実測ログで見る2週間往復との違い", "/guide/app-fatigue-vs-lounge"),
+    ("ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証", "/guide/dome-live-after-surge"),
     ("オリエンタルラウンジVIP席の料金は公式非公開｜店に聞く3点と公式アプリ『SOLOTTE!』", "/guide/oriental-lounge-vip-app"),
     ("お酒が飲めない人は、相席ラウンジで浮くのか｜19時台と23時台の人数ログで確かめた", "/guide/non-alcohol-lounge-guide"),
-    ("相席ラウンジとは？相席屋・THE SINGLE・相席バー4業態の実測比較", "/guide/lounge-vs-aisekiya-bar"),
+    ("相席ラウンジとは？4業態の仕組みと着席vs立ち飲み実測比較", "/guide/lounge-vs-aisekiya-bar"),
     ("相席ラウンジの女性はご飯目的なのか？｜9.6万件ログで見えた本音の境界線", "/guide/free-food-reality"),
     ("相席ラウンジのLINE交換、なぜ翌日既読スルーされるのか？｜女性の記憶容量と連絡の境界線", "/guide/line-exchange-reality"),
     ("日曜日の相席ラウンジは行くべきか？｜21時半の撤退急落と、月曜休みの隠れ狙い目", "/guide/sunday-lounge-strategy"),
@@ -501,7 +513,7 @@ def _column_for_tip_index(idx: int) -> tuple:
     if idx == 74:
         import scheduled_articles
         if scheduled_articles.is_published("lounge-vs-aisekiya-bar"):
-            return ("相席ラウンジ vs 相席屋 vs THE SINGLE vs 立ち飲みバー｜4業態の実測比較", "/guide/lounge-vs-aisekiya-bar")
+            return ("相席ラウンジとは？4業態の仕組みと着席vs立ち飲み実測比較", "/guide/lounge-vs-aisekiya-bar")
         return ("店舗別料金・開催中イベント比較", "/price-comparison")
     if idx == 75:
         import scheduled_articles
@@ -520,6 +532,16 @@ def _column_for_tip_index(idx: int) -> tuple:
         if scheduled_articles.is_published("early-bird-timing"):
             return ("相席ラウンジの早割、18:00に入ると4回に3回は女性ゼロ｜金土18:50・平日19:20が境目", "/guide/early-bird-timing")
         return ("相席ラウンジ実践コラム・記事一覧", "/columns")
+    if idx == 79:
+        import scheduled_articles
+        if scheduled_articles.is_published("app-fatigue-vs-lounge"):
+            return ("「アプリ疲れ」の夜になぜ相席ラウンジへ人が戻るのか｜90日実測ログで見る2週間往復との違い", "/guide/app-fatigue-vs-lounge")
+        return ("相席ラウンジと審査制1対1デートの使い分け｜実測ログで見る境界線", "/guide/lounge-vs-screened-date")
+    if idx == 80:
+        import scheduled_articles
+        if scheduled_articles.is_published("dome-live-after-surge"):
+            return ("ドーム・アリーナ終演後の相席ラウンジ急増波｜参戦帰り第2波の実測検証", "/guide/dome-live-after-surge")
+        return ("全国60店舗超 曜日・時間帯別の統計データ", "/stats")
     return ("相席ラウンジ実践コラム・記事一覧", "/columns")
 
 
@@ -783,6 +805,8 @@ HUMAN_OBSERVATION_SEEDS = (
     {"key": "non_alcohol_early_evening", "lens": "飲み放題の店でお酒を頼まずお茶やノンアルで過ごす夜に、19〜20時台の1軒目フロアと23時台の飲み会帰りフロアで変わる居心地の違い", "related_path": "/guide/non-alcohol-lounge-guide"},
     {"key": "even_ratio_wait_trap", "lens": "リアルタイム人数が『女性40・男性36』のようにほぼ1対1で賑わって見える店ほど、実際は着席済みの組が多くて30分待ちが起きやすいという店内総人数表示の罠", "related_path": "/guide/even-ratio-wait-trap"},
     {"key": "early_bird_timing", "lens": "『20時まで早割で安いから』と18:00ジャストに入店しても4回に3回は女性0名で待機料金が進みやすく、実は金土18:50・平日19:20を境に景色が変わるという立ち上がりの差", "related_path": "/guide/early-bird-timing"},
+    {"key": "app_fatigue_return_evening", "lens": "何週間も文面をやり取りして会うアプリに少し疲れた夜、予定調整なしでその日のうちに乾杯から話せる対面の気軽さ", "related_path": "/guide/app-fatigue-vs-lounge"},
+    {"key": "dome_concert_after_surge", "lens": "ドームやアリーナの終演60〜90分後、余韻のまま主要駅の店舗へ流れてくるライブ帰り女性組の空気と混雑を避ける店選び", "related_path": "/guide/dome-live-after-surge"},
 )
 
 

@@ -1200,6 +1200,7 @@ def stats_whitepaper():
             allow_blocking=False,
         )
         import embed_widgets
+        import cross_site_bridge
         try:
             heatmap_initial = embed_widgets.get_heatmap_payload(scope='all', days=90, metric='ratio', theme='dark')
         except Exception as err:
@@ -1210,6 +1211,10 @@ def stats_whitepaper():
         except Exception as err:
             logging.getLogger(__name__).warning('stats heatmap scopes failed: %s', err)
             heatmap_scopes = []
+        try:
+            monthly_archives = cross_site_bridge.list_measured_monthly_snapshots(limit=24)
+        except Exception:
+            monthly_archives = []
         return render_template(
             'stats_report.html',
             report=report_data,
@@ -1223,6 +1228,7 @@ def stats_whitepaper():
             is_staff=bool(session.get('is_staff')),
             heatmap_initial=heatmap_initial,
             heatmap_scopes=heatmap_scopes,
+            monthly_archives=monthly_archives,
         )
     import affiliate_manager as _am_stats
     import embed_widgets as _ew_stats
@@ -1466,11 +1472,18 @@ def stats_monthly_snapshot_page(yyyy_mm: str):
         state['ok'] = bool(snap.get('status') == 'measured' or (snap.get('summary') or {}).get('measured_stores'))
         with core.data_lock:
             last_updated = core.latest_data.get('last_updated') or '--:--'
+        try:
+            monthly_archives = cross_site_bridge.list_measured_monthly_snapshots(limit=24)
+        except Exception:
+            monthly_archives = []
+        dataset_distribution = []
         return render_template(
             'stats_monthly_snapshot.html',
             snap=snap,
             last_updated=last_updated,
             is_staff=bool(session.get('is_staff')),
+            monthly_archives=monthly_archives,
+            dataset_distribution=dataset_distribution,
         )
 
     is_staff = bool(session.get('is_staff'))

@@ -94,12 +94,12 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <link rel="stylesheet" href="/static/style.css?v=20261119_1">
     <link rel="stylesheet" href="/static/store_detail.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -295,11 +295,11 @@
             <div class="big-counts-grid">
                 <div class="count-box">
                     <div class="count-label">女性人数</div>
-                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.live_data_missing and store.is_open_now %}--<span class="count-closed-sub">（取得待機中）</span>{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
+                    <div class="count-num w-color" id="hero-women-num">{% if store.total > 0 %}{{ store.women }}<span style="font-size:0.95rem;">名</span>{% if (store.women_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.women_diff }}名</div>{% endif %}{% if store.usual_w_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">{{ store.usual_slot_label if '普段' in (store.usual_slot_label or '') else ('普段の' ~ (store.usual_slot_label or '')) }}比 {% if store.usual_w_diff > 0 %}+{{ store.usual_w_diff }}名{% elif store.usual_w_diff < 0 %}{{ store.usual_w_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_women }}名）</div>{% endif %}{% elif store.live_data_missing and store.is_open_now %}--<span class="count-closed-sub">（取得待機中）</span>{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--accent-text); margin-top:2px; font-weight:600; white-space:nowrap;">営業中（0 : 0）</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">男性人数</div>
-                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の{{ store.usual_slot_label }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.live_data_missing and store.is_open_now %}--<span class="count-closed-sub">（取得待機中）</span>{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
+                    <div class="count-num m-color" id="hero-men-num">{% if store.total > 0 %}{{ store.men }}<span style="font-size:0.95rem;">名</span>{% if (store.men_diff or 0) > 0 %}<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg> +{{ store.men_diff }}名</div>{% endif %}{% if store.usual_m_diff is not none %}<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">{{ store.usual_slot_label if '普段' in (store.usual_slot_label or '') else ('普段の' ~ (store.usual_slot_label or '')) }}比 {% if store.usual_m_diff > 0 %}+{{ store.usual_m_diff }}名{% elif store.usual_m_diff < 0 %}{{ store.usual_m_diff }}名{% else %}±0名{% endif %}（平均{{ store.usual_men }}名）</div>{% endif %}{% elif store.live_data_missing and store.is_open_now %}--<span class="count-closed-sub">（取得待機中）</span>{% elif store.is_open_now %}0<span style="font-size:0.95rem;">名</span><div style="font-size:0.73rem; color: var(--text-sub); margin-top:2px; font-weight:500;">本日 {{ store.today_hours_label }}</div>{% else %}--<span class="count-closed-sub">（時間外）</span>{% endif %}</div>
                 </div>
                 <div class="count-box">
                     <div class="count-label">女性比率</div>
@@ -401,7 +401,7 @@
                         <p class="moat-detail-sub" style="margin-top:4px;"><a href="/stats#forecast-accuracy" style="color:var(--accent-text); text-decoration:underline;">全店舗の60分後予測・答え合わせ検証ログを見る ›</a></p>
                         {% endif %}
 
-                        {# --- 3秒ハシゴ診断 先行需要シグナル行 --- #}
+                        {# --- 穴場＆ハシゴ診断 先行需要シグナル行 --- #}
                         {% set heat = store.lead_demand_heat or (fc and fc.get('lead_intent_heat')) %}
                         {% if heat and (heat.total_intents or 0) >= 5 and heat.lead_signal in ['female_surge', 'male_surge', 'active'] %}
                         <div class="moat-intent-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">
@@ -410,11 +410,11 @@
                             </span>
                             <span style="color:var(--text-sub); line-height:1.45;">
                                 {% if heat.lead_signal == 'female_surge' %}
-                                3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>{% if heat.lead_bias_pt is number and heat.lead_bias_pt != 0 %}（予測女性比に {{ '%+.1f'|format(heat.lead_bias_pt) }}pt 反映）{% endif %}
+                                穴場＆ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>{% if heat.lead_bias_pt is number and heat.lead_bias_pt != 0 %}（予測女性比に {{ '%+.1f'|format(heat.lead_bias_pt) }}pt 反映）{% endif %}
                                 {% elif heat.lead_signal == 'male_surge' %}
-                                3秒ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）
+                                穴場＆ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）
                                 {% else %}
-                                3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>{{ heat.total_intents }}件</strong>）
+                                穴場＆ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>{{ heat.total_intents }}件</strong>）
                                 {% endif %}
                             </span>
                         </div>
@@ -729,7 +729,7 @@
                         {% if store.map_url %}
                         <a href="{{ store.map_url }}" target="_blank" rel="noopener noreferrer" class="store-inspector-btn-sub">Googleマップ</a>
                         {% endif %}
-                        <a href="/concierge" class="store-inspector-btn-sub">3秒ハシゴ診断</a>
+                        <a href="/concierge" class="store-inspector-btn-sub">穴場＆ハシゴ診断</a>
                     </div>
                     {% if nearby_comparison %}
                     <a href="/price-comparison?area={{ nearby_comparison.cluster_id }}" class="store-inspector-btn-sub">同エリアの料金・特典を比較 ›</a>
@@ -741,6 +741,7 @@
         <aside id="store-smart-cta-card"
                class="context-lead-row pr-card-item"
                data-context-slot="store_hero_context"
+               data-aff-slot="{{ store_smart_cta.slot_id or '' }}"
                data-context-mode="{{ store_smart_cta.mode }}"
                data-store-slug="{{ store.slug }}"
                data-store-seo="{{ store.seo_name }}"
@@ -857,7 +858,7 @@
                         {% elif not store.is_open_now %}
                         営業時間外｜昼〜夕開催の街コン・婚活パーティーの公開残席と1対話あたり実質コストを確認
                         {% else %}
-                        飛び込み相席と予約制イベントの「1対話あたり実質期待コスト」を3秒比較
+                        飛び込み相席と予約制イベントの「1対話あたり実質期待コスト」を条件別に比較
                         {% endif %}
                     </div>
                 </div>
@@ -1891,7 +1892,9 @@
                         }
 
                         const canRollHero = Boolean(_prevHeroLive.ts && payload.timestamp && payload.timestamp !== _prevHeroLive.ts && tot > 0);
-                        const slotLabel = esc(live.usual_slot_label || '普段同時間帯');
+                        const rawSlotLabel = String(live.usual_slot_label || '普段同時間帯');
+                        const slotLabel = esc(rawSlotLabel);
+                        const usualSlotPrefixed = rawSlotLabel.indexOf('普段') !== -1 ? slotLabel : ('普段の' + slotLabel);
                         const uWDiff = numOrNull(live.usual_w_diff);
                         const uMDiff = numOrNull(live.usual_m_diff);
                         const usualWNum = numOrNull(live.usual_women);
@@ -1903,7 +1906,7 @@
                             if (tot > 0) {
                                 const diff15Html = wDiff > 0 ? '<div style="font-size:0.75rem; color: var(--women); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + wDiff + '名</div>' : '';
                                 const uSignW = uWDiff > 0 ? ('+' + uWDiff + '名') : (uWDiff < 0 ? (uWDiff + '名') : '±0名');
-                                const usualWHtml = (uWDiff !== null && usualWNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignW + '（平均' + usualWNum + '名）</div>') : '';
+                                const usualWHtml = (uWDiff !== null && usualWNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">' + usualSlotPrefixed + '比 ' + uSignW + '（平均' + usualWNum + '名）</div>') : '';
                                 wEl.innerHTML = '<span class="hero-odo-w" style="display:inline-block; line-height:1;">' + w + '</span><span style="font-size:0.95rem;">名</span>' + diff15Html + usualWHtml;
                                 if (canRollHero && _prevHeroLive.w !== null && _prevHeroLive.w !== w) {
                                     _rollHeroDigits(wEl.querySelector('.hero-odo-w'), _prevHeroLive.w, w);
@@ -1919,7 +1922,7 @@
                             if (tot > 0) {
                                 const diff15MHtml = mDiff > 0 ? '<div style="font-size:0.75rem; color: var(--men); margin-top:2px; font-weight:600;">直近15分 ' + detailSvgNe + ' +' + mDiff + '名</div>' : '';
                                 const uSignM = uMDiff > 0 ? ('+' + uMDiff + '名') : (uMDiff < 0 ? (uMDiff + '名') : '±0名');
-                                const usualMHtml = (uMDiff !== null && usualMNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">普段の' + slotLabel + '比 ' + uSignM + '（平均' + usualMNum + '名）</div>') : '';
+                                const usualMHtml = (uMDiff !== null && usualMNum !== null) ? ('<div style="font-size:0.71rem; color: var(--text-sub); margin-top:2px; font-weight:600;">' + usualSlotPrefixed + '比 ' + uSignM + '（平均' + usualMNum + '名）</div>') : '';
                                 mEl.innerHTML = '<span class="hero-odo-m" style="display:inline-block; line-height:1;">' + m + '</span><span style="font-size:0.95rem;">名</span>' + diff15MHtml + usualMHtml;
                                 if (canRollHero && _prevHeroLive.m !== null && _prevHeroLive.m !== m) {
                                     _rollHeroDigits(mEl.querySelector('.hero-odo-m'), _prevHeroLive.m, m);
@@ -2021,11 +2024,11 @@
                                             if (heat.lead_signal === 'female_surge') {
                                                 const bp = Number(heat.lead_bias_pt || 0);
                                                 const bpTxt = (Number.isFinite(bp) && bp !== 0) ? ('（予測女性比に ' + (bp > 0 ? '+' : '') + bp.toFixed(1) + 'pt 反映）') : '';
-                                                intentMsg = '3秒ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>' + esc(bpTxt);
+                                                intentMsg = '穴場＆ハシゴ診断で当エリアの<strong>女性ペア参戦意欲が急増中</strong>' + esc(bpTxt);
                                             } else if (heat.lead_signal === 'male_surge') {
-                                                intentMsg = '3秒ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）';
+                                                intentMsg = '穴場＆ハシゴ診断で当エリアの<strong>男性参戦意欲が先行</strong>（混雑・男余り警戒度UP）';
                                             } else {
-                                                intentMsg = '3秒ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>' + Number(heat.total_intents) + '件</strong>）';
+                                                intentMsg = '穴場＆ハシゴ診断で当エリアの検索需要が活発（直近2時間 <strong>' + Number(heat.total_intents) + '件</strong>）';
                                             }
                                             intentLine = '<div class="moat-intent-signal-row" style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-subtle); display:flex; align-items:flex-start; gap:8px; font-size:0.75rem;">' +
                                                 '<span style="display:inline-flex; align-items:center; padding:1px 7px; border-radius:4px; font-size:0.68rem; font-weight:700; background:rgba(200, 164, 110, 0.15); color:var(--accent-text); border:1px solid rgba(200, 164, 110, 0.3); flex-shrink:0;">先行需要</span>' +
@@ -2259,7 +2262,7 @@
                                 subLbl = '近隣の女性優位店：' + bestFemaleAlt.name + '（女' + bestFemaleAlt.w + ' : 男' + bestFemaleAlt.m + '） ›';
                             } else {
                                 subHref = areaSlug ? ('/concierge?area=' + encodeURIComponent(areaSlug)) : '/concierge';
-                                subLbl = '近隣の穴場・徒歩ハシゴ3秒診断を見る ›';
+                                subLbl = '近隣の穴場・徒歩ハシゴ診断を見る ›';
                             }
                         } else if (!hInfo.isOpenNow || tot < 6 || w < 6) {
                             mode = 'off_or_low';
@@ -2872,7 +2875,7 @@
 
             async function syncBackgroundPushSubscription(condToUse) {
                 if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-                const reg = await navigator.serviceWorker.register('/sw.js?v=122', { updateViaCache: 'none' });
+                const reg = await navigator.serviceWorker.register('/sw.js?v=127', { updateViaCache: 'none' });
                 await navigator.serviceWorker.ready;
                 let sub = await reg.pushManager.getSubscription();
                 if (!sub) {

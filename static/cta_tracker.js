@@ -201,23 +201,38 @@
         return true;
     }
 
+    function normalizeSlotId(rawSlot) {
+        var s = String(rawSlot || '').trim().toLowerCase();
+        return s.replace(/[^a-z0-9_-]/g, '');
+    }
+
+    function resolveTargetSlotId(el) {
+        if (!el) return '';
+        var explicitSlot = (el.getAttribute('data-aff-slot') || '').trim();
+        if (explicitSlot) return normalizeSlotId(explicitSlot);
+        var href = el.getAttribute('href') || '';
+        if (href) return extractSlotId(href);
+        var innerLink = el.querySelector ? el.querySelector('a[href*="/link/"]') : null;
+        return innerLink ? extractSlotId(innerLink.getAttribute('href') || '') : '';
+    }
+
     function scanLinks() {
         scanScheduled = false;
         if (!io || !document.body) return;
         if (document.body.classList.contains('staff-mode')) return;
-        var links = document.querySelectorAll('a[href*="/link/"]');
-        for (var i = 0; i < links.length; i++) {
-            var a = links[i];
-            var curHref = a.getAttribute('href') || '';
-            var slotId = extractSlotId(curHref);
+        var targets = document.querySelectorAll('a[href*="/link/"], [data-aff-slot]');
+        for (var i = 0; i < targets.length; i++) {
+            var el = targets[i];
+            var slotId = resolveTargetSlotId(el);
             if (!slotId) continue;
-            var prevHref = observedHrefByEl.get(a);
+            var curHref = (el.getAttribute('href') || '') + '|' + slotId;
+            var prevHref = observedHrefByEl.get(el);
             if (prevHref === curHref) continue;
             if (prevHref !== undefined) {
-                try { io.unobserve(a); } catch (e) {}
+                try { io.unobserve(el); } catch (e) {}
             }
-            observedHrefByEl.set(a, curHref);
-            io.observe(a);
+            observedHrefByEl.set(el, curHref);
+            io.observe(el);
         }
     }
 
@@ -265,30 +280,28 @@
         io = new IntersectionObserver(function (entries) {
             for (var i = 0; i < entries.length; i++) {
                 var entry = entries[i];
-                if (!entry.isIntersecting || entry.intersectionRatio < 0.35) continue;
+                if (!entry.isIntersecting || entry.intersectionRatio < 0.25) continue;
                 var el = entry.target;
                 if (!isElementRenderable(el)) continue;
-                var slotId = extractSlotId(el.getAttribute('href') || '');
+                var slotId = resolveTargetSlotId(el);
                 if (slotId) {
                     sendImpression(slotId);
                 }
             }
-        }, { threshold: [0.35] });
+        }, { threshold: [0.25, 0.35] });
 
         scanLinks();
 
         if ('MutationObserver' in window && document.body) {
-            // Only rescan when anchors are added or an href actually changes.
-            // (class/style mutations from the 30s live refresh / odometer animations no longer trigger full rescans;
-            //  visibility is still re-checked per-entry in the IntersectionObserver callback.)
+            // Only rescan when anchors or [data-aff-slot] containers are added or change.
             var mo = new MutationObserver(function (mutations) {
                 for (var i = 0; i < mutations.length; i++) {
                     var mu = mutations[i];
                     if (mu.type === 'attributes') {
                         var t = mu.target;
-                        if (t && t.tagName === 'A') {
+                        if (t && (t.tagName === 'A' || (t.hasAttribute && t.hasAttribute('data-aff-slot')))) {
                             var hrefAttr = t.getAttribute('href') || '';
-                            if (hrefAttr.indexOf('/link/') !== -1 || observedHrefByEl.has(t)) {
+                            if (hrefAttr.indexOf('/link/') !== -1 || (t.hasAttribute && t.hasAttribute('data-aff-slot')) || observedHrefByEl.has(t)) {
                                 scheduleScan();
                                 return;
                             }
@@ -300,7 +313,8 @@
                         var n = added[j];
                         if (n.nodeType !== 1) continue;
                         if ((n.tagName === 'A' && (n.getAttribute('href') || '').indexOf('/link/') !== -1) ||
-                            (n.querySelector && n.querySelector('a[href*="/link/"]'))) {
+                            (n.hasAttribute && n.hasAttribute('data-aff-slot')) ||
+                            (n.querySelector && n.querySelector('a[href*="/link/"], [data-aff-slot]'))) {
                             scheduleScan();
                             return;
                         }
@@ -311,7 +325,7 @@
                 childList: true,
                 subtree: true,
                 attributes: true,
-                attributeFilter: ['href']
+                attributeFilter: ['href', 'data-aff-slot']
             });
         }
     }

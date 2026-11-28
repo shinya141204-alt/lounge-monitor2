@@ -39,7 +39,8 @@
           "@id": "https://aiseki-navi.com/#organization",
           "name": "相席ナビ編集部",
           "url": "https://aiseki-navi.com/"
-        }
+        }{% if dataset_distribution %},
+        "distribution": {{ dataset_distribution | tojson }}{% endif %}
       },
       {
         "@context": "https://schema.org",
@@ -143,8 +144,8 @@
         html.theme-light .snap-women,
         body.theme-light .snap-women { color: #9f1239; }
     </style>
-    <link rel="stylesheet" href="/static/portal.css?v=20">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
 </head>
 
 <body>

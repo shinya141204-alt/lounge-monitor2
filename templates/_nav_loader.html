@@ -108,7 +108,7 @@
                 ? '女性目線ランキング を読み込み中...'
                 : 'リアルタイム順位 を読み込み中...';
         }
-        if (p === '/concierge') return '3秒穴場＆ハシゴ診断 を読み込み中...';
+        if (p === '/concierge') return '穴場＆徒歩ハシゴ診断 を読み込み中...';
         if (p === '/for-women') return '初めての女性向け安心ガイド を読み込み中...';
         if (p === '/price-comparison') return '料金・イベント比較 を読み込み中...';
         if (p === '/columns') return 'コラム・記事一覧 を読み込み中...';
@@ -500,7 +500,7 @@
                 } catch (e) {}
             } else if (!window.__swRegistered) {
                 window.__swRegistered = true;
-                navigator.serviceWorker.register('/sw.js?v=122', { updateViaCache: 'none' }).then(function(reg) {
+                navigator.serviceWorker.register('/sw.js?v=127', { updateViaCache: 'none' }).then(function(reg) {
                     // Throttle explicit SW update checks to once per 10 minutes per tab session
                     try {
                         var KEY = 'aiseki_sw_update_at';

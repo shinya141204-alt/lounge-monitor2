@@ -102,9 +102,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -355,6 +355,20 @@
                 リアルタイム人数データは頼りになります。ただし週末22時台だけは、「街中の他のグループも同じ画面を見ている」という一歩先の視点があるかどうかで結果が分かれる。<br>
                 <strong>「22時台の60%前半は3割が逆転する」「70%超のバッファ店か、予測バッジが安定している近隣店を選ぶ」「男余りロック店では待たずに歩く」</strong>。今夜これから1次会を出る方は、トップ画面の各店舗カードに出ている<strong>『60分後予測バッジ』と『リアル待ち時間推論』</strong>を一度見てから、次の一歩を決めてください。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 金・土の22時台に「女性比60%」のお店へ向かうと、なぜ到着時に男余りになりやすいのですか？</p>
+                <p class="faq-a">累計97.9万件のログ分析（n=19,791）では、週末22時台は女性の1回転目入店がすでに天井に達していて60分後の女性増減が平均-0.3名と横ばいです。そこへ1次会を終えた複数の男性グループが同じ画面を見て一斉に向かうので、60分で男性が平均+13.2名増えます。この移動タイムラグ（20〜40分）が重なり、22時台発では29.8%（約3回に1回）が到着時に女性比50%未満へ逆転します。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 週末22時以降でも男余りに逆転しにくい店舗の見分け方はありますか？</p>
+                <p class="faq-a">いちばん確実な目印は「女性20名以上かつ女性比70%以上」の安全バッファに入っている店舗を選ぶことです。実測33,555サンプルの追跡では、この条件を満たす店舗は男性が後から平均+13.9名流入しても女性も+9.3名増え続け、60分後も97.7%が女性優位を維持（逆転率2.3%）していました。相席ナビの各店舗カードに表示される「60分後予測バッジ」もあわせて確認してください。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. すでに男性過多（女性比40%以下）になっている店舗で待てば、1時間後に男女比は回復しますか？</p>
+                <p class="faq-a">回復しにくいというのが実測データの結論です。男性15名以上かつ女性比40%以下の重い男余り状態（n=562）を追跡した結果、90分後も56.8%、120分後も57.3%の店舗が男余りのまま推移していました。受付で長く待つより、徒歩5分圏内の別ブランドや近隣店舗へ切り替えるほうが時間も料金も無駄になりません。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="22時台の殺到を避けるための男女別の準備案内">

@@ -102,9 +102,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -362,6 +362,20 @@
                 同じ店で3組目を待つのはあまりおすすめしません。そんな時は会計して退店し、徒歩5〜10分圏内にある別ブランド（例：オリエンタルラウンジからag（アグ）へ移る、あるいは歌舞伎町入口の<a href="/store/jis-shinjuku" style="color:var(--text-main);">JIS（ジス）新宿</a>から西口のJIS西新宿へ回るなど）へ移るほうが早いです。<br>
                 <a href="/concierge" style="color:var(--text-main);text-decoration:underline;">徒歩ハシゴ・穴場コンシェルジュ</a>や<a href="/stats#heatmap-widget" style="color:var(--text-main);text-decoration:underline;">時間帯別ヒートマップ</a>を開けば、いま近隣店舗にどれだけ女性が集まりやすい帯なのかが一目で分かります。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 男性から相席ラウンジで席替え（チェンジ）を頼むのはマナー違反や失礼にあたりますか？</p>
+                <p class="faq-a">マナー違反ではありません。会話が噛み合わずお互いに気まずい時間を過ごすと、男性は10分600〜900円を払い続け、女性もせっかくの夜の時間が過ぎていきます。男性から『もう40分くらい経ちましたね。せっかくなんで、そろそろ席替えしてもらいましょうか。今日はありがとうございました！』と切り出すことで、女性側からも『気を遣わせずに切り上げてくれた』と受け取ってもらいやすくなります。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 店内で席替えを依頼するとき、最もスムーズでスマートな方法は？</p>
+                <p class="faq-a">いちばん角が立ちにくいのは『お手洗いに立つタイミングでレセプションまたはパントリー付近のスタッフに直接小声で伝える』方法です。卓番号を伝え『そろそろ席替えをお願いしたいです』と伝えるだけで、スタッフが自然なドリンク提供やフード交換のタイミングを見計らって席替えを進行してくれます。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 店内の女性人数が少ないときに席替えを頼むとどうなりますか？</p>
+                <p class="faq-a">相席ナビの27.6万件ログ分析によると、店内の女性在籍数が10名未満（約3〜4組）の時間帯に席替えを依頼した場合、5分以内に次の女性席へ案内される確率は24.3%にとどまります。次の相席相手がいない場合、男性は10分220〜330円の単独待機料金がかかるか、退店を選ぶことになります。席替えも視野に入れるなら、女性10名以上（できれば20名以上）がいる店舗を選んでおくと安心です。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="席替え前後の身だしなみ直しと女性向けの席替えフレーズ">

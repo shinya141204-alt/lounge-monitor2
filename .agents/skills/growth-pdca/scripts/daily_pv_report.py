@@ -116,9 +116,26 @@ def _load_hourly_totals(start_date_str: str, until_date_str: str) -> list:
     return [(d, h, b, c) for (d, h, b), c in agg.items()]
 
 
+_MIN_IMPRESSIONS_FOR_CTR_VERDICT = 300
+
+
+def _canonical_pv_path(raw_lbl: str) -> str:
+    norm_hpv = analytics.normalize_human_pv_label(raw_lbl)
+    if norm_hpv:
+        return norm_hpv
+    s = analytics.sanitize_generic_track_label(raw_lbl)
+    p = s.split("?", 1)[0].split("#", 1)[0].strip() or "/"
+    if not p.startswith("/"):
+        p = "/" + p
+    if len(p) > 1:
+        p = p.rstrip("/")
+    return p[:80]
+
+
 def _day_metrics(totals: dict, date_str: str) -> dict:
     by_ev = defaultdict(int)
     pv_by_path = defaultdict(int)
+    human_pv_by_path = defaultdict(int)
     store_opens = defaultdict(int)
     cushions = defaultdict(int)
     aff_imp_by_pair = defaultdict(int)
@@ -130,7 +147,9 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
             continue
         by_ev[ev] += cnt
         if ev == "page_view":
-            pv_by_path[lbl or "/"] += cnt
+            pv_by_path[_canonical_pv_path(lbl)] += cnt
+        elif ev == "human_pv":
+            human_pv_by_path[_canonical_pv_path(lbl)] += cnt
         elif ev == "store_open":
             store_opens[lbl] += cnt
         elif ev == "cushion_click":
@@ -175,6 +194,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
         "date": date_str,
         "date_label": _date_with_wd(date_str),
         "has_any_event": sum(by_ev.values()) > 0,
+        "has_human_pv": human_pv > 0,
         "pv": pv,
         "human_pv": human_pv,
         "top_pv": top_pv,
@@ -195,6 +215,7 @@ def _day_metrics(totals: dict, date_str: str) -> dict:
         "sns_share_click": sns_clk,
         "vote": vote_cnt,
         "pv_by_path": dict(pv_by_path),
+        "human_pv_by_path": dict(human_pv_by_path),
         "store_opens": dict(store_opens),
         "cushions": dict(cushions),
         "aff_imp_by_pair": {f"{k[0]}@{k[1]}": v for k, v in aff_imp_by_pair.items()},
@@ -230,6 +251,16 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
 
     pv_7d = sum(x["pv"] for x in series_7d)
     human_pv_7d = sum(x["human_pv"] for x in series_7d)
+    hpv_dates_all = [d for (d, ev, _lbl), c in totals.items() if ev == "human_pv" and c > 0 and d <= t_str]
+    if hpv_dates_all:
+        try:
+            first_hpv_dt = datetime.date.fromisoformat(min(hpv_dates_all))
+            human_pv_span_days = max(1, min(7, (target_date - first_hpv_dt).days + 1))
+        except ValueError:
+            human_pv_span_days = max(1, sum(1 for x in series_7d if x["human_pv"] > 0))
+    else:
+        human_pv_span_days = 0
+    human_pv_avg_daily = round(human_pv_7d / float(human_pv_span_days), 1) if human_pv_span_days > 0 else 0.0
     prev_pv_7d = sum(x["pv"] for x in prev_series_7d)
     prev_7d_has_data = any(x["has_any_event"] for x in prev_series_7d)
     avg_pv_7d = round(pv_7d / 7.0, 1)
@@ -240,42 +271,52 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
     store_open_7d = sum(x["store_open"] for x in series_7d)
     ctr_7d = round((aff_measurable_clk_7d / aff_imp_7d) * 100, 2) if aff_imp_7d > 0 else None
 
-    # 人気ページ TOP10（対象日）
+    # 人気ページ TOP10（対象日：human_pv 併記）
     top_pages_day = []
     for path, cnt in sorted(cur["pv_by_path"].items(), key=lambda kv: (-kv[1], kv[0]))[:10]:
         desc = analytics.describe_label("page_view", path)
         prev_cnt = prev["pv_by_path"].get(path, 0)
         wow_cnt = wow["pv_by_path"].get(path, 0)
+        hpv_day = cur["human_pv_by_path"].get(path, 0) if cur["has_human_pv"] else None
         top_pages_day.append({
             "path": path,
             "title": _clean_title(desc.get("title") or path),
             "pv": cnt,
+            "human_pv": hpv_day,
             "share_pct": round((cnt / cur["pv"]) * 100, 1) if cur["pv"] > 0 else 0.0,
             "dod_diff": cnt - prev_cnt,
             "wow_diff": (cnt - wow_cnt) if wow["has_any_event"] else None,
         })
 
-    # 直近7日の下層ページ（記事・店舗・診断：'/' 以外）TOP10
+    # 直近7日の下層ページ（記事・店舗・診断：'/' 以外）TOP10（human_pv 併記）
     subpages_7d_map = defaultdict(int)
+    subpages_7d_hpv_map = defaultdict(int)
     prev_subpages_7d_map = defaultdict(int)
     for x in series_7d:
         for p, c in x["pv_by_path"].items():
             if p != "/":
                 subpages_7d_map[p] += c
+        for p, c in x["human_pv_by_path"].items():
+            if p != "/":
+                subpages_7d_hpv_map[p] += c
     for x in prev_series_7d:
         for p, c in x["pv_by_path"].items():
             if p != "/":
                 prev_subpages_7d_map[p] += c
 
     top_subpages_7d = []
-    for path, cnt in sorted(subpages_7d_map.items(), key=lambda kv: (-kv[1], kv[0]))[:10]:
+    all_sub_paths = {p for p in (set(subpages_7d_map.keys()) | set(subpages_7d_hpv_map.keys())) if p != "/"}
+    for path in sorted(all_sub_paths, key=lambda p: (-subpages_7d_hpv_map.get(p, 0), -subpages_7d_map.get(p, 0), p))[:10]:
+        cnt = subpages_7d_map.get(path, 0)
         desc = analytics.describe_label("page_view", path)
         p7_cnt = prev_subpages_7d_map.get(path, 0)
         top_subpages_7d.append({
             "path": path,
             "title": _clean_title(desc.get("title") or path),
             "pv_7d": cnt,
+            "human_pv_7d": subpages_7d_hpv_map.get(path, 0) if human_pv_7d > 0 else None,
             "day_pv": cur["pv_by_path"].get(path, 0),
+            "human_day_pv": cur["human_pv_by_path"].get(path, 0) if cur["has_human_pv"] else None,
             "wow_7d_diff": (cnt - p7_cnt) if prev_7d_has_data else None,
         })
 
@@ -338,6 +379,17 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
         day_imp = cur["aff_imp_by_pair"].get(k, 0)
         desc = analytics.describe_label("affiliate_impression", f"{cid} @ {surf}")
         surf_ja = analytics._CTA_SURFACE_LABELS.get(surf, surf)
+        ctr_7d_val = round((m_clk_c / imp_c) * 100, 2) if imp_c > 0 else None
+        sample_sufficient = imp_c >= _MIN_IMPRESSIONS_FOR_CTR_VERDICT
+        if not sample_sufficient:
+            if clk_c > 0 and imp_c > 0:
+                verdict_txt = f"判定保留（母数不足: {imp_c}<{_MIN_IMPRESSIONS_FOR_CTR_VERDICT}回 / 参考CTR {ctr_7d_val:.2f}%）"
+            else:
+                verdict_txt = f"判定保留（母数不足: {imp_c}<{_MIN_IMPRESSIONS_FOR_CTR_VERDICT}回）"
+        elif clk_c == 0:
+            verdict_txt = "要改善（表示充分・0 click）"
+        else:
+            verdict_txt = f"CTR {ctr_7d_val:.2f}%"
         aff_breakdown.append({
             "slot_id": cid,
             "surface": surf,
@@ -347,8 +399,10 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
             "day_click": day_clk,
             "imp_7d": imp_c,
             "click_7d": clk_c,
-            "ctr_7d_pct": round((m_clk_c / imp_c) * 100, 2) if imp_c > 0 else None,
+            "ctr_7d_pct": ctr_7d_val,
             "ctr_7d_anomaly": bool(imp_c > 0 and m_clk_c > imp_c),
+            "sample_sufficient": sample_sufficient,
+            "verdict": verdict_txt,
         })
 
     # クッション遷移内訳（直近7日）
@@ -397,7 +451,7 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
 
     if aff_clk_7d > 0 or aff_imp_7d > 0:
         ctr_txt = f"{ctr_7d:.2f}%" if ctr_7d is not None else "表示計測蓄積中"
-        zero_clk_high_imp = [a for a in aff_breakdown if a["imp_7d"] >= 15 and a["click_7d"] == 0]
+        zero_clk_high_imp = [a for a in aff_breakdown if a["imp_7d"] >= _MIN_IMPRESSIONS_FOR_CTR_VERDICT and a["click_7d"] == 0]
         best_clk = next((a for a in aff_breakdown if a["click_7d"] > 0), None)
         tail_note = ""
         if best_clk:
@@ -405,6 +459,8 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
         if zero_clk_high_imp:
             z0 = zero_clk_high_imp[0]
             tail_note += f" 一方「{z0['title']} × {z0['surface']}」は7日で {z0['imp_7d']} 回表示・0 click のため訴求文言改善の余地があります。"
+        elif aff_imp_7d < _MIN_IMPRESSIONS_FOR_CTR_VERDICT:
+            tail_note += f" （7日PR表示 {aff_imp_7d}回 < {_MIN_IMPRESSIONS_FOR_CTR_VERDICT}回のためCTR優劣は判定保留・human_pv母数拡大を優先）"
         insights.append(
             f"収益導線は対象日 **{cur['aff_click']} click**（発生期待目安 {cur['est_occurrence_yen']:,}円 ／ 確定実勢目安 {cur['est_confirmed_yen']:,}円）、直近7日累計 **{aff_clk_7d} click**（枠CTR: **{ctr_txt}**、2ステップクッション遷移: **{cushion_7d}回**）。{tail_note}"
         )
@@ -440,6 +496,8 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
             "until": days_7[-1],
             "pv_total": pv_7d,
             "human_pv_total": human_pv_7d,
+            "human_pv_span_days": human_pv_span_days,
+            "human_pv_avg_daily": human_pv_avg_daily,
             "pv_avg_daily": avg_pv_7d,
             "prev_7d_pv_total": prev_pv_7d if prev_7d_has_data else None,
             "store_open_total": store_open_7d,
@@ -454,6 +512,7 @@ def build_daily_report(target_date_str: str | None = None) -> dict:
                     "date": x["date"],
                     "date_label": x["date_label"],
                     "pv": x["pv"],
+                    "human_pv": x["human_pv"],
                     "sub_pv": x["sub_pv"],
                     "store_open": x["store_open"],
                     "cushion_click": x["cushion_click"],
@@ -517,7 +576,19 @@ def format_markdown(rep: dict) -> str:
     lines.append("")
     lines.append("| 指標 | 対象日実績 | 前日比 (DoD) | 前週同曜日比 (WoW) | 直近7日合計 (1日平均) |")
     lines.append("| --- | --- | --- | --- | --- |")
+    hpv_span = int(w7.get("human_pv_span_days") or 0)
+    hpv_avg = w7.get("human_pv_avg_daily")
+    if hpv_avg is None:
+        hpv_avg = round(w7["human_pv_total"] / float(hpv_span or 7), 1)
+    hpv_avg_str = (
+        f"{hpv_avg:,}/日"
+        if hpv_span >= 7
+        else (f"{hpv_avg:,}/日・{hpv_span}日実測平均" if hpv_span > 0 else "計測待機中")
+    )
+    hpv_dod = _fmt_signed_diff(cur["human_pv"], prev["human_pv"], prev.get("has_human_pv", prev["human_pv"] > 0))
+    hpv_wow = _fmt_signed_diff(cur["human_pv"], wow["human_pv"], wow.get("has_human_pv", wow["human_pv"] > 0))
     lines.append(f"| 総ページビュー (PV) | **{cur['pv']:,} PV** | {dod_pv} | {wow_pv} | **{w7['pv_total']:,} PV** ({w7['pv_avg_daily']:,}/日・前週7日比 {w7_diff}) |")
+    lines.append(f"| 実ブラウザ閲覧 (`human_pv`) | **{cur['human_pv']:,} PV** | {hpv_dod} | {hpv_wow} | **{w7['human_pv_total']:,} PV** ({hpv_avg_str}) |")
     lines.append(f"| 下層・記事回遊PV (`/` 以外) | **{cur['sub_pv']:,} PV** ({cur['sub_pv_share_pct']}%) | {_fmt_signed_diff(cur['sub_pv'], prev['sub_pv'], prev['has_any_event'])} | {_fmt_signed_diff(cur['sub_pv'], wow['sub_pv'], wow['has_any_event'])} | コラム系当日 {cur['guide_pv']:,} PV ／ 店舗詳細当日 {cur['store_page_pv']:,} PV |")
     lines.append(f"| 店舗詳細モーダル展開 (`store_open`) | **{cur['store_open']:,} 回** | {_fmt_signed_diff(cur['store_open'], prev['store_open'], prev['has_any_event'])} | {_fmt_signed_diff(cur['store_open'], wow['store_open'], wow['has_any_event'])} | **{w7['store_open_total']:,} 回** |")
     lines.append(f"| 2ステップ内部クッション送客 | **{cur['cushion_click']:,} 回** | {_fmt_signed_diff(cur['cushion_click'], prev['cushion_click'], prev['has_any_event'])} | {_fmt_signed_diff(cur['cushion_click'], wow['cushion_click'], wow['has_any_event'])} | **{w7['cushion_click_total']:,} 回** |")
@@ -527,24 +598,25 @@ def format_markdown(rep: dict) -> str:
 
     lines.append("### 2. 直近7日間の日別PV・CV推移")
     lines.append("")
-    lines.append("| 日付 | 総PV | 下層PV | 店舗展開 | クッション遷移 | PR枠表示 | PRクリック |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| 日付 | 総PV | 実ブラウザ (human_pv) | 下層PV | 店舗展開 | クッション遷移 | PR枠表示 | PRクリック |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
     for row in w7["daily_series"]:
         bold = "**" if row["date"] == rep["target_date"] else ""
         lines.append(
-            f"| {bold}{row['date_label']}{bold} | {bold}{row['pv']:,}{bold} | {row['sub_pv']:,} | {row['store_open']:,} | {row['cushion_click']:,} | {row['aff_imp']:,} | {bold}{row['aff_click']:,}{bold} |"
+            f"| {bold}{row['date_label']}{bold} | {bold}{row['pv']:,}{bold} | {row.get('human_pv', 0):,} | {row['sub_pv']:,} | {row['store_open']:,} | {row['cushion_click']:,} | {row['aff_imp']:,} | {bold}{row['aff_click']:,}{bold} |"
         )
     lines.append("")
 
     lines.append(f"### 3. 対象日（{rep['target_date_label']}）の人気ページ TOP10")
     lines.append("")
     if rep["top_pages_day"]:
-        lines.append("| 順位 | ページ / パス | 当日PV | 構成比 | 前日差 | 前週同曜日差 |")
+        lines.append("| 順位 | ページ / パス | 当日PV (実ブラウザ human_pv) | 構成比 | 前日差 | 前週同曜日差 |")
         lines.append("| --- | --- | --- | --- | --- | --- |")
         for idx, p in enumerate(rep["top_pages_day"], 1):
             dod_s = f"{p['dod_diff']:+d}"
             wow_s = f"{p['wow_diff']:+d}" if p["wow_diff"] is not None else "-"
-            lines.append(f"| {idx} | {p['title']} (`{p['path']}`) | **{p['pv']:,}** | {p['share_pct']}% | {dod_s} | {wow_s} |")
+            hpv_s = f"{p['human_pv']:,}" if p.get("human_pv") is not None else "未計測"
+            lines.append(f"| {idx} | {p['title']} (`{p['path']}`) | **{p['pv']:,}** ({hpv_s}) | {p['share_pct']}% | {dod_s} | {wow_s} |")
     else:
         lines.append("- 対象日のページビュー記録はまだありません。")
     lines.append("")
@@ -552,11 +624,13 @@ def format_markdown(rep: dict) -> str:
     lines.append("### 4. 直近7日の下層ページ（コラム・診断・店舗）TOP10")
     lines.append("")
     if rep["top_subpages_7d"]:
-        lines.append("| 順位 | 下層ページ / パス | 7日合計PV | 当日PV | 前週7日差 |")
-        lines.append("| --- | --- | --- | --- | --- |")
+        lines.append("| 順位 | 下層ページ / パス | 7日実ブラウザ (`human_pv`) | 7日総PV | 当日PV (human) | 前週7日差 |")
+        lines.append("| --- | --- | --- | --- | --- | --- |")
         for idx, sp in enumerate(rep["top_subpages_7d"], 1):
             w7_s = f"{sp['wow_7d_diff']:+d}" if sp["wow_7d_diff"] is not None else "-"
-            lines.append(f"| {idx} | {sp['title']} (`{sp['path']}`) | **{sp['pv_7d']:,}** | {sp['day_pv']:,} | {w7_s} |")
+            hpv7_s = f"{sp['human_pv_7d']:,}" if sp.get("human_pv_7d") is not None else "未計測"
+            hpvd_s = f"{sp['human_day_pv']:,}" if sp.get("human_day_pv") is not None else "未計測"
+            lines.append(f"| {idx} | {sp['title']} (`{sp['path']}`) | **{hpv7_s}** | {sp['pv_7d']:,} | {sp['day_pv']:,} ({hpvd_s}) | {w7_s} |")
     else:
         lines.append("- 下層ページの記録はまだありません。")
     lines.append("")
@@ -564,10 +638,12 @@ def format_markdown(rep: dict) -> str:
     lines.append("### 5. アフィリエイト枠 × 設置面 CTR内訳（直近7日）")
     lines.append("")
     if rep["aff_breakdown"]:
-        lines.append("| 案件枠 (`slot_id`) | 設置面 | 当日 (click/表示) | 7日クリック | 7日表示数 | 7日枠CTR |")
+        lines.append("| 案件枠 (`slot_id`) | 設置面 | 当日 (click/表示) | 7日クリック | 7日表示数 | 7日枠CTR / 判定 |")
         lines.append("| --- | --- | --- | --- | --- | --- |")
         for a in rep["aff_breakdown"]:
             ctr_cell = f"**{a['ctr_7d_pct']:.2f}%**" if a["ctr_7d_pct"] is not None else "-"
+            if a.get("verdict") and (not a.get("sample_sufficient") or a.get("click_7d", 0) == 0):
+                ctr_cell = f"{ctr_cell}（{a['verdict']}）" if a["ctr_7d_pct"] is not None else a["verdict"]
             lines.append(
                 f"| {a['title']} (`{a['slot_id']}`) | `{a['surface']}` | {a['day_click']} / {a['day_imp']} | **{a['click_7d']}** | {a['imp_7d']} | {ctr_cell} |"
             )

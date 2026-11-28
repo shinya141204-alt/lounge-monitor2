@@ -113,7 +113,7 @@ class M2PerfAndCacheTests(unittest.TestCase):
         r_304 = self.client.get('/static/calm.css', headers={'If-None-Match': etag})
         self.assertEqual(r_304.status_code, 304)
 
-        r_ver = self.client.get('/static/calm.css?v=52')
+        r_ver = self.client.get('/static/calm.css?v=57')
         self.assertEqual(r_ver.status_code, 200)
         self.assertEqual(r_ver.headers.get('Cache-Control'), 'public, max-age=31536000, immutable')
 

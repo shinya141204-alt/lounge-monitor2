@@ -189,8 +189,24 @@ body.theme-light {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 4px 0 10px;
+    padding: 4px 12px 10px 4px;
     margin-bottom: 22px;
+    scroll-snap-type: x proximity;
+}
+
+.portal-global-nav.can-scroll-right {
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 26px), transparent 100%);
+}
+
+.portal-global-nav.can-scroll-left {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 22px, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 22px, #000 100%);
+}
+
+.portal-global-nav.can-scroll-left.can-scroll-right {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 20px, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 20px, #000 calc(100% - 24px), transparent 100%);
 }
 
 .portal-global-nav::-webkit-scrollbar {
@@ -207,12 +223,27 @@ body.theme-light {
         flex-wrap: wrap !important;
         overflow-x: visible !important;
         gap: 4px 3px !important;
+        -webkit-mask-image: none !important;
+        mask-image: none !important;
+        padding: 2px 0 !important;
     }
     .portal-global-nav > :first-child {
         margin-left: 0 !important;
     }
     .portal-global-nav > :last-child {
         margin-right: 0 !important;
+    }
+}
+
+@media (min-width: 1120px) {
+    .portal-global-nav,
+    .portal-global-nav-row > .portal-global-nav {
+        flex-wrap: nowrap !important;
+        gap: 2px !important;
+    }
+    .portal-global-nav .portal-nav-item {
+        padding: 6px 8px;
+        font-size: 0.74rem;
     }
 }
 

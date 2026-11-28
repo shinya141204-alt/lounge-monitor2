@@ -94,9 +94,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -320,6 +320,16 @@
                 9店舗もある大阪で、いつもの1軒に直行して列に並ぶのは、正直もったいない。<br>
                 <strong>20時台は茶屋町。22時台は天満・大阪駅前・心斎橋まで並べて比べる。24時を過ぎたらJIS梅田か難波の2店。</strong>この動き方を頭に入れておくだけで、同じ予算、同じ一晩でも、待ち時間と席の居心地がまるで変わります。曜日ごとの波の形は<a href="/stats#heatmap-widget">曜日×時間帯ヒートマップ</a>で、今夜の人数は下の診断で。見てから出るのと、見ずに並ぶのとでは、エレベーターを降りるときの気分が違います。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 大阪の梅田（キタ）と難波・心斎橋（ミナミ）では、どちらの相席ラウンジの方が女性が多いですか？</p>
+                <p class="faq-a">総人数規模では6店舗が集中するキタ（梅田・茶屋町・天満）が大きく、特にJIS梅田（ピーク女性100名超）や早時間帯のJIS茶屋町（平均女性比率86.3%）が目立ちます。一方、週末22時以降にキタの大型店で男性入場待ちが発生している時間帯は、オリエンタルラウンジ難波（女性比約68%）や心斎橋（女性比約69%）、JIS難波（ピーク女性85名規模）があるミナミの方が男性待ち時間を抑えてスムーズに相席できる夜が多く見られます。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 梅田エリア内で1軒目が混んでいた場合、どの順番でハシゴするのが効率的ですか？</p>
+                <p class="faq-a">19時〜21時台ならNU茶屋町周辺の『JIS茶屋町』や『ag梅田』からスタートし、22時以降に東通り側の『JIS梅田』と地下街直結の『オリエンタルラウンジ大阪駅前』の男女比を見比べるのが回りやすい順番です。両方とも男性過多の夜は、JRや谷町線で1駅隣の『オリエンタルラウンジ天満』へ抜けるか、御堂筋線で約9分の心斎橋・難波へ移動すると待ち時間を短くできることが多いです。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="大阪キタ・ミナミ入店前の料金比較と準備ガイド">

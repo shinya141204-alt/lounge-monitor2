@@ -1468,6 +1468,7 @@
                 menLabelEl: item.querySelector('.stat.men .label'),
                 plan2SubEl: item.querySelector('.plan2-card-sub'),
                 plan2ForecastEl: item.querySelector('.plan2-footer-forecast'),
+                plan2PriceLinkEl: item.querySelector('.plan2-footer-price-link'),
             };
             return item._refs;
         }
@@ -2689,12 +2690,17 @@
                     if (refs.priceLinkEl) {
                         const slug = (!isKoreaStore && getStoreSlug(store.name)) || '';
                         refs.priceLinkEl.href = slug ? `/store/${encodeURIComponent(slug)}` : '/price-comparison';
-                        refs.priceLinkEl.classList.remove('hidden');
-                        refs.priceLinkEl.classList.toggle('bento-only-link', !item.classList.contains('bento-hero-card'));
+                        refs.priceLinkEl.classList.remove('hidden', 'bento-only-link');
+                        refs.priceLinkEl.setAttribute('data-cushion', '1');
                     }
                 } else {
                     specRowEl.classList.add('hidden');
                 }
+            }
+            if (refs.plan2PriceLinkEl) {
+                const slug = (!isKoreaStore && getStoreSlug(store.name)) || '';
+                refs.plan2PriceLinkEl.href = slug ? `/store/${encodeURIComponent(slug)}` : '/price-comparison';
+                refs.plan2PriceLinkEl.setAttribute('data-cushion', '1');
             }
 
             const microEl = refs.microEl;
@@ -2811,7 +2817,8 @@
                 }
             }
 
-            const slotLabel = store.usual_slot_label || '普段同時間帯';
+            const rawSlotLabel = String(store.usual_slot_label || '普段同時間帯');
+            const slotLabelPrefixed = rawSlotLabel.includes('普段') ? rawSlotLabel : `普段の${rawSlotLabel}`;
             const ladiesUsualEl = refs.ladiesUsualEl;
             if (ladiesUsualEl) {
                 const uWDiff = store.usual_w_diff;
@@ -2820,7 +2827,7 @@
                     if (uWDiff > 0) ladiesUsualEl.classList.add('is-up');
                     else if (uWDiff < 0) ladiesUsualEl.classList.add('is-down');
                     ladiesUsualEl.textContent = store.usual_w_plain || formatUsualDiffPlainJs(uWDiff, '女性');
-                    ladiesUsualEl.title = `普段の${slotLabel}平均(${store.usual_women}名)との差`;
+                    ladiesUsualEl.title = `${slotLabelPrefixed}平均(${store.usual_women}名)との差`;
                 } else {
                     ladiesUsualEl.classList.add('hidden');
                     ladiesUsualEl.textContent = '';
@@ -2834,7 +2841,7 @@
                     if (uMDiff > 0) menUsualEl.classList.add('is-up');
                     else if (uMDiff < 0) menUsualEl.classList.add('is-down');
                     menUsualEl.textContent = store.usual_m_plain || formatUsualDiffPlainJs(uMDiff, '男性');
-                    menUsualEl.title = `普段の${slotLabel}平均(${store.usual_men}名)との差`;
+                    menUsualEl.title = `${slotLabelPrefixed}平均(${store.usual_men}名)との差`;
                 } else {
                     menUsualEl.classList.add('hidden');
                     menUsualEl.textContent = '';
@@ -3617,7 +3624,7 @@
                     sub: '待機時間を無駄にせず、同エリアで今から合流できる相手をスマホで検索',
                     cta: '無料で探す ›',
                     editorialHref: '/concierge',
-                    editorialLabel: '徒歩圏でいま待ちなしの穴場店3秒診断を見る ›'
+                    editorialLabel: '徒歩圏でいま待ちなしの穴場＆ハシゴ診断を見る ›'
                 };
             }
 
@@ -3632,7 +3639,7 @@
                         sub: '相席で会話が弾んだあとにスマートに誘える駅近の隠れ家バー・夜カフェをスマホで空席検索',
                         cta: '周辺の空席を見る ›',
                         editorialHref: '/concierge',
-                        editorialLabel: '現在地エリアの穴場・徒歩ハシゴ3秒診断を見る ›'
+                        editorialLabel: '現在地エリアの穴場・徒歩ハシゴ診断を見る ›'
                     };
                 }
             }
@@ -6347,23 +6354,24 @@
                 avgW = Number(avgW) || 0;
                 avgM = Number(avgM) || 0;
                 slotLabel = escapeHtml(slotLabel);
+                const slotLabelPrefixed = slotLabel.includes('普段') ? slotLabel : `普段の${slotLabel}`;
 
                 const isPreopenZero = _isPreopenZeroStore(liveStore);
                 if (isPreopenZero && (avgW > 0 || avgM > 0)) {
-                    diffBadgeW = `<span class="diff-badge neutral">営業時間外（普段の${slotLabel}: 女性${avgW}名 / 男性${avgM}名）</span>`;
+                    diffBadgeW = `<span class="diff-badge neutral">営業時間外（${slotLabelPrefixed}: 女性${avgW}名 / 男性${avgM}名）</span>`;
                 } else {
                     const diffW = +(liveStore.women - avgW).toFixed(1);
                     if (avgW > 0 || liveStore.women > 0) {
                         const clsW = diffW >= 5 ? 'hot' : (diffW > 0 ? 'up' : (diffW < 0 ? 'down' : 'neutral'));
                         const signW = diffW > 0 ? `+${diffW}名 ${UI_SVG_ARROW_NE}` : (diffW < 0 ? `${diffW}名` : '並み');
-                        diffBadgeW = `<span class="diff-badge ${clsW}">女性: 普段の${slotLabel}(${avgW}名)比 ${signW}</span>`;
+                        diffBadgeW = `<span class="diff-badge ${clsW}">女性: ${slotLabelPrefixed}(${avgW}名)比 ${signW}</span>`;
                     }
 
                     const diffM = +(liveStore.men - avgM).toFixed(1);
                     if (avgM > 0 || liveStore.men > 0) {
                         const clsM = diffM > 0 ? 'neutral' : (diffM < 0 ? 'down' : 'neutral');
                         const signM = diffM > 0 ? `+${diffM}名` : (diffM < 0 ? `${diffM}名` : '並み');
-                        diffBadgeM = `<span class="diff-badge ${clsM}">男性: 普段の${slotLabel}(${avgM}名)比 ${signM}</span>`;
+                        diffBadgeM = `<span class="diff-badge ${clsM}">男性: ${slotLabelPrefixed}(${avgM}名)比 ${signM}</span>`;
                     }
                 }
             }

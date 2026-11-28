@@ -90,9 +90,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -274,6 +274,16 @@
                 せっかくタイミングの良いお店に入れたのに、仕事終わりのヒゲや顔の皮脂テカリ、シワの寄った服のまま座ってしまうと、女性は20分ほどで「友達と合流する予定があって」と次のお店へ移ってしまいます。<br>
                 入店前に駅のトイレで軽く皮脂を押さえ、清潔感のある服装で座るだけでも相手の反応や滞在時間は変わってきます（着席直後の空気づくりは<a href="/guide/first-10-minutes" style="color:var(--text-main);">最初の10分の会話・距離感ガイド</a>、身だしなみの基準は<a href="/guide/dress-code-cleanliness" style="color:var(--text-main);">5ブランドのNGドレスコード・清潔感チェック</a>や<a href="/grooming" data-cushion="1" style="color:var(--text-main);">入店前の準備まとめ</a>も参考にしてみてください）。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジで「男性比率が高い（男性先行の）お店」の方が後から女性が増えやすいのは本当ですか？</p>
+                <p class="faq-a">ログ上はその動きが見られます。相席ナビの27万件超の時系列ログ分析によると、19時〜21時台に男性が先行している（男性数≧女性数）店舗では、30分後に女性客が増加する確率が66.5%（平均+2.89名）でした。女性側も公式アプリ等で「待たされずにすぐ相席できる男性がいる店舗」を選んで来店していることが背景にあります。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 女性余り（女性比率が高すぎる）のお店はどうなりますか？</p>
+                <p class="faq-a">女性が男性より12名以上多い状態でその後男性が入店しなかった場合、30分以内に55.3%の確率で女性数が減少（平均-4.88名の退店）していました。今の女性は長く相席待ちをせず、20〜30分ほど相席できなければ徒歩圏内の別ブランド（オリエンタルラウンジ・ag・JISなど）へ移動するケースが目立つからです。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="入店前の身だしなみ・近隣比較ガイド">

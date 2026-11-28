@@ -36,7 +36,7 @@
 
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
 
     <script type="application/ld+json">
     {
@@ -619,7 +619,7 @@
             line-height: 1.35;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     <meta name="color-scheme" content="dark light">
     <script blocking="render">try{if(localStorage.getItem('olg_view_theme')==='light')document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>
@@ -885,10 +885,10 @@
             <div class="price-comp-bridge-bar" data-nosnippet style="margin-top: 16px; padding: 14px 16px; border-radius: 13px; background: var(--card-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div style="flex: 1 1 280px;">
                     <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-sub); margin-bottom: 2px;">料金比較の次の一手｜現在の女性比率×待機コストで最適店を自動選出</div>
-                    <div style="font-size: 0.85rem; color: var(--text-main);">10分単価が安くても男性過多の店舗では待機料金がかさみます。いま女性優位で実質負担が抑えられる穴場店を3秒で診断できます。</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main);">10分単価が安くても男性過多の店舗では待機料金がかさみます。いま女性優位で実質負担が抑えられる穴場店を条件別に診断できます。</div>
                 </div>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <a href="/concierge" class="price-bridge-cta" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'cushion_click',label:'/concierge @ /price-comparison'}),keepalive:true});}catch(e){}">3秒穴場＆徒歩ハシゴ診断 ›</a>
+                    <a href="/concierge" class="price-bridge-cta" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'cushion_click',label:'/concierge @ /price-comparison'}),keepalive:true});}catch(e){}">穴場＆徒歩ハシゴ診断 ›</a>
                     <a href="https://machinavi-data.com/?from=aiseki#diagnose" target="_blank" rel="noopener" class="price-bridge-sub" onclick="try{fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'sister_bridge_click',label:'all:price_compare:all'}),keepalive:true});}catch(e){}">予約制街コン・婚活と実質コスパを比較（マチナビ） ›</a>
                 </div>
             </div>

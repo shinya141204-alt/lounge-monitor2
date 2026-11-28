@@ -102,9 +102,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -348,6 +348,20 @@
             <p>
                 今夜どこかの店舗へ向かう前に、リアルタイムの混雑人数や男女比、そして待ち時間の少ない穴場店舗を<a href="/" style="color:var(--text-main);text-decoration:underline;">リアルタイムランキング</a>で一度確認してから家を出てみてください。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジで席では盛り上がったのに、翌日LINEが既読スルーされるのはなぜですか？</p>
+                <p class="faq-a">女性は1回の来店で平均3組（計6名前後）の男性と相席しています。お酒も入っているため、翌朝には『誰がどの話をしていたか』の記憶が混濁しています。そこにアイコンが風景や車で名前がアルファベット1文字のアカウントから『昨日は楽しかったです！』と定型文が届いても、誰か分からず返信を後回しにされ、そのままフェードアウトしてしまうのが最大の原因です。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. LINE交換はグループLINEと個別交換、どちらが良いですか？</p>
+                <p class="faq-a">グループLINEは女性にとって断りにくさを回避する『最も安全な社交辞令の場』になりやすく、退店直後に非通知（ミュート）にされる確率が非常に高くなります。可能であれば、席の中で『おすすめのカフェのURLを送る』『写真を見せる』などの共通のフックを作り、自然に1対1の個別LINEで繋がるのが理想です。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席後にLINEを送るベストなタイミングはいつですか？</p>
+                <p class="faq-a">翌朝や翌日の昼休みではなく、『退店直後30分以内（お互いが帰りの電車やタクシーに乗っている間）』が最も効果的です。相手の記憶が鮮明なうちに、席で話題になった具体的な画像やURLを1行添えて送信することで、相手のトーク一覧で『今日の〇〇さん』として認識を固定できます。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
             <aside class="editorial-bridge-box" aria-label="連絡先交換の前に整えておくべき準備">

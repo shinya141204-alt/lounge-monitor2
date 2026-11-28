@@ -2650,7 +2650,7 @@ def predict_store_60m_dynamics(
         except Exception:
             online_bias_adj = 0.0
 
-    # 7b) 先行需要インテント（3秒ハシゴ診断）からのリードインジケーター補正
+    # 7b) 先行需要インテント（穴場＆徒歩ハシゴ診断）からのリードインジケーター補正
     lead_intent_bias_applied = 0.0
     tot_intents = _safe_int(lead_intent_heat.get("total_intents") if isinstance(lead_intent_heat, dict) else 0, default=0, min_val=0, max_val=1000000)
     if isinstance(lead_intent_heat, dict) and tot_intents >= 3:

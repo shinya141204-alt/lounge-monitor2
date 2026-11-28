@@ -115,9 +115,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -319,29 +319,21 @@
             </p>
 
             <h2 id="section-faq">6. 初心者がよく迷うQ&amp;A（料金・保険証・1人入店・女性の待ち時間）</h2>
-            <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h3>Q1. 女性は本当に無料ですか？ 女性でも待たされることはありますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
-                    はい、女性はチャージも飲み放題も無料（店舗によりフード・スイーツ特典あり）です。ただし女性ばかりが集中している「女余り店」に行くと、受付で20〜40分待つことがあります。女性ペアは<a href="/for-women" data-cushion="1" style="color:var(--text-main);">女性向け穴場ランキング</a>で「男性が先行入店している店舗」を選ぶと待ち時間を抑えやすくなります。
-                </p>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジの料金システムは？女性は本当に無料ですか？</p>
+                <p class="faq-a">女性はオリエンタルラウンジ・ag（アグ）・JIS（ジス）・ASOBIBAR（アソビバー）などすべての主要ブランドでチャージ0円・飲み放題0円（完全無料）です。男性は着席型ラウンジの場合「相席前の単独待機料金（10分220〜330円前後）」と「相席中の10分従量料金（平日550〜880円／週末660〜1,100円前後、飲み放題込）」に分かれており、1時間半〜2時間の滞在で1人あたり約5,500〜9,000円が目安です。<a href="/asobibar" style="text-decoration:underline;">ASOBIBAR</a>やヤタコイのようなスタンディングバーは10分課金がなくチケット・定額制で楽しめます。</p>
             </div>
-            <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h3>Q2. 男性の1晩あたりの予算目安はいくらくらいですか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
-                    着席型ラウンジ（オリエンタルラウンジ・ag（アグ）・JIS（ジス））に1時間〜1時間半滞在した場合、平日は約4,000〜6,500円、金土祝前日は約5,500〜8,500円前後が目安です（飲み放題込み・VIP席や有料フードを除く）。時間課金を気にせず飲みたい日は定額・チケット制の<a href="/asobibar" style="text-decoration:underline;">ASOBIBAR（アソビバー）</a>も選択肢に入ります（損益分岐の詳細は<a href="/guide/cost-break-even" style="text-decoration:underline;">料金損益分岐シミュレーション</a>へ）。
-                </p>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジの入店に必要な身分証は何ですか？保険証だけで入れますか？</p>
+                <p class="faq-a">20歳以上の年齢確認が厳格に行われるので、運転免許証・マイナンバーカード・パスポート・在留カードなど「公的な顔写真付き身分証明書（原本）」が全員必須です。顔写真のない健康保険証のみや、スマホで撮影した画像・コピーでは入店できない店舗が大半ですので必ず原本をご持参ください。</p>
             </div>
-            <div class="article-highlight-box" style="margin-bottom: 16px;">
-                <h3>Q3. 健康保険証や学生証だけで入店できますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
-                    顔写真のない健康保険証単体やコピー・スマホ画像では入店できません。必ず<strong>運転免許証・マイナンバーカード・パスポート・在留カード等の公的顔写真付き身分証（原本）</strong>を全員分ご持参ください。
-                </p>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジに服装（ドレスコード）の決まりはありますか？</p>
+                <p class="faq-a">スーツやハイブランドである必要はありませんが、ジャージ・スウェット・タンクトップ・作業着・ビーチサンダル・クロックス等の極端にラフな服装は入店NGとなります。男性は襟付きシャツやジャケット、無地ニットにきれいめなパンツとスニーカー・革靴であればどの店舗でも好印象です。</p>
             </div>
-            <div class="article-highlight-box" style="margin-bottom: 28px;">
-                <h3>Q4. 1人（ソロ）でも浮きませんか？ どこに行けば入れますか？</h3>
-                <p style="margin:0; font-size:0.89rem; color:var(--text-main);">
-                    平日の仕事帰りや週末2軒目で1人入店する男女は珍しくありません。JIS（新宿店を除く全店）やASOBIBAR全10店、オリエンタルラウンジの1名対応24店舗なら1名でも自然に馴染めます（詳しくは<a href="/guide/solo-vs-pair" style="text-decoration:underline;">1人入店 vs 2人ペア入店の実測比較</a>や<a href="/guide/thirties-lounge-guide" style="text-decoration:underline;">30代の店選びガイド</a>をご覧ください）。
-                </p>
+            <div class="faq-card">
+                <p class="faq-q">Q. 男性1人（ソロ）や女性1人でも入店できますか？</p>
+                <p class="faq-a">店舗によって異なります。JIS（新宿店を除く各店）、オリエンタルラウンジの準都心・地方24店舗（シングルチャージ+1,100円）、agの一部店舗、およびASOBIBAR全10店・ヤタコイ等のスタンディングバーは1名入店に対応しています。一方、オリエンタルラウンジ新宿・渋谷本店・恵比寿・大阪駅前・名古屋錦などの大型旗艦店は2名以上必須なので、事前に<a href="/price-comparison" style="text-decoration:underline;">料金・ソロ可否比較ボード</a>で確認するのが確実です。</p>
             </div>
 
             {% if not is_staff and not session.get('is_staff') %}

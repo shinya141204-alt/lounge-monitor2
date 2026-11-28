@@ -31,7 +31,7 @@
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "相席ナビ 今夜どこ行く？3秒穴場＆徒歩ハシゴ診断ツール",
+        "name": "相席ナビ 今夜どこ行く？穴場＆徒歩ハシゴ診断ツール",
         "url": "https://aiseki-navi.com/concierge",
         "applicationCategory": "LifestyleApplication",
         "operatingSystem": "All",
@@ -55,7 +55,7 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "3秒穴場＆ハシゴ診断",
+            "name": "穴場＆徒歩ハシゴ診断",
             "item": "https://aiseki-navi.com/concierge"
           }
         ]
@@ -66,7 +66,7 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "3秒穴場＆ハシゴ診断はどのようなデータをもとに店舗を選んでいますか？",
+            "name": "穴場＆徒歩ハシゴ診断はどのようなデータをもとに店舗を選んでいますか？",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "全国63店舗のリアルタイム男女人数・男女比率に加え、蓄積された過去ログから算出した時間帯別コアタイム統計・23時以降の終電後定着率、各店舗の1名（ソロ）入店可否ルール、さらに緯度経度から計算した店舗間の推定徒歩分数を統合してスコア化しています。"
@@ -107,7 +107,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         :root {
             --bg-dark: var(--calm-bg, #111113);
@@ -593,14 +593,54 @@
             flex-wrap: wrap;
             gap: 8px;
         }
-        .btn-gold-action {
+        .concierge-ctrl-toggle {
+            display: none;
+        }
+        @media (max-width: 1023px) {
+            .concierge-ctrl-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                width: 100%;
+                min-height: 42px;
+                padding: 8px 12px;
+                border-radius: 12px;
+                border: 1px solid var(--border-subtle);
+                background: var(--card-bg-2);
+                color: var(--text-main);
+                font-family: inherit;
+                font-size: 0.8rem;
+                font-weight: 700;
+                cursor: pointer;
+                text-align: left;
+                margin-bottom: 4px;
+            }
+            .concierge-ctrl-summary {
+                font-weight: 500;
+                color: var(--text-sub);
+                font-size: 0.75rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+            .concierge-ctrl-groups.is-mobile-collapsed {
+                display: none;
+            }
+            .concierge-ctrl-groups:not(.is-mobile-collapsed) {
+                margin-top: 10px;
+            }
+        }
+        .btn-primary-action {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
             min-height: 40px;
             padding: 8px 15px;
-            border-radius: 12px;
+            border-radius: 999px;
             background: var(--cm-cta-bg, #f4f4f5);
             border: 1px solid var(--cm-cta-bg, #f4f4f5);
             color: var(--cm-cta-text, #111113);
@@ -608,16 +648,16 @@
             font-size: 0.82rem;
             font-weight: 700;
             text-decoration: none;
-            flex: 1;
-            min-width: 140px;
+            flex: 1 1 180px;
+            min-width: 0;
             text-align: center;
         }
-        body.theme-light .btn-gold-action {
+        body.theme-light .btn-primary-action {
             background: #18181b;
             border-color: #18181b;
             color: #ffffff;
         }
-        .btn-gold-action:hover {
+        .btn-primary-action:hover {
             opacity: 0.9;
         }
         .btn-subtle-action {
@@ -785,7 +825,7 @@
             color: var(--text-sub);
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -863,12 +903,12 @@
         body.theme-light .tot-m {
             color: var(--calm-light-men-strong, #1e40af) !important;
         }
-        body:not(.staff-mode) .btn-gold-action,
+        body:not(.staff-mode) .btn-primary-action,
         body:not(.staff-mode) .btn-subtle-action {
             min-height: 40px !important;
-            border-radius: 12px !important;
+            border-radius: 999px !important;
         }
-        body.theme-light:not(.staff-mode) .btn-gold-action {
+        body.theme-light:not(.staff-mode) .btn-primary-action {
             background: #18181b !important;
             border-color: #18181b !important;
             color: #ffffff !important;
@@ -907,6 +947,13 @@
             <h1>今夜どこ行く？穴場＆徒歩ハシゴ診断</h1>
             <p class="concierge-lead">全国63店舗の現在男女比・過去ログの終電後定着率・店舗間の徒歩距離から、「いま入りやすい第1候補」と「混雑時の徒歩ハシゴ第2候補」を算出します。</p>
 
+            <button type="button" id="concierge-ctrl-toggle" class="concierge-ctrl-toggle" aria-expanded="false" aria-controls="concierge-ctrl-groups">
+                <span>条件を変更（5項目）</span>
+                <span class="concierge-ctrl-summary" id="concierge-ctrl-summary">{{ res.area_label }}</span>
+                <span id="concierge-ctrl-chevron" aria-hidden="true">▾</span>
+            </button>
+
+            <div id="concierge-ctrl-groups" class="concierge-ctrl-groups is-mobile-collapsed">
             <div class="ctrl-group">
                 <span class="ctrl-label">1. どちらの目線で探す？</span>
                 <div class="ctrl-row ctrl-row--audience">
@@ -945,6 +992,7 @@
                     <button type="button" class="c-pill {% if res.vibe == 'lively' %}active{% endif %}" data-param="vibe" data-val="lively">ワイワイ・20代前半多め</button>
                     <button type="button" class="c-pill {% if res.vibe == 'calm' %}active{% endif %}" data-param="vibe" data-val="calm">落ち着いて会話・大人め</button>
                 </div>
+            </div>
             </div>
         </section>
 
@@ -1002,7 +1050,7 @@
                     </ul>
 
                     <div class="card-btn-row">
-                        <a href="{{ p.store_url }}" class="btn-gold-action" id="p-detail-btn">店舗のリアルタイム詳細・7日間データ ›</a>
+                        <a href="{{ p.store_url }}" class="btn-primary-action" id="p-detail-btn">詳細・7日間データを見る ›</a>
                         <a href="{{ p.area_url }}" class="btn-subtle-action" id="p-area-btn">この街の攻略ガイド ›</a>
                     </div>
                 </article>
@@ -1050,12 +1098,12 @@
 
             {% if not is_staff and not session.get('is_staff') %}
             <!-- Smart Action Card (Placed right beneath Primary/Backup diagnosis; hidden completely in Staff Mode) -->
-            <aside class="smart-prep-card" id="concierge-smart-action-wrap">
+            <aside class="smart-prep-card" id="concierge-smart-action-wrap" data-aff-slot="mens_skincare_clinic">
                 <div class="smart-prep-kicker" id="sac-kicker">{{ sac.kicker }}</div>
                 <h3 id="sac-title">{{ sac.title }}</h3>
-                <p id="sac-body">{{ sac.body }}</p>
+                <p id="sac-body">{{ sac.body | replace('会話継続率が変わります', '印象や会話の入りやすさが変わります') }}</p>
                 <div class="card-btn-row">
-                    <a href="{{ sac.primary_url }}" class="btn-gold-action" id="sac-primary-btn" rel="nofollow sponsored noopener" target="_blank">{{ sac.primary_label }} ›</a>
+                    <a href="{{ sac.primary_url | replace('/link/orbis', '/link/mens_skincare_clinic') | replace('/link/women_dating', '/link/women_dating_bachelor') | replace('/link/women_second_venue', '/link/second_venue_reservation') }}" class="btn-primary-action" id="sac-primary-btn" rel="nofollow sponsored noopener" target="_blank">{{ sac.primary_label }} ›</a>
                     <a href="{{ sac.secondary_url }}" class="btn-subtle-action" id="sac-secondary-btn">{{ sac.secondary_label }} ›</a>
                 </div>
             </aside>
@@ -1101,10 +1149,10 @@
                                     <p style="margin: 0 0 8px; font-size: 0.8rem; color: var(--text-sub); line-height: 1.45;">{{ sp.comment }}</p>
                                 </div>
                                 <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-                                    <a href="{{ sp.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding: 6px 10px; font-size: 0.78rem; flex: 0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
-                                    <button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText('{{ sp.name | e }}'); this.textContent='✓ コピー済'; var self=this; setTimeout(function(){ self.textContent='店名コピー'; }, 2000);" style="padding: 6px 10px; font-size: 0.78rem; cursor: pointer; flex: 0 1 auto;">店名コピー</button>
+                                    <a href="{{ sp.map_url }}" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding: 6px 10px; min-height: 38px; font-size: 0.78rem; flex: 0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
+                                    <button type="button" class="btn-subtle-action copy-sv-btn" data-copy-name="{{ sp.name | e }}" style="padding: 6px 10px; min-height: 38px; font-size: 0.78rem; cursor: pointer; flex: 0 1 auto;">店名コピー</button>
                                     {% if not is_staff and not session.get('is_staff') %}
-                                    <a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-gold-action" style="padding: 6px 10px; font-size: 0.78rem; min-width: 0; flex: 0 1 auto;">席予約 ›</a>
+                                    <a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-primary-action" style="padding: 6px 10px; min-height: 38px; font-size: 0.78rem; min-width: 0; flex: 0 1 auto;">席予約 ›</a>
                                     {% endif %}
                                 </div>
                             </div>
@@ -1114,7 +1162,7 @@
                 </div>
 
                 <div class="invite-quote" id="sv-phrase">誘い方例：{{ sv.invite_phrase }}</div>
-                <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">目安タイミング：{{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し完全ガイド ›</a></p>
+                <p style="margin: 0; font-size: 0.79rem; color: var(--text-sub);" id="sv-timing">目安タイミング：{{ sv.timing_advice }} <a href="{{ sv.guide_url | default('/guide/second-venue') }}" class="editorial-inline-link" style="margin-left: 6px;">2軒目誘い出し実践ガイド ›</a></p>
             </section>
         </div>
         </div>
@@ -1133,7 +1181,7 @@
 
         <!-- SEO FAQ Section -->
         <section class="faq-section">
-            <h2>3秒穴場＆ハシゴ診断のよくある質問</h2>
+            <h2>穴場＆徒歩ハシゴ診断のよくある質問</h2>
             <details class="faq-item" open>
                 <summary>どのようなデータをもとに「本命」と「第2候補」を選んでいますか？</summary>
                 <p>全国主要店舗（オリエンタルラウンジ・ag・JIS・各地の人気相席ラウンジ）の現在リアルタイム男女人数に加え、過去30日間の蓄積ログから算出した時間帯別コアタイム比率・23時以降の終電後定着率、各店舗の1名（ソロ）入店規定、そして店舗間の緯度経度から算出した推定徒歩分数を掛け合わせて判定しています。</p>
@@ -1405,7 +1453,7 @@
             var svTiming = document.getElementById('sv-timing');
             if (svTiming) {
                 svTiming.innerHTML = '目安タイミング：' + escHtml(sv.timing_advice || '') +
-                    ' <a href="' + escHtml(sv.guide_url || '/guide/second-venue') + '" class="editorial-inline-link" style="margin-left:6px;">2軒目誘い出し完全ガイド ›</a>';
+                    ' <a href="' + escHtml(sv.guide_url || '/guide/second-venue') + '" class="editorial-inline-link" style="margin-left:6px;">2軒目誘い出し実践ガイド ›</a>';
             }
 
             var svCuratedGrid = document.getElementById('sv-curated-grid');
@@ -1426,7 +1474,7 @@
                         var wLabel = sp.walk_minutes_label || ('徒歩' + (sp.walk_minutes || 3) + '分');
                         var hoursHtml = sp.late_hours ? '<div style="font-size:0.76rem; color:var(--text-sub); margin-bottom:4px;">営業時間 ' + escHtml(sp.late_hours) + (sp.seating_vibe ? ' ・ ' + escHtml(sp.seating_vibe) : '') + '</div>' : '';
                         var reserveBtn = IS_PUBLIC_VIEW
-                            ? '{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-gold-action" style="padding:6px 10px; font-size:0.78rem; min-width:0; flex:0 1 auto;">席予約 ›</a>{% endif %}'
+                            ? '{% if not is_staff and not session.get("is_staff") %}<a href="/link/second_venue_reservation?from=/concierge" target="_blank" rel="nofollow sponsored noopener" class="btn-primary-action" style="padding:6px 10px; min-height:38px; font-size:0.78rem; min-width:0; flex:0 1 auto;">席予約 ›</a>{% endif %}'
                             : '';
                         return '<div class="concierge-sv-card" style="background:var(--card-bg-2); border:1px solid var(--border-subtle); border-radius:8px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">' +
                             '<div>' +
@@ -1439,8 +1487,8 @@
                             '<p style="margin:0 0 8px; font-size:0.8rem; color:var(--text-sub); line-height:1.45;">' + escHtml(sp.comment || '') + '</p>' +
                             '</div>' +
                             '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">' +
-                            '<a href="' + escHtml(sp.map_url || '#') + '" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding:6px 10px; font-size:0.78rem; flex:0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>' +
-                            '<button type="button" class="btn-subtle-action copy-sv-btn" onclick="navigator.clipboard.writeText(\'' + escHtml(sp.name || '') + '\'); this.textContent=\'✓ コピー済\'; var self=this; setTimeout(function(){ self.textContent=\'店名コピー\'; }, 2000);" style="padding:6px 10px; font-size:0.78rem; cursor:pointer; flex:0 1 auto;">店名コピー</button>' +
+                            '<a href="' + escHtml(sp.map_url || '#') + '" target="_blank" rel="noopener noreferrer" class="btn-subtle-action" style="padding:6px 10px; min-height:38px; font-size:0.78rem; flex:0 1 auto;">マップ <svg class="ui-svg-ne" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>' +
+                            '<button type="button" class="btn-subtle-action copy-sv-btn" data-copy-name="' + escHtml(sp.name || '') + '" style="padding:6px 10px; min-height:38px; font-size:0.78rem; cursor:pointer; flex:0 1 auto;">店名コピー</button>' +
                             reserveBtn +
                             '</div>' +
                             '</div>';
@@ -1448,23 +1496,113 @@
                 }
             }
 
-            // Smart Action Card (Public View Only)
-            if (IS_PUBLIC_VIEW && data.smart_action_card) {
-                var sac = data.smart_action_card;
-                setText('sac-kicker', sac.kicker || '');
-                setText('sac-title', sac.title || '');
-                setText('sac-body', sac.body || '');
-                var sacP = document.getElementById('sac-primary-btn');
-                if (sacP && sac.primary_url) {
-                    sacP.textContent = (sac.primary_label || '詳細を見る') + ' ›';
-                    sacP.href = sac.primary_url;
-                }
-                var sacS = document.getElementById('sac-secondary-btn');
-                if (sacS && sac.secondary_url) {
-                    sacS.textContent = (sac.secondary_label || 'ガイドを読む') + ' ›';
-                    sacS.href = sac.secondary_url;
+            // Smart Action Card (4-branch contextual exit + canonical slot id; Public View Only)
+            if (IS_PUBLIC_VIEW && typeof window.__syncConciergeSmartCta === 'function') {
+                window.__syncConciergeSmartCta(data);
+            }
+        }
+
+        {% if not is_staff and not session.get('is_staff') %}
+        function normalizeConciergeSlotHref(rawUrl) {
+            var u = String(rawUrl || '');
+            return u.replace('/link/orbis', '/link/mens_skincare_clinic')
+                .replace('/link/hair_removal', '/link/mens_hair_removal')
+                .replace('/link/spu', '/link/spu_styleup')
+                .replace('/link/women_dating', '/link/women_dating_bachelor')
+                .replace('/link/women_second_venue', '/link/second_venue_reservation');
+        }
+
+        function extractSlotFromHref(href) {
+            var m = String(href || '').match(/\/link\/([a-z0-9_]+)/i);
+            return m ? m[1] : '';
+        }
+
+        window.__syncConciergeSmartCta = function(data) {
+            var wrap = document.getElementById('concierge-smart-action-wrap');
+            if (!wrap) return;
+            var sac = (data && data.smart_action_card) ? data.smart_action_card : {};
+            var p = (data && data.primary) ? data.primary : {};
+            var asum = (data && data.area_summary) ? data.area_summary : {};
+            var isWomen = (state.audience === 'women');
+            var isLate = (state.timing === 'late_23');
+            var pWomen = Number(p.women || 0);
+            var pMen = Number(p.men || 0);
+            var isWaitingRisk = (!isWomen) && (
+                (pMen > pWomen && (pWomen + pMen) >= 6) ||
+                (Number(asum.total_men || 0) > Number(asum.total_women || 0) && Number(asum.total_women || 0) > 0) ||
+                Boolean(p && p.is_open_now === false)
+            );
+
+            var kicker = sac.kicker || '';
+            var title = sac.title || '';
+            var body = (sac.body || '').replace('会話継続率が変わります', '印象や会話の入りやすさが変わります');
+            var primaryUrl = normalizeConciergeSlotHref(sac.primary_url || '/link/mens_skincare_clinic?from=/concierge');
+            var primaryLabel = sac.primary_label || '公式詳細を見る';
+            var secondaryUrl = sac.secondary_url || '/grooming';
+            var secondaryLabel = sac.secondary_label || '入店前準備を見る';
+
+            if (!sac.primary_url) {
+                if (isWomen) {
+                    kicker = '女性目線｜待ち回避＆0次会・女子会席の選択肢';
+                    title = '受付で待つ前に駅チカカフェ・隠れ家バルの空席を確保';
+                    body = '女友達との0次会や、相席を切り上げたあとの落ち着けるバー席を事前に押さえられます。';
+                    primaryUrl = '/link/second_venue_reservation?from=/concierge';
+                    primaryLabel = '人気プラン・空席を見る';
+                    secondaryUrl = '/for-women';
+                    secondaryLabel = '女性向け待ちゼロ実践ガイド';
+                } else if (isLate) {
+                    kicker = '23時以降・2軒目プラン｜席確保の選択肢';
+                    title = '相席後に満席で歩かない「駅チカ隠れ家バー・ディナー予約」';
+                    body = '終電後の時間帯は飛び込みだと2軒目が埋まりやすいため、候補店を出る前に空席を見ておくとスムーズです。';
+                    primaryUrl = '/link/second_venue_reservation?from=/concierge';
+                    primaryLabel = '一休.comで周辺の空席を見る';
+                    secondaryUrl = '/grooming?mode=second#night-care';
+                    secondaryLabel = '2軒目の誘い方＆サプリ比較';
+                } else if (isWaitingRisk) {
+                    kicker = '男性先行・待機回避｜今夜のサブ選択肢';
+                    title = '単独待機課金を払う前に、近隣で今日合流できるアプリを併用';
+                    body = 'エリア全体で男性が多い時間帯は、店頭待機が長くなる前に今夜飲める相手を探せるアプリとの併用が合理的です。';
+                    primaryUrl = '/link/dating_instant?from=/concierge';
+                    primaryLabel = '今日これから飲めるアプリを見る';
+                    secondaryUrl = '/grooming?mode=waiting#backup-apps';
+                    secondaryLabel = '満席時の代替アプリ比較';
+                } else {
+                    kicker = '本命店へ行く前｜70cmの距離で差が出る清潔感ケア';
+                    title = '夕方のテカリ・乾燥を整える「ORBIS Mr.」初回セット';
+                    body = '照明が落ちたソファ席は顔まわりの印象がはっきり出ます。入店前のベースケアで最初の10分の好印象を作れます。';
+                    primaryUrl = '/link/mens_skincare_clinic?from=/concierge';
+                    primaryLabel = '初回トライアルを見る';
+                    secondaryUrl = '/grooming?mode=prep#sebum-care';
+                    secondaryLabel = '入店前の身だしなみ一覧';
                 }
             }
+            var slotId = extractSlotFromHref(primaryUrl) || 'mens_skincare_clinic';
+            wrap.setAttribute('data-aff-slot', slotId);
+            setText('sac-kicker', kicker);
+            setText('sac-title', title);
+            setText('sac-body', body);
+            var sacP = document.getElementById('sac-primary-btn');
+            if (sacP) {
+                sacP.textContent = primaryLabel.replace(/›$/, '').trim() + ' ›';
+                sacP.href = primaryUrl;
+            }
+            var sacS = document.getElementById('sac-secondary-btn');
+            if (sacS) {
+                sacS.textContent = secondaryLabel.replace(/›$/, '').trim() + ' ›';
+                sacS.href = secondaryUrl;
+            }
+        };
+        {% endif %}
+
+        function syncMobileSummary() {
+            var sumEl = document.getElementById('concierge-ctrl-summary');
+            if (!sumEl) return;
+            var audTxt = state.audience === 'women' ? '女性目線' : '男性目線';
+            var activeAreaBtn = document.querySelector('.c-pill[data-param="area"].active');
+            var areaTxt = activeAreaBtn ? activeAreaBtn.textContent.trim() : state.area;
+            var timeMap = { now: '今から直行', prime_21: '20〜22時', late_23: '23時以降' };
+            var partyMap = { solo: '1人参戦', pair: '2人組', group: '3人以上' };
+            sumEl.textContent = audTxt + '・' + areaTxt + '・' + (timeMap[state.timing] || '今から') + '・' + (partyMap[state.party_size] || '2人組');
         }
 
         function buildQuery() {
@@ -1510,6 +1648,27 @@
         }
 
         document.addEventListener('click', function(ev) {
+            var toggleBtn = ev.target.closest('#concierge-ctrl-toggle');
+            if (toggleBtn) {
+                var groupsEl = document.getElementById('concierge-ctrl-groups');
+                var chevEl = document.getElementById('concierge-ctrl-chevron');
+                if (groupsEl) {
+                    var collapsed = groupsEl.classList.toggle('is-mobile-collapsed');
+                    toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    if (chevEl) chevEl.textContent = collapsed ? '▾' : '▴';
+                }
+                return;
+            }
+            var copySvBtn = ev.target.closest('.copy-sv-btn[data-copy-name]');
+            if (copySvBtn) {
+                var svName = copySvBtn.getAttribute('data-copy-name') || '';
+                if (svName && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(svName).catch(function() {});
+                }
+                copySvBtn.textContent = '✓ コピー済';
+                setTimeout(function() { copySvBtn.textContent = '店名コピー'; }, 2000);
+                return;
+            }
             var btn = ev.target.closest('.c-pill[data-param]');
             if (!btn) return;
             var p = btn.getAttribute('data-param');
@@ -1517,8 +1676,20 @@
             if (!p || !v || state[p] === v) return;
             state[p] = v;
             updateActivePills();
+            syncMobileSummary();
             fetchConcierge();
         });
+
+        syncMobileSummary();
+        {% if not is_staff and not session.get('is_staff') %}
+        if (IS_PUBLIC_VIEW) {
+            var initWrap = document.getElementById('concierge-smart-action-wrap');
+            var initP = document.getElementById('sac-primary-btn');
+            if (initWrap && initP) {
+                initWrap.setAttribute('data-aff-slot', extractSlotFromHref(initP.getAttribute('href')) || 'mens_skincare_clinic');
+            }
+        }
+        {% endif %}
 
         var copyBtn = document.getElementById('copy-plan-url-btn');
         if (copyBtn) {

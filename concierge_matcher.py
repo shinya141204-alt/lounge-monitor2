@@ -1,5 +1,5 @@
 """
-concierge_matcher.py - 「今夜どこ行く？3秒穴場＆ハシゴ診断エンジン」
+concierge_matcher.py - 「今夜どこ行く？相席ラウンジ 穴場＆徒歩ハシゴ診断エンジン」
 
 全国60店舗超の現在リアルタイム人数（live_stores）＋ 過去ログ統計ベンチマーク
 （local_db.get_all_stores_live_benchmarks(allow_blocking=False)）＋
@@ -920,7 +920,7 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
                 "title": "角が立たない席替えフレーズ＆『審査制カフェデート』という選択肢",
                 "body": "微妙な席に当たったときの自然な抜け方は『女性向け実践ガイド』をチェック。大人数の飲み会より落ち着いて1対1でお茶したい週は、女性無料・顔写真非公開の審査制デートアプリを併用する女性が増えています。",
                 "primary_label": "審査制・1対1デート（女性無料）を見る",
-                "primary_url": "/link/women_dating?from=/concierge",
+                "primary_url": "/link/women_dating_bachelor?from=/concierge",
                 "secondary_label": "女性向け待ちゼロ＆席替えガイドを読む",
                 "secondary_url": "/for-women#change-seat-manual",
             }
@@ -966,9 +966,9 @@ def _build_smart_action_card(audience: str, timing: str, area_summary: dict, pri
         "mode": "men_grooming_prep",
         "kicker": "ソファ席70cmで差がつく入店前の最終準備",
         "title": "最初の10分で好印象を残す『夕方の皮脂テカリ＆清潔感ケア』",
-        "body": "オリエンタルラウンジやJISの間接照明は、距離70cmのソファ席で顔まわりのテカリや乾燥が意外と目立ちます。入店前の3点チェックと日頃のベースケアで1組目からの会話継続率が変わります。",
+        "body": "オリエンタルラウンジやJISの間接照明は、距離70cmのソファ席で顔まわりのテカリや乾燥が意外と目立ちます。入店前の3点チェックと日頃のベースケアで1組目からの第一印象を整えやすくなります。",
         "primary_label": "メンズ清潔感スキンケア（初回セット）を見る",
-        "primary_url": "/link/orbis?from=/concierge",
+        "primary_url": "/link/mens_skincare_clinic?from=/concierge",
         "secondary_label": "入店前の身だしなみ・準備ガイドを読む",
         "secondary_url": "/grooming#sebum-care",
     }

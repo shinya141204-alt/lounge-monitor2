@@ -49,8 +49,11 @@ _di_cache: dict[tuple, tuple[float, dict[str, Any]]] = {}
 _DI_CACHE_TTL = 300.0
 
 _monthly_snap_lock = threading.Lock()
+_monthly_list_query_lock = threading.Lock()
 _monthly_snap_cache: dict[tuple, tuple[float, dict[str, Any]]] = {}
 _MONTHLY_SNAP_TTL = 600.0
+_MONTHLY_LIST_NEG_TTL = 45.0
+_monthly_list_cache: dict[tuple, tuple[float, float, list[str]]] = {}
 
 _partner_pull_lock = threading.Lock()
 _last_partner_pull_mono = 0.0
@@ -68,6 +71,7 @@ def clear_caches() -> None:
         _di_cache.clear()
     with _monthly_snap_lock:
         _monthly_snap_cache.clear()
+        _monthly_list_cache.clear()
     with _partner_pull_lock:
         _last_partner_pull_mono = 0.0
 
@@ -802,8 +806,8 @@ def build_monthly_frozen_snapshot(yyyy_mm: str) -> dict[str, Any] | None:
         mm = round(float(r[5] or 0.0), 1)
         pm = int(r[6] or 0)
         wpct = round((mw / (mw + mm)) * 100.0, 1) if (mw + mm) > 0 else 0.0
-        f_d = str(r[7] or "")
-        l_d = str(r[8] or "")
+        f_d = r[7].isoformat() if hasattr(r[7], "isoformat") else str(r[7] or "")
+        l_d = r[8].isoformat() if hasattr(r[8], "isoformat") else str(r[8] or "")
         if f_d and (first_d_all is None or f_d < first_d_all):
             first_d_all = f_d
         if l_d and (last_d_all is None or l_d > last_d_all):
@@ -847,3 +851,65 @@ def build_monthly_frozen_snapshot(yyyy_mm: str) -> dict[str, Any] | None:
         with _monthly_snap_lock:
             _monthly_snap_cache[cache_key] = (now_m, snap)
     return snap
+
+
+def list_measured_monthly_snapshots(limit: int = 24) -> list[str]:
+    """`store_hourly_rollups` に国内店舗の実測集計が存在する `YYYY-MM`（降順）一覧を返す。"""
+    if not local_db._db_available():
+        return []
+    today_jst = datetime.datetime.now(_JST).date()
+    cur_ym = today_jst.strftime("%Y-%m")
+    max_items = max(1, min(48, int(limit or 24)))
+    hb, hs = _hidden_sets()
+    cache_key = (local_db._active_db_key(), cur_ym, max_items, hb, hs)
+    now_m = time.monotonic()
+    with _monthly_snap_lock:
+        hit = _monthly_list_cache.get(cache_key)
+        if hit and (now_m - hit[0]) < hit[1]:
+            return list(hit[2])
+
+    with _monthly_list_query_lock:
+        now_m2 = time.monotonic()
+        with _monthly_snap_lock:
+            hit2 = _monthly_list_cache.get(cache_key)
+            if hit2 and (now_m2 - hit2[0]) < hit2[1]:
+                return list(hit2[2])
+
+        rows = []
+        query_ok = True
+        try:
+            local_db._ensure_moat_rollup_schema()
+            rows = local_db._fetch_all_rows(
+                """
+                SELECT SUBSTR(CAST(business_date AS TEXT), 1, 7) AS ym, COUNT(*) AS cnt
+                FROM store_hourly_rollups
+                WHERE sample_count > 0
+                  AND store_name NOT LIKE ?
+                GROUP BY SUBSTR(CAST(business_date AS TEXT), 1, 7)
+                ORDER BY ym DESC
+                """,
+                ("%ソウル%",),
+            )
+        except Exception as err:
+            logging.getLogger(__name__).warning("list_measured_monthly_snapshots query failed: %s", err)
+            rows = []
+            query_ok = False
+
+        yms: list[str] = []
+        for r in rows or []:
+            raw_val = r[0] if r else ""
+            if hasattr(raw_val, "strftime"):
+                ym = raw_val.strftime("%Y-%m")
+            else:
+                ym = str(raw_val or "").strip()[:7]
+            cnt = int((r[1] if r and len(r) > 1 else 0) or 0)
+            if cnt <= 0 or not re.fullmatch(r"202[5-9]-(?:0[1-9]|1[0-2])", ym) or ym > cur_ym:
+                continue
+            yms.append(ym)
+            if len(yms) >= max_items:
+                break
+
+        ttl_sec = _MONTHLY_SNAP_TTL if (query_ok and yms) else _MONTHLY_LIST_NEG_TTL
+        with _monthly_snap_lock:
+            _monthly_list_cache[cache_key] = (time.monotonic(), ttl_sec, list(yms))
+        return yms

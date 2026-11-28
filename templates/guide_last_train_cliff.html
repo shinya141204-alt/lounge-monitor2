@@ -78,9 +78,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -277,6 +277,16 @@
                 <strong>「まず落ち着いて、近くのバーか夜カフェで30分だけコーヒーかハイボールを飲むこと」</strong>。<br>
                 そして終電組が帰ったあと、<strong>0時30分の第2波が立ち上がったのを画面で確認してから入る</strong>。これだけで、「乾杯して10分で相手が帰ってしまう」状況はかなり起きにくくなります。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 相席ラウンジで23時20分〜23時55分の新規入店を避けた方がいいのはなぜですか？</p>
+                <p class="faq-a">相席ナビの96,607件の実測ログ分析によると、23時10分（平均女性31.3名）から23時30分（平均女性26.5名）のわずか20分間で、終電に乗る1回転目の女性客が約16%一斉退店します。一方で1軒目帰りの男性客が23時30分〜50分に流入し、23時50分には女性比率が1日最低の50.2%まで悪化します。深夜に入る場合は、第2波が再流入する0時30分（平均女性25.6名へ回復）まで待つのが有利です。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 終電後（深夜0時以降）も女性が残りやすいのはどのブランド・店舗ですか？</p>
+                <p class="faq-a">20〜21時台は若年層向けの「ag（アグ）（平均女性比73.0%）」の女性比が最も高い一方、深夜0時以降は実家暮らしや学生層が終電で帰るためagの女性比率は49.3%に低下します。逆に深夜0時以降は社会人女性が多い「オリエンタルラウンジ（51.9%）」や「JIS（ジス）（52.7%〜53.7%）」が女性優位を維持します。特にJIS梅田（終電後維持率120%）、オリエンタルラウンジ名古屋錦（108%）、オリエンタルラウンジ大阪駅前（105%）、JIS新宿東口（85%）、オリエンタルラウンジ渋谷本店（80%）が深夜帯に強い代表的な店舗です。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="23時台の40分間をやり過ごす男女別の案内">

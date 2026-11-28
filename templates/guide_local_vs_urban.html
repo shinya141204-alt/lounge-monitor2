@@ -82,9 +82,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -327,6 +327,16 @@
                 <li><strong>都心大型店（東京・大阪・名古屋・福岡）に行く日</strong>：終電前の<strong>20:00〜22:00</strong>が中心の時間帯。複数店舗の男女比を見比べて、男性待ちが出ていない店舗へ回る。</li>
                 <li><strong>地方都市店（出張・旅行・地元遠征）に行く日</strong>：20時台に画面を見て人数が少なくても、そこで諦めない。まずは地元の名物居酒屋で1軒目をゆっくり楽しみ、<strong>22:30〜深夜1:00</strong>に街中の1軒目帰りの女性が増え始めたタイミング（直近15分 ↗ 表示）に合わせて入店してみてください。</li>
             </ul>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. 地方都市の相席ラウンジは何時頃が一番女性が集まりますか？</p>
+                <p class="faq-a">相席ナビの全国ログ分析では、新宿や梅田などの都心店舗が21:00〜23:00（終電前）に最大ピークを迎えるのに対し、熊本・金沢・沖縄・鹿児島・大分・静岡などの地方都市店舗は1軒目の居酒屋が終わる23:00〜深夜1:30頃に女性客が121.1%へ増加する傾向があります。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 出張や旅行で1人（ソロ）でも地方の相席ラウンジに入りやすいですか？</p>
+                <p class="faq-a">入りやすい傾向があります。地方の繁華街では相席ラウンジが街に1店舗しかないケースが多く、地元の女性にとっても「普段出会えない県外・出張組の話が聞ける」ことが会話のきっかけになりやすく、都心店よりもリラックスして話しやすい傾向があります。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="出張・遠征前の深夜ケアと地方店の1名入店条件の確認">

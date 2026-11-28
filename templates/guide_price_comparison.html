@@ -90,9 +90,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -186,7 +186,7 @@
 
             <h2>相席中と待機中で、2つのメーターが回っている</h2>
             <p>
-                オリエンタルラウンジ・ag（アグ）・JIS（ジス）および広島・岡山の主要ラウンジ（ALFA・CLOVERS・XIX）では、<strong>相席していない単独時（入店後の案内待ちやテーブル休憩中）にも10分あたり220円または330円（税込・飲み放題込）の単独料金</strong>が発生します（梅田のヤタコイのみ定額デイパス制）。
+                オリエンタルラウンジ・ag（アグ）・JIS（ジス）および広島・岡山の主要ラウンジ（ALFA（アルファ）・CLOVERS（クローバーズ）・XIX（ジックス））では、<strong>相席していない単独時（入店後の案内待ちやテーブル休憩中）にも10分あたり220円または330円（税込・飲み放題込）の単独料金</strong>が発生します（梅田のヤタコイのみ定額デイパス制）。
             </p>
             <p>
                 つまり男性の財布には、相席中に回る「相席メーター」と、座れていない間に回る「待機メーター」の2つがある。冒頭の2人組が溶かしていたのは後者です。待機メーターは単価こそ安いものの、何も起きていない時間に回るので体感では一番重い。しかも「ここまで待ったんだから」という心理が働いて、自分では止めにくい。
@@ -235,6 +235,16 @@
             <p>
                 この階段で怖いのは、③の枠に入る22時ちょうどを境に、同じ席に座ったまま単価が跳ね上がる店があることです。21時40分に座って盛り上がり始めた2人組が、22時を回った瞬間から一段上のメーターで話し続けている、ということが起きる。だから「何時に入るか」より「何時の枠をまたぐか」で総額が決まる。曜日ごとにどの枠で女性が増えるかは、<a href="/stats#heatmap-widget" style="text-decoration:underline;">曜日×時間帯ヒートマップ</a>でエリアを選ぶと18時から翌5時までの波形で見えます。
             </p>
+
+            <h2>よくある質問（FAQ）</h2>
+            <div class="faq-card">
+                <p class="faq-q">Q. なぜ女性比率が高くても「女性10名未満」の店舗は推奨から外れるのですか？</p>
+                <p class="faq-a">店内の人数が少ない状態（例：女性4名・男性2名＝女性比率67%）では、最初の1組と相席できたとしても、会話が合わなかった際や1組目が退店した後に「次に席替え（チェンジ）できる相席候補」が店内にいないリスクが高くなるからです。相席ナビでは約5組（女性10名以上）を比率評価・推奨選出の最低ライン、女性14名以上を安定回転ラインとして判定しています。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. 比較ボードで「0 : 0（営業中）」と表示されているのはどういう状態ですか？</p>
+                <p class="faq-a">各店舗の公式ホームページ上の営業時間内（祝前日・週末延長・定休日を含む）でありながら、現在の店内人数が女性0名・男性0名の空席状態であることを表しています。営業時間外の店舗とは明確に区別して「0 : 0（営業中）」と表記しています。</p>
+            </div>
 
             {% if not is_staff and not session.get('is_staff') %}
             <aside class="editorial-bridge-box" aria-label="待機チャージ回避・女性限定特典ガイド">

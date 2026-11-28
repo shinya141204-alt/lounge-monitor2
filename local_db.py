@@ -1278,20 +1278,39 @@ def insert_logs_with_ts(items):
 
 def get_store_history(store_name, days=30):
     """
-    Retrieves history logs for a specific store from PostgreSQL/SQLite in milliseconds.
+    Retrieves history logs for a specific store from PostgreSQL/SQLite in bounded <=7-day chunks.
     Returns: list of dicts [{'ts': '...', 'name': '...', 'men': ..., 'women': ...}]
     """
+    try:
+        days_i = min(90, max(1, int(days or 30)))
+    except (TypeError, ValueError):
+        days_i = 30
     now_jst = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).replace(tzinfo=None)
-    start_dt = now_jst - datetime.timedelta(days=days)
+    start_dt = now_jst - datetime.timedelta(days=days_i)
     start_ts = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    end_ts = (now_jst + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        rows = _fetch_all_rows("""
-            SELECT timestamp, store_name, men, women
-            FROM monitor_logs
-            WHERE store_name = ? AND timestamp >= ?
-            ORDER BY timestamp ASC
-        """, (store_name, start_ts))
+        if days_i > 7:
+            rows = _fetch_ts_window_in_7d_chunks(
+                """
+                SELECT timestamp, store_name, men, women
+                FROM monitor_logs
+                WHERE timestamp >= ? AND timestamp < ? AND store_name = ?
+                ORDER BY timestamp ASC
+                """,
+                start_ts,
+                end_ts,
+                extra_params=(store_name,),
+                half_open=True,
+            )
+        else:
+            rows = _fetch_all_rows("""
+                SELECT timestamp, store_name, men, women
+                FROM monitor_logs
+                WHERE store_name = ? AND timestamp >= ?
+                ORDER BY timestamp ASC
+            """, (store_name, start_ts))
         return [
             {
                 'ts': r[0],

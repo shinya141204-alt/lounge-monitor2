@@ -147,8 +147,8 @@
     <meta name="apple-mobile-web-app-title" content="相席ナビ">
 
     <link rel="stylesheet" href="/static/style.css?v=20261119_1" fetchpriority="high">
-    <link rel="stylesheet" href="/static/calm.css?v=52" fetchpriority="high">
-    <link rel="preload" href="/static/app.js?v=20261120_1" as="script">
+    <link rel="stylesheet" href="/static/calm.css?v=57" fetchpriority="high">
+    <link rel="preload" href="/static/app.js?v=20261128_1" as="script">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Non-render-blocking web font (avoids waiting on Google Fonts at PWA cold launch) -->
@@ -307,8 +307,8 @@
                 </div>
             </div>
             <div class="pwa-banner-actions">
-                <button id="pwa-install-btn" class="pwa-install-action-btn" onclick="triggerPwaInstall()">追加する</button>
-                <button class="pwa-banner-close-btn" onclick="dismissPwaBanner()" aria-label="閉じる" title="閉じる">✕</button>
+                <button id="pwa-install-btn" class="pwa-install-action-btn" data-ui-click="triggerPwaInstall">追加する</button>
+                <button class="pwa-banner-close-btn" data-ui-click="dismissPwaBanner" aria-label="閉じる" title="閉じる">✕</button>
             </div>
         </aside>
         <script>
@@ -365,20 +365,20 @@
                 </div>
                 <div class="header-controls">
                     <!-- Mobile & Desktop Common Primary Actions -->
-                    <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" onclick="manualRefresh()" title="最新データに更新" aria-label="最新データに更新">
+                    <button id="refresh-btn" class="header-btn labeled-btn refresh-btn" data-ui-click="manualRefresh" title="最新データに更新" aria-label="最新データに更新">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
                         <span class="hdr-btn-txt-sp-hide">更新</span>
                     </button>
-                    <button id="quick-daylight-btn" type="button" class="header-btn labeled-btn" onclick="toggleDayNightTheme()" title="昼・ライト表示とニュートラル黒ダーク表示を切り替え" aria-label="ライト・ダーク表示切替">
+                    <button id="quick-daylight-btn" type="button" class="header-btn labeled-btn" data-ui-click="toggleDayNightTheme" title="昼・ライト表示とニュートラル黒ダーク表示を切り替え" aria-label="ライト・ダーク表示切替">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="12" cy="12" r="4"></circle>
                             <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
                         </svg>
                         <span id="quick-daylight-label" class="hdr-btn-txt-sp-hide">ライト</span>
                     </button>
-                    <button id="events-btn" class="header-btn labeled-btn desktop-only" onclick="openEventsModal()" title="最新イベント・キャンペーン速報">
+                    <button id="events-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openEventsModal" title="最新イベント・キャンペーン速報">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                         </svg>
@@ -390,7 +390,7 @@
                     </a>
 
                     <!-- Mobile Menu Hamburger Button (Visible on mobile <= 768px) -->
-                    <button id="mobile-menu-btn" class="header-btn labeled-btn mobile-only-btn" onclick="openMenuModal()" title="メニューを開く">
+                    <button id="mobile-menu-btn" class="header-btn labeled-btn mobile-only-btn" data-ui-click="openMenuModal" title="メニューを開く">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
                             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -400,26 +400,26 @@
                     </button>
 
                     <!-- Desktop-only controls (Hidden on mobile to keep header clean) -->
-                    <button id="report-btn" class="header-btn labeled-btn desktop-only" onclick="openReportModal()" title="週間レポート">
+                    <button id="report-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openReportModal" title="週間レポート">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
                         <span>週間集計</span>
                     </button>
-                    <button id="compare-btn" class="header-btn labeled-btn desktop-only" onclick="openComparisonModal()" title="競合比較ダッシュボード">
+                    <button id="compare-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openComparisonModal" title="競合比較ダッシュボード">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                         </svg>
                         <span>系列比較</span>
                     </button>
-                    <button id="compact-btn" class="header-btn labeled-btn desktop-only" onclick="toggleCompact()" title="デザイン・表示モード切替">
+                    <button id="compact-btn" class="header-btn labeled-btn desktop-only" data-ui-click="toggleCompact" title="デザイン・表示モード切替">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
                         <span id="compact-btn-label">表示切替</span>
                     </button>
                     {% if not is_staff %}
-                    <button id="howto-btn" class="header-btn labeled-btn desktop-only" onclick="openHowToModal()" title="相席ナビのカンタン使い方ガイド">
+                    <button id="howto-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openHowToModal" title="相席ナビのカンタン使い方ガイド">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -427,13 +427,13 @@
                         </svg>
                         <span>使い方</span>
                     </button>
-                    <button type="button" id="guide-link-btn" class="header-btn labeled-btn desktop-only" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
+                    <button type="button" id="guide-link-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openArticlesModal" title="攻略コラム・記事一覧から選ぶ">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                         </svg>
                         <span>攻略記事</span>
                     </button>
-                    <button id="share-btn" class="header-btn labeled-btn desktop-only" onclick="openSnsModal()" title="SNS速報ポスト作成・共有">
+                    <button id="share-btn" class="header-btn labeled-btn desktop-only" data-ui-click="openSnsModal" title="SNS速報ポスト作成・共有">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                         </svg>
@@ -458,9 +458,9 @@
                 </div>
             </div>
             <div class="theme-switcher-bar desktop-only" role="group" aria-label="デザイン切替">
-                <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true)">ダーク</button>
-                <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true)">リスト</button>
-                <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true)">ライト</button>
+                <button type="button" class="theme-pill-btn active" data-theme="default" data-ui-click="setViewTheme" data-ui-arg="default" data-ui-arg2="true">ダーク</button>
+                <button type="button" class="theme-pill-btn" data-theme="list" data-ui-click="setViewTheme" data-ui-arg="list" data-ui-arg2="true">リスト</button>
+                <button type="button" class="theme-pill-btn" data-theme="light" data-ui-click="setViewTheme" data-ui-arg="light" data-ui-arg2="true">ライト</button>
             </div>
             {% if not is_staff %}
             <!-- Compact 3-Primary-Item Global Navigation (Remaining 6 items stored in Menu Drawer) -->
@@ -468,7 +468,7 @@
                 <a href="/" class="portal-nav-link active" aria-current="page">今の順位</a>
                 <a href="/price-comparison" class="portal-nav-link">料金比較</a>
                 <a href="/for-women" class="portal-nav-link">初めての女性向け安心ガイド</a>
-                <button type="button" class="portal-nav-link portal-nav-more-btn" onclick="openMenuModal()" aria-haspopup="dialog">メニュー（3秒診断・記事・白書）</button>
+                <button type="button" class="portal-nav-link portal-nav-more-btn" data-ui-click="openMenuModal" aria-haspopup="dialog">メニュー（穴場診断・記事・白書）</button>
             </nav>
             <!-- FV 1-Line Data Provenance & Trust Bar (1-line collapsible on mobile; full bar on desktop) -->
             <div id="fv-trust-bar" class="fv-trust-bar" aria-label="データの取得元と運営方針">
@@ -476,7 +476,7 @@
                     <span class="fv-trust-text">
                         <span class="fv-trust-detail-seg">JIS（ジス）＝公式POS実測／他ブランド＝公式公開人数を取得 ｜ </span>最終取得 <span id="last-update">{{ tp_last_hm }}</span><span class="fv-trust-detail-seg">{% if tp.raw_snapshots and tp.raw_snapshots > 0 %} ｜ 蓄積 {{ "{:,}".format(tp.raw_snapshots | int) }}件（{{ tp.collection_since }}）{% endif %}{% if tp.forecast_verified %} ｜ 60分後予測誤差 平均±{{ tp.forecast_mae_pt }}pt（直近30日 n={{ "{:,}".format(tp.forecast_resolved_count | int) }}）{% else %} ｜ 60分後＝過去傾向からの目安{% endif %}</span> ｜ <span class="fv-trust-nowrap">公式非提携・広告収益運営</span>
                     </span>
-                    <button type="button" class="fv-trust-toggle-btn" onclick="if(window.toggleMobileTrustBar)toggleMobileTrustBar(this)" aria-expanded="false" aria-controls="fv-trust-links-wrap">出典・精度 ▾</button>
+                    <button type="button" class="fv-trust-toggle-btn" data-ui-click="toggleMobileTrustBar" aria-expanded="false" aria-controls="fv-trust-links-wrap">出典・精度 ▾</button>
                 </div>
                 <span id="fv-trust-links-wrap" class="fv-trust-links">
                     <a href="/stats#data-provenance" class="fv-trust-link">データの取り方と予測の当たり具合を見る ›</a>
@@ -511,7 +511,7 @@
                 <!-- 1-Row Persistent Area Quick Chips right under Header -->
                 <div id="area-quick-chips" class="filter-bar area-quick-chips" role="region" aria-label="エリア絞り込み">
                     <button type="button" class="filter-btn active" data-region="All"><img src="/static/icons/plan2/icon-pin.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-pin-icon"><span>全国</span></button>
-                    <button type="button" class="filter-btn filter-btn-gps" id="quick-nearby-chip" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地</button>
+                    <button type="button" class="filter-btn filter-btn-gps" id="quick-nearby-chip" data-ui-click="setNearbySort" title="現在地から近い順に並び替え">現在地</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shinjuku">新宿</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:shibuya">渋谷</button>
                     <button type="button" class="filter-btn filter-btn-city" data-region="City:umeda">梅田</button>
@@ -546,7 +546,7 @@
                             <button type="button" class="audience-pill-btn" data-audience="women" onclick="setAudienceMode('women', true)"><span class="aud-lbl-pc">女性がすぐ入れる順</span><span class="aud-lbl-sp">女性待ち0順</span></button>
                         </div>
                         <div class="audience-aux-actions">
-                            <a href="/concierge" class="compact-concierge-link">3秒診断 ›</a>
+                            <a href="/concierge" class="compact-concierge-link">穴場診断 ›</a>
                             <button type="button" class="legend-help-trigger mobile-sort-trigger" id="mobile-sort-btn" popovertarget="mobile-sort-popover" aria-label="並び順を変更">並び順 ▾</button>
                             <button type="button" class="legend-help-trigger" id="legend-help-btn" popovertarget="metrics-legend-popover" title="実測・推定や予測誤差などの見方を表示">? 見方</button>
                         </div>
@@ -556,7 +556,7 @@
                         <div class="ladies-quick-actions">
                             <a href="/for-women" class="ladies-quick-link">初めての女性向け安心ガイド＆席替え術 ›</a>
                             {% if not is_staff and not session.get('is_staff') %}
-                            <button type="button" class="ladies-quick-link" onclick="openGuideModal('all')">女性向け特典・1対1デート特集 ›</button>
+                            <button type="button" class="ladies-quick-link" data-ui-click="openGuideModal" data-ui-arg="all">女性向け特典・1対1デート特集 ›</button>
                             {% endif %}
                         </div>
                     </div>
@@ -567,11 +567,11 @@
                         <button type="button" class="popover-close-inline" popovertarget="mobile-sort-popover" popovertargetaction="hide" aria-label="閉じる">✕</button>
                     </div>
                     <div class="more-areas-grid">
-                        <button type="button" class="sort-btn active" data-sort="women" onclick="setSort('women');try{document.getElementById('mobile-sort-popover').hidePopover();}catch(e){}">女性が多い順</button>
-                        <button type="button" class="sort-btn" data-sort="men" onclick="setSort('men');try{document.getElementById('mobile-sort-popover').hidePopover();}catch(e){}">男性順</button>
-                        <button type="button" class="sort-btn" data-sort="ratio" onclick="setSort('ratio');try{document.getElementById('mobile-sort-popover').hidePopover();}catch(e){}">女性比率順</button>
-                        <button type="button" class="sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort');try{document.getElementById('mobile-sort-popover').hidePopover();}catch(e){}">女性待ち0順</button>
-                        <button type="button" class="sort-btn" data-sort="nearby" onclick="setNearbySort();try{document.getElementById('mobile-sort-popover').hidePopover();}catch(e){}">現在地から近い順</button>
+                        <button type="button" class="sort-btn active" data-sort="women" data-ui-click="setSort" data-ui-arg="women" data-ui-hide-popover="mobile-sort-popover">女性が多い順</button>
+                        <button type="button" class="sort-btn" data-sort="men" data-ui-click="setSort" data-ui-arg="men" data-ui-hide-popover="mobile-sort-popover">男性順</button>
+                        <button type="button" class="sort-btn" data-sort="ratio" data-ui-click="setSort" data-ui-arg="ratio" data-ui-hide-popover="mobile-sort-popover">女性比率順</button>
+                        <button type="button" class="sort-btn" data-sort="ladies_comfort" data-ui-click="setSort" data-ui-arg="ladies_comfort" data-ui-hide-popover="mobile-sort-popover">女性待ち0順</button>
+                        <button type="button" class="sort-btn" data-sort="nearby" data-ui-click="setNearbySort" data-ui-hide-popover="mobile-sort-popover">現在地から近い順</button>
                     </div>
                 </div>
                 {% endif %}
@@ -579,24 +579,24 @@
                 <div class="search-sort-container">
                     <div class="search-input-wrap">
                         <img src="/static/icons/plan2/icon-search.svg" width="13" height="13" alt="" aria-hidden="true" class="plan2-ui-icon plan2-search-icon">
-                        <input type="text" id="search-input" placeholder="店舗名・駅名で検索" autocomplete="off" oninput="handleSearch(this.value)">
-                        <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="検索文字をクリア" title="検索をクリア" onclick="clearSearchInput()">✕</button>
+                        <input type="text" id="search-input" placeholder="店舗名・駅名で検索" autocomplete="off" data-ui-input="handleSearch">
+                        <button type="button" id="search-clear-btn" class="search-clear-btn hidden" aria-label="検索文字をクリア" title="検索をクリア" data-ui-click="clearSearchInput">✕</button>
                     </div>
                     <div class="sort-controls">
-                        <button class="sort-btn active" data-sort="women" onclick="setSort('women')">女性が多い順</button>
-                        <button class="sort-btn" data-sort="men" onclick="setSort('men')">男性順</button>
-                        <button class="sort-btn" data-sort="ratio" onclick="setSort('ratio')"><span class="aud-sub-pc">女性比率順</span><span class="aud-sub-sp">比率順</span></button>
+                        <button class="sort-btn active" data-sort="women" data-ui-click="setSort" data-ui-arg="women">女性が多い順</button>
+                        <button class="sort-btn" data-sort="men" data-ui-click="setSort" data-ui-arg="men">男性順</button>
+                        <button class="sort-btn" data-sort="ratio" data-ui-click="setSort" data-ui-arg="ratio"><span class="aud-sub-pc">女性比率順</span><span class="aud-sub-sp">比率順</span></button>
                         {% if not is_staff %}
-                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" onclick="setSort('ladies_comfort')" title="女性ペア向けに受付待ちほぼゼロの店舗順で並び替え"><span class="aud-sub-pc">女性待ち0順</span><span class="aud-sub-sp">待ち0順</span></button>
+                        <button class="sort-btn" id="ladies-comfort-sort-btn" data-sort="ladies_comfort" data-ui-click="setSort" data-ui-arg="ladies_comfort" title="女性ペア向けに受付待ちほぼゼロの店舗順で並び替え"><span class="aud-sub-pc">女性待ち0順</span><span class="aud-sub-sp">待ち0順</span></button>
                         {% endif %}
-                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" onclick="setNearbySort()" title="現在地から近い順に並び替え">現在地順</button>
+                        <button class="sort-btn" id="nearby-sort-btn" data-sort="nearby" data-ui-click="setNearbySort" title="現在地から近い順に並び替え">現在地順</button>
                     </div>
                 </div>
                 </div>
 
                 <div id="active-filter-summary" class="active-filter-summary hidden" aria-live="polite">
                     <div class="afs-metrics" id="active-filter-metrics"></div>
-                    <button type="button" class="afs-reset-btn" onclick="resetAllFilters()">全店舗に戻す ✕</button>
+                    <button type="button" class="afs-reset-btn" data-ui-click="resetAllFilters">全店舗に戻す ✕</button>
                 </div>
 
                 {% if is_staff %}
@@ -632,30 +632,30 @@
                     {% endif %}
 
                     <div class="staff-quickbar-actions">
-                        <button type="button" class="staff-action-pill" onclick="openReportModal()">
+                        <button type="button" class="staff-action-pill" data-ui-click="openReportModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
                             <span>週間レポート（全店舗の集計・ピークランキング）</span>
                         </button>
-                        <button type="button" class="staff-action-pill" onclick="openComparisonModal()">
+                        <button type="button" class="staff-action-pill" data-ui-click="openComparisonModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                             </svg>
                             <span>系列・競合比較（リアルタイム合計）</span>
                         </button>
-                        <button type="button" class="staff-action-pill" onclick="openEventsModal()">
+                        <button type="button" class="staff-action-pill" data-ui-click="openEventsModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>
                             <span>イベント速報（全社キャンペーン）</span>
                         </button>
                         {% if is_master %}
-                        <button type="button" class="staff-action-pill" onclick="openSnsModal('threads')">
+                        <button type="button" class="staff-action-pill" data-ui-click="openSnsModal" data-ui-arg="threads">
                             <span>Threads・IG「東西＆主要街速報」コピー</span>
                         </button>
                         {% endif %}
-                        <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" onclick="toggleStaffEvents()" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
+                        <button type="button" class="staff-action-pill staff-event-toggle-pill" id="staff-toggle-events-btn" data-ui-click="toggleStaffEvents" title="社内画面のイベントバッジ・特典表示をON/OFF切替">
                             <span id="staff-toggle-events-icon" aria-hidden="true">●</span>
                             <span id="staff-toggle-events-label">イベント非表示: ON（業務集中モード）</span>
                         </button>
@@ -845,8 +845,8 @@
                             <div class="store-spec-row hidden">
                                 <span class="spec-text"><span class="spec-price-main"></span><span class="spec-hours-age-extra"></span></span>
                                 <span class="spec-links">
-                                    <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden" onclick="event.stopPropagation()">地図</a>
-                                    <a href="/price-comparison" class="card-price-link hidden" onclick="event.stopPropagation()">料金を見る</a>
+                                    <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden">地図</a>
+                                    <a href="/price-comparison" class="card-price-link hidden" data-cushion="1">料金を見る</a>
                                 </span>
                             </div>
                             <div class="store-micro-metrics hidden"></div>
@@ -892,7 +892,10 @@
                         </div>
                         <div class="plan2-card-footer">
                             <span class="plan2-footer-forecast"></span>
-                            <span class="plan2-footer-detail"><span>詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                            <span class="plan2-footer-actions">
+                                <a href="/price-comparison" class="plan2-footer-price-link" data-cushion="1">料金を見る</a>
+                                <span class="plan2-footer-detail"><span>曜日グラフ・詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                            </span>
                         </div>
                     </div>
                 </template>
@@ -942,7 +945,7 @@
                             {% set ssr_human_copy = s.human_line or '現在人数を集計中です' %}
                             {% set is_bento_hero = (not is_staff) and (ns_ssr.rendered == 1) and (s.ssr_rank == 1) and (tp_stale != 'halted') and (not tp.all_closed_mode) and (ssr_tot_num > 0) %}
                             {% set ssr_slug = s.slug or (s.name | store_linkable_slug) %}
-                            <div class="ranking-item{% if ns_ssr.rendered == 1 %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click();}" onclick="if(window.handleStoreCardClick)handleStoreCardClick({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }});else if(window.openModal)openModal({{ (s.seo_name or (s.name | seo_store_name)) | tojson | forceescape }})">
+                            <div class="ranking-item{% if ns_ssr.rendered == 1 %} is-inspector-selected{% endif %}{% if is_bento_hero %} bento-hero-card{% endif %}{% if s.ssr_rank == 1 %} rank-1{% elif s.ssr_rank == 2 %} rank-2{% elif s.ssr_rank == 3 %} rank-3{% endif %}" data-store="{{ s.seo_name or (s.name | seo_store_name) }}" tabindex="0" style="cursor: pointer;">
                                 <div class="bento-kicker-row">
                                     <span class="bento-kicker-label">今夜全国ならここ一択</span>
                                     <span class="bento-verdict-pill {{ s.plan2_signal_cls or ('is-ok' if (ssr_tot_num == 0 and s.is_open_now) else ('is-wait' if (ssr_tot_num == 0 or ssr_wait_m > 0) else 'is-ok')) }}">{{ s.plan2_signal_text or ('営業中（0 : 0）' if (ssr_tot_num == 0 and s.is_open_now) else ('営業時間外' if ssr_tot_num == 0 else ('やや混雑（男性待ち約' ~ ssr_wait_m ~ '分）' if ssr_wait_m > 0 else ('いま待ち0組（公式POS実測）' if (s.source_kind == 'jis_pos' and s.jis_wait_m_grp is not none and s.jis_wait_m_grp == 0) else ('即相席圏（推定待ち0分）' if ssr_has_we else '入店人数を集計中'))))) }}</span>
@@ -972,7 +975,7 @@
                                     </div>
                                     <div class="store-title-row">
                                         <h3 class="store-name">{% if s.ssr_is_dup %}<span class="store-brand-prefix">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_disp }}</span>{% elif s.plan2_needs_brand_pfx %}<span class="store-brand-prefix is-plan2-brand">{{ s.ssr_brand }} </span><span class="store-branch-name">{{ s.ssr_title }}</span>{% else %}<span class="store-branch-name">{{ s.ssr_title }}</span>{% endif %}{% if not is_staff and s.ssr_event_badge %}<span class="event-tag-badge" title="店舗公式発表イベント：{{ s.ssr_event_title }}">{{ s.ssr_event_badge }}</span>{% endif %}</h3>
-                                        <button type="button" class="pin-btn" aria-label="お気に入り（{{ s.ssr_title }}）" aria-pressed="false" title="お気に入り固定" onclick="event.stopPropagation();if(window.togglePin)togglePin({{ s.name | tojson | forceescape }})">
+                                        <button type="button" class="pin-btn" data-pin-store="{{ s.name }}" aria-label="お気に入り（{{ s.ssr_title }}）" aria-pressed="false" title="お気に入り固定">
                                             <svg class="star-icon" width="18" height="18" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                                             </svg>
@@ -984,14 +987,14 @@
                                         <span class="spec-text"><span class="spec-price-main">{{ s.spec_price_short }}</span><span class="spec-hours-age-extra">{% if s.spec_hours_short %} ｜ 営業 {{ s.spec_hours_short }}{% endif %}{% if s.spec_age_short %} ｜ {{ s.spec_age_short }}{% endif %}</span></span>
                                         <span class="spec-links">
                                             {% if s.map_url %}
-                                            <a href="{{ s.map_url }}" target="_blank" rel="noopener noreferrer" class="card-map-link" onclick="event.stopPropagation()">地図</a>
+                                            <a href="{{ s.map_url }}" target="_blank" rel="noopener noreferrer" class="card-map-link">地図</a>
                                             {% else %}
-                                            <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden" onclick="event.stopPropagation()">地図</a>
+                                            <a href="#" target="_blank" rel="noopener noreferrer" class="card-map-link hidden">地図</a>
                                             {% endif %}
                                             {% if ssr_slug %}
-                                            <a href="/store/{{ ssr_slug }}" class="card-price-link{% if not is_bento_hero %} bento-only-link{% endif %}" onclick="event.stopPropagation()">料金を見る</a>
+                                            <a href="/store/{{ ssr_slug }}" class="card-price-link" data-cushion="1">料金を見る</a>
                                             {% else %}
-                                            <a href="/price-comparison" class="card-price-link{% if not is_bento_hero %} bento-only-link{% endif %}" onclick="event.stopPropagation()">料金を見る</a>
+                                            <a href="/price-comparison" class="card-price-link" data-cushion="1">料金を見る</a>
                                             {% endif %}
                                         </span>
                                     </div>
@@ -1010,7 +1013,7 @@
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <button type="button" class="analysis-btn" aria-label="分析（{{ s.ssr_title }}の曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析" onclick="event.stopPropagation();if(window.openModal)openModal({{ s.name | tojson | forceescape }})">
+                                    <button type="button" class="analysis-btn" data-modal-store="{{ s.name }}" aria-label="分析（{{ s.ssr_title }}の曜日・時間帯別データ）" title="曜日・時間帯別の詳細分析">
                                         <svg class="chart-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                             <line x1="18" y1="20" x2="18" y2="10"></line>
                                             <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -1031,7 +1034,7 @@
                                             {% endif %}
                                         </div>
                                         {% if s.usual_w_plain %}
-                                        <span class="stat-usual{% if (s.usual_w_diff or 0) > 0 %} is-up{% elif (s.usual_w_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_women }}名)との差">{{ s.usual_w_plain }}</span>
+                                        <span class="stat-usual{% if (s.usual_w_diff or 0) > 0 %} is-up{% elif (s.usual_w_diff or 0) < 0 %} is-down{% endif %}" title="{{ s.usual_slot_label if '普段' in (s.usual_slot_label or '') else ('普段の' ~ (s.usual_slot_label or '')) }}平均({{ s.usual_women }}名)との差">{{ s.usual_w_plain }}</span>
                                         {% else %}
                                         <span class="stat-usual hidden"></span>
                                         {% endif %}
@@ -1047,7 +1050,7 @@
                                             {% endif %}
                                         </div>
                                         {% if s.usual_m_plain %}
-                                        <span class="stat-usual{% if (s.usual_m_diff or 0) > 0 %} is-up{% elif (s.usual_m_diff or 0) < 0 %} is-down{% endif %}" title="普段の{{ s.usual_slot_label }}平均({{ s.usual_men }}名)との差">{{ s.usual_m_plain }}</span>
+                                        <span class="stat-usual{% if (s.usual_m_diff or 0) > 0 %} is-up{% elif (s.usual_m_diff or 0) < 0 %} is-down{% endif %}" title="{{ s.usual_slot_label if '普段' in (s.usual_slot_label or '') else ('普段の' ~ (s.usual_slot_label or '')) }}平均({{ s.usual_men }}名)との差">{{ s.usual_m_plain }}</span>
                                         {% else %}
                                         <span class="stat-usual hidden"></span>
                                         {% endif %}
@@ -1063,7 +1066,10 @@
                                 </div>
                                 <div class="plan2-card-footer">
                                     <span class="plan2-footer-forecast">{{ s.plan2_forecast_text or '' }}</span>
-                                    <span class="plan2-footer-detail"><span>詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                                    <span class="plan2-footer-actions">
+                                        <a href="{{ '/store/' ~ ssr_slug if (ssr_slug and s.region != 'Korea') else '/price-comparison' }}" class="plan2-footer-price-link" data-cushion="1">料金を見る</a>
+                                        <span class="plan2-footer-detail"><span>曜日グラフ・詳細</span><img src="/static/icons/plan2/icon-chevron-right.svg" width="14" height="14" alt="" aria-hidden="true" class="plan2-ui-icon plan2-chevron-icon"></span>
+                                    </span>
                                 </div>
                             </div>
                             {% elif loop.index0 < ssr_rank_limit %}
@@ -1124,7 +1130,7 @@
                             {% if top_slug %}
                             <a href="/store/{{ top_slug }}" class="cmi-store-page-link" data-cushion="1">店舗専用ページ（料金・近隣比較・2軒目） →</a>
                             {% endif %}
-                            <button type="button" class="cmi-secondary-btn" onclick="if(window.openModal)openModal({{ top_s.name | tojson | forceescape }})">曜日・時間帯グラフを見る</button>
+                            <button type="button" class="cmi-secondary-btn" data-ui-click="openModal" data-ui-arg="{{ top_s.name }}">曜日・時間帯グラフを見る</button>
                         </div>
                         {% endif %}
                     </aside>
@@ -1141,6 +1147,81 @@
                                 if (el.hasAttribute('onkeydown')) return;
                                 ev.preventDefault();
                                 el.click();
+                            });
+                            document.addEventListener('click', function (ev) {
+                                var t = ev.target;
+                                if (!t || !t.closest) return;
+
+                                var actEl = t.closest('[data-ui-click]');
+                                if (actEl) {
+                                    if (actEl.getAttribute('data-ui-stop') === '1') ev.stopPropagation();
+                                    var fnName = actEl.getAttribute('data-ui-click') || '';
+                                    var arg1 = actEl.getAttribute('data-ui-arg');
+                                    var arg2 = actEl.getAttribute('data-ui-arg2');
+                                    var closeMenu = actEl.getAttribute('data-ui-close-menu') === '1';
+                                    var closeEv = actEl.getAttribute('data-ui-close-events') === '1';
+                                    var hidePop = actEl.getAttribute('data-ui-hide-popover');
+                                    if (closeMenu && window.closeMenuModal) window.closeMenuModal();
+                                    if (closeEv && window.closeEventsModal) window.closeEventsModal();
+                                    var fn = fnName ? window[fnName] : null;
+                                    if (typeof fn === 'function') {
+                                        if (fnName === 'toggleMobileTrustBar') {
+                                            fn(actEl);
+                                        } else if (fnName === 'filterEventsModal') {
+                                            fn(arg1, actEl);
+                                        } else if (arg2 !== null) {
+                                            fn(arg1, arg2 === 'true' ? true : (arg2 === 'false' ? false : arg2));
+                                        } else if (arg1 !== null) {
+                                            var parsedArg = arg1 === 'true' ? true : (arg1 === 'false' ? false : (/^-?\d+$/.test(arg1) ? Number(arg1) : arg1));
+                                            fn(parsedArg);
+                                        } else {
+                                            fn();
+                                        }
+                                    }
+                                    if (hidePop) {
+                                        try { document.getElementById(hidePop).hidePopover(); } catch (e) {}
+                                    }
+                                    return;
+                                }
+
+                                var pinBtn = t.closest('.pin-btn');
+                                if (pinBtn) {
+                                    ev.stopPropagation();
+                                    var pCard = pinBtn.closest('.ranking-item[data-store]');
+                                    var pName = pinBtn.getAttribute('data-pin-store') || (pCard ? pCard.getAttribute('data-store') : '');
+                                    if (pName && window.togglePin) window.togglePin(pName);
+                                    return;
+                                }
+
+                                var anaBtn = t.closest('.analysis-btn');
+                                if (anaBtn) {
+                                    ev.stopPropagation();
+                                    var aCard = anaBtn.closest('.ranking-item[data-store]');
+                                    var aName = anaBtn.getAttribute('data-modal-store') || (aCard ? aCard.getAttribute('data-store') : '');
+                                    if (aName && window.openModal) window.openModal(aName);
+                                    return;
+                                }
+
+                                if (t.closest('.card-map-link, .card-price-link, a, button')) {
+                                    return;
+                                }
+
+                                var cardEl = t.closest('.ranking-item[data-store]:not(.pr-card-item)');
+                                if (cardEl && !cardEl.hasAttribute('onclick')) {
+                                    var sName = cardEl.getAttribute('data-store') || '';
+                                    if (sName) {
+                                        if (window.handleStoreCardClick) window.handleStoreCardClick(sName);
+                                        else if (window.openModal) window.openModal(sName);
+                                    }
+                                }
+                            });
+                            document.addEventListener('input', function (ev) {
+                                var inp = ev.target && ev.target.closest ? ev.target.closest('[data-ui-input]') : null;
+                                if (!inp) return;
+                                var fnName = inp.getAttribute('data-ui-input');
+                                if (fnName && typeof window[fnName] === 'function') {
+                                    window[fnName](inp.value);
+                                }
                             });
                         }
                     })();
@@ -1273,9 +1354,15 @@
                                 if (priceLnk) {
                                     var isKrCard = Boolean(d.kr || (d.n && (d.n.indexOf('カンナム') !== -1 || d.n.indexOf('ホンデ') !== -1 || d.n.indexOf('ソウル') !== -1)));
                                     priceLnk.href = (!isKrCard && d.sl) ? ('/store/' + encodeURIComponent(d.sl)) : '/price-comparison';
-                                    priceLnk.classList.remove('hidden');
-                                    priceLnk.classList.add('bento-only-link');
+                                    priceLnk.classList.remove('hidden', 'bento-only-link');
+                                    priceLnk.setAttribute('data-cushion', '1');
                                 }
+                            }
+                            var footerPriceLnk = item.querySelector('.plan2-footer-price-link');
+                            if (footerPriceLnk) {
+                                var isKrFooter = Boolean(d.kr || (d.n && (d.n.indexOf('カンナム') !== -1 || d.n.indexOf('ホンデ') !== -1 || d.n.indexOf('ソウル') !== -1)));
+                                footerPriceLnk.href = (!isKrFooter && d.sl) ? ('/store/' + encodeURIComponent(d.sl)) : '/price-comparison';
+                                footerPriceLnk.setAttribute('data-cushion', '1');
                             }
                             var mc = item.querySelector('.store-micro-metrics');
                             if (mc && (d.ct || d.mp_txt)) {
@@ -1355,7 +1442,8 @@
                                 if (d.uwd > 0) lu.classList.add('is-up');
                                 else if (d.uwd < 0) lu.classList.add('is-down');
                                 lu.textContent = d.uwd > 0 ? ('いつもより女性+' + d.uwd + '人') : (d.uwd < 0 ? ('いつもより女性' + Math.abs(d.uwd) + '人少なめ') : 'いつも並み');
-                                lu.title = '普段の' + (d.usl || '') + '平均(' + (d.uw !== undefined && d.uw !== null ? d.uw : 0) + '名)との差';
+                                var uslTxtW = String(d.usl || '');
+                                lu.title = (uslTxtW.indexOf('普段') !== -1 ? uslTxtW : ('普段の' + uslTxtW)) + '平均(' + (d.uw !== undefined && d.uw !== null ? d.uw : 0) + '名)との差';
                             }
                             var mcNum = item.querySelector('.stat.men .count');
                             if (mcNum) mcNum.textContent = String(mNum);
@@ -1371,7 +1459,8 @@
                                 if (d.umd > 0) mu.classList.add('is-up');
                                 else if (d.umd < 0) mu.classList.add('is-down');
                                 mu.textContent = d.umd > 0 ? ('いつもより男性+' + d.umd + '人') : (d.umd < 0 ? ('いつもより男性' + Math.abs(d.umd) + '人少なめ') : 'いつも並み');
-                                mu.title = '普段の' + (d.usl || '') + '平均(' + (d.um !== undefined && d.um !== null ? d.um : 0) + '名)との差';
+                                var uslTxtM = String(d.usl || '');
+                                mu.title = (uslTxtM.indexOf('普段') !== -1 ? uslTxtM : ('普段の' + uslTxtM)) + '平均(' + (d.um !== undefined && d.um !== null ? d.um : 0) + '名)との差';
                             }
                             var occBar = item.querySelector('.occupancy-bar');
                             if (occBar) occBar.classList.toggle('is-empty', totNum <= 0);
@@ -1649,7 +1738,7 @@
                         <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Threads</a>
                         <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">Instagram</a>
                         <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="sns-compact-pill">note</a>
-                        <button type="button" class="sns-compact-pill" onclick="openHowToModal()">使い方</button>
+                        <button type="button" class="sns-compact-pill" data-ui-click="openHowToModal">使い方</button>
                     </div>
                 </div>
                 {% endif %}
@@ -1659,9 +1748,9 @@
                 <div class="share-banner-box">
                     <span class="share-banner-title">いま人が集まっている店舗を友達に共有する</span>
                     <div class="share-banner-buttons">
-                        <button class="share-pill-btn line-btn" onclick="shareCurrentRanking('line')">LINEで送る</button>
-                        <button class="share-pill-btn x-btn" onclick="shareCurrentRanking('x')">Xでシェア</button>
-                        <button class="share-pill-btn copy-btn" onclick="shareCurrentRanking('copy')">リンクをコピー</button>
+                        <button class="share-pill-btn line-btn" data-ui-click="shareCurrentRanking" data-ui-arg="line">LINEで送る</button>
+                        <button class="share-pill-btn x-btn" data-ui-click="shareCurrentRanking" data-ui-arg="x">Xでシェア</button>
+                        <button class="share-pill-btn copy-btn" data-ui-click="shareCurrentRanking" data-ui-arg="copy">リンクをコピー</button>
                     </div>
                 </div>
 
@@ -1808,7 +1897,7 @@
                         <h2>データで見るお店選び・当日のチェックポイント</h2>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             {% if not is_staff and not session.get('is_staff') %}
-                            <button type="button" class="guide-open-btn" onclick="openGuideModal('all')">事前ケア・便利サービス ›</button>
+                            <button type="button" class="guide-open-btn" data-ui-click="openGuideModal" data-ui-arg="all">事前ケア・便利サービス ›</button>
                             {% endif %}
                             <a href="/stats" class="guide-open-btn" style="text-decoration: none;">統計データ白書 ›</a>
                         </div>
@@ -1894,10 +1983,10 @@
             {% else %}
             <!-- Top Row: Pillar Guide Buttons -->
             <div class="footer-nav-pills">
-                <button type="button" class="footer-pill-btn" onclick="openHowToModal()" title="30秒でわかる使い方ガイド">
+                <button type="button" class="footer-pill-btn" data-ui-click="openHowToModal" title="30秒でわかる使い方ガイド">
                     <span>はじめてガイド</span>
                 </button>
-                <button type="button" class="footer-pill-btn guide-pill" onclick="openArticlesModal()" title="攻略コラム・記事一覧から選ぶ">
+                <button type="button" class="footer-pill-btn guide-pill" data-ui-click="openArticlesModal" title="攻略コラム・記事一覧から選ぶ">
                     <span>攻略記事を選ぶ</span>
                 </button>
                 <a href="/guide/brand-comparison" class="footer-pill-btn" title="3大ブランド比較">
@@ -1963,7 +2052,7 @@
                 <div class="sitemap-col">
                     <h3>コラム・特集記事</h3>
                     <ul>
-                        <li><a href="/columns">コラム・記事一覧（全{{ 18 + (published_scheduled|length if published_scheduled else 0) }}本）</a></li>
+                        <li><a href="/columns">コラム・記事一覧（編集部データ検証・特集）</a></li>
                         <li><a href="/for-women">初めての女性向け安心ガイド＆待ちゼロ店舗ボード</a></li>
                         <li><a href="/guide/lounge-vs-screened-date">相席ラウンジ vs 審査制1対1デート比較</a></li>
                         <li><a href="/guide/dress-code-cleanliness">服装・NGドレスコード＆清潔感チェック</a></li>
@@ -1994,12 +2083,12 @@
                         <li><a href="/price-comparison">店舗別料金・開催中イベント比較</a></li>
                         <li><a href="/stats">全国ラウンジ統計データ白書</a></li>
                         <li><a href="/stats/year-end-2026">年末・ドーム公演連動 統計白書</a></li>
-                        <li><button type="button" class="sitemap-text-btn" onclick="openHowToModal()">相席ナビの使い方</button></li>
+                        <li><button type="button" class="sitemap-text-btn" data-ui-click="openHowToModal">相席ナビの使い方</button></li>
                         <li><a href="/about">相席ナビについて（運営者情報・取得方法）</a></li>
                         <li><a href="/privacy">プライバシーポリシー・免責事項</a></li>
                         <li><a href="/contact">お問い合わせ</a></li>
                         <li><a href="https://machinavi-data.com/" target="_blank" rel="noopener">姉妹サイト：マチナビ（街コン・婚活比較）</a></li>
-                        <li><button type="button" class="sitemap-text-btn" onclick="openLegalModal()">免責事項（ポップアップ）</button></li>
+                        <li><button type="button" class="sitemap-text-btn" data-ui-click="openLegalModal">免責事項（ポップアップ）</button></li>
                     </ul>
                 </div>
             </div>
@@ -2046,7 +2135,7 @@
             <div class="sheet-drag-handle" aria-hidden="true"></div>
             <div class="modal-header">
                 <h2 id="modal-store-name">Store Name</h2>
-                <button class="close-btn-pill" onclick="closeModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div id="modal-quick-spec-bar" class="modal-quick-spec-bar hidden"></div>
             
@@ -2082,15 +2171,15 @@
                     <span class="modal-vote-title">今お店にいる方のワンタップ現場レポート（直近4時間）</span>
                 </div>
                 <div class="modal-vote-buttons">
-                    <button type="button" class="vote-pill-btn smooth" onclick="submitCrowdVote('smooth')">
+                    <button type="button" class="vote-pill-btn smooth" data-ui-click="submitCrowdVote" data-ui-arg="smooth">
                         <span>待ちなしで入れた</span>
                         <span id="vote-count-smooth" class="vote-num">0</span>
                     </button>
-                    <button type="button" class="vote-pill-btn waiting" onclick="submitCrowdVote('waiting')">
+                    <button type="button" class="vote-pill-btn waiting" data-ui-click="submitCrowdVote" data-ui-arg="waiting">
                         <span>男性待ちあり</span>
                         <span id="vote-count-waiting" class="vote-num">0</span>
                     </button>
-                    <button type="button" class="vote-pill-btn lively" onclick="submitCrowdVote('lively')">
+                    <button type="button" class="vote-pill-btn lively" data-ui-click="submitCrowdVote" data-ui-arg="lively">
                         <span>盛り上がってる</span>
                         <span id="vote-count-lively" class="vote-num">0</span>
                     </button>
@@ -2098,9 +2187,9 @@
                 <div id="modal-vote-wait-row" class="modal-vote-wait-row">
                     <span class="modal-vote-wait-label">受付待ち実測（任意）：</span>
                     <div class="modal-vote-wait-btns">
-                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="0" onclick="submitCrowdWaitMinutes(0)">待ち0分</button>
-                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="15" onclick="submitCrowdWaitMinutes(15)">約15分</button>
-                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="30" onclick="submitCrowdWaitMinutes(30)">30分+</button>
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="0" data-ui-click="submitCrowdWaitMinutes" data-ui-arg="0">待ち0分</button>
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="15" data-ui-click="submitCrowdWaitMinutes" data-ui-arg="15">約15分</button>
+                        <button type="button" class="vote-pill-btn vote-wait-pill" data-wait-min="30" data-ui-click="submitCrowdWaitMinutes" data-ui-arg="30">30分+</button>
                     </div>
                 </div>
                 <div id="modal-vote-wait-summary" class="modal-vote-wait-summary"></div>
@@ -2122,14 +2211,14 @@
             <div class="chart-container hourly-analysis-section">
                 <h3>曜日×時間帯別の平均推移 (18:00〜翌6:00)</h3>
                 <div id="weekday-filter-buttons" class="chart-filters">
-                    <button class="chart-filter-btn active" data-day="ALL" onclick="selectHourlyWeekday('ALL')">全曜日</button>
-                    <button class="chart-filter-btn" data-day="Mon" onclick="selectHourlyWeekday('Mon')">月</button>
-                    <button class="chart-filter-btn" data-day="Tue" onclick="selectHourlyWeekday('Tue')">火</button>
-                    <button class="chart-filter-btn" data-day="Wed" onclick="selectHourlyWeekday('Wed')">水</button>
-                    <button class="chart-filter-btn" data-day="Thu" onclick="selectHourlyWeekday('Thu')">木</button>
-                    <button class="chart-filter-btn" data-day="Fri" onclick="selectHourlyWeekday('Fri')">金</button>
-                    <button class="chart-filter-btn" data-day="Sat" onclick="selectHourlyWeekday('Sat')">土</button>
-                    <button class="chart-filter-btn" data-day="Sun" onclick="selectHourlyWeekday('Sun')">日</button>
+                    <button class="chart-filter-btn active" data-day="ALL" data-ui-click="selectHourlyWeekday" data-ui-arg="ALL">全曜日</button>
+                    <button class="chart-filter-btn" data-day="Mon" data-ui-click="selectHourlyWeekday" data-ui-arg="Mon">月</button>
+                    <button class="chart-filter-btn" data-day="Tue" data-ui-click="selectHourlyWeekday" data-ui-arg="Tue">火</button>
+                    <button class="chart-filter-btn" data-day="Wed" data-ui-click="selectHourlyWeekday" data-ui-arg="Wed">水</button>
+                    <button class="chart-filter-btn" data-day="Thu" data-ui-click="selectHourlyWeekday" data-ui-arg="Thu">木</button>
+                    <button class="chart-filter-btn" data-day="Fri" data-ui-click="selectHourlyWeekday" data-ui-arg="Fri">金</button>
+                    <button class="chart-filter-btn" data-day="Sat" data-ui-click="selectHourlyWeekday" data-ui-arg="Sat">土</button>
+                    <button class="chart-filter-btn" data-day="Sun" data-ui-click="selectHourlyWeekday" data-ui-arg="Sun">日</button>
                 </div>
                 <div id="hourly-chart-container" style="height: 200px;">
                     <canvas id="hourlyWeekdayChart"></canvas>
@@ -2155,7 +2244,7 @@
                         <h3 id="modal-second-venue-heading">この店舗近くの2軒目＆切り出しTips</h3>
                         <a href="/guide/second-venue" class="second-venue-guide-link" target="_blank" rel="noopener noreferrer">誘い方コラム ›</a>
                     </div>
-                    <div id="modal-second-venue-timing-badge" class="second-venue-timing-badge" onclick="toggleSecondTimingDetails()">
+                    <div id="modal-second-venue-timing-badge" class="second-venue-timing-badge" data-ui-click="toggleSecondTimingDetails">
                         <span class="timing-badge-tag">ベストタイミング</span>
                         <span class="timing-badge-text">着席40〜50分後 / 23:10前</span>
                         <span class="timing-toggle-arrow" id="timing-toggle-arrow">▾ 理由を見る</span>
@@ -2169,11 +2258,11 @@
 
                 <!-- Tabs: All / Cafe / Bar / Shisha / Tips -->
                 <div class="second-venue-tabs" id="modal-second-venue-tabs">
-                    <button type="button" class="second-tab-btn active" data-tab="all" onclick="switchSecondVenueTab('all')">すべて</button>
-                    <button type="button" class="second-tab-btn" data-tab="cafe" onclick="switchSecondVenueTab('cafe')">夜カフェ</button>
-                    <button type="button" class="second-tab-btn" data-tab="bar" onclick="switchSecondVenueTab('bar')">バー・バル</button>
-                    <button type="button" class="second-tab-btn" data-tab="shisha" onclick="switchSecondVenueTab('shisha')">シーシャ</button>
-                    <button type="button" class="second-tab-btn" data-tab="tips" onclick="switchSecondVenueTab('tips')">誘い方フレーズ</button>
+                    <button type="button" class="second-tab-btn active" data-tab="all" data-ui-click="switchSecondVenueTab" data-ui-arg="all">すべて</button>
+                    <button type="button" class="second-tab-btn" data-tab="cafe" data-ui-click="switchSecondVenueTab" data-ui-arg="cafe">夜カフェ</button>
+                    <button type="button" class="second-tab-btn" data-tab="bar" data-ui-click="switchSecondVenueTab" data-ui-arg="bar">バー・バル</button>
+                    <button type="button" class="second-tab-btn" data-tab="shisha" data-ui-click="switchSecondVenueTab" data-ui-arg="shisha">シーシャ</button>
+                    <button type="button" class="second-tab-btn" data-tab="tips" data-ui-click="switchSecondVenueTab" data-ui-arg="tips">誘い方フレーズ</button>
                 </div>
 
                 <!-- Venues Cards Container -->
@@ -2217,9 +2306,9 @@
             <div id="modal-share-bar" class="modal-share-bar">
                 <span class="modal-share-label">この店舗を友達に共有・公式確認：</span>
                 <div class="modal-share-actions">
-                    <button class="share-pill-btn line-btn" onclick="shareStoreStatus('line')">LINEで送る</button>
-                    <button class="share-pill-btn x-btn" onclick="shareStoreStatus('x')">𝕏 ポスト</button>
-                    <button class="share-pill-btn copy-btn" onclick="shareStoreStatus('copy')">コピー</button>
+                    <button class="share-pill-btn line-btn" data-ui-click="shareStoreStatus" data-ui-arg="line">LINEで送る</button>
+                    <button class="share-pill-btn x-btn" data-ui-click="shareStoreStatus" data-ui-arg="x">𝕏 ポスト</button>
+                    <button class="share-pill-btn copy-btn" data-ui-click="shareStoreStatus" data-ui-arg="copy">コピー</button>
                     <a id="modal-official-link" href="https://oriental-lounge.com/" target="_blank" rel="noopener noreferrer" class="share-pill-btn official-btn">公式サイト <svg class="ui-svg-ne" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9L9 3M9 3H4.5M9 3V7.5"/></svg></a>
                 </div>
             </div>
@@ -2228,7 +2317,7 @@
             <div id="modal-pr-slot" class="modal-pr-box hidden"></div>
             {% endif %}
 
-            <button class="modal-bottom-close-btn" onclick="closeModal()">✕ 詳細画面を閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeModal">✕ 詳細画面を閉じる</button>
         </div>
     </div>
     <!-- End Analysis Modal -->
@@ -2238,7 +2327,7 @@
         <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
                 <h2 id="legal-modal-title">免責事項・プライバシーポリシー</h2>
-                <button class="close-btn-pill" onclick="closeLegalModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeLegalModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="legal-body">
                 <h3>1. 非公式サービスに関する免責事項</h3>
@@ -2262,7 +2351,7 @@
                     <strong>お問い合わせ：</strong>掲載内容や著作権に関するご相談、広告掲載・提携のご相談は、<a href="/contact" class="legal-inline-link">お問い合わせフォーム</a>または公式SNSよりご連絡ください。
                 </p>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeLegalModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeLegalModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Legal Modal -->
@@ -2273,7 +2362,7 @@
         <div class="modal-content" style="max-width: 740px;">
             <div class="modal-header">
                 <h2 id="guide-modal-title">身だしなみ・おすすめサービス特集</h2>
-                <button class="close-btn-pill" onclick="closeGuideModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeGuideModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="guide-modal-body">
                 <p class="guide-lead" id="guide-modal-lead">
@@ -2298,7 +2387,7 @@
                     </ul>
                 </div>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeGuideModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeGuideModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Guide Modal -->
@@ -2310,7 +2399,7 @@
         <div class="modal-content articles-modal-content">
             <div class="modal-header">
                 <h2 id="articles-modal-title">相席ナビ コラム・記事一覧</h2>
-                <button class="close-btn-pill" onclick="closeArticlesModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeArticlesModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="articles-modal-body">
                 <p class="articles-lead">
@@ -2714,7 +2803,7 @@
                     </a>
                 </div>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeArticlesModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeArticlesModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Articles Selector Modal -->
@@ -2725,34 +2814,34 @@
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2 id="sns-modal-title">SNS速報ポスト作成（集客・共有用）</h2>
-                <button class="close-btn-pill" onclick="closeSnsModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeSnsModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="sns-modal-body">
                 <p class="guide-lead" style="margin-bottom: 10px;">
                     ボタンを選ぶだけで、いまのリアルタイム人数と<strong>開催中イベント・割引特典を掛け合わせたX・LINE用テキスト</strong>を自動生成します。
                 </p>
                 <div class="sns-preset-tabs">
-                    <button class="sns-tab-btn active" data-preset="events" onclick="selectSnsPreset('events')">特典＆イベント開催店</button>
-                    <button class="sns-tab-btn" data-preset="second_venue" onclick="selectSnsPreset('second_venue')">2軒目ハシゴ案内</button>
-                    <button class="sns-tab-btn" data-preset="zero_wait" onclick="selectSnsPreset('zero_wait')">女子待ちゼロ速報</button>
-                    <button class="sns-tab-btn" data-preset="rain_underground" onclick="selectSnsPreset('rain_underground')">雨天・直結穴場</button>
-                    <button class="sns-tab-btn" data-preset="last_train_cliff" onclick="selectSnsPreset('last_train_cliff')">終電前ラストチャンス</button>
-                    <button class="sns-tab-btn" data-preset="threads" onclick="selectSnsPreset('threads')">Threads・IG長文速報</button>
-                    <button class="sns-tab-btn" data-preset="price" onclick="selectSnsPreset('price')">料金・イベント比較ボード告知</button>
-                    <button class="sns-tab-btn" data-preset="timely" onclick="selectSnsPreset('timely')">時間帯別おすすめ</button>
-                    <button class="sns-tab-btn" data-preset="all" onclick="selectSnsPreset('all')">全国TOP3</button>
-                    <button class="sns-tab-btn" data-preset="kanto" onclick="selectSnsPreset('kanto')">関東TOP3</button>
-                    <button class="sns-tab-btn" data-preset="kansai" onclick="selectSnsPreset('kansai')">関西TOP3</button>
-                    <button class="sns-tab-btn" data-preset="anaba" onclick="selectSnsPreset('anaba')">穴場(女性比率)</button>
+                    <button class="sns-tab-btn active" data-preset="events" data-ui-click="selectSnsPreset" data-ui-arg="events">特典＆イベント開催店</button>
+                    <button class="sns-tab-btn" data-preset="second_venue" data-ui-click="selectSnsPreset" data-ui-arg="second_venue">2軒目ハシゴ案内</button>
+                    <button class="sns-tab-btn" data-preset="zero_wait" data-ui-click="selectSnsPreset" data-ui-arg="zero_wait">女子待ちゼロ速報</button>
+                    <button class="sns-tab-btn" data-preset="rain_underground" data-ui-click="selectSnsPreset" data-ui-arg="rain_underground">雨天・直結穴場</button>
+                    <button class="sns-tab-btn" data-preset="last_train_cliff" data-ui-click="selectSnsPreset" data-ui-arg="last_train_cliff">終電前ラストチャンス</button>
+                    <button class="sns-tab-btn" data-preset="threads" data-ui-click="selectSnsPreset" data-ui-arg="threads">Threads・IG長文速報</button>
+                    <button class="sns-tab-btn" data-preset="price" data-ui-click="selectSnsPreset" data-ui-arg="price">料金・イベント比較ボード告知</button>
+                    <button class="sns-tab-btn" data-preset="timely" data-ui-click="selectSnsPreset" data-ui-arg="timely">時間帯別おすすめ</button>
+                    <button class="sns-tab-btn" data-preset="all" data-ui-click="selectSnsPreset" data-ui-arg="all">全国TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kanto" data-ui-click="selectSnsPreset" data-ui-arg="kanto">関東TOP3</button>
+                    <button class="sns-tab-btn" data-preset="kansai" data-ui-click="selectSnsPreset" data-ui-arg="kansai">関西TOP3</button>
+                    <button class="sns-tab-btn" data-preset="anaba" data-ui-click="selectSnsPreset" data-ui-arg="anaba">穴場(女性比率)</button>
                 </div>
                 <textarea id="sns-preview-textarea" class="sns-preview-textarea" rows="8"></textarea>
                 <div class="sns-modal-actions">
-                    <button class="share-pill-btn x-btn" onclick="postGeneratedSns('x')">𝕏 ワンタップでポストする</button>
-                    <button class="share-pill-btn line-btn" onclick="postGeneratedSns('line')">LINEで送る</button>
-                    <button class="share-pill-btn copy-btn" onclick="postGeneratedSns('copy')">全文コピー</button>
+                    <button class="share-pill-btn x-btn" data-ui-click="postGeneratedSns" data-ui-arg="x">𝕏 ワンタップでポストする</button>
+                    <button class="share-pill-btn line-btn" data-ui-click="postGeneratedSns" data-ui-arg="line">LINEで送る</button>
+                    <button class="share-pill-btn copy-btn" data-ui-click="postGeneratedSns" data-ui-arg="copy">全文コピー</button>
                 </div>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeSnsModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeSnsModal">✕ 閉じる</button>
         </div>
     </div>
     <script>
@@ -2834,7 +2923,7 @@
         <div class="modal-content" style="max-width: 680px;">
             <div class="modal-header">
                 <h2 id="comparison-modal-title">競合比較・系列別サマリー (Brand Comparison)</h2>
-                <button class="close-btn-pill" onclick="closeComparisonModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeComparisonModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 12px;">
                 全国各ブランドの現在来店数（リアルタイム合計）
@@ -2850,7 +2939,7 @@
                 <canvas id="comparisonChart"></canvas>
             </div>
 
-            <button class="modal-bottom-close-btn" onclick="closeComparisonModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeComparisonModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Comparison Modal -->
@@ -2860,7 +2949,7 @@
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
                 <h2 id="report-modal-title">週間レポート (Weekly Report)</h2>
-                <button class="close-btn-pill" onclick="closeReportModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeReportModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p id="report-period" style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 15px;">
                 Loading...
@@ -2868,7 +2957,7 @@
             <div id="report-content" class="chart-container" style="overflow-x: auto;">
                 <div class="spinner"></div>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeReportModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeReportModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Report Modal -->
@@ -2878,7 +2967,7 @@
         <div class="modal-content" style="max-width: 640px;">
             <div class="modal-header">
                 <h2 id="events-modal-title">最新イベント・キャンペーン速報</h2>
-                <button class="close-btn-pill" onclick="closeEventsModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeEventsModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 0; margin-bottom: 10px;">
                 オリエンタルラウンジ・ag・JIS・地域主要店のフェア・特典情報
@@ -2888,7 +2977,7 @@
             </div>
             {% if not is_staff %}
             <div style="text-align: center; margin-bottom: 14px;">
-                <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; cursor: pointer;" onclick="closeEventsModal(); openSnsModal('events');">
+                <button type="button" class="staff-action-pill" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-size: 0.82rem; cursor: pointer;" data-ui-click="openSnsModal" data-ui-arg="events" data-ui-close-events="1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
@@ -2899,16 +2988,16 @@
 
             <!-- Filter Tabs for Events Modal -->
             <div class="events-category-tabs" id="events-category-tabs">
-                <button class="events-tab-btn active" data-filter="ALL" onclick="filterEventsModal('ALL', this)">全店舗</button>
-                <button class="events-tab-btn" data-filter="WOMEN" onclick="filterEventsModal('WOMEN', this)">女性限定</button>
-                <button class="events-tab-btn" data-filter="DISCOUNT" onclick="filterEventsModal('DISCOUNT', this)">特典・割引のみ</button>
-                <button class="events-tab-btn" data-filter="ORIENTAL_LOUNGE" onclick="filterEventsModal('ORIENTAL_LOUNGE', this)">オリエンタルラウンジ / ag</button>
-                <button class="events-tab-btn" data-filter="JIS" onclick="filterEventsModal('JIS', this)">JIS各店限定</button>
+                <button class="events-tab-btn active" data-filter="ALL" data-ui-click="filterEventsModal" data-ui-arg="ALL">全店舗</button>
+                <button class="events-tab-btn" data-filter="WOMEN" data-ui-click="filterEventsModal" data-ui-arg="WOMEN">女性限定</button>
+                <button class="events-tab-btn" data-filter="DISCOUNT" data-ui-click="filterEventsModal" data-ui-arg="DISCOUNT">特典・割引のみ</button>
+                <button class="events-tab-btn" data-filter="ORIENTAL_LOUNGE" data-ui-click="filterEventsModal" data-ui-arg="ORIENTAL_LOUNGE">オリエンタルラウンジ / ag</button>
+                <button class="events-tab-btn" data-filter="JIS" data-ui-click="filterEventsModal" data-ui-arg="JIS">JIS各店限定</button>
             </div>
             <div id="all-events-container" class="events-modal-list">
                 <div class="spinner"></div>
             </div>
-            <button class="modal-bottom-close-btn" onclick="closeEventsModal()">✕ 閉じる</button>
+            <button class="modal-bottom-close-btn" data-ui-click="closeEventsModal">✕ 閉じる</button>
         </div>
     </div>
     <!-- End Events Modal -->
@@ -2918,7 +3007,7 @@
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2 id="how-to-modal-title">初めての方へ：30秒でわかる使い方</h2>
-                <button class="close-btn-pill" onclick="closeHowToModal(false)" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeHowToModal" data-ui-arg="false" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="how-to-modal-body">
                 <p class="how-to-lead">
@@ -2973,7 +3062,7 @@
                 </div>
 
                 <div class="how-to-footer-action">
-                    <button type="button" class="how-to-start-btn" onclick="closeHowToModal(true)">
+                    <button type="button" class="how-to-start-btn" data-ui-click="closeHowToModal" data-ui-arg="true">
                         人数ランキングを見る
                     </button>
                     <label class="how-to-dont-show">
@@ -2990,7 +3079,7 @@
         <div class="modal-content" style="max-width: 480px;">
             <div class="modal-header">
                 <h2 id="pwa-guide-modal-title">ホーム画面に追加する方法</h2>
-                <button class="close-btn-pill" onclick="closePwaGuideModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closePwaGuideModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="pwa-guide-body">
                 <p class="pwa-guide-lead">
@@ -3016,7 +3105,7 @@
                         </div>
                     </div>
                 </div>
-                <button type="button" class="modal-bottom-close-btn" onclick="closePwaGuideModal()" style="margin-top: 15px;">
+                <button type="button" class="modal-bottom-close-btn" data-ui-click="closePwaGuideModal" style="margin-top: 15px;">
                     閉じる
                 </button>
             </div>
@@ -3030,16 +3119,16 @@
             <div class="sheet-drag-handle" aria-hidden="true"></div>
             <div class="modal-header">
                 <h2 id="menu-modal-title">メニュー & 設定</h2>
-                <button class="close-btn-pill" onclick="closeMenuModal()" aria-label="閉じる">✕ 閉じる</button>
+                <button class="close-btn-pill" data-ui-click="closeMenuModal" aria-label="閉じる">✕ 閉じる</button>
             </div>
             <div class="menu-modal-body">
                 <!-- Theme Switcher within Mobile Menu -->
                 <div class="menu-section">
                     <div class="menu-section-title">デザイン切替</div>
                     <div class="theme-switcher-bar menu-theme-bar" role="group" aria-label="デザイン切替">
-                        <button type="button" class="theme-pill-btn active" data-theme="default" onclick="setViewTheme('default', true); closeMenuModal();">ダーク</button>
-                        <button type="button" class="theme-pill-btn" data-theme="list" onclick="setViewTheme('list', true); closeMenuModal();">リスト</button>
-                        <button type="button" class="theme-pill-btn" data-theme="light" onclick="setViewTheme('light', true); closeMenuModal();">ライト</button>
+                        <button type="button" class="theme-pill-btn active" data-theme="default" data-ui-click="setViewTheme" data-ui-arg="default" data-ui-arg2="true" data-ui-close-menu="1">ダーク</button>
+                        <button type="button" class="theme-pill-btn" data-theme="list" data-ui-click="setViewTheme" data-ui-arg="list" data-ui-arg2="true" data-ui-close-menu="1">リスト</button>
+                        <button type="button" class="theme-pill-btn" data-theme="light" data-ui-click="setViewTheme" data-ui-arg="light" data-ui-arg2="true" data-ui-close-menu="1">ライト</button>
                     </div>
                 </div>
 
@@ -3047,19 +3136,19 @@
                 <div class="menu-section">
                     <div class="menu-section-title">分析・データ</div>
                     <div class="menu-grid">
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openReportModal();">
+                        <button class="menu-grid-item" data-ui-click="openReportModal" data-ui-close-menu="1">
                             <div class="menu-grid-text">
                                 <strong>週間レポート</strong>
                                 <span>過去7日間の曜日・時間帯別集計</span>
                             </div>
                         </button>
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openComparisonModal();">
+                        <button class="menu-grid-item" data-ui-click="openComparisonModal" data-ui-close-menu="1">
                             <div class="menu-grid-text">
                                 <strong>系列別比較</strong>
                                 <span>オリエンタルラウンジ・ag・JISの来店シェア</span>
                             </div>
                         </button>
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openEventsModal();">
+                        <button class="menu-grid-item" data-ui-click="openEventsModal" data-ui-close-menu="1">
                             <div class="menu-grid-text">
                                 <strong>イベント速報</strong>
                                 <span>各店の女性無料フェア・特典一覧</span>
@@ -3130,7 +3219,7 @@
                     <div class="menu-grid">
                         <a href="/concierge" class="menu-grid-item" style="text-decoration: none; color: inherit;">
                             <div class="menu-grid-text">
-                                <strong>3秒穴場＆ハシゴ診断</strong>
+                                <strong>穴場＆徒歩ハシゴ診断</strong>
                                 <span>現在人数×徒歩距離で本命＆第2候補を提案</span>
                             </div>
                         </a>
@@ -3182,13 +3271,13 @@
                                 <span>NGドレスコード・持ち物・清潔感チェック</span>
                             </div>
                         </a>
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openHowToModal();">
+                        <button class="menu-grid-item" data-ui-click="openHowToModal" data-ui-close-menu="1">
                             <div class="menu-grid-text">
                                 <strong>使い方ガイド</strong>
                                 <span>30秒でわかる相席ナビの基本</span>
                             </div>
                         </button>
-                        <button class="menu-grid-item" onclick="closeMenuModal(); openSnsModal();">
+                        <button class="menu-grid-item" data-ui-click="openSnsModal" data-ui-close-menu="1">
                             <div class="menu-grid-text">
                                 <strong>速報作成・共有</strong>
                                 <span>今の混雑と特典をXやLINEへ共有</span>
@@ -3205,10 +3294,10 @@
                         <a href="https://www.threads.net/@aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式Threads</a>
                         <a href="https://www.instagram.com/aiseki_navi1" target="_blank" rel="noopener noreferrer" class="menu-sub-link">Instagram</a>
                         <a href="https://note.com/aiseki_navi" target="_blank" rel="noopener noreferrer" class="menu-sub-link">公式note</a>
-                        <button type="button" class="menu-sub-link" onclick="closeMenuModal(); openLegalModal();">免責事項・規約</button>
+                        <button type="button" class="menu-sub-link" data-ui-click="openLegalModal" data-ui-close-menu="1">免責事項・規約</button>
                     </div>
                 </div>
-                <button type="button" class="modal-bottom-close-btn" onclick="closeMenuModal()" style="margin-top: 15px;">✕ 閉じる</button>
+                <button type="button" class="modal-bottom-close-btn" data-ui-click="closeMenuModal" style="margin-top: 15px;">✕ 閉じる</button>
             </div>
         </div>
     </div>
@@ -3220,9 +3309,9 @@
         window.TOP_PROVENANCE_META = {{ (top_provenance if top_provenance is defined else {}) | tojson }};
     </script>
     {% endif %}
-    <script src="/static/app.js?v=20261120_1" defer></script>
+    <script src="/static/app.js?v=20261128_1" defer></script>
     {% if not is_staff and not session.get('is_staff') %}
-    <script defer src="/static/cta_tracker.js?v=8"></script>
+    <script defer src="/static/cta_tracker.js?v=9"></script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
          crossorigin="anonymous"></script>
     {% endif %}

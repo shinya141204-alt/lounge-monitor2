@@ -289,34 +289,34 @@ OFFER_CATEGORIES = [
     },
     {
         "category_key": "orbis",
-        "pattern": "orbis",
+        "pattern": "mens_skincare_clinic",
         "label": "🧴 メンズスキンケア（ORBIS Mr.等）",
-        "short_label": "メンズスキンケア (orbis)",
+        "short_label": "メンズスキンケア (mens_skincare_clinic)",
         "audience": "men",
         "epc_yen": 95,
-        "primary_link": "/link/orbis",
+        "primary_link": "/link/mens_skincare_clinic",
         "default_priority": 4,
         "winning_pitch": "間接照明・ソファ席距離70cmの身だしなみ解説パートと相性が高い想定の2ステップ検証枠です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "hair_removal",
-        "pattern": "hair_removal",
+        "pattern": "mens_hair_removal",
         "label": "🪒 メンズ医療脱毛・青ヒゲ対策クリニック",
-        "short_label": "医療脱毛 (hair_removal)",
+        "short_label": "医療脱毛 (mens_hair_removal)",
         "audience": "men",
         "epc_yen": 160,
-        "primary_link": "/link/hair_removal",
+        "primary_link": "/link/mens_hair_removal",
         "default_priority": 3,
         "winning_pitch": "仕事帰りの夕方の青ヒゲ対策と絡め、/grooming 内の初回体験比較枠として反応を検証中です（ASP確定成果は蓄積・検証中）。",
     },
     {
         "category_key": "spu",
-        "pattern": "spu",
+        "pattern": "spu_styleup",
         "label": "👔 メンズファッション（SPUスタイルアップ便）",
-        "short_label": "メンズファッション (spu)",
+        "short_label": "メンズファッション (spu_styleup)",
         "audience": "men",
         "epc_yen": 120,
-        "primary_link": "/link/spu",
+        "primary_link": "/link/spu_styleup",
         "default_priority": 2,
         "winning_pitch": "入店時のドレスコード・服装チェック文脈で /grooming 服装セクション直下に配置している検証枠です（ASP確定成果は蓄積・検証中）。",
     },
@@ -357,26 +357,45 @@ OFFER_CATEGORIES = [
 _OFFER_META_BY_KEY = {c["category_key"]: c for c in OFFER_CATEGORIES}
 
 
+def _canonicalize_aff_slot_id(raw_item_id: str) -> str:
+    it = str(raw_item_id or "").strip().lower()
+    if it.startswith("aff_click:"):
+        it = it.split(":", 1)[1].strip()
+    if not it:
+        return ""
+    try:
+        import affiliate_manager
+        canon = affiliate_manager.canonical_slot_id(it)
+        if canon:
+            return canon
+    except Exception:
+        pass
+    return it
+
+
 def _classify_offer_category(raw_item_id: str) -> str:
     """Map raw `/link/<id>` or `aff_click:<id>` identifier into one of the canonical offer categories."""
-    it = (raw_item_id or "").strip().lower()
+    it = str(raw_item_id or "").strip().lower()
     if it.startswith("aff_click:"):
         it = it.split(":", 1)[1].strip()
     if not it:
         return "dating"
-    if "second_venue" in it or "ikyu" in it or "restaurant" in it:
-        return "second_venue"
-    if "supplement" in it or "hangover" in it:
-        return "supplement"
-    if it.startswith("women_") or it == "women":
+    canon = _canonicalize_aff_slot_id(it)
+    for cand in (it, canon):
+        if "second_venue" in cand or "ikyu" in cand or "restaurant" in cand:
+            return "second_venue"
+        if "supplement" in cand or "hangover" in cand:
+            return "supplement"
+    target = canon or it
+    if target.startswith("women_") or target == "women":
         return "women"
-    if it in ("spu", "spu_styleup") or "spu" in it or "fashion" in it or "styleup" in it:
+    if target in ("spu", "spu_styleup", "spu_fashion") or "spu" in target or "fashion" in target or "styleup" in target:
         return "spu"
-    if it in ("orbis", "mens_skincare_clinic") or "orbis" in it or "skincare" in it:
+    if target in ("orbis", "orbis_mr", "mens_skincare_clinic", "mens_skincare") or "orbis" in target or "skincare" in target:
         return "orbis"
-    if it in ("hair_removal", "mens_hair_removal", "hair_removal_trial") or "hair" in it or "datsumo" in it:
+    if target in ("hair_removal", "mens_hair_removal", "hair_removal_trial") or "hair" in target or "datsumo" in target:
         return "hair_removal"
-    if it in ("dating", "dating_instant", "dating_bachelor", "dating_casual") or "dating" in it or "bachelor" in it or "app" in it:
+    if target in ("dating", "dating_instant", "dating_bachelor", "dating_casual") or "dating" in target or "bachelor" in target or "app" in target:
         return "dating"
     return "dating"
 
@@ -400,6 +419,7 @@ def _extract_aff_category_stats(summary_dict: dict) -> tuple:
     cat_clicks = collections.defaultdict(int)
     item_clicks = collections.defaultdict(int)
     cat_refs = collections.defaultdict(lambda: collections.defaultdict(int))
+    label_refs_by_canon = collections.defaultdict(lambda: collections.defaultdict(int))
 
     for raw_lbl, cnt in raw_aff.items():
         c = int(cnt or 0)
@@ -409,14 +429,17 @@ def _extract_aff_category_stats(summary_dict: dict) -> tuple:
             item_part, ref_p = [p.strip() for p in str(raw_lbl).split("@", 1)]
         else:
             item_part, ref_p = str(raw_lbl).strip(), "-"
-        clean_item = item_part[10:].strip().lower() if item_part.lower().startswith("aff_click:") else item_part.lower()
+        clean_item = _canonicalize_aff_slot_id(item_part)
         cat_k = _classify_offer_category(clean_item)
         cat_clicks[cat_k] += c
         item_clicks[clean_item] += c
         if ref_p and ref_p != "-":
             cat_refs[cat_k][ref_p] += c
+            label_refs_by_canon[clean_item][ref_p] += c
 
     # Also support `by_event['aff_click:<id>']` (and optional `all_by_label['aff_click:<id>']`) without double-counting
+    ev_by_canon = collections.defaultdict(int)
+    ev_refs_by_canon = collections.defaultdict(lambda: collections.defaultdict(int))
     for ev_k, ev_cnt in by_event.items():
         ev_str = str(ev_k or "").strip()
         if not ev_str.lower().startswith("aff_click:"):
@@ -424,19 +447,49 @@ def _extract_aff_category_stats(summary_dict: dict) -> tuple:
         c = int(ev_cnt or 0)
         if c <= 0:
             continue
-        sub_item = ev_str.split(":", 1)[1].strip().lower()
+        sub_item = _canonicalize_aff_slot_id(ev_str)
+        ev_by_canon[sub_item] += c
+        ev_lbl_map = all_labels.get(ev_str) or {}
+        if isinstance(ev_lbl_map, dict):
+            for ref_p, ref_c in ev_lbl_map.items():
+                rp = str(ref_p or "").strip()
+                rc_int = int(ref_c or 0)
+                if rp and rp != "-" and rc_int > 0:
+                    ev_refs_by_canon[sub_item][rp] += rc_int
+
+    for sub_item, ev_total in ev_by_canon.items():
         cat_k = _classify_offer_category(sub_item)
         already = item_clicks[sub_item]
-        delta = max(0, c - already)
+        delta = max(0, ev_total - already)
         if delta > 0:
             cat_clicks[cat_k] += delta
             item_clicks[sub_item] += delta
-            ev_lbl_map = all_labels.get(ev_str) or {}
-            if isinstance(ev_lbl_map, dict):
-                for ref_p, ref_c in ev_lbl_map.items():
-                    rp = str(ref_p or "").strip()
-                    if rp and rp != "-":
-                        cat_refs[cat_k][rp] += int(ref_c or 0)
+            lbl_refs = label_refs_by_canon.get(sub_item, {})
+            ref_deltas = {
+                rp: d_ref
+                for rp, ref_c in ev_refs_by_canon.get(sub_item, {}).items()
+                if (d_ref := max(0, ref_c - int(lbl_refs.get(rp, 0)))) > 0
+            }
+            surplus_total = sum(ref_deltas.values())
+            if surplus_total > 0:
+                if surplus_total <= delta:
+                    for rp, d_ref in ref_deltas.items():
+                        cat_refs[cat_k][rp] += d_ref
+                else:
+                    remaining = delta
+                    remainders = []
+                    for rp, d_ref in ref_deltas.items():
+                        exact = (d_ref * delta) / float(surplus_total)
+                        base = int(exact)
+                        if base > 0:
+                            cat_refs[cat_k][rp] += base
+                            remaining -= base
+                        remainders.append((exact - base, d_ref, rp))
+                    for _rem, _d_ref, rp in sorted(remainders, reverse=True):
+                        if remaining <= 0:
+                            break
+                        cat_refs[cat_k][rp] += 1
+                        remaining -= 1
 
     return cat_clicks, cat_refs
 
@@ -549,10 +602,10 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
 
     if p == "/grooming":
         return {
-            "recommended_funnel": "7大収益枠の冒頭3秒ジャンプバー ＋ 清潔感3点セット即決CTA固定",
-            "recommended_links": ["/link/orbis", "/link/hair_removal", "/link/spu"],
+            "recommended_funnel": "主要収益枠の冒頭クイックジャンプバー ＋ 清潔感3点セット即決CTA固定",
+            "recommended_links": ["/link/mens_skincare_clinic", "/link/mens_hair_removal", "/link/spu_styleup"],
             "placement_position": "冒頭の「距離70cmチェックリスト」直下にカテゴリ別クイック比較チップ、各パート終端に即決CTA",
-            "action_proposal": "せっかく /grooming に到達した顕在読者を途中離脱させないよう、ファーストビュー直下に『肌ケア（/link/orbis）』『青ヒゲ医療脱毛（/link/hair_removal）』『私服コーデ便（/link/spu）』『2軒目一休予約（/link/second_venue_reservation）』への即決導線を整理してください。",
+            "action_proposal": "せっかく /grooming に到達した顕在読者を途中離脱させないよう、ファーストビュー直下に『肌ケア（/link/mens_skincare_clinic）』『青ヒゲ医療脱毛（/link/mens_hair_removal）』『私服コーデ便（/link/spu_styleup）』『2軒目一休予約（/link/second_venue_reservation）』への即決導線を整理してください。",
         }
 
     if p == "/for-women" or "women" in p_low or "ladies" in p_low:
@@ -577,7 +630,7 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
             "recommended_funnel": f"服装・70cm清潔感2ステップ導線（/grooming の SPU私服・ORBIS・ヒゲ脱毛）{grooming_note}",
             "recommended_links": ["/grooming", "/concierge"],
             "placement_position": "「NG服装早見表」直下および「70cm暖色スポット照明」パート末尾の2ステップ内部リンク",
-            "action_proposal": "入店直前に服装規定と清潔感を確認している本気層です。NG早見表と照明パート直後に『浮かない大人カジュアル一式＆口元・皮脂対策まとめ（/grooming → spu / orbis / hair_removal）』への2ステップ送客リンクを目立たせてください。",
+            "action_proposal": "入店直前に服装規定と清潔感を確認している本気層です。NG早見表と照明パート直後に『浮かない大人カジュアル一式＆口元・皮脂対策まとめ（/grooming → spu_styleup / mens_skincare_clinic / mens_hair_removal）』への2ステップ送客リンクを目立たせてください。",
         }
 
     if "second-venue" in p_low:
@@ -593,7 +646,7 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
             "recommended_funnel": "男性先行時の穴場診断（/concierge）＋ 女性向け待ちゼロ特設ボード（/for-women）",
             "recommended_links": ["/concierge", "/for-women", "/grooming"],
             "placement_position": "「男性先行が起きる時間帯メカニズム」図解直下および記事末尾の男女分岐CTA",
-            "action_proposal": "男性読者には待機課金回避の『3秒穴場診断（/concierge）＆今日飲める恋活アプリ比較（/grooming → dating_instant）』を、女性読者には『今すぐ待ちゼロで入れる店舗＆無料特典（/for-women）』を分岐提示してください。",
+            "action_proposal": "男性読者には待機課金回避の『穴場＆徒歩ハシゴ診断（/concierge）＆今日飲める恋活アプリ比較（/grooming → dating_instant）』を、女性読者には『今すぐ待ちゼロで入れる店舗＆無料特典（/for-women）』を分岐提示してください。",
         }
 
     if any(k in p_low for k in ("first-10", "beauty-area", "talk", "impression", "clean", "table-change", "thirties")):
@@ -602,12 +655,12 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
             "recommended_funnel": f"会話前の清潔感ケア特集（/grooming）＋ スキンケア・医療脱毛2ステップ導線{grooming_note}",
             "recommended_links": ["/grooming", "/for-women", "/concierge"],
             "placement_position": "記事中盤「女性目線の減点サイン（会話ボックス直後）」に /grooming 内部リンク、末尾に男女別ガイド導線",
-            "action_proposal": "会話術や席替え・年齢層を調べる読者は対面直前の本気層です。会話例の直後に『実は会話以前に距離70cmで見られている清潔感チェック（/grooming → orbis / hair_removal / spu）』を挟み2ステップ送客してください。",
+            "action_proposal": "会話術や席替え・年齢層を調べる読者は対面直前の本気層です。会話例の直後に『実は会話以前に距離70cmで見られている清潔感チェック（/grooming → mens_skincare_clinic / mens_hair_removal / spu_styleup）』を挟み2ステップ送客してください。",
         }
 
     if any(k in p_low for k in ("last-train", "weekend", "cost-break", "price", "local-vs-urban", "midnight", "hopping", "stats", "crowd-rush", "waveform", "solo-vs-pair", "osaka")):
         return {
-            "recommended_funnel": "3秒穴場診断（/concierge）＋ 混雑回避・審査制1対1デート比較2ステップ導線",
+            "recommended_funnel": "穴場＆徒歩ハシゴ診断（/concierge）＋ 混雑回避・審査制1対1デート比較2ステップ導線",
             "recommended_links": ["/concierge", "/guide/lounge-vs-screened-date", "/grooming"],
             "placement_position": "実測データ比較表の直下（「男性待ち・損益分岐ライン」解説横）および記事末尾CTA枠",
             "action_proposal": "待ち時間や料金コスパを検証している読者に刺さるよう、データ表直下に『徒歩圏の穴場診断（/concierge）』と『男余りの夜に切り替えられる恋活・審査制1対1デート比較（/grooming・/guide/lounge-vs-screened-date）』を配置してください。",
@@ -618,7 +671,7 @@ def _prescribe_page_funnel_upgrade(path: str, grooming_rate_low: bool = False) -
             "recommended_funnel": "店舗別2軒目バー予約（一休.comレストラン）＋ 満席時の近隣ハシゴ診断（/concierge）",
             "recommended_links": ["/link/second_venue_reservation", "/concierge", "/grooming"],
             "placement_position": "店舗詳細「2軒目スポット提案」直下の一休予約バーおよび「男性先行」バッジ横の回遊リンク",
-            "action_proposal": "個別店舗の現在人数を見ている来店直前層です。2軒目マップ検索バー直下の『一休.comレストラン空席予約（/link/second_venue_reservation）』と、混雑時の『3秒穴場ハシゴ診断（/concierge）』への視認性を高めてください。",
+            "action_proposal": "個別店舗の現在人数を見ている来店直前層です。2軒目マップ検索バー直下の『一休.comレストラン空席予約（/link/second_venue_reservation）』と、混雑時の『穴場＆徒歩ハシゴ診断（/concierge）』への視認性を高めてください。",
         }
 
     if p == "/" or p.startswith(("/area/", "/areas", "/oriental-lounge", "/ag", "/jis", "/asobibar", "/concierge")):
@@ -894,7 +947,7 @@ def _build_sns_channel_efficiency(
             "channel_key": "reels",
             "label": "🎬 IGリール / TikTok（3Dもしも＆ライブ速報）",
             "default_slot": "20:00（平日『もしもシリーズ』自動配信＋土曜21:30速報）",
-            "default_style": "3Dボクセル『もしもシリーズ』＆3秒ギャップ実証型",
+            "default_style": "3Dボクセル『もしもシリーズ』＆ギャップ実証型",
             "posts_logged": ig_reels_logged,
             "priority": 5,
             "base_tactic": "月〜金20:00は3D『もしもシリーズ』キューから自動投稿し、週末ピークは同駅徒歩5分ギャップ実証リールで非フォロワー層をプロフリンクへ誘導。",
@@ -1146,7 +1199,7 @@ def _build_sns_channel_efficiency(
             "title": "【18秒・損益分岐】男余りの店で90分粘って課金する人 vs 40分で見切って勝つ人の差",
             "hook_0_3s": "「相席で一番お金と時間を溶かすパターン、40分で見切れないサンクコストです」",
             "body_outline": "滞在時間と課金メーターの損益分岐グラフを1枚見せ、渋い夜は40分で2軒目移動または近隣穴場へ切り替える常連の立ち回りを解説。",
-            "cta_route": "プロフリンク『?s=reel_40min』→ /concierge 3秒穴場診断 ＆ /guide/cost-break-even",
+            "cta_route": "プロフリンク『?s=reel_40min』→ /concierge 穴場診断 ＆ /guide/cost-break-even",
             "best_post_time": "水曜・金曜 20:30〜21:00",
         },
     ]
@@ -1228,7 +1281,7 @@ def _build_flywheel_status(
         (
             f"もし検索急上昇『{opp_q}』の答えを実測混雑ログで30秒再現したら？"
             if opp_q
-            else "もしマッチングアプリの『2週間メッセージ』が対面の乾杯3秒に短縮されたら？（アプリ疲れ検証）"
+            else "もしマッチングアプリの『2週間メッセージ』が対面の乾杯直後に短縮されたら？（アプリ疲れ検証）"
         ),
     ]
 
@@ -2137,8 +2190,9 @@ def _analyze_site_performance_uncached(live_stores: list = None, days: int = 14,
             item_id, ref_p = [p.strip() for p in raw_lbl.split("@", 1)]
         else:
             item_id, ref_p = raw_lbl.strip(), "-"
+        canon_item = _canonicalize_aff_slot_id(item_id) or item_id
         aff_by_ref_path[ref_p] += cnt
-        aff_by_item[item_id] += cnt
+        aff_by_item[canon_item] += cnt
 
     cushion_by_ref_path = collections.defaultdict(int)
     for raw_lbl, cnt in cushion_by_label.items():

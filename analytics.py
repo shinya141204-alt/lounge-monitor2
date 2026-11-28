@@ -8,6 +8,7 @@ analytics.py - 自前の軽量アクセス集計（個人情報なし）
 ・集計画面（/staff/analytics）は Sheets の値＋未送信分を合算して表示
 """
 import os
+import re
 import datetime
 import time
 import threading
@@ -40,7 +41,7 @@ ALLOWED_EVENTS = {
     'vote_wait',             # 現場投票に付随する待ち時間申告（store:15m 形式）
     'watch_intent',          # 条件ウォッチ登録（store:condition 形式）
     'sns_inflow',            # ?s= 識別子付きのSNS投稿からのサイト流入・CV追跡
-    'hashigo_intent',        # 3秒ハシゴ診断先行需要インテント（area:audience:party_size 形式）
+    'hashigo_intent',        # 穴場＆徒歩ハシゴ診断先行需要インテント（area:audience:party_size 形式）
     'co_view',               # 同一セッション内の店舗共閲覧（storeA|storeB 形式・PIIなし）
     'sister_bridge_impression',  # 姉妹サイト（マチナビ）回遊ブリッジ表示（area:trigger:audience 形式）
     'sister_bridge_click',       # 姉妹サイト（マチナビ）回遊ブリッジクリック（area:trigger:audience 形式）
@@ -134,7 +135,7 @@ def _today():
 _CTA_SURFACE_LABELS = {
     '/': 'トップページ（ランキング・おすすめモーダル）',
     '/store/*': '店舗詳細ページ（リアルタイム状況連動CTA・2軒目枠）',
-    '/concierge': '3秒穴場＆徒歩ハシゴ診断（スマートアクション枠）',
+    '/concierge': '穴場＆徒歩ハシゴ診断（スマートアクション枠）',
     '/grooming': '入店前の身だしなみ・清潔感ガイド',
     '/for-women': '女性向けリアルタイム待ちゼロ店＆無料デート特設',
     '/price-comparison': '全店料金・開催中イベント比較ボード',
@@ -812,11 +813,16 @@ def flush(force_sheets=True):
 
 _PAGE_TITLES = {
     '/': '🔥 トップページ（全国リアルタイム人数ランキング）',
-    '/concierge': '🧭 今夜どこ行く？3秒穴場＆徒歩ハシゴ診断',
+    '/concierge': '🧭 今夜どこ行く？穴場＆徒歩ハシゴ診断',
     '/columns': '📚 コラム・攻略記事一覧ページ',
     '/areas': '📍 全国エリア一覧ディレクトリ',
     '/grooming': '✨ 相席ラウンジ前の身だしなみ・清潔感特集',
     '/stats': '📊 全国ラウンジ統計・混雑データレポート',
+    '/stats/weekend-index': '📊 予約制×当日相席 2軸需給DI指数（CC BY 4.0）',
+    '/stats/year-end-2026': '📊 2026年 年末繁忙期・ドーム終演連動データ白書',
+    '/embed/heatmap': '📊 曜日×時間帯別 実測ヒートマップウィジェット',
+    '/about': 'ℹ️ 運営者情報・計測ポリシー',
+    '/contact': '✉️ お問い合わせ',
     '/price-comparison': '店舗別料金・開催中イベント比較',
     '/oriental-lounge': '🥂 オリエンタルラウンジ全店リアルタイム一覧',
     '/ag': '⚡ ag（アグ）全店リアルタイム一覧',
@@ -1149,6 +1155,11 @@ def describe_label(event, raw_label):
                     return {'title': f"📖 {sitem.get('short_title') or sitem.get('title')}", 'sub': label, 'href': label}
             except Exception:
                 pass
+        if label.startswith('/stats/monthly/'):
+            ym = label.split('/stats/monthly/', 1)[1].strip('/')
+            if re.fullmatch(r'202[5-9]-(?:0[1-9]|1[0-2])', ym):
+                return {'title': f'📊 {ym} 月次一次統計アーカイブ', 'sub': label, 'href': label}
+            return {'title': '📊 月次一次統計アーカイブ', 'sub': '/stats', 'href': '/stats'}
         if label.startswith('/area/'):
             slug = label.split('/area/', 1)[1].strip('/')
             aname = _AREA_NAMES.get(slug, slug)
@@ -1277,7 +1288,7 @@ _HOURLY_PV_SURFACE_LABELS = {
     'pv_top': 'トップランキング',
     'pv_store': '店舗詳細ページ',
     'pv_guide': '攻略・データコラム',
-    'pv_concierge': '3秒穴場診断',
+    'pv_concierge': '穴場＆徒歩ハシゴ診断',
     'pv_women': '女性向け特設',
     'pv_grooming': '身だしなみガイド',
     'pv_price': '料金・イベント比較',
@@ -1819,10 +1830,26 @@ def summary(days=7, allow_blocking=True):
     by_label = defaultdict(lambda: defaultdict(int))
     by_day = defaultdict(lambda: defaultdict(int))
     article_views = 0
+    try:
+        import affiliate_manager as _am_sum
+    except Exception:
+        _am_sum = None
     for (d, e, l), c in totals.items():
         if d < start:
             continue
-        norm_l = normalize_store_event_label(e, l) if e in _STORE_TRACK_EVENTS else l
+        if e in _STORE_TRACK_EVENTS:
+            norm_l = normalize_store_event_label(e, l)
+        elif e in ('affiliate_click', 'affiliate_impression') and _am_sum is not None:
+            l_str = str(l or '')
+            if '@' in l_str:
+                s_part, p_part = [x.strip() for x in l_str.split('@', 1)]
+                cid = _am_sum.canonical_slot_id(s_part) or s_part
+                norm_l = f"{cid} @ {p_part}"
+            else:
+                cid = _am_sum.canonical_slot_id(l_str) or l_str
+                norm_l = cid
+        else:
+            norm_l = l
         by_event[e] += c
         by_label[e][norm_l] += c
         by_day[d][e] += c
@@ -1963,7 +1990,7 @@ def summary(days=7, allow_blocking=True):
     for cid, surf in sorted(
         all_pairs,
         key=lambda k: (0 if surface_imp[k] > 0 else 1, -surface_clk[k], -surface_imp[k], k[0], k[1]),
-    )[:15]:
+    )[:40]:
         imp_c = surface_imp[(cid, surf)]
         clk_c = surface_clk[(cid, surf)]
         desc = describe_label('affiliate_impression', f"{cid} @ {surf}")

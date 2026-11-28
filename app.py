@@ -498,8 +498,11 @@ def redirect_to_custom_domain():
         encoded_path = quote(safe_path, safe="/:@!$&'()*+,;=-._~")
         url = 'https://aiseki-navi.com' + encoded_path
         if request.query_string:
-            qs = request.query_string.decode('latin-1')
-            url += '?' + qs
+            raw_qs = request.query_string.decode('latin-1')
+            # Strip ASCII control chars (CR/LF/NUL etc.) from raw query string before redirect concatenation
+            qs = ''.join(ch for ch in raw_qs if 0x20 <= ord(ch) != 0x7F)
+            if qs:
+                url += '?' + qs
         status_code = 301 if request.method in ('GET', 'HEAD') else 308
         return redirect(url, code=status_code)
 
@@ -1031,11 +1034,16 @@ def prewarm_ssr_and_status_caches():
     def _bg_warm(do_html: bool):
         global _prewarm_in_progress
         try:
+            if do_html:
+                try:
+                    local_db.get_all_stores_hourly_waveforms(allow_blocking=True)
+                except Exception:
+                    pass
             headers = {
                 'User-Agent': 'aiseki-internal-prewarm-bot/1.0',
                 'Accept-Encoding': 'gzip',
             }
-            paths = ('/api/status', '/', '/for-women', '/price-comparison', '/stats', '/stats') if do_html else ('/api/status', '/')
+            paths = ('/api/status', '/', '/for-women', '/price-comparison', '/stats', '/llms.txt', '/api/llms-facts.json') if do_html else ('/api/status', '/')
             with app.test_client() as client:
                 for path in paths:
                     try:
@@ -1570,7 +1578,7 @@ def affiliate_redirect(item_id):
                 str(app.secret_key), clean_id, request.form.get('csrf_clk', '')
             )
         )
-        has_valid_hp = verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', '')) or (request.cookies.get('an_hp') == '1')
+        has_valid_hp = verify_human_proof_cookie(str(app.secret_key), request.cookies.get('an_hp_sig', ''))
         is_get_ok = request.method == 'GET' and ((not require_hp) or has_valid_hp)
         if not (is_post_ok or is_get_ok):
             qs_map = {}
@@ -1601,12 +1609,16 @@ def affiliate_redirect(item_id):
             resp_rl.headers['X-Robots-Tag'] = 'noindex, nofollow'
             resp_rl.headers['Cache-Control'] = 'private, no-store'
             return resp_rl
+    try:
+        canon_id = affiliate_manager.canonical_slot_id(clean_id) or clean_id
+    except Exception:
+        canon_id = clean_id
     if not skip_tracking:
         try:
-            analytics.track('affiliate_click', f"{clean_id} @ {ref_path}")
+            analytics.track('affiliate_click', f"{canon_id} @ {ref_path}")
             if inflow_tag:
                 analytics.track('sns_inflow', f"cv:{inflow_tag}")
-                analytics.track('sns_inflow', f"cvslot:{inflow_tag} @ {clean_id[:36]}")
+                analytics.track('sns_inflow', f"cvslot:{inflow_tag} @ {canon_id[:36]}")
         except Exception:
             pass
     resp = redirect(target_url, code=(303 if request.method == 'POST' else 302))

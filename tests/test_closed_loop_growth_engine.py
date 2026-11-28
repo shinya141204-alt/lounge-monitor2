@@ -503,7 +503,7 @@ class ClosedLoopGrowthEngineTests(unittest.TestCase):
         self.assertEqual(c_th["conversions"], 1)
         self.assertEqual(c_th["est_revenue_yen"], 160)
         self.assertEqual(c_th["epc_yen"], 160.0)
-        self.assertEqual(c_th["top_slot"], "hair_removal")
+        self.assertEqual(c_th["top_slot"], "mens_hair_removal")
 
         # 4. Verify Master auth & CSRF guards on `/api/pdca/sns-insights*`
         unauth = client.get("/api/pdca/sns-insights")

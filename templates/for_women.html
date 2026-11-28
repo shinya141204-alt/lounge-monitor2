@@ -93,7 +93,7 @@
     <meta name="color-scheme" content="dark light">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-    <link rel="stylesheet" href="/static/portal.css?v=20">
+    <link rel="stylesheet" href="/static/portal.css?v=21">
     <style>
         /* 案2（TableCheck・VACAN型）正準ニュートラル・トーナル階層 ＋ 女性向け最小アクセント */
         :root,
@@ -533,7 +533,7 @@
             margin: 0;
         }
     </style>
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     <script>try{var _mw=localStorage.getItem('aiseki_women_manual_theme'),_gv=localStorage.getItem('olg_view_theme');if(!window.__aisekiWomenForceDark&&_mw!=='default'&&_mw!=='list'&&!(_mw===null&&_gv==='default'))document.documentElement.classList.add('theme-light');}catch(e){}</script>
     <style>
         /* Post-calm.css Plan 2 Canonical Neutralization */
@@ -715,7 +715,7 @@
             </div>
             <div class="ladies-pr-grid" style="margin-top:10px;">
                 {% for qc in top_pr_cards %}
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="{{ qc.canonical_slot_id or qc.slot_id or '' }}">
                     <div>
                         <span class="pick-badge good">{{ qc.badge }}</span>
                         <h3>{{ qc.title }}</h3>
@@ -862,7 +862,7 @@
             </p>
             <div class="ladies-pr-grid">
                 {% if monetized_women_dating %}
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="women_dating_bachelor">
                     <div>
                         <span class="pick-badge good">女性完全無料・顔出し不要</span>
                         <h3>審査制・週1カフェデートアプリ</h3>
@@ -872,7 +872,7 @@
                 </div>
                 {% endif %}
                 {% if monetized_women_clinic %}
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="women_beauty_clinic">
                     <div>
                         <span class="pick-badge">近距離ライトでも映える肌へ</span>
                         <h3>美容皮膚科・医療脱毛 初回体験プラン</h3>
@@ -881,7 +881,7 @@
                     <a href="/link/women_beauty_clinic?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">初回キャンペーンを見る ›</a>
                 </div>
                 {% endif %}
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="women_cosme_salon">
                     <div>
                         <span class="pick-badge good">夜遊び帰りの髪・肌リセット</span>
                         <h3>サロン品質ヘア＆ナイトスキンケア</h3>
@@ -890,22 +890,22 @@
                     <a href="/link/women_cosme_salon?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">公式ショップで詳細を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www17.a8.net/0.gif?a8mat=4BERA3+6J68QA+5GZ4+5YZ75" alt="" style="display:none;">
                 </div>
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="night_care_supplement">
                     <div>
                         <span class="pick-badge good">乾杯・カクテルを楽しむ夜に</span>
                         <h3>乾杯サポート・ナイトケアサプリ</h3>
                         <p>ミニバッグのポケットにすっきり収まり、飲み放題でスパークリングやワインを楽しんだ翌朝も軽やかに動きたい日の定番ナイトケア習慣。</p>
                     </div>
-                    <a href="/link/women_night_supplement?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">公式サイトで詳細を見る ›</a>
+                    <a href="/link/night_care_supplement?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">公式サイトで詳細を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www19.a8.net/0.gif?a8mat=4BELTJ+7RTR3M+3H28+5ZU29" alt="" style="display:none;">
                 </div>
-                <div class="ladies-pr-card">
+                <div class="ladies-pr-card" data-aff-slot="second_venue_reservation">
                     <div>
                         <span class="pick-badge good">女子会ディナー・ホテルラウンジに</span>
                         <h3>一休.comレストラン 限定プラン予約</h3>
                         <p>相席前の0次会カフェや休日のアフタヌーンティー、女友達とのご褒美ディナーをWEB限定の優待プランでスムーズに押さえられる予約サービス。</p>
                     </div>
-                    <a href="/link/women_second_venue?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">人気プラン・空席を見る ›</a>
+                    <a href="/link/second_venue_reservation?from=/for-women" target="_blank" rel="nofollow sponsored noopener" class="ladies-pr-link">人気プラン・空席を見る ›</a>
                     <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BGDZ4+9R9ROY+1OK+NVP2P" alt="" style="display:none;">
                 </div>
             </div>

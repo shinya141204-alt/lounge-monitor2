@@ -1794,6 +1794,30 @@
                         </div>
                     </div>
                     {% endfor %}
+                    {% if ctr_rows|length > 10 %}
+                    <details style="margin-top:8px;">
+                        <summary style="cursor:pointer;font-size:0.75rem;color:var(--sub);font-weight:600;">残りの掲載面（{{ ctr_rows|length - 10 }}件：/grooming・/concierge ほか）を表示</summary>
+                        <div class="bar-list" style="margin-top:8px;">
+                            {% for cr in ctr_rows[10:40] %}
+                            <div class="bar-item">
+                                <div class="bar-item-top">
+                                    <div>
+                                        <span class="bar-item-title">{{ cr.title }}</span>
+                                        <span class="bar-item-sub">{{ cr.surface_label }}</span>
+                                    </div>
+                                    <div class="bar-item-nums">
+                                        <span class="bar-item-share">表示 {{ cr.impressions }}回</span>
+                                        <span class="bar-item-count" style="color: var(--gold); margin-left: 6px;">{{ cr.clicks }} click</span>
+                                        {% if cr.impressions > 0 %}
+                                        <span class="bar-item-share">(CTR {{ cr.ctr_pct }}%)</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </details>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -1830,7 +1854,7 @@
         <div class="ops-header">
             <div>
                 <h2>男女別アフィリエイト全{{ aff_status.slots|length }}枠・遷移先URL分離＆ノーコード差し替え</h2>
-                <p>男性向け5枠＋女性向け3枠＋男女共通ナイトケア1枠。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
+                <p>男性向け5枠＋女性向け3枠＋男女共通2枠（計{{ aff_status.slots|length }}枠）。再デプロイ・コード編集不要で、保存すると0秒で即時反映＆Google Sheetsへ永続保存されます。</p>
             </div>
         </div>
 

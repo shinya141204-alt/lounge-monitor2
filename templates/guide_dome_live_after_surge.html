@@ -79,10 +79,10 @@
           },
           {
             "@type": "Question",
-            "name": "遠征帰りの荷物（トートバッグやグッズ）を持ったまま入店できますか？",
+            "name": "ライブTシャツや遠征帰りの荷物（トートバッグやグッズ）を持ったまま入店できますか？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "通常のトートバッグや手荷物であればそのまま入店でき、クロークや荷物預かりに対応する大型店舗もあります。ただしキャリーケースは週末混雑時に預かり枠が埋まる場合があるため、主要駅のコインロッカーか宿泊ホテルへ預けてから向かう方が身軽に過ごせます。"
+              "text": "通常のトートバッグや手荷物であればそのまま入店でき、クロークや荷物預かりに対応する大型店舗もあります（キャリーケースは週末混雑時に預かり枠が埋まる場合があるため、主要駅のコインロッカーか宿泊ホテルへ預けるのが安心です）。服装面では女性はカジュアルなライブTシャツでも入店できるケースが大半ですが、男性はジャージ・スウェット・ビーチサンダル等がドレスコード対象になるため、服装・ドレスコード基準ガイドに沿ったきれいめな服装をおすすめします。"
             }
           }
         ]
@@ -94,9 +94,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
     {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
     <meta name="google-adsense-account" content="ca-pub-3043764334238627">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3043764334238627"
@@ -321,12 +321,16 @@
 
             <h2>4. よくある質問（ドーム・アリーナ終演後のラウンジ利用）</h2>
             <div class="faq-card">
-                <p class="faq-q">Q. 日曜日の早い開演（16時開演・18時半終演）の日も同じ波は起きますか？</p>
-                <p class="faq-a">A. はい、むしろ日曜日は一般の会社員男性の1次会が少ないため、19時30分〜21時00分にかけてターミナル駅の女性比率が普段の日曜以上に高まりやすい傾向があります。男性にとっては平日以上に落ち着いて話せる狙い目の時間帯になります。</p>
+                <p class="faq-q">Q. ドーム公演の終演後、相席ラウンジの人数が動き始めるのは何分後ですか？</p>
+                <p class="faq-a">規制退場と地下鉄・JRの移動時間を挟むため、終演時刻からおよそ60〜90分後に主要ターミナル駅（梅田・難波・新宿・栄・天神・すすきの）の店舗へ波が届きます。18時開演・20時半終演の公演なら21時30分〜22時30分、日曜・遠征最終日の16時開演・18時半終演なら19時30分〜21時00分がピーク帯になります。</p>
             </div>
             <div class="faq-card">
-                <p class="faq-q">Q. ライブTシャツのまま入店してもドレスコードに引っかかりませんか？</p>
-                <p class="faq-a">A. 女性はカジュアルな服装でも問題なく入店できるケースが大半ですが、男性はジャージ・スウェット・ビーチサンダル等がドレスコード対象になる店舗が多いため、ジャケットや襟付きシャツ・きれいめなパンツを合わせておくと安心です。基準の詳細は<a href="/guide/dress-code-cleanliness">服装・ドレスコード基準ガイド</a>で確認できます。</p>
+                <p class="faq-q">Q. ライブ帰りの女性2人組が受付待ちを避けて座るコツはありますか？</p>
+                <p class="faq-a">終演直後に会場から最も乗換しやすい1店舗へ女性グループが集中すると、一時的に女性比率が70%を超えて受付待ちが発生することがあります。乗車中に相席ナビで同じターミナル内の複数店舗（例：梅田なら<a href="/store/jis-umeda">JIS（ジス）梅田</a>・<a href="/store/oriental-lounge-osaka-ekimae">オリエンタルラウンジ 大阪駅前</a>・<a href="/store/ag-umeda">ag（アグ）梅田</a>）を見比べ、男性が先に入店している店舗を選ぶとスムーズに案内されやすくなります。</p>
+            </div>
+            <div class="faq-card">
+                <p class="faq-q">Q. ライブTシャツや遠征帰りの荷物（トートバッグやグッズ）を持ったまま入店できますか？</p>
+                <p class="faq-a">通常のトートバッグや手荷物であればそのまま入店でき、クロークや荷物預かりに対応する大型店舗もあります（キャリーケースは週末混雑時に預かり枠が埋まる場合があるため、主要駅のコインロッカーか宿泊ホテルへ預けるのが安心です）。服装面では女性はカジュアルなライブTシャツでも入店できるケースが大半ですが、男性はジャージ・スウェット・ビーチサンダル等がドレスコード対象になるため、<a href="/guide/dress-code-cleanliness">服装・ドレスコード基準ガイド</a>に沿ったきれいめな服装をおすすめします。</p>
             </div>
 
             {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}

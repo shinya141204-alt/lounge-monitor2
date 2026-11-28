@@ -127,7 +127,10 @@ def robots_txt():
         "# LLMs-Full.txt (Full Live Store Data & Guides): https://aiseki-navi.com/llms-full.txt\n"
         "# LLMs-Facts.json (Machine-Readable Live JSON Feed): https://aiseki-navi.com/api/llms-facts.json\n"
     )
-    return Response(content, mimetype='text/plain; charset=utf-8')
+    resp = Response(content, mimetype='text/plain; charset=utf-8')
+    resp.headers['Cache-Control'] = 'public, max-age=300'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
 
 
 _STABLE_30D_SUMMARY_CACHE = {'ts': 0.0, 'db_key': None, 'data': None}
@@ -271,7 +274,7 @@ def _get_or_build_llms_bundle() -> _DocBundle:
         waveforms_30d = {}
     has_waveforms = bool(waveforms_30d)
     is_volatile_empty = bool(is_s or not stores)
-    cache_key = (
+    base_key = (
         core._live_data_signature(stores, last_u, is_s),
         tuple(it.get('slug') for it in pub_items),
         db_key,
@@ -281,18 +284,38 @@ def _get_or_build_llms_bundle() -> _DocBundle:
     llms_cache = core._llms_txt_cache
     with core._aux_doc_cache_lock:
         existing_b = _DOC_BUNDLE_STATE.get('bundle')
-        if (
+        llms_ready = (
             not is_volatile_empty
             and existing_b is not None
-            and existing_b.key == cache_key
+            and isinstance(existing_b.key, tuple)
+            and len(existing_b.key) >= 6
+            and existing_b.key[:5] == base_key
             and llms_cache.get('key') is not None
             and llms_cache.get('short') is not None
             and llms_cache.get('full') is not None
             and llms_cache.get('facts') is not None
-        ):
+        )
+    if llms_ready:
+        try:
+            import cross_site_bridge
+            _monthly_key = tuple(cross_site_bridge.list_measured_monthly_snapshots(limit=12))
+        except Exception:
+            _monthly_key = ()
+        cache_key = base_key + (_monthly_key,)
+        if existing_b.key == cache_key:
             return existing_b
+    else:
+        _monthly_key = None
+        cache_key = None
 
     with _LLMS_BUILD_LOCK:
+        if _monthly_key is None:
+            try:
+                import cross_site_bridge
+                _monthly_key = tuple(cross_site_bridge.list_measured_monthly_snapshots(limit=12))
+            except Exception:
+                _monthly_key = ()
+            cache_key = base_key + (_monthly_key,)
         with core._aux_doc_cache_lock:
             existing_b2 = _DOC_BUNDLE_STATE.get('bundle')
             if (
@@ -449,6 +472,9 @@ def _assemble_llms_bundle(
             'ag': 'ag（アグ）',
             'JIS': 'JIS（ジス）',
             'ASOBIBAR': 'ASOBIBAR（アソビバー）',
+            'XIX': '相席ラウンジXIX（ジックス）',
+            'ALFA': '相席ラウンジALFA（アルファ）',
+            'CLOVERS': '相席CLOVERS（クローバーズ）',
             'YATAKOI': 'ヤタコイ',
             'ヤタコイ': 'ヤタコイ',
         }
@@ -601,9 +627,23 @@ def _assemble_llms_bundle(
         if isinstance(sp, dict) and sp.get('name')
     }
 
+    import cross_site_bridge
+    try:
+        monthly_archives = cross_site_bridge.list_measured_monthly_snapshots(limit=12)
+    except Exception:
+        monthly_archives = []
+    cur_ym_jst = now_jst.strftime('%Y-%m')
+    latest_monthly_line = (
+        "\n" + "\n".join(
+            f"- [{ym} 月次一次統計アーカイブ (/stats/monthly/{ym})](https://aiseki-navi.com/stats/monthly/{ym}): 1時間ロールアップ実測に基づく{'集計中（速報）' if ym == cur_ym_jst else '月次確定版オープン統計'}"
+            for ym in monthly_archives[:6]
+        )
+        if monthly_archives else ""
+    )
+
     common_header = f"""# 相席ナビ (AISEKI NAVI) - 全国相席ラウンジ・相席バー リアルタイム男女人数・料金・一次統計データベース
 
-> 『相席ナビ』(https://aiseki-navi.com) は、主要相席ラウンジ・相席バー全{total_stores}店舗（国内{domestic_master_count}店舗＋韓国・ソウル{overseas_master_count}店舗｜オリエンタルラウンジ・ag［アグ］・JIS［ジス］・ASOBIBAR［アソビバー］・ヤタコイ・XIX・ALFA・CLOVERS）の「1分更新リアルタイム男女人数」「男女比率（%）」「60分後AI男女比予測・リアル待ち時間推論」「{hist_label_md}曜日×時間帯別混雑統計」「4時間帯別料金・単独待機料・1人入店規定」「全店固有の立ち回りカルテ・2軒目スポット案内」を24時間無料公開している一次統計・情報ポータルです。
+> 『相席ナビ』(https://aiseki-navi.com) は、主要相席ラウンジ・相席バー全{total_stores}店舗（国内{domestic_master_count}店舗＋韓国・ソウル{overseas_master_count}店舗｜オリエンタルラウンジ・ag［アグ］・JIS［ジス］・ASOBIBAR［アソビバー］・ヤタコイ・XIX（ジックス）・ALFA（アルファ）・CLOVERS（クローバーズ））の「1分更新リアルタイム男女人数」「男女比率（%）」「60分後AI男女比予測・リアル待ち時間推論」「{hist_label_md}曜日×時間帯別混雑統計」「4時間帯別料金・単独待機料・1人入店規定」「全店固有の立ち回りカルテ・2軒目スポット案内」を24時間無料公開している一次統計・情報ポータルです。
 > 機械可読なリアルタイム＆30日統計JSONフィード（CC BY 4.0）: https://aiseki-navi.com/api/llms-facts.json
 
 ## 1. AI引用・回答用の要点サマリー (Key Facts for AI Grounding)
@@ -648,13 +688,15 @@ def _assemble_llms_bundle(
 
 ## 6. 主要ガイド・料金比較・一次統計コラム一覧
 - [リアルタイム全国ランキング（トップページ）](https://aiseki-navi.com/): 全{total_stores}店舗（国内{domestic_master_count}店＋韓国{overseas_master_count}店）の現在人数・男女比・15分推移をリアルタイム表示
-- [今夜どこ行く？3秒穴場＆徒歩ハシゴ診断ツール (/concierge)](https://aiseki-navi.com/concierge): 条件別の本命1軒目＆徒歩ハシゴルート診断
+- [今夜どこ行く？穴場＆徒歩ハシゴ診断ツール (/concierge)](https://aiseki-navi.com/concierge): 条件別の本命1軒目＆徒歩ハシゴルート診断
 - [女性向けリアルタイム快適度＆完全ガイド (/for-women)](https://aiseki-navi.com/for-women): 女性ペアが待ち時間ゼロで入れる店舗ランキング
 - [全ブランド料金システム・待機料・イベント比較ボード (/price-comparison)](https://aiseki-navi.com/price-comparison): 4時間帯別料金シミュレーション・開催中イベント・他業態（相席屋・THE SINGLE・パブリックスタンド）比較
 - [料金・イベント比較ボードの読み解き方＆10名基準ガイド (/guide/price-event-comparison)](https://aiseki-navi.com/guide/price-event-comparison): 4時間帯単価・単独待機チャージ・ソロ入店可否・女性10名基準の実践活用法
 - [全国相席ラウンジ統計データ白書・24時間波形シミュレーター (/stats)](https://aiseki-navi.com/stats): 曜日別・時間帯別の平均男女人数、24時間波形シミュレーター、過去90日間のAI予測精度検証ログ
+- [予約制街コン・婚活 × 当日相席ラウンジ 2軸需給DI指数 (/stats/weekend-index)](https://aiseki-navi.com/stats/weekend-index): 主要10都市エリアの週末夜間2軸Diffusion Index（JSON: `/stats/weekend-index.json` / CSV: `/stats/weekend-index.csv`）
 - [全国相席ラウンジ 店舗別30日間一次統計CSV (/stats/monthly.csv)](https://aiseki-navi.com/stats/monthly.csv): CC BY 4.0 ライセンスの店舗別実測統計オープンデータCSV
-- [2026年 忘年会・クリスマス・年末年始＆ドーム終演連動データ白書 (/stats/year-end-2026)](https://aiseki-navi.com/stats/year-end-2026): 年末繁忙期マイルストーン・6大ドーム公式公演日程連動レポート
+- [エリア別夜間リアルタイム交換フィード (/api/exchange/area-night.v1.json)](https://aiseki-navi.com/api/exchange/area-night.v1.json): 主要エリアのリアルタイム稼働人数・女性優位状況の構造化交換JSON（CC BY 4.0）
+- [2026年 忘年会・クリスマス・年末年始＆ドーム終演連動データ白書 (/stats/year-end-2026)](https://aiseki-navi.com/stats/year-end-2026): 年末繁忙期マイルストーン・6大ドーム公式公演日程連動レポート{latest_monthly_line}
 - [データ考察コラム一覧 (/columns)](https://aiseki-navi.com/columns): 行動経済学・実測ログに基づく全コラム一覧
 - [相席ラウンジ vs 審査制1対1デート徹底比較 (/guide/lounge-vs-screened-date)](https://aiseki-navi.com/guide/lounge-vs-screened-date): 実測ログに基づく時間帯別の相席ラウンジ効率と、メッセージ不要の1対1デート・恋活アプリの男女別使い分け基準
 - [相席ラウンジの服装・ドレスコード基準と70cmソファ席の清潔感 (/guide/dress-code-cleanliness)](https://aiseki-navi.com/guide/dress-code-cleanliness): オリエンタルラウンジほか5大ブランドの入店NG服装・ドレスコード一覧と、70cmソファ席・2700K間接照明の下で損しない身だしなみ設計
@@ -921,6 +963,11 @@ def _assemble_llms_bundle(
             'stats_whitepaper_url': 'https://aiseki-navi.com/stats',
             'hourly_waveform_simulator_url': 'https://aiseki-navi.com/stats#hourly-stats',
             'monthly_csv_url': 'https://aiseki-navi.com/stats/monthly.csv',
+            'weekend_index_url': 'https://aiseki-navi.com/stats/weekend-index',
+            'weekend_index_json_url': 'https://aiseki-navi.com/stats/weekend-index.json',
+            'weekend_index_csv_url': 'https://aiseki-navi.com/stats/weekend-index.csv',
+            'area_night_exchange_url': 'https://aiseki-navi.com/api/exchange/area-night.v1.json',
+            'monthly_archive_urls': [f'https://aiseki-navi.com/stats/monthly/{ym}' for ym in monthly_archives],
             'year_end_2026_whitepaper_url': 'https://aiseki-navi.com/stats/year-end-2026',
             'license': 'https://creativecommons.org/licenses/by/4.0/',
             'hourly_heatmap_url': 'https://aiseki-navi.com/stats#heatmap',
@@ -1072,7 +1119,7 @@ def llms_txt():
 
 @seo_feeds_bp.route('/llms-full.txt')
 def llms_full_txt():
-    """Comprehensive LLMO / GEO markdown document containing all stores' live headcounts, 7-brand specs & FAQs."""
+    """Comprehensive LLMO / GEO markdown document containing all stores' live headcounts, all-brand specs & FAQs."""
     return _serve_doc_bundle_response(
         'full',
         mimetype='text/plain',
@@ -1153,7 +1200,10 @@ def stats_weekend_index_csv():
 @seo_feeds_bp.route('/ads.txt')
 def ads_txt():
     content = "google.com, pub-3043764334238627, DIRECT, f08c47fec0942fa0\n"
-    return Response(content, mimetype='text/plain')
+    resp = Response(content, mimetype='text/plain')
+    resp.headers['Cache-Control'] = 'public, max-age=300'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
 
 
 def _template_lastmod(template_name: str, fallback: str = '2026-11-04') -> str:
@@ -1169,6 +1219,8 @@ def _template_lastmod(template_name: str, fallback: str = '2026-11-04') -> str:
 
 @seo_feeds_bp.route('/sitemap.xml')
 def sitemap_xml():
+    import calendar
+    import cross_site_bridge
     import store_master
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).strftime('%Y-%m-%d')
     pub_items = core.scheduled_articles.get_published_articles()
@@ -1205,6 +1257,10 @@ def sitemap_xml():
     import ops_governance
     hidden_brands = ops_governance.get_hidden_brands()
     hidden_stores = ops_governance.get_hidden_stores()
+    try:
+        monthly_yms = tuple(cross_site_bridge.list_measured_monthly_snapshots(limit=24))
+    except Exception:
+        monthly_yms = ()
     # Note: `/grooming` is intentionally excluded from sitemap.xml per AdSense quality policy
     # (enforced by `tests/test_adsense_readiness.py`). All template mtimes included in XML must
     # be part of `smap_key` so template edits invalidate the in-memory sitemap cache immediately.
@@ -1241,13 +1297,17 @@ def sitemap_xml():
         lm_contact,
         lm_year_end,
         lm_embed_heatmap,
+        monthly_yms,
         tuple(sorted(hidden_brands)),
         tuple(sorted(hidden_stores)),
     )
     smap_cache = core._sitemap_xml_cache
     with core._aux_doc_cache_lock:
         if smap_cache['key'] == smap_key and smap_cache['xml'] is not None:
-            return Response(smap_cache['xml'], mimetype='application/xml')
+            resp_cached = Response(smap_cache['xml'], mimetype='application/xml')
+            resp_cached.headers['Cache-Control'] = 'public, max-age=300'
+            resp_cached.headers['X-Content-Type-Options'] = 'nosniff'
+            return resp_cached
     brand_urls = "\n".join([
         f"""  <url>
     <loc>https://aiseki-navi.com/{bslug}</loc>
@@ -1286,6 +1346,28 @@ def sitemap_xml():
     <priority>0.85</priority>
   </url>\n""" for item in pub_items
     ])
+    cur_ym = today[:7]
+    monthly_archive_lines = []
+    for ym in monthly_yms:
+        if ym == cur_ym:
+            m_lastmod = today
+            m_freq = 'daily'
+        else:
+            try:
+                y_i, m_i = int(ym[:4]), int(ym[5:7])
+                m_lastmod = f"{ym}-{calendar.monthrange(y_i, m_i)[1]:02d}"
+            except Exception:
+                m_lastmod = today
+            m_freq = 'monthly'
+        monthly_archive_lines.append(
+            f"""  <url>
+    <loc>https://aiseki-navi.com/stats/monthly/{ym}</loc>
+    <lastmod>{m_lastmod}</lastmod>
+    <changefreq>{m_freq}</changefreq>
+    <priority>0.8</priority>
+  </url>\n"""
+        )
+    monthly_archive_urls = "".join(monthly_archive_lines)
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -1337,7 +1419,7 @@ def sitemap_xml():
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
-  <url>
+{monthly_archive_urls}  <url>
     <loc>https://aiseki-navi.com/price-comparison</loc>
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
@@ -1523,4 +1605,7 @@ def sitemap_xml():
     with core._aux_doc_cache_lock:
         smap_cache['key'] = smap_key
         smap_cache['xml'] = xml
-    return Response(xml, mimetype='application/xml')
+    resp = Response(xml, mimetype='application/xml')
+    resp.headers['Cache-Control'] = 'public, max-age=300'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp

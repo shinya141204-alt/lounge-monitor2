@@ -362,10 +362,10 @@ def build_store_smart_cta(
             sublink_label = f"近隣の女性優位店：{best_female_alt['seo_name']}（女{best_female_alt['women']} : 男{best_female_alt['men']}） ›"
         elif area_slug:
             sublink_href = f"/concierge?area={area_slug}"
-            sublink_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+            sublink_label = "近隣の穴場・徒歩ハシゴ診断を見る ›"
         else:
             sublink_href = "/concierge"
-            sublink_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+            sublink_label = "近隣の穴場・徒歩ハシゴ診断を見る ›"
     elif (not is_open_now) or tot < 6 or women < 6:
         slot_id = "dating_bachelor"
         mode = "off_or_low"
@@ -507,7 +507,7 @@ def build_store_smart_cta(
             primary_internal_label = f"近隣の女性優位店へ移動：{best_female_alt['seo_name']}（女{best_female_alt['women']} : 男{best_female_alt['men']}） ›"
         else:
             primary_internal_href = f"/concierge?area={area_slug}" if area_slug else "/concierge"
-            primary_internal_label = "近隣の穴場・徒歩ハシゴ3秒診断を見る ›"
+            primary_internal_label = "近隣の穴場・徒歩ハシゴ診断を見る ›"
     else:
         primary_internal_href = sublink_href
         primary_internal_label = sublink_label
@@ -572,15 +572,41 @@ def build_surface_smart_cta(
     bachelor_shares_instant = are_slots_sharing_url("dating_bachelor", "dating_instant", allow_blocking=allow_blocking)
     concierge_href = f"/concierge?area={area_slug}" if area_slug else "/concierge"
 
+    # Check if all visible stores on this surface use flat-rate pricing (e.g. /asobibar)
+    all_flat_rate = False
+    if valid_stores:
+        try:
+            import price_comparison as _pc_flat
+            import store_master as _sm_flat
+            _flat_flags = []
+            for _st in valid_stores:
+                _sn = _st.get("name") or ""
+                _bc = ((_sm_flat.get(_sn) or {}).get("brand")) or (
+                    "ASOBIBAR" if "ASOBIBAR" in _sn.upper() else ("ヤタコイ" if ("ヤタコイ" in _sn or "YATAKOI" in _sn.upper()) else "")
+                )
+                _pt = _pc_flat.STORE_PRICE_TABLE.get(_sn) or {}
+                _bs = _pc_flat.BRAND_PRICE_SPECS.get(_bc) or {}
+                _flat_flags.append(bool(_pt.get("is_flat_rate") or _bs.get("is_flat_rate")))
+            all_flat_rate = bool(_flat_flags) and all(_flat_flags)
+        except Exception:
+            all_flat_rate = clean_path == "/asobibar"
+    elif clean_path == "/asobibar":
+        all_flat_rate = True
+
     if len(active_stores) >= 2 and (sum_m > sum_w or male_heavy_cnt >= max(2, len(active_stores) // 2)):
         slot_id = "dating_instant"
         mode = "men_glut"
-        kicker = f"現在 {surface_label}は男性先行傾向｜待機チャージ回避の選択肢"
-        title = "単独待機10分330円を重ねる前に｜近くで今日飲める恋活アプリを併用"
-        sub = "複数店舗で男性が先行している時間帯は、受付待ちや単独待機コストがかさみやすくなります。徒歩圏の穴場店へ回るか、同エリアで今から合流できる恋活アプリを予備に持っておくと無駄がありません。"
+        if all_flat_rate:
+            kicker = f"現在 {surface_label}は男性先行傾向｜混雑回避の選択肢"
+            title = "混雑・立ち回り待ちが気になる夜は｜近くで今日飲める恋活アプリを併用"
+            sub = "複数店舗で男性が先行している時間帯は、場内が混雑しやすく声をかける相手も限られがちです。同エリアで今から合流できる恋活アプリを予備に持っておくと無駄がありません。"
+        else:
+            kicker = f"現在 {surface_label}は男性先行傾向｜待機チャージ回避の選択肢"
+            title = "単独待機10分330円を重ねる前に｜近くで今日飲める恋活アプリを併用"
+            sub = "複数店舗で男性が先行している時間帯は、受付待ちや単独待機コストがかさみやすくなります。徒歩圏の穴場店へ回るか、同エリアで今から合流できる恋活アプリを予備に持っておくと無駄がありません。"
         cta_label = "近くで今日飲めるアプリを見る ›"
         sublink_href = concierge_href
-        sublink_label = "いま待ちなしで入れる徒歩圏の穴場3秒診断を見る ›"
+        sublink_label = "いま待ちなしで入れる徒歩圏の穴場診断を見る ›"
     elif len(active_stores) >= 1 and is_late_night:
         slot_id = "second_venue_reservation"
         mode = "late_second_venue"
@@ -595,7 +621,7 @@ def build_surface_smart_cta(
         mode = "prime_grooming"
         kicker = f"現在 {surface_label}で女性{sum_w}名｜入店前の清潔感＆服装確認"
         title = "ソファ席70cmの間接照明で差がつく「夕方の皮脂テカリ・口元ケア」"
-        sub = "仕事帰りにそのまま入店する夜は、おでこ・鼻まわりの皮脂と口元の清潔感だけで最初の10分の会話継続率が変わります。日頃のベースケアには定番のORBIS Mr.も選ばれています。"
+        sub = "仕事帰りにそのまま入店する夜は、おでこ・鼻まわりの皮脂と口元の清潔感を整えておくと最初の10分の第一印象が安定しやすくなります。日頃のベースケアには定番のORBIS Mr.も選ばれています。"
         cta_label = "初回トライアル・公式詳細 ›"
         sublink_href = "/grooming#sebum-care"
         sublink_label = "ブランド別NG服装規定・入店3分前チェックリスト ›"

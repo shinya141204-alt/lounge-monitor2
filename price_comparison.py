@@ -310,7 +310,7 @@ ADJACENT_FORMAT_SPECS = [
     },
 ]
 
-# Per-store official price specifications for all 51 domestic stores across all 4 time slots:
+# Per-store official price specifications for all 61 domestic stores across all 4 time slots:
 #   slot_18_20: Open ~ 20:00 (10-min aiseki rate: weekday / Fri-Sat-Hol)
 #   slot_20_22: 20:00 ~ 22:00 (10-min aiseki rate: weekday / Fri-Sat-Hol)
 #   slot_22_24: 22:00 ~ 24:00 (10-min aiseki rate: weekday / Fri-Sat-Hol)
@@ -1877,7 +1877,7 @@ def _build_live_cache_sig(live_stores, all_evs, now_jst):
 
 
 def build_area_comparison_clusters(live_stores: list = None, now_jst: datetime.datetime = None) -> dict:
-    """Build all 10 area comparison clusters + live event verification summary + full 51-store catalog."""
+    """Build all 10 area comparison clusters + live event verification summary + full 61-store catalog."""
     all_evs = []
     try:
         import events

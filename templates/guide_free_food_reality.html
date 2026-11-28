@@ -106,9 +106,9 @@
     <meta name="theme-color" content="#111113">
     <link rel="icon" type="image/png" href="/static/icon-192.png?v=3">
     <link rel="apple-touch-icon" href="/static/icon.png?v=3">
-<link rel="stylesheet" href="/static/portal.css?v=20">
+<link rel="stylesheet" href="/static/portal.css?v=21">
     <link rel="stylesheet" href="/static/guide.css?v=1">
-    <link rel="stylesheet" href="/static/calm.css?v=52">
+    <link rel="stylesheet" href="/static/calm.css?v=57">
 </head>
 
 <body>
@@ -374,6 +374,20 @@
                 <p>
                     今夜ラウンジへ向かうなら、まずは<a href="/" style="color:var(--text-main);text-decoration:underline;">リアルタイム人数ランキング</a>で、女性比率が高く料理の注文が落ち着く時間帯（20:30〜22:00）を狙って足を運んでみてください。
                 </p>
+
+                <h2>よくある質問（FAQ）</h2>
+                <div class="faq-card">
+                    <p class="faq-q">Q. 相席ラウンジの女性は本当にご飯目的（タダ飯）ばかりですか？</p>
+                    <p class="faq-a">18:30〜20:30は男性客がまだ少なく、女性グループが夕食を兼ねて過ごしている時間帯です（19時台の全国平均女性比率は80.9%）。21:00以降は男性が急増し、店内は相席中心に変わります。席で料理に手が伸びるのは会話が続かず間がもたないときでもあり、食べているから出会う気がない、とは限りません。</p>
+                </div>
+                <div class="faq-card">
+                    <p class="faq-q">Q. 女性が頼んだ料理代は、男性が支払う必要がありますか？</p>
+                    <p class="faq-a">いいえ。女性の飲食代は店舗側の負担で、男性の会計には含まれません。男性の会計は入店時のチャージ（550円前後）と、10分ごとの時間料金（相席中と待機中で単価が異なります）です。</p>
+                </div>
+                <div class="faq-card">
+                    <p class="faq-q">Q. 料理ばかり食べて会話に乗ってこない女性にはどう接すれば良いですか？</p>
+                    <p class="faq-a">『ご飯目的か』と疑うより、『それ何頼んだの？美味しそう』と料理を話題にするほうが早いです。仕事、住まい、年齢と順番に聞く面接型の質問をやめるだけで、女性側の緊張が解けて会話が返ってきやすくなります。</p>
+                </div>
 
                 {% if not is_staff and not session.get('is_staff') and not is_scheduled_preview %}
                 <aside class="editorial-bridge-box" aria-label="入店前の準備と身だしなみ">
